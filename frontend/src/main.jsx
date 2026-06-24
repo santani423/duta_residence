@@ -1,4 +1,4 @@
-import React from 'react';
+import { StrictMode } from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConfigProvider, theme } from 'antd';
@@ -7,6 +7,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './state/AuthContext.jsx';
 import { ThemeProvider, useThemeMode } from './state/ThemeContext.jsx';
 import AppRoutes from './routes/AppRoutes.jsx';
+import ErrorBoundary from './components/common/ErrorBoundary.jsx';
 import './styles.css';
 
 const queryClient = new QueryClient({
@@ -44,13 +45,15 @@ function ThemedApp() {
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
+  <StrictMode>
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
-          <ThemedApp />
+          <ErrorBoundary>
+            <ThemedApp />
+          </ErrorBoundary>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
-  </React.StrictMode>,
+  </StrictMode>,
 );

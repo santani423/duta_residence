@@ -254,6 +254,14 @@ a {
   width: min(420px, 100%);
 }
 
+.fatal-error {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--app-bg);
+}
+
 .login-links {
   width: 100%;
   justify-content: center;

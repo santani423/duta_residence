@@ -3,12 +3,22 @@ import { api } from '../services/estateApi.js';
 
 const AuthContext = createContext(null);
 
+function readStoredUser() {
+  const raw = localStorage.getItem('gd_user');
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    localStorage.removeItem('gd_user');
+    localStorage.removeItem('gd_token');
+    return null;
+  }
+}
+
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem('gd_token'));
-  const [user, setUser] = useState(() => {
-    const raw = localStorage.getItem('gd_user');
-    return raw ? JSON.parse(raw) : null;
-  });
+  const [user, setUser] = useState(readStoredUser);
 
   function clearSession() {
     localStorage.removeItem('gd_token');
