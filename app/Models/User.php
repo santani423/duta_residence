@@ -26,9 +26,12 @@ class User extends Authenticatable
         'username',
         'email',
         'phone',
+        'customer_id',
         'password',
         'is_active',
         'theme_preference',
+        'language_preference',
+        'notification_preferences',
         'last_login_at',
         'last_login_ip',
     ];
@@ -53,6 +56,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'is_active' => 'boolean',
+            'notification_preferences' => 'array',
             'last_login_at' => 'datetime',
             'password' => 'hashed',
         ];
@@ -61,5 +65,10 @@ class User extends Authenticatable
     public function auditLogs()
     {
         return $this->hasMany(AuditLog::class);
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
     }
 }

@@ -27,9 +27,11 @@ const AuditLogsPage = lazy(() => import('../pages/AuditLogsPage.jsx'));
 const NotificationsPage = lazy(() => import('../pages/NotificationsPage.jsx'));
 const ProfilePage = lazy(() => import('../pages/auth/ProfilePage.jsx'));
 const ChangePasswordPage = lazy(() => import('../pages/auth/ChangePasswordPage.jsx'));
+const AdminPaymentGatewaySettingsPage = lazy(() => import('../pages/AdminPaymentGatewaySettingsPage.jsx'));
+const CustomerPortalPage = lazy(() => import('../pages/customer/CustomerPortalPage.jsx'));
 
-function Protected({ children, permissions = [] }) {
-  const { token, canAny } = useAuth();
+function Protected({ children, permissions = [], roles = [] }) {
+  const { token, canAny, hasRole } = useAuth();
   const location = useLocation();
 
   if (!token) {
@@ -37,6 +39,10 @@ function Protected({ children, permissions = [] }) {
   }
 
   if (permissions.length && !canAny(permissions)) {
+    return <Navigate to="/403" replace />;
+  }
+
+  if (roles.length && !roles.some((role) => hasRole(role))) {
     return <Navigate to="/403" replace />;
   }
 
@@ -48,6 +54,8 @@ function LazyPage({ children }) {
 }
 
 export default function AppRoutes() {
+  const { hasRole } = useAuth();
+
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
@@ -64,7 +72,7 @@ export default function AppRoutes() {
           </Protected>
         }
       >
-        <Route index element={<LazyPage><DashboardPage /></LazyPage>} />
+        <Route index element={hasRole('customer') ? <Navigate to="/customer/dashboard" replace /> : <LazyPage><DashboardPage /></LazyPage>} />
         <Route path="clusters" element={<Protected permissions={['clusters.view']}><LazyPage><ClustersPage /></LazyPage></Protected>} />
         <Route path="customers" element={<Protected permissions={['customers.view']}><LazyPage><CustomersPage /></LazyPage></Protected>} />
         <Route path="billings" element={<Protected permissions={['billings.view']}><LazyPage><BillingsPage /></LazyPage></Protected>} />
@@ -80,6 +88,24 @@ export default function AppRoutes() {
         <Route path="notifications" element={<LazyPage><NotificationsPage /></LazyPage>} />
         <Route path="profile" element={<LazyPage><ProfilePage /></LazyPage>} />
         <Route path="change-password" element={<LazyPage><ChangePasswordPage /></LazyPage>} />
+        <Route path="admin/settings/payment-gateway" element={<Protected permissions={['payment-settings.view']}><LazyPage><AdminPaymentGatewaySettingsPage /></LazyPage></Protected>} />
+        <Route path="customer/dashboard" element={<Protected roles={['customer']}><LazyPage><CustomerPortalPage page="dashboard" /></LazyPage></Protected>} />
+        <Route path="customer/account" element={<Protected roles={['customer']}><LazyPage><CustomerPortalPage page="account" /></LazyPage></Protected>} />
+        <Route path="customer/profile" element={<Protected roles={['customer']}><LazyPage><CustomerPortalPage page="profile" /></LazyPage></Protected>} />
+        <Route path="customer/property" element={<Protected roles={['customer']}><LazyPage><CustomerPortalPage page="property" /></LazyPage></Protected>} />
+        <Route path="customer/bills" element={<Protected roles={['customer']}><LazyPage><CustomerPortalPage page="bills" /></LazyPage></Protected>} />
+        <Route path="customer/bills/:invoiceId" element={<Protected roles={['customer']}><LazyPage><CustomerPortalPage page="invoice-detail" /></LazyPage></Protected>} />
+        <Route path="customer/invoices" element={<Protected roles={['customer']}><LazyPage><CustomerPortalPage page="invoices" /></LazyPage></Protected>} />
+        <Route path="customer/invoices/:invoiceId" element={<Protected roles={['customer']}><LazyPage><CustomerPortalPage page="invoice-detail" /></LazyPage></Protected>} />
+        <Route path="customer/payments" element={<Protected roles={['customer']}><LazyPage><CustomerPortalPage page="payments" /></LazyPage></Protected>} />
+        <Route path="customer/payments/:paymentId" element={<Protected roles={['customer']}><LazyPage><CustomerPortalPage page="payment-detail" /></LazyPage></Protected>} />
+        <Route path="customer/payment-methods" element={<Protected roles={['customer']}><LazyPage><CustomerPortalPage page="payment-methods" /></LazyPage></Protected>} />
+        <Route path="customer/complaints" element={<Protected roles={['customer']}><LazyPage><CustomerPortalPage page="complaints" /></LazyPage></Protected>} />
+        <Route path="customer/maintenance-requests" element={<Protected roles={['customer']}><LazyPage><CustomerPortalPage page="maintenance" /></LazyPage></Protected>} />
+        <Route path="customer/documents" element={<Protected roles={['customer']}><LazyPage><CustomerPortalPage page="documents" /></LazyPage></Protected>} />
+        <Route path="customer/notifications" element={<Protected roles={['customer']}><LazyPage><CustomerPortalPage page="notifications" /></LazyPage></Protected>} />
+        <Route path="customer/activity" element={<Protected roles={['customer']}><LazyPage><CustomerPortalPage page="activity" /></LazyPage></Protected>} />
+        <Route path="customer/settings" element={<Protected roles={['customer']}><LazyPage><CustomerPortalPage page="settings" /></LazyPage></Protected>} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

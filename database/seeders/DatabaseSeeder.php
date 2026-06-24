@@ -43,6 +43,7 @@ class DatabaseSeeder extends Seeder
         $cs = $this->user('Customer Service', 'cs', 'cs@grandduta.test', 'cs');
 
         $this->seedCustomersAndTransactions($root, $backOffice, $loket, $cs);
+        $this->user('Budi Santoso', 'customer', 'customer@grandduta.test', 'customer', 'DO001');
     }
 
     private function seedPermissions(): void
@@ -59,6 +60,7 @@ class DatabaseSeeder extends Seeder
             'reports.view', 'documents.generate',
             'users.view', 'users.create', 'users.update', 'users.delete', 'users.activate', 'users.reset-password',
             'audit-logs.view', 'audit.view',
+            'payment-settings.view', 'payment-settings.update',
         ];
 
         foreach ($permissions as $permission) {
@@ -84,6 +86,7 @@ class DatabaseSeeder extends Seeder
                 'documents.generate',
             ],
             'cs' => ['customers.view', 'clusters.view', 'billings.view'],
+            'customer' => [],
         ];
 
         foreach ($roles as $roleName => $rolePermissions) {
@@ -148,7 +151,7 @@ class DatabaseSeeder extends Seeder
         ])->each(fn ($row) => Cluster::updateOrCreate(['id' => $row['id']], [...$row, 'is_active' => true]));
     }
 
-    private function user(string $name, string $username, string $email, string $role): User
+    private function user(string $name, string $username, string $email, string $role, ?string $customerId = null): User
     {
         $user = User::updateOrCreate(
             ['username' => $username],
@@ -156,9 +159,19 @@ class DatabaseSeeder extends Seeder
                 'name' => $name,
                 'email' => $email,
                 'phone' => '08120000'.str_pad((string) random_int(1, 999), 3, '0', STR_PAD_LEFT),
+                'customer_id' => $customerId,
                 'password' => Hash::make('password'),
                 'is_active' => true,
                 'theme_preference' => 'system',
+                'language_preference' => 'id',
+                'notification_preferences' => [
+                    'billing' => true,
+                    'payments' => true,
+                    'complaints' => true,
+                    'maintenance' => true,
+                    'documents' => true,
+                    'announcements' => true,
+                ],
             ]
         );
         $user->syncRoles([$role]);

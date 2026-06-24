@@ -6,12 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\Billing;
 use App\Models\ManagedFile;
+use App\Models\PaymentGatewaySetting;
 use App\Models\PaymentTransaction;
 use App\Models\PaymentWebhookEvent;
+use App\Services\AuditService;
 use App\Services\Payments\PaymentGatewayFactory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class PaymentGatewayController extends Controller
 {
@@ -19,21 +22,7 @@ class PaymentGatewayController extends Controller
 
     public function config()
     {
-        return $this->success([
-            'active_gateway' => config('payment.gateway', 'manual'),
-            'currency' => config('payment.currency', 'IDR'),
-            'manual_payment' => [
-                'enabled' => config('payment.manual.enabled', true),
-                'bank_name' => config('payment.manual.bank_name'),
-                'account_number' => config('payment.manual.account_number'),
-                'account_name' => config('payment.manual.account_name'),
-            ],
-            'providers' => [
-                'manual' => true,
-                'xendit' => filled(config('payment.xendit.secret_key')),
-                'midtrans' => filled(config('payment.midtrans.server_key')),
-            ],
-        ]);
+        return $this->success(PaymentGatewaySetting::current()->publicConfig());
     }
 
     public function index(Request $request)
@@ -66,7 +55,14 @@ class PaymentGatewayController extends Controller
             'provider' => ['nullable', 'in:manual,xendit,midtrans'],
         ]);
 
-        $transaction = DB::transaction(function () use ($data, $request, $factory) {
+        $setting = PaymentGatewaySetting::current();
+        $provider = $data['provider'] ?? $setting->active_gateway;
+
+        if (! $setting->is_active || ! in_array($provider, $setting->availableGateways(), true)) {
+            throw ValidationException::withMessages(['provider' => ['Metode pembayaran sedang tidak tersedia.']]);
+        }
+
+        $transaction = DB::transaction(function () use ($data, $request, $factory, $setting, $provider) {
             $billings = Billing::query()
                 ->whereIn('id', $data['billing_ids'])
                 ->where('customer_id', $data['customer_id'])
@@ -77,8 +73,8 @@ class PaymentGatewayController extends Controller
 
             abort_if($billings->count() !== count(array_unique($data['billing_ids'])), 422, 'Tagihan tidak valid untuk pembayaran.');
 
-            $provider = $data['provider'] ?? config('payment.gateway', 'manual');
             $subtotal = $billings->sum('amount');
+            $adminFee = (float) $setting->admin_fee;
 
             $transaction = PaymentTransaction::query()->create([
                 'transaction_number' => 'TRX-'.now()->format('YmdHis').'-'.Str::upper(Str::random(6)),
@@ -86,9 +82,9 @@ class PaymentGatewayController extends Controller
                 'customer_id' => $data['customer_id'],
                 'subtotal' => $subtotal,
                 'tax' => 0,
-                'admin_fee' => 0,
-                'total' => $subtotal,
-                'currency' => config('payment.currency', 'IDR'),
+                'admin_fee' => $adminFee,
+                'total' => $subtotal + $adminFee,
+                'currency' => $setting->currency,
                 'payment_provider' => $provider,
                 'status' => 'pending',
                 'created_by' => $request->user()->id,
@@ -135,16 +131,21 @@ class PaymentGatewayController extends Controller
         return $this->success($transaction->refresh(), 'Bukti pembayaran berhasil diunggah.');
     }
 
-    public function verifyManual(Request $request, PaymentTransaction $transaction)
+    public function verifyManual(Request $request, PaymentTransaction $transaction, AuditService $auditService)
     {
         $data = $request->validate(['verification_notes' => ['nullable', 'string']]);
-        $transaction->update([
-            'status' => 'paid',
-            'paid_at' => now(),
-            'verified_by' => $request->user()->id,
-            'verified_at' => now(),
-            'verification_notes' => $data['verification_notes'] ?? null,
-        ]);
+        DB::transaction(function () use ($transaction, $request, $data, $auditService) {
+            $old = $transaction->toArray();
+            $transaction->update([
+                'status' => 'paid',
+                'paid_at' => now(),
+                'verified_by' => $request->user()->id,
+                'verified_at' => now(),
+                'verification_notes' => $data['verification_notes'] ?? null,
+            ]);
+            $this->markBillingsPaid($transaction->refresh());
+            $auditService->log('payment_manual_verified', 'payments', 'VERIFY', $transaction, $old, $transaction->toArray());
+        });
 
         return $this->success($transaction->refresh(), 'Pembayaran manual berhasil diverifikasi.');
     }
@@ -185,9 +186,25 @@ class PaymentGatewayController extends Controller
             return $this->success(['duplicate' => true], 'Webhook sudah diproses.');
         }
 
-        $transaction = DB::transaction(fn () => $factory->make($provider)->handleWebhook($request));
+        $transaction = DB::transaction(function () use ($provider, $request, $factory) {
+            $transaction = $factory->make($provider)->handleWebhook($request);
+
+            if ($transaction->status === 'paid') {
+                $this->markBillingsPaid($transaction);
+            }
+
+            return $transaction;
+        });
         $event->update(['status' => 'processed', 'provider_reference' => $transaction->provider_reference]);
 
         return $this->success($transaction, 'Webhook berhasil diproses.');
+    }
+
+    private function markBillingsPaid(PaymentTransaction $transaction): void
+    {
+        $transaction->billings()->update([
+            'status_id' => '02',
+            'paid_at' => $transaction->paid_at ?? now(),
+        ]);
     }
 }

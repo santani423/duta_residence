@@ -6,12 +6,14 @@ use App\Http\Controllers\Api\V1\BackPaymentController;
 use App\Http\Controllers\Api\V1\BillingController;
 use App\Http\Controllers\Api\V1\ClusterController;
 use App\Http\Controllers\Api\V1\CustomerController;
+use App\Http\Controllers\Api\V1\CustomerPortalController;
 use App\Http\Controllers\Api\V1\DocumentController;
 use App\Http\Controllers\Api\V1\InstallmentController;
 use App\Http\Controllers\Api\V1\LookupController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PaymentGatewayController;
+use App\Http\Controllers\Api\V1\PaymentGatewaySettingController;
 use App\Http\Controllers\Api\V1\ReceivableController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\ReversalController;
@@ -99,7 +101,50 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
 
     Route::get('audit-logs', [AuditLogController::class, 'index'])->middleware('permission:audit-logs.view');
 
+    Route::get('admin/settings/payment-gateway', [PaymentGatewaySettingController::class, 'show'])->middleware('permission:payment-settings.view');
+    Route::put('admin/settings/payment-gateway', [PaymentGatewaySettingController::class, 'update'])->middleware('permission:payment-settings.update');
+    Route::post('admin/settings/payment-gateway/test', [PaymentGatewaySettingController::class, 'test'])->middleware('permission:payment-settings.view');
+
     Route::get('notifications', [NotificationController::class, 'index']);
     Route::post('notifications/{notification}/read', [NotificationController::class, 'read']);
     Route::post('notifications/read-all', [NotificationController::class, 'readAll']);
+});
+
+Route::middleware(['auth:sanctum', 'audit', 'role:customer'])->prefix('customer')->group(function () {
+    Route::get('dashboard', [CustomerPortalController::class, 'dashboard']);
+    Route::get('account', [CustomerPortalController::class, 'account']);
+    Route::get('profile', [CustomerPortalController::class, 'profile']);
+    Route::match(['put', 'post'], 'profile', [CustomerPortalController::class, 'updateProfile']);
+    Route::get('property', [CustomerPortalController::class, 'property']);
+    Route::get('bills', [CustomerPortalController::class, 'bills']);
+    Route::get('invoices', [CustomerPortalController::class, 'bills']);
+    Route::get('invoices/{billing}', [CustomerPortalController::class, 'invoice']);
+    Route::get('invoices/{billing}/download', [CustomerPortalController::class, 'downloadInvoice']);
+    Route::post('invoices/{billing}/payments', [CustomerPortalController::class, 'createPayment']);
+    Route::get('payment-config', [CustomerPortalController::class, 'paymentConfig']);
+    Route::get('payment-methods', [CustomerPortalController::class, 'paymentConfig']);
+    Route::get('payments', [CustomerPortalController::class, 'payments']);
+    Route::get('payments/{payment}', [CustomerPortalController::class, 'payment']);
+    Route::get('payments/{payment}/status', [CustomerPortalController::class, 'paymentStatus']);
+    Route::get('payments/{payment}/receipt/download', [CustomerPortalController::class, 'downloadReceipt']);
+    Route::post('payments/{payment}/manual-proof', [CustomerPortalController::class, 'uploadManualProof']);
+    Route::get('receipts/{receipt}/download', [CustomerPortalController::class, 'downloadCashReceipt']);
+    Route::get('complaints', [CustomerPortalController::class, 'complaints']);
+    Route::post('complaints', [CustomerPortalController::class, 'storeComplaint']);
+    Route::get('complaints/{complaint}', [CustomerPortalController::class, 'complaint']);
+    Route::match(['put', 'post'], 'complaints/{complaint}', [CustomerPortalController::class, 'updateComplaint']);
+    Route::post('complaints/{complaint}/comments', [CustomerPortalController::class, 'addComplaintComment']);
+    Route::post('complaints/{complaint}/close', [CustomerPortalController::class, 'closeComplaint']);
+    Route::get('maintenance-requests', [CustomerPortalController::class, 'maintenanceRequests']);
+    Route::post('maintenance-requests', [CustomerPortalController::class, 'storeMaintenanceRequest']);
+    Route::get('maintenance-requests/{maintenance}', [CustomerPortalController::class, 'maintenanceRequest']);
+    Route::match(['put', 'post'], 'maintenance-requests/{maintenance}', [CustomerPortalController::class, 'updateMaintenanceRequest']);
+    Route::post('maintenance-requests/{maintenance}/rating', [CustomerPortalController::class, 'rateMaintenanceRequest']);
+    Route::get('documents', [CustomerPortalController::class, 'documents']);
+    Route::get('notifications', [CustomerPortalController::class, 'notifications']);
+    Route::post('notifications/{notification}/read', [CustomerPortalController::class, 'readNotification']);
+    Route::post('notifications/read-all', [CustomerPortalController::class, 'readAllNotifications']);
+    Route::get('activity', [CustomerPortalController::class, 'activity']);
+    Route::get('settings', [CustomerPortalController::class, 'settings']);
+    Route::put('settings', [CustomerPortalController::class, 'updateSettings']);
 });

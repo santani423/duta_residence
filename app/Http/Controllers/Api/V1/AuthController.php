@@ -83,10 +83,18 @@ class AuthController extends Controller
             'name' => $user->name,
             'username' => $user->username,
             'email' => $user->email,
+            'phone' => $user->phone,
+            'customer_id' => $user->customer_id,
+            'customer' => $user->customer ? [
+                'id' => $user->customer->id,
+                'name' => $user->customer->name,
+            ] : null,
             'role' => $user->getRoleNames()->first(),
             'roles' => $user->getRoleNames(),
             'permissions' => $user->getAllPermissions()->pluck('name')->values(),
             'theme_preference' => $user->theme_preference,
+            'language_preference' => $user->language_preference,
+            'notification_preferences' => $user->notification_preferences,
             'last_login_at' => $user->last_login_at,
         ];
     }

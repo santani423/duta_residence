@@ -18,8 +18,9 @@ import NotificationBell from './layout/NotificationBell.jsx';
 
 const { Header, Sider, Content } = Layout;
 
-function buildMenuItems(canAny) {
+function buildMenuItems(canAny, hasRole) {
   return menuItems
+    .filter((item) => !item.roles?.length || item.roles.some((role) => hasRole(role)))
     .filter((item) => item.permissions.length === 0 || canAny(item.permissions))
     .map((item) => ({
       key: item.key,
@@ -34,16 +35,16 @@ export default function AppShell() {
   const { token } = theme.useToken();
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.lg;
-  const { user, canAny, logout } = useAuth();
+  const { user, canAny, hasRole, logout } = useAuth();
   const { mode, setMode } = useThemeMode();
   const navigate = useNavigate();
   const location = useLocation();
-  const items = useMemo(() => buildMenuItems(canAny), [canAny]);
+  const items = useMemo(() => buildMenuItems(canAny, hasRole), [canAny, hasRole]);
   const selectedKey = items.find((item) => item.key !== '/' && location.pathname.startsWith(item.key))?.key || '/';
 
   const profileItems = [
-    { key: '/profile', icon: <UserOutlined />, label: 'Profil' },
-    { key: '/change-password', icon: <SettingOutlined />, label: 'Ganti Password' },
+    { key: hasRole('customer') ? '/customer/profile' : '/profile', icon: <UserOutlined />, label: 'Profil' },
+    { key: hasRole('customer') ? '/customer/settings' : '/change-password', icon: <SettingOutlined />, label: hasRole('customer') ? 'Pengaturan' : 'Ganti Password' },
     { type: 'divider' },
     { key: 'logout', icon: <LogoutOutlined />, label: 'Logout' },
   ];

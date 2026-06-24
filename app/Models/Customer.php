@@ -66,6 +66,26 @@ class Customer extends Model
         return $this->hasMany(Installment::class);
     }
 
+    public function users()
+    {
+        return $this->hasMany(User::class);
+    }
+
+    public function paymentTransactions()
+    {
+        return $this->hasMany(PaymentTransaction::class);
+    }
+
+    public function complaints()
+    {
+        return $this->hasMany(CustomerComplaint::class);
+    }
+
+    public function maintenanceRequests()
+    {
+        return $this->hasMany(MaintenanceRequest::class);
+    }
+
     public function scopeSearch(Builder $query, ?string $search): Builder
     {
         return $query->when($search, fn (Builder $q) => $q->where(function (Builder $inner) use ($search) {

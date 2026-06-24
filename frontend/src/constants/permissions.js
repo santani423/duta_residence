@@ -11,12 +11,15 @@ import {
   HomeOutlined,
   ProfileOutlined,
   ReconciliationOutlined,
+  SettingOutlined,
   TeamOutlined,
   UserOutlined,
   WalletOutlined,
+  ToolOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 
-export const roles = ['root', 'back_office', 'loket', 'cs'];
+export const roles = ['root', 'back_office', 'loket', 'cs', 'customer'];
 
 export const menuItems = [
   { key: '/', label: 'Dashboard', icon: DashboardOutlined, permissions: ['reports.view', 'customers.view', 'billings.view'] },
@@ -31,9 +34,22 @@ export const menuItems = [
   { key: '/documents', label: 'Dokumen PDF', icon: FolderOpenOutlined, permissions: ['documents.generate'] },
   { key: '/users', label: 'User', icon: TeamOutlined, permissions: ['users.view'] },
   { key: '/audit-logs', label: 'Audit Log', icon: AuditOutlined, permissions: ['audit-logs.view'] },
-  { key: '/notifications', label: 'Notifikasi', icon: BellOutlined, permissions: [] },
-  { key: '/profile', label: 'Profil', icon: UserOutlined, permissions: [] },
-  { key: '/change-password', label: 'Ganti Password', icon: FileDoneOutlined, permissions: [] },
+  { key: '/admin/settings/payment-gateway', label: 'Payment Gateway', icon: SafetyCertificateOutlined, permissions: ['payment-settings.view'] },
+  { key: '/notifications', label: 'Notifikasi', icon: BellOutlined, permissions: [], roles: ['root', 'back_office', 'loket', 'cs'] },
+  { key: '/profile', label: 'Profil', icon: UserOutlined, permissions: [], roles: ['root', 'back_office', 'loket', 'cs'] },
+  { key: '/change-password', label: 'Ganti Password', icon: FileDoneOutlined, permissions: [], roles: ['root', 'back_office', 'loket', 'cs'] },
+  { key: '/customer/dashboard', label: 'Dashboard Customer', icon: DashboardOutlined, permissions: [], roles: ['customer'] },
+  { key: '/customer/account', label: 'Akun', icon: UserOutlined, permissions: [], roles: ['customer'] },
+  { key: '/customer/property', label: 'Properti', icon: HomeOutlined, permissions: [], roles: ['customer'] },
+  { key: '/customer/bills', label: 'Tagihan', icon: FileTextOutlined, permissions: [], roles: ['customer'] },
+  { key: '/customer/payments', label: 'Pembayaran', icon: CreditCardOutlined, permissions: [], roles: ['customer'] },
+  { key: '/customer/payment-methods', label: 'Metode Bayar', icon: WalletOutlined, permissions: [], roles: ['customer'] },
+  { key: '/customer/complaints', label: 'Komplain', icon: BellOutlined, permissions: [], roles: ['customer'] },
+  { key: '/customer/maintenance-requests', label: 'Maintenance', icon: ToolOutlined, permissions: [], roles: ['customer'] },
+  { key: '/customer/documents', label: 'Dokumen', icon: FolderOpenOutlined, permissions: [], roles: ['customer'] },
+  { key: '/customer/notifications', label: 'Notifikasi', icon: BellOutlined, permissions: [], roles: ['customer'] },
+  { key: '/customer/activity', label: 'Aktivitas', icon: AuditOutlined, permissions: [], roles: ['customer'] },
+  { key: '/customer/settings', label: 'Pengaturan', icon: SettingOutlined, permissions: [], roles: ['customer'] },
 ];
 
 export const permissionLabels = {
@@ -60,4 +76,6 @@ export const permissionLabels = {
   'audit-logs.view': 'Audit log',
   'reports.view': 'Laporan',
   'documents.generate': 'Generate dokumen',
+  'payment-settings.view': 'Lihat pengaturan payment gateway',
+  'payment-settings.update': 'Ubah pengaturan payment gateway',
 };

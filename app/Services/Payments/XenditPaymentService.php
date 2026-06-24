@@ -2,6 +2,7 @@
 
 namespace App\Services\Payments;
 
+use App\Models\PaymentGatewaySetting;
 use App\Models\PaymentTransaction;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -12,13 +13,15 @@ class XenditPaymentService implements PaymentGatewayInterface
 {
     public function create(PaymentTransaction $transaction): PaymentTransaction
     {
+        $setting = PaymentGatewaySetting::current();
+
         $response = Http::withBasicAuth((string) config('payment.xendit.secret_key'), '')
             ->post('https://api.xendit.co/v2/invoices', [
                 'external_id' => $transaction->invoice_number,
                 'amount' => (float) $transaction->total,
                 'currency' => $transaction->currency,
                 'description' => "Grand Duta {$transaction->invoice_number}",
-                'invoice_duration' => 86400,
+                'invoice_duration' => $setting->payment_timeout_minutes * 60,
                 'success_redirect_url' => config('app.frontend_url'),
                 'failure_redirect_url' => config('app.frontend_url'),
             ]);
