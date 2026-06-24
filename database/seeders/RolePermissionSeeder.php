@@ -1,0 +1,86 @@
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
+
+class RolePermissionSeeder extends Seeder
+{
+    public function run(): void
+    {
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $permissions = [
+            'customers.view', 'customers.create', 'customers.update', 'customers.delete', 'customers.convert-property',
+            'clusters.view', 'clusters.update-rate',
+            'billings.view', 'billings.prepare', 'billings.prepare-special', 'billings.prepare-back', 'billings.approve', 'billings.update', 'billings.delete',
+            'payments.view', 'payments.create', 'payments.process', 'payments.verify', 'payments.cancel', 'payments.refund',
+            'installments.view', 'installments.create',
+            'reversals.view', 'reversals.submit', 'reversals.approve',
+            'reports.view', 'documents.generate',
+            'users.view', 'users.create', 'users.update', 'users.delete', 'users.activate', 'users.reset-password',
+            'audit-logs.view', 'audit.view',
+            'payment-settings.view', 'payment-settings.update',
+        ];
+
+        foreach ($permissions as $permission) {
+            Permission::findOrCreate($permission, 'web');
+        }
+
+        $roles = [
+            'root' => $permissions,
+            'super_admin' => $permissions,
+            'admin_estate' => [
+                'customers.view', 'customers.create', 'customers.update', 'customers.convert-property',
+                'clusters.view', 'clusters.update-rate',
+                'billings.view', 'billings.prepare', 'billings.prepare-special', 'billings.prepare-back', 'billings.approve',
+                'payments.view', 'payments.create', 'payments.verify',
+                'reports.view', 'documents.generate', 'users.view', 'audit-logs.view',
+                'payment-settings.view', 'payment-settings.update',
+            ],
+            'back_office' => [
+                'customers.view', 'customers.create', 'customers.update', 'customers.convert-property',
+                'clusters.view', 'clusters.update-rate',
+                'billings.view', 'billings.prepare', 'billings.prepare-special', 'billings.prepare-back', 'billings.approve', 'billings.update',
+                'payments.view', 'payments.create', 'payments.process', 'payments.verify',
+                'installments.view', 'installments.create',
+                'reversals.view', 'reversals.submit', 'reversals.approve',
+                'reports.view', 'documents.generate',
+            ],
+            'finance' => [
+                'customers.view', 'billings.view', 'billings.prepare', 'billings.approve',
+                'payments.view', 'payments.create', 'payments.verify', 'payments.refund',
+                'installments.view', 'installments.create', 'reports.view', 'documents.generate',
+                'payment-settings.view',
+            ],
+            'property_manager' => [
+                'customers.view', 'clusters.view', 'billings.view', 'payments.view',
+                'reports.view', 'documents.generate', 'users.view',
+            ],
+            'operations_staff' => ['customers.view', 'clusters.view', 'billings.view', 'documents.generate'],
+            'security' => ['customers.view', 'clusters.view'],
+            'technician' => ['customers.view', 'clusters.view'],
+            'vendor' => ['customers.view', 'clusters.view'],
+            'loket' => [
+                'customers.view', 'clusters.view', 'billings.view',
+                'payments.view', 'payments.process', 'payments.create',
+                'installments.view', 'installments.create',
+                'reversals.view', 'reversals.submit',
+                'documents.generate',
+            ],
+            'cs' => ['customers.view', 'clusters.view', 'billings.view'],
+            'customer' => [],
+        ];
+
+        foreach ($roles as $roleName => $rolePermissions) {
+            $role = Role::findOrCreate($roleName, 'web');
+            $role->forceFill(['is_system' => true, 'is_active' => true])->save();
+            $role->syncPermissions(Permission::whereIn('name', $rolePermissions)->get());
+        }
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+}

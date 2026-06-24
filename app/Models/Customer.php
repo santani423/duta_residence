@@ -4,12 +4,13 @@ namespace App\Models;
 
 use App\Models\Concerns\HasStringPrimaryKey;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Customer extends Model
 {
-    use HasStringPrimaryKey, SoftDeletes;
+    use HasFactory, HasStringPrimaryKey, SoftDeletes;
 
     protected $fillable = [
         'id', 'name', 'cluster_id', 'block', 'lot_number', 'property_type_id',

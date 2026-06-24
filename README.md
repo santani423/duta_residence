@@ -40,10 +40,28 @@ php artisan serve
 Sample akun lokal:
 
 ```text
-Root
+Root / legacy test
 Username: root
 Email: root@grandduta.test
 Password: password
+
+Super Admin
+Username: superadmin
+Email: superadmin@example.com
+Password: password
+Skenario: akses penuh termasuk audit log dan payment gateway setting.
+
+Estate Admin
+Username: admin.estate
+Email: admin.estate@example.com
+Password: password
+Skenario: pengelolaan estate, customer, billing, payment setting.
+
+Finance
+Username: finance
+Email: finance@example.com
+Password: password
+Skenario: approval tagihan, verifikasi pembayaran manual, laporan.
 
 Back Office
 Username: backoffice
@@ -56,6 +74,66 @@ Password: password
 Customer Service
 Username: cs
 Password: password
+
+Customer Lunas
+Username: customer.al001
+Email: customer.paid@example.com
+Password: password
+Skenario: seluruh tagihan lunas dan histori pembayaran berhasil.
+
+Customer Menunggak
+Username: customer.al002
+Email: customer.overdue@example.com
+Password: password
+Skenario: tagihan jatuh tempo, denda, dan dashboard overdue.
+
+Customer Manual Pending
+Username: customer.al003
+Email: customer.manual.pending@example.com
+Password: password
+Skenario: pembayaran manual menunggu verifikasi.
+
+Customer Komplain Aktif
+Username: customer.al004
+Email: customer.complaint@example.com
+Password: password
+Skenario: komplain aktif dan maintenance baru.
+
+Customer Tanpa Tagihan
+Username: customer.al005
+Email: customer.nobills@example.com
+Password: password
+Skenario: akun aktif tanpa invoice aktif.
+
+Customer Manual Ditolak
+Username: customer.al006
+Email: customer.manual.rejected@example.com
+Password: password
+Skenario: pembayaran manual ditolak dan upload ulang bukti.
+
+Customer Xendit
+Username: customer.al007
+Email: customer.xendit@example.com
+Password: password
+Skenario: histori pembayaran Xendit berhasil.
+
+Customer Midtrans Gagal
+Username: customer.al008
+Email: customer.midtrans.failed@example.com
+Password: password
+Skenario: pembayaran Midtrans gagal dan invoice pending approval.
+
+Customer Banyak Notifikasi
+Username: customer.al012
+Email: customer.notifications@example.com
+Password: password
+Skenario: badge notifikasi unread besar.
+```
+
+Seeder demo membuat 15 cluster, sekitar 450 data customer/unit, ribuan tagihan beberapa periode, histori pembayaran Xendit/Midtrans/manual sandbox, komplain, maintenance, notifikasi, dokumen dummy, dan audit log. Jalankan ulang dengan:
+
+```bash
+php artisan migrate:fresh --seed
 ```
 
 ## Instalasi Frontend

@@ -3,11 +3,12 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasStringPrimaryKey;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Cluster extends Model
 {
-    use HasStringPrimaryKey;
+    use HasFactory, HasStringPrimaryKey;
 
     protected $fillable = ['id', 'name', 'monthly_rate', 'description', 'is_active'];
 

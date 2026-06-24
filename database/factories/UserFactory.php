@@ -33,6 +33,15 @@ class UserFactory extends Factory
             'password' => static::$password ??= Hash::make('password'),
             'is_active' => true,
             'theme_preference' => 'system',
+            'language_preference' => 'id',
+            'notification_preferences' => [
+                'billing' => true,
+                'payments' => true,
+                'complaints' => true,
+                'maintenance' => true,
+                'documents' => true,
+                'announcements' => true,
+            ],
             'remember_token' => Str::random(10),
         ];
     }

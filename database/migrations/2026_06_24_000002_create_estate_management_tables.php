@@ -268,7 +268,9 @@ return new class extends Migration
             $table->string('extension', 20);
             $table->unsignedBigInteger('size');
             $table->foreignId('uploaded_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->nullableMorphs('entity');
+            $table->string('entity_type')->nullable();
+            $table->string('entity_id', 50)->nullable();
+            $table->index(['entity_type', 'entity_id']);
             $table->timestamps();
             $table->softDeletes();
         });
