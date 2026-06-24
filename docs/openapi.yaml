@@ -1,0 +1,207 @@
+openapi: 3.0.3
+info:
+  title: Grand Duta Estate Management API
+  version: 0.1.0
+servers:
+  - url: http://localhost:8000/api/v1
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum
+  schemas:
+    ApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          nullable: true
+        meta:
+          nullable: true
+paths:
+  /auth/login:
+    post:
+      security: []
+      summary: Login dan mendapatkan Bearer token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Login berhasil
+  /auth/logout:
+    post:
+      summary: Revoke token aktif
+      responses:
+        "200":
+          description: Logout berhasil
+  /auth/me:
+    get:
+      summary: Profil user aktif beserta permission
+      responses:
+        "200":
+          description: Profil user
+  /clusters:
+    get:
+      summary: Daftar klaster
+      responses:
+        "200":
+          description: Daftar klaster
+  /clusters/{id}:
+    put:
+      summary: Update tarif klaster
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Klaster diperbarui
+  /customers:
+    get:
+      summary: Daftar pelanggan dengan search/filter/pagination
+      responses:
+        "200":
+          description: Daftar pelanggan
+    post:
+      summary: Tambah pelanggan
+      responses:
+        "201":
+          description: Pelanggan dibuat
+  /customers/{id}/convert-property:
+    post:
+      summary: Konversi kavling developer menjadi bangunan
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Properti dikonversi
+  /billings/prepare-monthly:
+    post:
+      summary: Generate tagihan bulanan massal
+      responses:
+        "201":
+          description: Tagihan dibuat
+  /billings/{id}/approve:
+    post:
+      summary: Approve tagihan
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Tagihan disetujui
+  /payments/search:
+    get:
+      summary: Cari tagihan belum lunas dan approved milik pelanggan
+      responses:
+        "200":
+          description: Data pelanggan dan tagihan
+  /payments/preview:
+    post:
+      summary: Hitung total pembayaran dan denda
+      responses:
+        "200":
+          description: Preview pembayaran
+  /payments/process:
+    post:
+      summary: Proses pembayaran loket dan buat kuitansi
+      responses:
+        "201":
+          description: Pembayaran diproses
+  /payments/gateway:
+    post:
+      summary: Buat transaksi payment gateway/manual
+      responses:
+        "201":
+          description: Transaksi payment gateway dibuat
+  /payments/webhooks/xendit:
+    post:
+      security: []
+      summary: Webhook Xendit terverifikasi dan idempotent
+      responses:
+        "200":
+          description: Webhook diproses
+  /payments/webhooks/midtrans:
+    post:
+      security: []
+      summary: Webhook Midtrans terverifikasi dan idempotent
+      responses:
+        "200":
+          description: Webhook diproses
+  /reversals:
+    get:
+      summary: Daftar reversal
+      responses:
+        "200":
+          description: Daftar reversal
+    post:
+      summary: Ajukan reversal
+      responses:
+        "201":
+          description: Reversal dibuat
+  /reports/dashboard:
+    get:
+      summary: Dashboard KPI role-based
+      responses:
+        "200":
+          description: Ringkasan dashboard
+  /documents/spt/{receipt}:
+    get:
+      summary: Download PDF SPT
+      parameters:
+        - in: path
+          name: receipt
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: File PDF
+  /users:
+    get:
+      summary: Daftar user
+      responses:
+        "200":
+          description: Daftar user
+    post:
+      summary: Tambah user
+      responses:
+        "201":
+          description: User dibuat
+  /users/{id}/activities:
+    get:
+      summary: Activity log user, hanya root
+      responses:
+        "200":
+          description: Daftar aktivitas user
+  /audit-logs:
+    get:
+      summary: Global audit log, hanya root
+      responses:
+        "200":
+          description: Daftar audit log
