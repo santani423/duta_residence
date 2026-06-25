@@ -1,7 +1,13 @@
 import axios from 'axios';
 
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+
+if (!apiBaseUrl) {
+  throw new Error('VITE_API_BASE_URL belum diset. Isi frontend/.env sebelum menjalankan frontend.');
+}
+
 export const http = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1',
+  baseURL: apiBaseUrl,
   headers: {
     Accept: 'application/json',
   },
