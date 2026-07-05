@@ -74,6 +74,37 @@ a {
   flex: 0 0 auto;
 }
 
+.app-sider .ant-menu,
+.mobile-nav .ant-menu {
+  background: transparent;
+}
+
+.app-sider .ant-menu .ant-menu-item-selected,
+.mobile-nav .ant-menu .ant-menu-item-selected {
+  background: var(--brand);
+  color: #ffffff;
+}
+
+.app-sider .ant-menu .ant-menu-item-selected .ant-menu-item-icon,
+.app-sider .ant-menu .ant-menu-item-selected .ant-menu-title-content,
+.mobile-nav .ant-menu .ant-menu-item-selected .ant-menu-item-icon,
+.mobile-nav .ant-menu .ant-menu-item-selected .ant-menu-title-content {
+  color: #ffffff;
+}
+
+:root[data-theme='dark'] .app-sider .ant-menu .ant-menu-item-selected,
+:root[data-theme='dark'] .mobile-nav .ant-menu .ant-menu-item-selected {
+  background: #5eead4;
+  color: #042f2e;
+}
+
+:root[data-theme='dark'] .app-sider .ant-menu .ant-menu-item-selected .ant-menu-item-icon,
+:root[data-theme='dark'] .app-sider .ant-menu .ant-menu-item-selected .ant-menu-title-content,
+:root[data-theme='dark'] .mobile-nav .ant-menu .ant-menu-item-selected .ant-menu-item-icon,
+:root[data-theme='dark'] .mobile-nav .ant-menu .ant-menu-item-selected .ant-menu-title-content {
+  color: #042f2e;
+}
+
 .app-header {
   position: sticky;
   top: 0;
