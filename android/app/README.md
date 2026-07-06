@@ -1,17 +1,79 @@
-# app
+# Duta Residence
 
-A new Flutter project.
+Dokumentasi singkat untuk menjalankan aplikasi Flutter dari repository sampai bisa dibuka di emulator Android.
 
-## Getting Started
+## Prasyarat
 
-This project is a starting point for a Flutter application.
+Pastikan perangkat Anda sudah menyiapkan hal berikut:
 
-A few resources to get you started if this is your first Flutter project:
+- Flutter SDK terinstall dan sudah tersedia di PATH
+- Android Studio terinstall
+- Emulator Android sudah berjalan atau device Android terhubung
+- ADB tersedia
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+Cek instalasi dengan perintah berikut:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+flutter --version
+flutter doctor
+adb devices
+```
+
+## 1. Clone repository
+
+```bash
+git clone <URL_REPOSITORY>
+cd duta_residence/android/app
+```
+
+## 2. Install dependency
+
+```bash
+flutter pub get
+```
+
+## 3. Pastikan emulator terhubung
+
+Jika emulator sudah berjalan, cek koneksinya:
+
+```bash
+adb devices
+adb connect emulator-5554
+adb devices
+```
+
+Jika emulator belum muncul, jalankan emulator dari Android Studio atau cek daftar emulator:
+
+```bash
+emulator -list-avds
+```
+
+## 4. Jalankan aplikasi di emulator
+
+Cek device yang tersedia:
+
+```bash
+flutter devices
+```
+
+Lalu jalankan aplikasi ke emulator:
+
+```bash
+flutter run -d emulator-5554
+```
+
+Jika device ID yang muncul berbeda, gunakan ID tersebut pada perintah `flutter run -d`.
+
+## 5. Jika mengalami masalah
+
+Jika aplikasi gagal dijalankan, coba langkah berikut:
+
+```bash
+flutter clean
+flutter pub get
+flutter run -d emulator-5554
+```
+
+## Catatan
+
+Untuk pengembangan rutin, Anda bisa menggunakan hot reload dengan menekan `r` saat aplikasi sedang berjalan di terminal.
