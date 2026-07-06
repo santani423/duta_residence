@@ -310,35 +310,30 @@ class _QuickActions extends StatelessWidget {
         children: [
           const SectionHeader(title: 'Akses Cepat'),
           const SizedBox(height: AppSpacing.lg),
-          Row(
+          Wrap(
+            spacing: AppSpacing.md,
+            runSpacing: AppSpacing.md,
             children: [
               for (final action in actions)
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                      onTap: action.onTap,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: AppSpacing.sm,
-                        ),
-                        child: Column(
-                          children: [
-                            Icon(action.icon),
-                            const SizedBox(height: AppSpacing.sm),
-                            Text(
-                              action.label,
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
+                SizedBox(
+                  width: 140,
+                  child: FilledButton.icon(
+                    onPressed: action.onTap,
+                    icon: Icon(action.icon),
+                    label: Text(
+                      action.label,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                    ),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.sm,
+                        horizontal: AppSpacing.md,
+                      ),
+                      textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                       ),
                     ),
                   ),
@@ -578,16 +573,14 @@ class _SimpleLine extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 if (subtitle != null)
                   Text(
                     subtitle!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
               ],
             ),
@@ -595,7 +588,7 @@ class _SimpleLine extends StatelessWidget {
           if (trailing != null)
             Text(
               trailing!,
-              style: const TextStyle(fontWeight: FontWeight.w800),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
           ?badge,
         ],

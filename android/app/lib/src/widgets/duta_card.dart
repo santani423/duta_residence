@@ -39,7 +39,7 @@ class SectionHeader extends StatelessWidget {
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
         ),
-        ?action,
+        if (action != null) action!,
       ],
     );
   }

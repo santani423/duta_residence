@@ -15,10 +15,15 @@ class AppLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).colorScheme.brightness;
+    final asset = brightness == Brightness.dark
+        ? AppAssets.logoDark
+        : AppAssets.logo;
+
     return Align(
       alignment: alignment,
       child: Image.asset(
-        AppAssets.logo,
+        asset,
         height: height,
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) {

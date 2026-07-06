@@ -24,7 +24,7 @@ class LoadingView extends StatelessWidget {
             children: [
               CircularProgressIndicator(color: colors.primary),
               const SizedBox(height: AppSpacing.lg),
-              Text(message, style: TextStyle(color: colors.onSurfaceVariant)),
+              Text(message, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant)),
             ],
           ),
         ),
@@ -54,7 +54,7 @@ class EmptyView extends StatelessWidget {
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: colors.onSurfaceVariant),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant),
               ),
             ],
           ),
@@ -86,7 +86,7 @@ class ErrorView extends StatelessWidget {
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: colors.onSurfaceVariant),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant),
               ),
               const SizedBox(height: AppSpacing.lg),
               FilledButton.icon(

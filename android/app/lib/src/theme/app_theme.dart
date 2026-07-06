@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../constants/app_spacing.dart';
 import 'app_status_colors.dart';
@@ -80,11 +82,12 @@ class AppTheme {
     required Color background,
     required AppStatusColors statusColors,
   }) {
-    final textTheme = Typography.material2021().englishLike.apply(
-      fontFamily: 'Inter',
+    final baseText = Typography.material2021().englishLike.apply(
       bodyColor: scheme.onSurface,
       displayColor: scheme.onSurface,
     );
+
+    final textTheme = GoogleFonts.interTextTheme(baseText);
 
     return ThemeData(
       useMaterial3: true,
@@ -279,6 +282,12 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppSpacing.radius),
         ),
+      ),
+      pageTransitionsTheme: PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        },
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(color: scheme.primary),
       popupMenuTheme: PopupMenuThemeData(
