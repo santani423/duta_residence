@@ -74,6 +74,29 @@ flutter pub get
 flutter run -d emulator-5554
 ```
 
+## 6. Build APK
+
+Untuk membuat file APK release, jalankan:
+
+```bash
+flutter build apk
+```
+
+File APK hasil build biasanya berada di:
+
+```bash
+build/app/outputs/flutter-apk/app-release.apk
+```
+
+## 7. Memindahkan file APK ke lokasi lain
+
+Kalau ingin menyalin hasil APK ke folder yang lebih mudah ditemukan, gunakan:
+
+```bash
+mkdir -p ~/Desktop/apk-output
+cp build/app/outputs/flutter-apk/app-release.apk ~/Desktop/apk-output/duta-residence.apk
+```
+
 ## Catatan
 
 Untuk pengembangan rutin, Anda bisa menggunakan hot reload dengan menekan `r` saat aplikasi sedang berjalan di terminal.

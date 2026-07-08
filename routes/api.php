@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Route;
 Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
 
 Route::post('payments/webhooks/xendit', [PaymentGatewayController::class, 'xenditWebhook']);
-Route::post('payments/webhooks/midtrans', [PaymentGatewayController::class, 'midtransWebhook']);
+// Route::post('payments/webhooks/midtrans', [PaymentGatewayController::class, 'midtransWebhook']);
 
 Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::post('auth/logout', [AuthController::class, 'logout']);
