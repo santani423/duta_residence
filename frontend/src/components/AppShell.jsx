@@ -99,7 +99,6 @@ export default function AppShell() {
             )}
             <div>
               <Typography.Text strong>Estate Management</Typography.Text>
-              <div className="header-subtitle">{user?.roles?.map((role) => role.name || role).join(', ') || 'User'}</div>
             </div>
           </Space>
           <Space className="header-actions">
