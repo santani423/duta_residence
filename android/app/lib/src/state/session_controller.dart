@@ -7,6 +7,10 @@ import '../storage/token_store.dart';
 
 enum SessionStatus { booting, authenticated, unauthenticated }
 
+const _allowedRole = 'customer';
+const _roleMismatchMessage =
+    'Akun ini bukan akun penghuni. Silakan gunakan portal staf untuk masuk.';
+
 class SessionController extends ChangeNotifier {
   SessionController({required this._apiClient, required this._tokenStore});
 
@@ -29,9 +33,16 @@ class SessionController extends ChangeNotifier {
 
     try {
       final result = await _apiClient.get('auth/me');
-      _user = UserSession.fromJson(
+      final user = UserSession.fromJson(
         Map<String, dynamic>.from(result.data as Map),
       );
+      if (user.role != _allowedRole) {
+        await _forceLogout();
+        _setUnauthenticated(_roleMismatchMessage);
+        notifyListeners();
+        return;
+      }
+      _user = user;
       _status = SessionStatus.authenticated;
       _message = null;
     } on ApiException catch (error) {
@@ -47,22 +58,35 @@ class SessionController extends ChangeNotifier {
       'password': password,
     });
     final data = Map<String, dynamic>.from(result.data as Map);
-    await _tokenStore.save(data['token'].toString());
-    _user = UserSession.fromJson(
+    final user = UserSession.fromJson(
       Map<String, dynamic>.from(data['user'] as Map),
     );
+    await _tokenStore.save(data['token'].toString());
+
+    if (user.role != _allowedRole) {
+      await _forceLogout();
+      _setUnauthenticated(_roleMismatchMessage);
+      notifyListeners();
+      throw const ApiException(_roleMismatchMessage);
+    }
+
+    _user = user;
     _status = SessionStatus.authenticated;
     _message = null;
     notifyListeners();
   }
 
-  Future<void> logout() async {
+  Future<void> _forceLogout() async {
     try {
       await _apiClient.postJson('auth/logout', {});
     } on ApiException {
       // Local session must still be cleared if the remote token is already invalid.
     }
     await _tokenStore.clear();
+  }
+
+  Future<void> logout() async {
+    await _forceLogout();
     _setUnauthenticated();
     notifyListeners();
   }
