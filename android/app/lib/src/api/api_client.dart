@@ -52,33 +52,38 @@ class ApiClient {
     PlatformFile? file,
     String fileField = 'attachment',
   }) async {
-    final request = http.MultipartRequest('POST', _uri(path));
-    request.headers.addAll(await _headers());
-    request.fields.addAll(fields);
-    if (file?.path != null) {
-      request.files.add(
-        await http.MultipartFile.fromPath(
-          fileField,
-          file!.path!,
-          filename: file.name,
-        ),
-      );
-    }
-    final streamed = await request.send();
-    return _handle(await http.Response.fromStream(streamed));
+    return _send(() async {
+      final request = http.MultipartRequest('POST', _uri(path));
+      request.headers.addAll(await _headers());
+      request.fields.addAll(fields);
+      if (file?.path != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            fileField,
+            file!.path!,
+            filename: file.name,
+          ),
+        );
+      }
+      final streamed = await request.send();
+      return http.Response.fromStream(streamed);
+    });
   }
 
   Future<List<int>> downloadBytes(String path) async {
-    final response = await _http.get(_uri(path), headers: await _headers());
-    return _handleDownload(response);
+    final headers = await _headers();
+    return _handleDownload(
+      await _request(() => _http.get(_uri(path), headers: headers)),
+    );
   }
 
   Future<List<int>> downloadDocument(Map<String, dynamic> document) async {
-    final response = await _http.get(
-      downloadUriForDocument(document),
-      headers: await _headers(),
+    final headers = await _headers();
+    return _handleDownload(
+      await _request(
+        () => _http.get(downloadUriForDocument(document), headers: headers),
+      ),
     );
-    return _handleDownload(response);
   }
 
   List<int> _handleDownload(http.Response response) {
@@ -102,12 +107,22 @@ class ApiClient {
   }
 
   Future<ApiResult> _send(Future<http.Response> Function() request) async {
+    return _handle(await _request(request));
+  }
+
+  Future<http.Response> _request(
+    Future<http.Response> Function() request,
+  ) async {
     try {
-      return _handle(await request());
+      return await request();
     } on SocketException {
-      throw const ApiException(
-        'Koneksi API tidak tersedia. Periksa server atau jaringan Anda.',
-      );
+      try {
+        return await request();
+      } on SocketException {
+        throw const ApiException(
+          'Koneksi API tidak tersedia. Periksa server atau jaringan Anda.',
+        );
+      }
     }
   }
 
