@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\Cluster;
+use App\Models\ClusterRateSchedule;
 use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -29,6 +30,15 @@ class ClusterController extends Controller
         ]);
 
         $cluster = Cluster::query()->create($data);
+        ClusterRateSchedule::query()->create([
+            'cluster_id' => $cluster->id,
+            'rate' => $cluster->monthly_rate,
+            'effective_date' => now()->toDateString(),
+            'notes' => 'Tarif awal saat cluster dibuat.',
+            'is_active' => true,
+            'activated_at' => now(),
+            'created_by' => $request->user()->id,
+        ]);
         $auditService->log('cluster_created', 'clusters', 'CREATE', $cluster, [], $cluster->toArray());
 
         return $this->success($cluster, 'Cluster berhasil dibuat.', 201);
@@ -36,7 +46,13 @@ class ClusterController extends Controller
 
     public function show(Cluster $cluster)
     {
-        return $this->success($cluster->loadCount('units'));
+        $cluster->loadCount('units');
+
+        return $this->success([
+            ...$cluster->toArray(),
+            'current_rate_schedule' => $cluster->currentRateSchedule(),
+            'next_rate_schedule' => $cluster->nextRateSchedule(),
+        ]);
     }
 
     public function update(Request $request, Cluster $cluster, AuditService $auditService)

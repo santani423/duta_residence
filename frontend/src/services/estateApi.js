@@ -18,6 +18,10 @@ export const api = {
     create: (payload) => http.post('/clusters', payload),
     update: (id, payload) => http.put(`/clusters/${id}`, payload),
     remove: (id) => http.delete(`/clusters/${id}`),
+    rateSchedules: (clusterId) => http.get(`/clusters/${clusterId}/rate-schedules`),
+    createRateSchedule: (clusterId, payload) => http.post(`/clusters/${clusterId}/rate-schedules`, payload),
+    updateRateSchedule: (id, payload) => http.put(`/rate-schedules/${id}`, payload),
+    removeRateSchedule: (id) => http.delete(`/rate-schedules/${id}`),
   },
   customers: {
     list: (params) => http.get('/customers', { params }),

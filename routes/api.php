@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BackPaymentController;
 use App\Http\Controllers\Api\V1\BillingController;
 use App\Http\Controllers\Api\V1\ClusterController;
+use App\Http\Controllers\Api\V1\ClusterRateScheduleController;
 use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\CustomerPortalController;
 use App\Http\Controllers\Api\V1\DocumentController;
@@ -36,6 +37,11 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::get('clusters/{cluster}', [ClusterController::class, 'show'])->middleware('permission:clusters.view');
     Route::put('clusters/{cluster}', [ClusterController::class, 'update'])->middleware('permission:clusters.update-rate');
     Route::delete('clusters/{cluster}', [ClusterController::class, 'destroy'])->middleware('permission:clusters.delete');
+
+    Route::get('clusters/{cluster}/rate-schedules', [ClusterRateScheduleController::class, 'index'])->middleware('permission:clusters.view');
+    Route::post('clusters/{cluster}/rate-schedules', [ClusterRateScheduleController::class, 'store'])->middleware('permission:clusters.update-rate');
+    Route::put('rate-schedules/{schedule}', [ClusterRateScheduleController::class, 'update'])->middleware('permission:clusters.update-rate');
+    Route::delete('rate-schedules/{schedule}', [ClusterRateScheduleController::class, 'destroy'])->middleware('permission:clusters.update-rate');
 
     Route::get('customers', [CustomerController::class, 'index'])->middleware('permission:customers.view');
     Route::post('customers', [CustomerController::class, 'store'])->middleware('permission:customers.create');

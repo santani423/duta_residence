@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\DB;
 
 class BillingService
 {
+    public function __construct(private readonly ClusterRateScheduleService $rateScheduleService) {}
+
     public function prepareMonthly(int $year, int $month, int $userId): Collection
     {
         return DB::transaction(function () use ($year, $month, $userId) {
@@ -17,6 +19,8 @@ class BillingService
                 ->where('status_id', 'AK')
                 ->get()
                 ->map(function (Unit $unit) use ($year, $month, $userId) {
+                    $rate = $this->rateScheduleService->rateForPeriod($unit->cluster, $year, $month);
+
                     return Billing::query()->firstOrCreate(
                         [
                             'unit_id' => $unit->id,
@@ -24,7 +28,7 @@ class BillingService
                             'month' => $month,
                         ],
                         [
-                            'amount' => $unit->cluster->monthly_rate,
+                            'amount' => $rate,
                             'status_id' => '01',
                             'is_penalty_eligible' => $unit->is_penalty_eligible,
                             'is_discount_eligible' => $unit->is_discount_eligible,

@@ -21,4 +21,19 @@ class Cluster extends Model
     {
         return $this->hasMany(Unit::class);
     }
+
+    public function rateSchedules()
+    {
+        return $this->hasMany(ClusterRateSchedule::class)->orderByDesc('effective_date');
+    }
+
+    public function currentRateSchedule()
+    {
+        return $this->rateSchedules()->effective()->first();
+    }
+
+    public function nextRateSchedule()
+    {
+        return $this->rateSchedules()->upcoming()->reorder('effective_date')->first();
+    }
 }

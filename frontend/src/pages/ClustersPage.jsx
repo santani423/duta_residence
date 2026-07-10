@@ -1,7 +1,8 @@
 import { Button, Card, Form, Input, InputNumber, Modal, Space, Switch, message } from 'antd';
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/common/PageHeader.jsx';
 import StatusBadge from '../components/common/StatusBadge.jsx';
 import Can from '../components/common/Can.jsx';
@@ -14,6 +15,7 @@ export default function ClustersPage() {
   const [modal, setModal] = useState({ mode: null, record: null });
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const clusters = useQuery({ queryKey: ['clusters'], queryFn: () => api.clusters.list() });
 
   const create = useMutation({
@@ -86,7 +88,7 @@ export default function ClustersPage() {
           query={clusters}
           data={clusters.data?.data || []}
           pagination={false}
-          scrollX={820}
+          scrollX={960}
           columns={[
             { title: 'Kode', dataIndex: 'id', width: 90 },
             { title: 'Nama Cluster', dataIndex: 'name' },
@@ -95,9 +97,10 @@ export default function ClustersPage() {
             { title: 'Deskripsi', dataIndex: 'description' },
             {
               title: 'Aksi',
-              width: 160,
+              width: 260,
               render: (_, record) => (
                 <Space>
+                  <Button size="small" icon={<EyeOutlined />} onClick={() => navigate(`/clusters/${record.id}`)}>Detail</Button>
                   <Can permission="clusters.update-rate">
                     <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(record)}>Edit</Button>
                   </Can>
