@@ -31,8 +31,10 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::post('auth/change-password', [AuthController::class, 'changePassword']);
 
     Route::get('clusters', [ClusterController::class, 'index'])->middleware('permission:clusters.view');
+    Route::post('clusters', [ClusterController::class, 'store'])->middleware('permission:clusters.create');
     Route::get('clusters/{cluster}', [ClusterController::class, 'show'])->middleware('permission:clusters.view');
     Route::put('clusters/{cluster}', [ClusterController::class, 'update'])->middleware('permission:clusters.update-rate');
+    Route::delete('clusters/{cluster}', [ClusterController::class, 'destroy'])->middleware('permission:clusters.delete');
 
     Route::get('customers', [CustomerController::class, 'index'])->middleware('permission:customers.view');
     Route::post('customers', [CustomerController::class, 'store'])->middleware('permission:customers.create');

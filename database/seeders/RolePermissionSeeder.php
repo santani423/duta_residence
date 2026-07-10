@@ -15,7 +15,7 @@ class RolePermissionSeeder extends Seeder
 
         $permissions = [
             'customers.view', 'customers.create', 'customers.update', 'customers.delete', 'customers.convert-property',
-            'clusters.view', 'clusters.update-rate',
+            'clusters.view', 'clusters.create', 'clusters.update-rate', 'clusters.delete',
             'billings.view', 'billings.prepare', 'billings.prepare-special', 'billings.prepare-back', 'billings.approve', 'billings.update', 'billings.delete',
             'payments.view', 'payments.create', 'payments.process', 'payments.verify', 'payments.cancel', 'payments.refund',
             'installments.view', 'installments.create',
@@ -35,7 +35,7 @@ class RolePermissionSeeder extends Seeder
             'super_admin' => $permissions,
             'admin_estate' => [
                 'customers.view', 'customers.create', 'customers.update', 'customers.convert-property',
-                'clusters.view', 'clusters.update-rate',
+                'clusters.view', 'clusters.create', 'clusters.update-rate',
                 'billings.view', 'billings.prepare', 'billings.prepare-special', 'billings.prepare-back', 'billings.approve',
                 'payments.view', 'payments.create', 'payments.verify',
                 'reports.view', 'documents.generate', 'users.view', 'audit-logs.view',
@@ -43,7 +43,7 @@ class RolePermissionSeeder extends Seeder
             ],
             'back_office' => [
                 'customers.view', 'customers.create', 'customers.update', 'customers.convert-property',
-                'clusters.view', 'clusters.update-rate',
+                'clusters.view', 'clusters.create', 'clusters.update-rate',
                 'billings.view', 'billings.prepare', 'billings.prepare-special', 'billings.prepare-back', 'billings.approve', 'billings.update',
                 'payments.view', 'payments.create', 'payments.process', 'payments.verify',
                 'installments.view', 'installments.create',

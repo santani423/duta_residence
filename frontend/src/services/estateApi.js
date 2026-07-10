@@ -15,7 +15,9 @@ export const api = {
   clusters: {
     list: (params) => http.get('/clusters', { params }),
     detail: (id) => http.get(`/clusters/${id}`),
+    create: (payload) => http.post('/clusters', payload),
     update: (id, payload) => http.put(`/clusters/${id}`, payload),
+    remove: (id) => http.delete(`/clusters/${id}`),
   },
   customers: {
     list: (params) => http.get('/customers', { params }),
