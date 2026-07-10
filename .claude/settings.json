@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -X POST http://localhost:8000/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"root\",\"password\":\"password\"}')",
+      "Bash(php -r '$d=json_decode\\(file_get_contents\\(\"php://stdin\"\\),true\\); $t=$d[\"data\"][\"token\"]; $r=shell_exec\\(\"curl -s -X DELETE http://localhost:8000/api/v1/clusters/ZZ -H \\\\\"Authorization: Bearer $t\\\\\"\"\\); echo $r;')"
+    ]
+  }
+}
