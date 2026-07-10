@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
                 AdminUserSeeder::class,
                 PaymentSettingSeeder::class,
                 CustomerSeeder::class,
+                UnitSeeder::class,
                 BillingSeeder::class,
                 PaymentSeeder::class,
                 ComplaintSeeder::class,

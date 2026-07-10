@@ -12,7 +12,7 @@ class Receipt extends Model
     protected $primaryKey = 'number';
 
     protected $fillable = [
-        'number', 'customer_id', 'transaction_date', 'customer_name', 'cluster_name',
+        'number', 'unit_id', 'transaction_date', 'customer_name', 'cluster_name',
         'block', 'lot_number', 'total_billing', 'total_penalty', 'grand_total',
         'billing_count', 'billing_periods', 'loket_code', 'cashier_name',
         'payment_method_id', 'payment_channel_id', 'status', 'notes', 'created_by',
@@ -25,9 +25,9 @@ class Receipt extends Model
         'grand_total' => 'decimal:2',
     ];
 
-    public function customer()
+    public function unit()
     {
-        return $this->belongsTo(Customer::class);
+        return $this->belongsTo(Unit::class);
     }
 
     public function billings()

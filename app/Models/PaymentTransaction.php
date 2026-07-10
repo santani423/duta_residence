@@ -10,7 +10,7 @@ class PaymentTransaction extends Model
     use HasFactory;
 
     protected $fillable = [
-        'transaction_number', 'invoice_number', 'customer_id', 'subtotal', 'tax',
+        'transaction_number', 'invoice_number', 'unit_id', 'subtotal', 'tax',
         'admin_fee', 'total', 'currency', 'payment_provider', 'payment_method',
         'provider_reference', 'status', 'payment_url', 'expired_at', 'paid_at',
         'manual_proof_path', 'manual_transfer_date', 'manual_notes',
@@ -34,8 +34,8 @@ class PaymentTransaction extends Model
         return $this->belongsToMany(Billing::class);
     }
 
-    public function customer()
+    public function unit()
     {
-        return $this->belongsTo(Customer::class);
+        return $this->belongsTo(Unit::class);
     }
 }

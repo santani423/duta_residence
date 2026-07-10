@@ -11,7 +11,7 @@ class CustomerComplaint extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'customer_id', 'user_id', 'title', 'category', 'priority', 'description',
+        'unit_id', 'user_id', 'title', 'category', 'priority', 'description',
         'status', 'attachment_path', 'closed_at', 'created_by', 'updated_by',
     ];
 
@@ -19,9 +19,9 @@ class CustomerComplaint extends Model
         'closed_at' => 'datetime',
     ];
 
-    public function customer()
+    public function unit()
     {
-        return $this->belongsTo(Customer::class);
+        return $this->belongsTo(Unit::class);
     }
 
     public function user()

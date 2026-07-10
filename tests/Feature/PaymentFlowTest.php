@@ -17,16 +17,16 @@ class PaymentFlowTest extends TestCase
         $this->seed();
         Sanctum::actingAs(User::where('username', 'loket')->first());
 
-        $billing = Billing::where('customer_id', 'GA012')->where('status_id', '01')->whereNotNull('approved_at')->firstOrFail();
+        $billing = Billing::where('unit_id', 'GA012')->where('status_id', '01')->whereNotNull('approved_at')->firstOrFail();
 
         $this->postJson('/api/v1/payments/preview', [
-            'customer_id' => 'GA012',
+            'unit_id' => 'GA012',
             'billing_ids' => [$billing->id],
         ])->assertOk()
             ->assertJsonPath('success', true);
 
         $this->postJson('/api/v1/payments/process', [
-            'customer_id' => 'GA012',
+            'unit_id' => 'GA012',
             'billing_ids' => [$billing->id],
             'payment_method_id' => 'C',
             'loket_code' => 'L01',

@@ -6,9 +6,9 @@
 
     <h2>Informasi Customer</h2>
     <table>
-        <tr><th>Nama</th><td>{{ $billing->customer->name }}</td></tr>
+        <tr><th>Nama</th><td>{{ $billing->unit->customer->name }}</td></tr>
         <tr><th>Estate</th><td>Grand Duta Residence</td></tr>
-        <tr><th>Unit</th><td>{{ $billing->customer->cluster->name ?? '-' }} {{ $billing->customer->block }}/{{ $billing->customer->lot_number }}</td></tr>
+        <tr><th>Unit</th><td>{{ $billing->unit->cluster->name ?? '-' }} {{ $billing->unit->block }}/{{ $billing->unit->lot_number }}</td></tr>
         <tr><th>Periode</th><td>{{ sprintf('%04d-%02d', $billing->year, $billing->month) }}</td></tr>
         <tr><th>Status</th><td>{{ $billing->status_id === '02' ? 'Lunas' : 'Belum Bayar' }}</td></tr>
     </table>

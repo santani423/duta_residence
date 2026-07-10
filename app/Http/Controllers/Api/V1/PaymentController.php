@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
-use App\Models\Customer;
 use App\Models\Receipt;
+use App\Models\Unit;
 use App\Services\PaymentService;
 use Illuminate\Http\Request;
 
@@ -15,29 +15,29 @@ class PaymentController extends Controller
 
     public function search(Request $request)
     {
-        $data = $request->validate(['customer_id' => ['required', 'exists:customers,id']]);
-        $customer = Customer::query()
-            ->with(['cluster', 'billings' => fn ($q) => $q->unpaid()->approved()->orderBy('year')->orderBy('month')])
-            ->findOrFail($data['customer_id']);
+        $data = $request->validate(['unit_id' => ['required', 'exists:units,id']]);
+        $unit = Unit::query()
+            ->with(['cluster', 'customer', 'billings' => fn ($q) => $q->unpaid()->approved()->orderBy('year')->orderBy('month')])
+            ->findOrFail($data['unit_id']);
 
-        return $this->success($customer);
+        return $this->success($unit);
     }
 
     public function preview(Request $request, PaymentService $service)
     {
         $data = $request->validate([
-            'customer_id' => ['required', 'exists:customers,id'],
+            'unit_id' => ['required', 'exists:units,id'],
             'billing_ids' => ['required', 'array', 'min:1'],
             'billing_ids.*' => ['integer', 'exists:billings,id'],
         ]);
 
-        return $this->success($service->preview(Customer::findOrFail($data['customer_id']), $data['billing_ids']));
+        return $this->success($service->preview(Unit::findOrFail($data['unit_id']), $data['billing_ids']));
     }
 
     public function process(Request $request, PaymentService $service)
     {
         $data = $request->validate([
-            'customer_id' => ['required', 'exists:customers,id'],
+            'unit_id' => ['required', 'exists:units,id'],
             'billing_ids' => ['required', 'array', 'min:1'],
             'billing_ids.*' => ['integer', 'exists:billings,id'],
             'payment_method_id' => ['required', 'exists:payment_methods,id'],
@@ -47,7 +47,7 @@ class PaymentController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
-        $receipt = $service->process(Customer::findOrFail($data['customer_id']), $data['billing_ids'], $data, $request->user()->id);
+        $receipt = $service->process(Unit::findOrFail($data['unit_id']), $data['billing_ids'], $data, $request->user()->id);
 
         return $this->success($receipt, 'Pembayaran berhasil diproses.', 201);
     }
@@ -55,15 +55,15 @@ class PaymentController extends Controller
     public function receipts(Request $request)
     {
         $query = Receipt::query()
-            ->with('customer.cluster')
+            ->with('unit.cluster')
             ->when($request->query('date'), fn ($q, $value) => $q->whereDate('transaction_date', $value))
-            ->when($request->query('customer_id'), fn ($q, $value) => $q->where('customer_id', $value));
+            ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value));
 
         return $this->paginated($query->latest('transaction_date')->paginate($request->integer('per_page', 15)));
     }
 
     public function showReceipt(Receipt $receipt)
     {
-        return $this->success($receipt->load(['customer.cluster', 'billings']));
+        return $this->success($receipt->load(['unit.cluster', 'billings']));
     }
 }

@@ -3,11 +3,11 @@
 namespace Database\Seeders;
 
 use App\Models\Billing;
-use App\Models\Customer;
 use App\Models\ManagedFile;
 use App\Models\MaintenanceRequest;
 use App\Models\PaymentTransaction;
 use App\Models\Receipt;
+use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Database\Eloquent\Model;
@@ -18,7 +18,7 @@ class DocumentSeeder extends Seeder
     {
         $uploader = User::where('username', 'admin.estate')->first() ?: User::where('username', 'root')->first();
 
-        Customer::where('status_id', 'AK')->limit(90)->get()->each(fn (Customer $customer) => $this->file($customer, $uploader, 'Perjanjian-'.$customer->id.'.pdf', 'agreements/'.$customer->id.'.pdf'));
+        Unit::where('status_id', 'AK')->limit(90)->get()->each(fn (Unit $unit) => $this->file($unit, $uploader, 'Perjanjian-'.$unit->id.'.pdf', 'agreements/'.$unit->id.'.pdf'));
         Billing::limit(160)->get()->each(fn (Billing $billing) => $this->file($billing, $uploader, 'Invoice-BIL-'.$billing->id.'.pdf', 'invoices/BIL-'.$billing->id.'.pdf'));
         Receipt::limit(120)->get()->each(fn (Receipt $receipt) => $this->file($receipt, $uploader, 'Receipt-'.$receipt->number.'.pdf', 'receipts/'.$receipt->number.'.pdf'));
         PaymentTransaction::whereNotNull('manual_proof_path')->limit(80)->get()->each(fn (PaymentTransaction $payment) => $this->file($payment, $uploader, 'Bukti-'.$payment->transaction_number.'.jpg', $payment->manual_proof_path));

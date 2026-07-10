@@ -10,7 +10,7 @@
                     <td>{{ $cluster->id }}</td>
                     <td>{{ $cluster->name }}</td>
                     <td class="right">Rp {{ number_format($cluster->monthly_rate, 0, ',', '.') }}</td>
-                    <td class="right">{{ $cluster->customers_count }}</td>
+                    <td class="right">{{ $cluster->units_count }}</td>
                 </tr>
             @endforeach
         </tbody>

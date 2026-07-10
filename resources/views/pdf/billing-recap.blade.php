@@ -7,8 +7,8 @@
         <tbody>
             @foreach ($billings as $billing)
                 <tr>
-                    <td>{{ $billing->customer->name }}</td>
-                    <td>{{ $billing->customer->cluster->name }}</td>
+                    <td>{{ $billing->unit->customer->name }}</td>
+                    <td>{{ $billing->unit->cluster->name }}</td>
                     <td>{{ sprintf('%04d-%02d', $billing->year, $billing->month) }}</td>
                     <td>{{ $billing->status_id === '02' ? 'Lunas' : 'Belum Bayar' }}</td>
                     <td class="right">Rp {{ number_format($billing->amount, 0, ',', '.') }}</td>

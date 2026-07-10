@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\Billing;
-use App\Models\Customer;
+use App\Models\Unit;
 use App\Services\AuditService;
 use App\Services\BillingService;
 use Illuminate\Http\Request;
@@ -17,12 +17,12 @@ class BillingController extends Controller
     public function index(Request $request)
     {
         $query = Billing::query()
-            ->with(['customer.cluster', 'status', 'approver'])
-            ->when($request->query('customer_id'), fn ($q, $value) => $q->where('customer_id', $value))
+            ->with(['unit.cluster', 'unit.customer', 'status', 'approver'])
+            ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value))
             ->when($request->query('year'), fn ($q, $value) => $q->where('year', $value))
             ->when($request->query('month'), fn ($q, $value) => $q->where('month', $value))
             ->when($request->query('status_id'), fn ($q, $value) => $q->where('status_id', $value))
-            ->when($request->query('cluster_id'), fn ($q, $value) => $q->whereHas('customer', fn ($inner) => $inner->where('cluster_id', $value)));
+            ->when($request->query('cluster_id'), fn ($q, $value) => $q->whereHas('unit', fn ($inner) => $inner->where('cluster_id', $value)));
 
         return $this->paginated($query->latest()->paginate($request->integer('per_page', 15)));
     }
@@ -43,30 +43,30 @@ class BillingController extends Controller
     public function prepareSpecial(Request $request, BillingService $service)
     {
         $data = $request->validate([
-            'customer_id' => ['required', 'exists:customers,id'],
+            'unit_id' => ['required', 'exists:units,id'],
             'year' => ['required', 'integer', 'min:2020', 'max:2100'],
             'month' => ['required', 'integer', 'between:1,12'],
             'amount' => ['required', 'numeric', 'min:0'],
         ]);
 
-        $billing = $service->prepareSpecial(Customer::findOrFail($data['customer_id']), $data['year'], $data['month'], $data['amount'], $request->user()->id);
+        $billing = $service->prepareSpecial(Unit::findOrFail($data['unit_id']), $data['year'], $data['month'], $data['amount'], $request->user()->id);
 
-        return $this->success($billing->load('customer'), 'Tagihan khusus berhasil dibuat.', 201);
+        return $this->success($billing->load('unit'), 'Tagihan khusus berhasil dibuat.', 201);
     }
 
     public function prepareBack(Request $request, BillingService $service)
     {
         $data = $request->validate([
-            'customer_id' => ['required', 'exists:customers,id'],
+            'unit_id' => ['required', 'exists:units,id'],
             'periods' => ['required', 'array', 'min:1'],
             'periods.*.year' => ['required', 'integer', 'min:2020', 'max:2100'],
             'periods.*.month' => ['required', 'integer', 'between:1,12'],
             'periods.*.amount' => ['required', 'numeric', 'min:0'],
         ]);
 
-        $customer = Customer::findOrFail($data['customer_id']);
+        $unit = Unit::findOrFail($data['unit_id']);
         $billings = collect($data['periods'])->map(fn ($period) => tap(
-            $service->prepareSpecial($customer, $period['year'], $period['month'], $period['amount'], $request->user()->id),
+            $service->prepareSpecial($unit, $period['year'], $period['month'], $period['amount'], $request->user()->id),
             fn (Billing $billing) => $billing->update(['billing_type' => 'back'])
         ));
 
@@ -75,7 +75,7 @@ class BillingController extends Controller
 
     public function pendingApproval(Request $request)
     {
-        $query = Billing::query()->with('customer.cluster')->whereNull('approved_at')->where('status_id', '01');
+        $query = Billing::query()->with(['unit.cluster', 'unit.customer'])->whereNull('approved_at')->where('status_id', '01');
 
         return $this->paginated($query->paginate($request->integer('per_page', 15)));
     }

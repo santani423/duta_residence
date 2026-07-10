@@ -63,19 +63,30 @@ return new class extends Migration
         });
 
         Schema::create('customers', function (Blueprint $table) {
-            $table->string('id', 5)->primary();
+            $table->string('id', 8)->primary();
             $table->string('name', 100);
-            $table->string('cluster_id', 2);
-            $table->string('block', 5);
-            $table->string('lot_number', 10);
-            $table->char('property_type_id', 1)->default('B');
             $table->string('phone', 20)->nullable();
             $table->string('telephone', 20)->nullable();
             $table->string('id_card_address', 200)->nullable();
             $table->string('district_id', 6)->nullable();
+            $table->string('email', 100)->nullable();
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->timestamps();
+            $table->softDeletes();
+            $table->foreign('district_id')->references('id')->on('districts')->nullOnDelete();
+            $table->index('name');
+        });
+
+        Schema::create('units', function (Blueprint $table) {
+            $table->string('id', 5)->primary();
+            $table->string('customer_id', 8);
+            $table->string('cluster_id', 2);
+            $table->string('block', 5);
+            $table->string('lot_number', 10);
+            $table->char('property_type_id', 1)->default('B');
             $table->decimal('building_area', 8, 2)->nullable();
             $table->decimal('land_area', 8, 2)->nullable();
-            $table->string('email', 100)->nullable();
             $table->date('handover_date')->nullable();
             $table->char('occupancy_id', 1)->default('1');
             $table->string('status_id', 2)->default('AK');
@@ -86,31 +97,31 @@ return new class extends Migration
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->softDeletes();
+            $table->foreign('customer_id')->references('id')->on('customers');
             $table->foreign('cluster_id')->references('id')->on('clusters');
             $table->foreign('property_type_id')->references('id')->on('property_types');
             $table->foreign('occupancy_id')->references('id')->on('occupancy_statuses');
             $table->foreign('status_id')->references('id')->on('customer_statuses');
-            $table->foreign('district_id')->references('id')->on('districts')->nullOnDelete();
             $table->unique(['cluster_id', 'block', 'lot_number']);
             $table->index(['cluster_id', 'status_id']);
-            $table->index('name');
+            $table->index('customer_id');
         });
 
         Schema::create('special_billing_rates', function (Blueprint $table) {
             $table->id();
-            $table->string('customer_id', 5);
+            $table->string('unit_id', 5);
             $table->decimal('amount', 15, 2);
             $table->string('notes', 200)->nullable();
             $table->boolean('is_active')->default(true);
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
-            $table->foreign('customer_id')->references('id')->on('customers');
-            $table->index('customer_id');
+            $table->foreign('unit_id')->references('id')->on('units');
+            $table->index('unit_id');
         });
 
         Schema::create('billings', function (Blueprint $table) {
             $table->id();
-            $table->string('customer_id', 5);
+            $table->string('unit_id', 5);
             $table->unsignedSmallInteger('year');
             $table->unsignedTinyInteger('month');
             $table->decimal('amount', 15, 2);
@@ -131,17 +142,17 @@ return new class extends Migration
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->softDeletes();
-            $table->foreign('customer_id')->references('id')->on('customers');
+            $table->foreign('unit_id')->references('id')->on('units');
             $table->foreign('status_id')->references('id')->on('billing_statuses');
-            $table->unique(['customer_id', 'year', 'month']);
+            $table->unique(['unit_id', 'year', 'month']);
             $table->index(['year', 'month']);
-            $table->index(['customer_id', 'status_id']);
+            $table->index(['unit_id', 'status_id']);
             $table->index('receipt_number');
         });
 
         Schema::create('receipts', function (Blueprint $table) {
             $table->string('number', 20)->primary();
-            $table->string('customer_id', 5);
+            $table->string('unit_id', 5);
             $table->dateTime('transaction_date');
             $table->string('customer_name', 100);
             $table->string('cluster_name', 50);
@@ -160,23 +171,23 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
-            $table->foreign('customer_id')->references('id')->on('customers');
+            $table->foreign('unit_id')->references('id')->on('units');
             $table->foreign('payment_method_id')->references('id')->on('payment_methods');
             $table->foreign('payment_channel_id')->references('id')->on('payment_channels')->nullOnDelete();
-            $table->index(['customer_id', 'transaction_date']);
+            $table->index(['unit_id', 'transaction_date']);
         });
 
         Schema::create('installments', function (Blueprint $table) {
             $table->id();
-            $table->string('customer_id', 5);
+            $table->string('unit_id', 5);
             $table->decimal('amount', 15, 2);
             $table->date('payment_date');
             $table->string('notes', 200)->nullable();
             $table->string('allocated_to', 200)->nullable();
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
-            $table->foreign('customer_id')->references('id')->on('customers');
-            $table->index(['customer_id', 'payment_date']);
+            $table->foreign('unit_id')->references('id')->on('units');
+            $table->index(['unit_id', 'payment_date']);
         });
 
         Schema::create('reversals', function (Blueprint $table) {
@@ -196,7 +207,7 @@ return new class extends Migration
 
         Schema::create('receivables', function (Blueprint $table) {
             $table->id();
-            $table->string('customer_id', 5);
+            $table->string('unit_id', 5);
             $table->foreignId('billing_id')->constrained('billings');
             $table->unsignedSmallInteger('year');
             $table->unsignedTinyInteger('month');
@@ -205,8 +216,8 @@ return new class extends Migration
             $table->boolean('is_settled')->default(false);
             $table->timestamp('settled_at')->nullable();
             $table->timestamps();
-            $table->foreign('customer_id')->references('id')->on('customers');
-            $table->index(['customer_id', 'is_settled']);
+            $table->foreign('unit_id')->references('id')->on('units');
+            $table->index(['unit_id', 'is_settled']);
             $table->index(['year', 'month']);
         });
 
@@ -214,7 +225,7 @@ return new class extends Migration
             $table->id();
             $table->string('transaction_number', 40)->unique();
             $table->string('invoice_number', 40)->unique();
-            $table->string('customer_id', 5);
+            $table->string('unit_id', 5);
             $table->decimal('subtotal', 15, 2);
             $table->decimal('tax', 15, 2)->default(0);
             $table->decimal('admin_fee', 15, 2)->default(0);
@@ -236,7 +247,7 @@ return new class extends Migration
             $table->json('provider_payload')->nullable();
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
-            $table->foreign('customer_id')->references('id')->on('customers');
+            $table->foreign('unit_id')->references('id')->on('units');
             $table->index(['payment_provider', 'status']);
         });
 
@@ -302,7 +313,7 @@ return new class extends Migration
 
         Schema::create('notification_queues', function (Blueprint $table) {
             $table->id();
-            $table->string('customer_id', 5)->nullable();
+            $table->string('unit_id', 5)->nullable();
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('type', 80);
             $table->string('channel', 20)->default('whatsapp');
@@ -314,7 +325,7 @@ return new class extends Migration
             $table->timestamp('sent_at')->nullable();
             $table->string('failed_reason')->nullable();
             $table->timestamps();
-            $table->foreign('customer_id')->references('id')->on('customers')->nullOnDelete();
+            $table->foreign('unit_id')->references('id')->on('units')->nullOnDelete();
             $table->index(['status', 'type']);
         });
     }
@@ -334,6 +345,7 @@ return new class extends Migration
             'receipts',
             'billings',
             'special_billing_rates',
+            'units',
             'customers',
             'districts',
             'regencies',

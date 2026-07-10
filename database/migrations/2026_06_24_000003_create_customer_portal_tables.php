@@ -9,11 +9,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('customer_id', 5)->nullable()->after('phone');
+            $table->string('unit_id', 5)->nullable()->after('phone');
             $table->string('language_preference', 10)->default('id')->after('theme_preference');
             $table->json('notification_preferences')->nullable()->after('language_preference');
-            $table->foreign('customer_id')->references('id')->on('customers')->nullOnDelete();
-            $table->index('customer_id');
+            $table->foreign('unit_id')->references('id')->on('units')->nullOnDelete();
+            $table->index('unit_id');
         });
 
         Schema::create('payment_gateway_settings', function (Blueprint $table) {
@@ -41,7 +41,7 @@ return new class extends Migration
 
         Schema::create('customer_complaints', function (Blueprint $table) {
             $table->id();
-            $table->string('customer_id', 5);
+            $table->string('unit_id', 5);
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('title', 150);
             $table->string('category', 80)->nullable();
@@ -54,8 +54,8 @@ return new class extends Migration
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->softDeletes();
-            $table->foreign('customer_id')->references('id')->on('customers')->cascadeOnDelete();
-            $table->index(['customer_id', 'status']);
+            $table->foreign('unit_id')->references('id')->on('units')->cascadeOnDelete();
+            $table->index(['unit_id', 'status']);
         });
 
         Schema::create('customer_complaint_comments', function (Blueprint $table) {
@@ -70,7 +70,7 @@ return new class extends Migration
 
         Schema::create('maintenance_requests', function (Blueprint $table) {
             $table->id();
-            $table->string('customer_id', 5);
+            $table->string('unit_id', 5);
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('unit_label', 120)->nullable();
             $table->string('category', 80);
@@ -89,8 +89,8 @@ return new class extends Migration
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->softDeletes();
-            $table->foreign('customer_id')->references('id')->on('customers')->cascadeOnDelete();
-            $table->index(['customer_id', 'status']);
+            $table->foreign('unit_id')->references('id')->on('units')->cascadeOnDelete();
+            $table->index(['unit_id', 'status']);
         });
     }
 
@@ -102,10 +102,10 @@ return new class extends Migration
         Schema::dropIfExists('payment_gateway_settings');
 
         Schema::table('users', function (Blueprint $table) {
-            $table->dropForeign(['customer_id']);
-            $table->dropIndex(['customer_id']);
+            $table->dropForeign(['unit_id']);
+            $table->dropIndex(['unit_id']);
             $table->dropColumn(['language_preference', 'notification_preferences']);
-            $table->dropColumn('customer_id');
+            $table->dropColumn('unit_id');
         });
     }
 };

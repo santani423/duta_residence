@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\AuditLog;
 use App\Models\Billing;
-use App\Models\Customer;
 use App\Models\CustomerComplaint;
 use App\Models\CustomerComplaintComment;
 use App\Models\ManagedFile;
@@ -15,6 +14,7 @@ use App\Models\NotificationQueue;
 use App\Models\PaymentGatewaySetting;
 use App\Models\PaymentTransaction;
 use App\Models\Receipt;
+use App\Models\Unit;
 use App\Services\AuditService;
 use App\Services\Payments\PaymentGatewayFactory;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -31,19 +31,19 @@ class CustomerPortalController extends Controller
 
     public function dashboard(Request $request)
     {
-        $customer = $this->customer($request);
-        $billings = $this->billingBaseQuery($customer)->get();
-        $payments = PaymentTransaction::query()->where('customer_id', $customer->id)->latest()->get();
-        $activeComplaints = $customer->complaints()->whereNotIn('status', ['closed', 'resolved', 'rejected'])->count();
-        $activeMaintenance = $customer->maintenanceRequests()->whereNotIn('status', ['completed', 'closed', 'rejected'])->count();
+        $unit = $this->unit($request);
+        $billings = $this->billingBaseQuery($unit)->get();
+        $payments = PaymentTransaction::query()->where('unit_id', $unit->id)->latest()->get();
+        $activeComplaints = $unit->complaints()->whereNotIn('status', ['closed', 'resolved', 'rejected'])->count();
+        $activeMaintenance = $unit->maintenanceRequests()->whereNotIn('status', ['completed', 'closed', 'rejected'])->count();
 
         return $this->success([
-            'customer' => $this->customerProfile($customer, $request->user()),
+            'customer' => $this->unitProfile($unit, $request->user()),
             'estate' => [
                 'name' => 'Grand Duta Residence',
-                'cluster' => $customer->cluster?->name,
+                'cluster' => $unit->cluster?->name,
             ],
-            'property' => $this->propertyPayload($customer),
+            'property' => $this->propertyPayload($unit),
             'billing_summary' => [
                 'active_total' => $billings->where('status_id', '01')->sum(fn (Billing $billing) => $this->billingTotal($billing)),
                 'unpaid_count' => $billings->where('status_id', '01')->count(),
@@ -63,11 +63,11 @@ class CustomerPortalController extends Controller
                 'usage' => [
                     ['label' => 'Komplain aktif', 'value' => $activeComplaints],
                     ['label' => 'Maintenance aktif', 'value' => $activeMaintenance],
-                    ['label' => 'Dokumen tersedia', 'value' => count($this->documentsForCustomer($customer))],
+                    ['label' => 'Dokumen tersedia', 'value' => count($this->documentsForUnit($unit))],
                 ],
             ],
-            'latest_documents' => array_slice($this->documentsForCustomer($customer), 0, 5),
-            'latest_notifications' => $this->notificationQuery($request, $customer)->latest()->limit(5)->get(),
+            'latest_documents' => array_slice($this->documentsForUnit($unit), 0, 5),
+            'latest_notifications' => $this->notificationQuery($request, $unit)->latest()->limit(5)->get(),
             'latest_activity' => $this->activityQuery($request)->latest()->limit(8)->get(),
             'payment_config' => PaymentGatewaySetting::current()->publicConfig(),
         ]);
@@ -75,34 +75,35 @@ class CustomerPortalController extends Controller
 
     public function account(Request $request)
     {
-        $customer = $this->customer($request);
+        $unit = $this->unit($request);
 
         return $this->success([
-            'account' => $this->customerProfile($customer, $request->user()),
-            'property' => $this->propertyPayload($customer),
-            'billings' => $this->billingBaseQuery($customer)->latest()->limit(10)->get()->map(fn (Billing $billing) => $this->invoicePayload($billing)),
-            'payments' => PaymentTransaction::query()->where('customer_id', $customer->id)->latest()->limit(10)->get()->map(fn (PaymentTransaction $transaction) => $this->paymentPayload($transaction)),
+            'account' => $this->unitProfile($unit, $request->user()),
+            'property' => $this->propertyPayload($unit),
+            'billings' => $this->billingBaseQuery($unit)->latest()->limit(10)->get()->map(fn (Billing $billing) => $this->invoicePayload($billing)),
+            'payments' => PaymentTransaction::query()->where('unit_id', $unit->id)->latest()->limit(10)->get()->map(fn (PaymentTransaction $transaction) => $this->paymentPayload($transaction)),
             'payment_methods' => PaymentGatewaySetting::current()->publicConfig(),
-            'documents' => $this->documentsForCustomer($customer),
+            'documents' => $this->documentsForUnit($unit),
             'security' => [
                 'last_login_at' => $request->user()->last_login_at,
                 'last_login_ip' => $request->user()->last_login_ip,
             ],
-            'notifications' => $this->notificationQuery($request, $customer)->latest()->limit(10)->get(),
+            'notifications' => $this->notificationQuery($request, $unit)->latest()->limit(10)->get(),
             'activity' => $this->activityQuery($request)->latest()->limit(10)->get(),
         ]);
     }
 
     public function profile(Request $request)
     {
-        $customer = $this->customer($request);
+        $unit = $this->unit($request);
 
-        return $this->success($this->customerProfile($customer, $request->user()));
+        return $this->success($this->unitProfile($unit, $request->user()));
     }
 
     public function updateProfile(Request $request, AuditService $auditService)
     {
-        $customer = $this->customer($request);
+        $unit = $this->unit($request);
+        $customer = $unit->customer;
         $user = $request->user();
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
@@ -142,18 +143,18 @@ class CustomerPortalController extends Controller
         $auditService->log('customer_profile_updated', 'customer-profile', 'UPDATE', $customer, $oldCustomer, $customer->refresh()->toArray());
         $auditService->log('customer_account_updated', 'customer-account', 'UPDATE', $user, $oldUser, $user->refresh()->toArray());
 
-        return $this->success($this->customerProfile($customer->refresh(), $user->refresh()), 'Profil berhasil diperbarui.');
+        return $this->success($this->unitProfile($unit, $user->refresh()), 'Profil berhasil diperbarui.');
     }
 
     public function property(Request $request)
     {
-        return $this->success($this->propertyPayload($this->customer($request)));
+        return $this->success($this->propertyPayload($this->unit($request)));
     }
 
     public function bills(Request $request)
     {
-        $customer = $this->customer($request);
-        $query = $this->billingBaseQuery($customer)
+        $unit = $this->unit($request);
+        $query = $this->billingBaseQuery($unit)
             ->when($request->query('search'), fn (Builder $q, $value) => $q->where(fn (Builder $inner) => $inner
                 ->where('id', $value)
                 ->orWhere('billing_type', 'like', "%{$value}%")))
@@ -184,9 +185,9 @@ class CustomerPortalController extends Controller
 
         return $this->success([
             ...$this->invoicePayload($billing),
-            'customer' => $this->customerProfile($billing->customer, $request->user()),
+            'customer' => $this->unitProfile($billing->unit, $request->user()),
             'estate' => ['name' => 'Grand Duta Residence'],
-            'unit' => $this->propertyPayload($billing->customer),
+            'unit' => $this->propertyPayload($billing->unit),
             'payment_history' => $billing->paymentTransactions->map(fn (PaymentTransaction $transaction) => $this->paymentPayload($transaction)),
         ]);
     }
@@ -225,7 +226,7 @@ class CustomerPortalController extends Controller
             $transaction = PaymentTransaction::query()->create([
                 'transaction_number' => 'TRX-'.now()->format('YmdHis').'-'.Str::upper(Str::random(6)),
                 'invoice_number' => 'INV-'.now()->format('YmdHis').'-'.Str::upper(Str::random(6)),
-                'customer_id' => $billing->customer_id,
+                'unit_id' => $billing->unit_id,
                 'subtotal' => $this->billingTotal($billing),
                 'tax' => 0,
                 'admin_fee' => (float) $setting->admin_fee,
@@ -245,10 +246,10 @@ class CustomerPortalController extends Controller
 
     public function payments(Request $request)
     {
-        $customer = $this->customer($request);
+        $unit = $this->unit($request);
         $query = PaymentTransaction::query()
             ->with('billings')
-            ->where('customer_id', $customer->id)
+            ->where('unit_id', $unit->id)
             ->when($request->query('search'), fn (Builder $q, $value) => $q->where(fn (Builder $inner) => $inner
                 ->where('transaction_number', 'like', "%{$value}%")
                 ->orWhere('invoice_number', 'like', "%{$value}%")
@@ -268,7 +269,7 @@ class CustomerPortalController extends Controller
 
         return $this->success([
             ...$this->paymentPayload($payment),
-            'customer' => $this->customerProfile($payment->customer, $request->user()),
+            'customer' => $this->unitProfile($payment->unit, $request->user()),
             'fee_breakdown' => [
                 'subtotal' => (float) $payment->subtotal,
                 'tax' => (float) $payment->tax,
@@ -342,9 +343,9 @@ class CustomerPortalController extends Controller
 
     public function downloadCashReceipt(Request $request, Receipt $receipt)
     {
-        $customer = $this->customer($request);
-        abort_if($receipt->customer_id !== $customer->id, 404);
-        $receipt->load(['customer.cluster', 'billings']);
+        $unit = $this->unit($request);
+        abort_if($receipt->unit_id !== $unit->id, 404);
+        $receipt->load(['unit.cluster', 'billings']);
 
         return Pdf::loadHTML(view('pdf.spt', compact('receipt'))->render())
             ->download("SPT-{$receipt->number}.pdf");
@@ -352,8 +353,8 @@ class CustomerPortalController extends Controller
 
     public function complaints(Request $request)
     {
-        $customer = $this->customer($request);
-        $query = $customer->complaints()->withCount('comments')
+        $unit = $this->unit($request);
+        $query = $unit->complaints()->withCount('comments')
             ->when($request->query('status'), fn (Builder $q, $value) => $q->where('status', $value))
             ->when($request->query('search'), fn (Builder $q, $value) => $q->where(fn (Builder $inner) => $inner
                 ->where('title', 'like', "%{$value}%")
@@ -364,7 +365,7 @@ class CustomerPortalController extends Controller
 
     public function storeComplaint(Request $request, AuditService $auditService)
     {
-        $customer = $this->customer($request);
+        $unit = $this->unit($request);
         $data = $request->validate([
             'title' => ['required', 'string', 'max:150'],
             'category' => ['nullable', 'string', 'max:80'],
@@ -374,7 +375,7 @@ class CustomerPortalController extends Controller
         ]);
 
         $attachment = $request->hasFile('attachment') ? $request->file('attachment')->store('complaints', 'public') : null;
-        $complaint = $customer->complaints()->create([
+        $complaint = $unit->complaints()->create([
             ...collect($data)->except('attachment')->all(),
             'attachment_path' => $attachment,
             'user_id' => $request->user()->id,
@@ -394,7 +395,7 @@ class CustomerPortalController extends Controller
     {
         $complaint = $this->ownedComplaint($request, $complaint);
 
-        return $this->success($complaint->load(['comments.user', 'customer.cluster']));
+        return $this->success($complaint->load(['comments.user', 'unit.cluster']));
     }
 
     public function updateComplaint(Request $request, CustomerComplaint $complaint, AuditService $auditService)
@@ -464,8 +465,8 @@ class CustomerPortalController extends Controller
 
     public function maintenanceRequests(Request $request)
     {
-        $customer = $this->customer($request);
-        $query = $customer->maintenanceRequests()
+        $unit = $this->unit($request);
+        $query = $unit->maintenanceRequests()
             ->when($request->query('status'), fn (Builder $q, $value) => $q->where('status', $value))
             ->when($request->query('search'), fn (Builder $q, $value) => $q->where(fn (Builder $inner) => $inner
                 ->where('category', 'like', "%{$value}%")
@@ -476,7 +477,7 @@ class CustomerPortalController extends Controller
 
     public function storeMaintenanceRequest(Request $request, AuditService $auditService)
     {
-        $customer = $this->customer($request);
+        $unit = $this->unit($request);
         $data = $request->validate([
             'category' => ['required', 'string', 'max:80'],
             'description' => ['required', 'string'],
@@ -486,9 +487,9 @@ class CustomerPortalController extends Controller
         ]);
 
         $attachment = $request->hasFile('attachment') ? $request->file('attachment')->store('maintenance', 'public') : null;
-        $maintenance = $customer->maintenanceRequests()->create([
+        $maintenance = $unit->maintenanceRequests()->create([
             ...collect($data)->except('attachment')->all(),
-            'unit_label' => "{$customer->cluster?->name} {$customer->block}/{$customer->lot_number}",
+            'unit_label' => "{$unit->cluster?->name} {$unit->block}/{$unit->lot_number}",
             'attachment_path' => $attachment,
             'user_id' => $request->user()->id,
             'created_by' => $request->user()->id,
@@ -553,15 +554,15 @@ class CustomerPortalController extends Controller
 
     public function documents(Request $request)
     {
-        return $this->success($this->documentsForCustomer($this->customer($request)));
+        return $this->success($this->documentsForUnit($this->unit($request)));
     }
 
     public function notifications(Request $request)
     {
-        $customer = $this->customer($request);
+        $unit = $this->unit($request);
 
         return $this->paginated(
-            $this->notificationQuery($request, $customer)
+            $this->notificationQuery($request, $unit)
                 ->when($request->query('read_status'), fn (Builder $q, $value) => $q->where('read_status', $value))
                 ->when($request->query('type'), fn (Builder $q, $value) => $q->where('type', $value))
                 ->latest()
@@ -571,8 +572,8 @@ class CustomerPortalController extends Controller
 
     public function readNotification(Request $request, NotificationQueue $notification)
     {
-        $customer = $this->customer($request);
-        abort_if(! $this->notificationOwnedBy($notification, $request, $customer), 404);
+        $unit = $this->unit($request);
+        abort_if(! $this->notificationOwnedBy($notification, $request, $unit), 404);
         $notification->update(['read_status' => 'read']);
 
         return $this->success($notification, 'Notifikasi ditandai dibaca.');
@@ -580,8 +581,8 @@ class CustomerPortalController extends Controller
 
     public function readAllNotifications(Request $request)
     {
-        $customer = $this->customer($request);
-        $this->notificationQuery($request, $customer)->update(['read_status' => 'read']);
+        $unit = $this->unit($request);
+        $this->notificationQuery($request, $unit)->update(['read_status' => 'read']);
 
         return $this->success(null, 'Semua notifikasi ditandai dibaca.');
     }
@@ -624,92 +625,94 @@ class CustomerPortalController extends Controller
         return $this->success($this->settings($request)->getData(true)['data'], 'Pengaturan berhasil disimpan.');
     }
 
-    private function customer(Request $request): Customer
+    private function unit(Request $request): Unit
     {
-        $customer = $request->user()
-            ->customer()
-            ->with(['cluster', 'propertyType', 'occupancy', 'status', 'district'])
+        $unit = $request->user()
+            ->unit()
+            ->with(['cluster', 'propertyType', 'occupancy', 'status', 'customer.district'])
             ->first();
 
-        abort_if(! $customer, 403, 'Akun customer belum terhubung dengan data pelanggan.');
+        abort_if(! $unit, 403, 'Akun customer belum terhubung dengan data unit.');
 
-        return $customer;
+        return $unit;
     }
 
-    private function billingBaseQuery(Customer $customer): Builder
+    private function billingBaseQuery(Unit $unit): Builder
     {
         return Billing::query()
-            ->with(['customer.cluster', 'paymentTransactions'])
-            ->where('customer_id', $customer->id);
+            ->with(['unit.cluster', 'paymentTransactions'])
+            ->where('unit_id', $unit->id);
     }
 
     private function ownedBilling(Request $request, Billing $billing): Billing
     {
-        $customer = $this->customer($request);
-        abort_if($billing->customer_id !== $customer->id, 404);
+        $unit = $this->unit($request);
+        abort_if($billing->unit_id !== $unit->id, 404);
 
-        return $billing->load(['customer.cluster', 'customer.propertyType', 'paymentTransactions']);
+        return $billing->load(['unit.cluster', 'unit.propertyType', 'paymentTransactions']);
     }
 
     private function ownedPayment(Request $request, PaymentTransaction $payment): PaymentTransaction
     {
-        $customer = $this->customer($request);
-        abort_if($payment->customer_id !== $customer->id, 404);
+        $unit = $this->unit($request);
+        abort_if($payment->unit_id !== $unit->id, 404);
 
-        return $payment->load(['customer.cluster', 'billings']);
+        return $payment->load(['unit.cluster', 'billings']);
     }
 
     private function ownedComplaint(Request $request, CustomerComplaint $complaint): CustomerComplaint
     {
-        $customer = $this->customer($request);
-        abort_if($complaint->customer_id !== $customer->id, 404);
+        $unit = $this->unit($request);
+        abort_if($complaint->unit_id !== $unit->id, 404);
 
         return $complaint;
     }
 
     private function ownedMaintenance(Request $request, MaintenanceRequest $maintenance): MaintenanceRequest
     {
-        $customer = $this->customer($request);
-        abort_if($maintenance->customer_id !== $customer->id, 404);
+        $unit = $this->unit($request);
+        abort_if($maintenance->unit_id !== $unit->id, 404);
 
         return $maintenance;
     }
 
-    private function customerProfile(Customer $customer, $user): array
+    private function unitProfile(Unit $unit, $user): array
     {
+        $customer = $unit->customer;
+
         return [
-            'id' => $customer->id,
-            'name' => $customer->name,
-            'email' => $customer->email ?: $user->email,
-            'phone' => $customer->phone ?: $user->phone,
-            'customer_number' => $customer->id,
-            'status' => $customer->status?->name,
+            'id' => $unit->id,
+            'name' => $customer?->name,
+            'email' => $customer?->email ?: $user->email,
+            'phone' => $customer?->phone ?: $user->phone,
+            'customer_number' => $unit->id,
+            'status' => $unit->status?->name,
             'estate' => 'Grand Duta Residence',
-            'unit' => "{$customer->cluster?->name} {$customer->block}/{$customer->lot_number}",
-            'joined_at' => $customer->created_at,
+            'unit' => "{$unit->cluster?->name} {$unit->block}/{$unit->lot_number}",
+            'joined_at' => $unit->created_at,
             'last_login_at' => $user->last_login_at,
-            'address' => $customer->id_card_address,
+            'address' => $customer?->id_card_address,
             'language_preference' => $user->language_preference,
             'theme_preference' => $user->theme_preference,
             'notification_preferences' => $user->notification_preferences,
         ];
     }
 
-    private function propertyPayload(Customer $customer): array
+    private function propertyPayload(Unit $unit): array
     {
         return [
-            'customer_id' => $customer->id,
+            'unit_id' => $unit->id,
             'estate' => 'Grand Duta Residence',
-            'cluster' => $customer->cluster?->name,
-            'block' => $customer->block,
-            'lot_number' => $customer->lot_number,
-            'unit_label' => "{$customer->cluster?->name} {$customer->block}/{$customer->lot_number}",
-            'property_type' => $customer->propertyType?->name,
-            'occupancy' => $customer->occupancy?->name,
-            'building_area' => $customer->building_area,
-            'land_area' => $customer->land_area,
-            'handover_date' => $customer->handover_date,
-            'status' => $customer->status?->name,
+            'cluster' => $unit->cluster?->name,
+            'block' => $unit->block,
+            'lot_number' => $unit->lot_number,
+            'unit_label' => "{$unit->cluster?->name} {$unit->block}/{$unit->lot_number}",
+            'property_type' => $unit->propertyType?->name,
+            'occupancy' => $unit->occupancy?->name,
+            'building_area' => $unit->building_area,
+            'land_area' => $unit->land_area,
+            'handover_date' => $unit->handover_date,
+            'status' => $unit->status?->name,
         ];
     }
 
@@ -800,9 +803,9 @@ class CustomerPortalController extends Controller
         ])->filter()->values()->all();
     }
 
-    private function documentsForCustomer(Customer $customer): array
+    private function documentsForUnit(Unit $unit): array
     {
-        $invoices = $this->billingBaseQuery($customer)->latest()->limit(20)->get()->map(fn (Billing $billing) => [
+        $invoices = $this->billingBaseQuery($unit)->latest()->limit(20)->get()->map(fn (Billing $billing) => [
             'id' => 'invoice-'.$billing->id,
             'type' => 'invoice',
             'name' => 'Invoice BIL-'.$billing->id,
@@ -812,7 +815,7 @@ class CustomerPortalController extends Controller
             'download_id' => $billing->id,
         ]);
 
-        $receipts = Receipt::query()->where('customer_id', $customer->id)->latest('transaction_date')->limit(20)->get()->map(fn (Receipt $receipt) => [
+        $receipts = Receipt::query()->where('unit_id', $unit->id)->latest('transaction_date')->limit(20)->get()->map(fn (Receipt $receipt) => [
             'id' => 'receipt-'.$receipt->number,
             'type' => 'receipt',
             'name' => 'Kuitansi '.$receipt->number,
@@ -822,7 +825,7 @@ class CustomerPortalController extends Controller
             'download_id' => $receipt->number,
         ]);
 
-        $payments = PaymentTransaction::query()->where('customer_id', $customer->id)->where('status', 'paid')->latest()->limit(20)->get()->map(fn (PaymentTransaction $payment) => [
+        $payments = PaymentTransaction::query()->where('unit_id', $unit->id)->where('status', 'paid')->latest()->limit(20)->get()->map(fn (PaymentTransaction $payment) => [
             'id' => 'payment-'.$payment->id,
             'type' => 'receipt',
             'name' => 'Receipt '.$payment->transaction_number,
@@ -835,21 +838,21 @@ class CustomerPortalController extends Controller
         return $invoices->merge($receipts)->merge($payments)->sortByDesc('created_at')->values()->all();
     }
 
-    private function notificationQuery(Request $request, Customer $customer): Builder
+    private function notificationQuery(Request $request, Unit $unit): Builder
     {
         return NotificationQueue::query()
-            ->where(function (Builder $q) use ($request, $customer) {
-                $q->where('customer_id', $customer->id)
+            ->where(function (Builder $q) use ($request, $unit) {
+                $q->where('unit_id', $unit->id)
                     ->orWhere('user_id', $request->user()->id)
-                    ->orWhere(fn (Builder $global) => $global->whereNull('customer_id')->whereNull('user_id')->where('type', 'like', 'announcement%'));
+                    ->orWhere(fn (Builder $global) => $global->whereNull('unit_id')->whereNull('user_id')->where('type', 'like', 'announcement%'));
             });
     }
 
-    private function notificationOwnedBy(NotificationQueue $notification, Request $request, Customer $customer): bool
+    private function notificationOwnedBy(NotificationQueue $notification, Request $request, Unit $unit): bool
     {
-        return $notification->customer_id === $customer->id
+        return $notification->unit_id === $unit->id
             || $notification->user_id === $request->user()->id
-            || (blank($notification->customer_id) && blank($notification->user_id) && str_starts_with($notification->type, 'announcement'));
+            || (blank($notification->unit_id) && blank($notification->user_id) && str_starts_with($notification->type, 'announcement'));
     }
 
     private function activityQuery(Request $request): Builder

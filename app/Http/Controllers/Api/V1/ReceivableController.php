@@ -15,8 +15,8 @@ class ReceivableController extends Controller
     public function index(Request $request)
     {
         $query = Receivable::query()
-            ->with(['customer.cluster'])
-            ->when($request->query('customer_id'), fn ($q, $value) => $q->where('customer_id', $value))
+            ->with(['unit.cluster', 'unit.customer'])
+            ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value))
             ->when($request->query('is_settled') !== null, fn ($q) => $q->where('is_settled', request()->boolean('is_settled')));
 
         return $this->paginated($query->latest('snapshot_date')->paginate($request->integer('per_page', 15)));
@@ -25,7 +25,7 @@ class ReceivableController extends Controller
     public function aging()
     {
         $today = now();
-        $unpaid = Billing::query()->with('customer')->unpaid()->get();
+        $unpaid = Billing::query()->with('unit')->unpaid()->get();
 
         $buckets = [
             'lt_30' => 0,

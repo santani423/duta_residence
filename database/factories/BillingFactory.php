@@ -18,7 +18,7 @@ class BillingFactory extends Factory
         $amount = fake()->randomElement([300000, 325000, 350000, 375000, 400000, 450000, 550000]);
 
         return [
-            'customer_id' => 'AL001',
+            'unit_id' => 'AL001',
             'year' => (int) $period->format('Y'),
             'month' => (int) $period->format('m'),
             'amount' => $amount,

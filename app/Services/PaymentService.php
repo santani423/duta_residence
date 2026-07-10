@@ -3,9 +3,9 @@
 namespace App\Services;
 
 use App\Models\Billing;
-use App\Models\Customer;
 use App\Models\PaymentTransaction;
 use App\Models\Receipt;
+use App\Models\Unit;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -19,9 +19,9 @@ class PaymentService
         private readonly AuditService $auditService,
     ) {}
 
-    public function preview(Customer $customer, array $billingIds): array
+    public function preview(Unit $unit, array $billingIds): array
     {
-        $billings = $this->validatedPayableBillings($customer, $billingIds);
+        $billings = $this->validatedPayableBillings($unit, $billingIds);
         $items = $billings->map(function (Billing $billing) {
             $penalty = $this->penaltyService->calculate($billing);
 
@@ -42,21 +42,21 @@ class PaymentService
         ];
     }
 
-    public function process(Customer $customer, array $billingIds, array $data, int $userId): Receipt
+    public function process(Unit $unit, array $billingIds, array $data, int $userId): Receipt
     {
-        return DB::transaction(function () use ($customer, $billingIds, $data, $userId) {
-            $billings = $this->validatedPayableBillings($customer, $billingIds, true);
-            $preview = $this->preview($customer, $billingIds);
+        return DB::transaction(function () use ($unit, $billingIds, $data, $userId) {
+            $billings = $this->validatedPayableBillings($unit, $billingIds, true);
+            $preview = $this->preview($unit, $billingIds);
             $receiptNumber = $this->receiptService->generateReceiptNumber();
 
             $receipt = Receipt::query()->create([
                 'number' => $receiptNumber,
-                'customer_id' => $customer->id,
+                'unit_id' => $unit->id,
                 'transaction_date' => now(),
-                'customer_name' => $customer->name,
-                'cluster_name' => $customer->cluster->name,
-                'block' => $customer->block,
-                'lot_number' => $customer->lot_number,
+                'customer_name' => $unit->customer->name,
+                'cluster_name' => $unit->cluster->name,
+                'block' => $unit->block,
+                'lot_number' => $unit->lot_number,
                 'total_billing' => $preview['total_billing'],
                 'total_penalty' => $preview['total_penalty'],
                 'grand_total' => $preview['grand_total'],
@@ -84,7 +84,7 @@ class PaymentService
             PaymentTransaction::query()->create([
                 'transaction_number' => 'TRX-'.now()->format('YmdHis').'-'.Str::upper(Str::random(6)),
                 'invoice_number' => 'INV-'.now()->format('YmdHis').'-'.Str::upper(Str::random(6)),
-                'customer_id' => $customer->id,
+                'unit_id' => $unit->id,
                 'subtotal' => $preview['total_billing'],
                 'tax' => 0,
                 'admin_fee' => 0,
@@ -102,12 +102,12 @@ class PaymentService
         });
     }
 
-    private function validatedPayableBillings(Customer $customer, array $billingIds, bool $lock = false): Collection
+    private function validatedPayableBillings(Unit $unit, array $billingIds, bool $lock = false): Collection
     {
         $query = Billing::query()
-            ->with('customer.cluster')
+            ->with('unit.cluster')
             ->whereIn('id', $billingIds)
-            ->where('customer_id', $customer->id);
+            ->where('unit_id', $unit->id);
 
         if ($lock) {
             $query->lockForUpdate();
@@ -116,7 +116,7 @@ class PaymentService
         $billings = $query->get();
 
         if ($billings->count() !== count(array_unique($billingIds))) {
-            throw ValidationException::withMessages(['billing_ids' => ['Tagihan tidak ditemukan atau bukan milik pelanggan ini.']]);
+            throw ValidationException::withMessages(['billing_ids' => ['Tagihan tidak ditemukan atau bukan milik unit ini.']]);
         }
 
         if ($billings->contains(fn (Billing $billing) => $billing->status_id !== '01')) {

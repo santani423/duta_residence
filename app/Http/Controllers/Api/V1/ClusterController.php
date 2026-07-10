@@ -36,7 +36,7 @@ class ClusterController extends Controller
 
     public function show(Cluster $cluster)
     {
-        return $this->success($cluster->loadCount('customers'));
+        return $this->success($cluster->loadCount('units'));
     }
 
     public function update(Request $request, Cluster $cluster, AuditService $auditService)
@@ -56,8 +56,8 @@ class ClusterController extends Controller
 
     public function destroy(Cluster $cluster, AuditService $auditService)
     {
-        if ($cluster->customers()->exists()) {
-            return $this->error('Cluster tidak dapat dihapus karena masih memiliki pelanggan.', 422);
+        if ($cluster->units()->exists()) {
+            return $this->error('Cluster tidak dapat dihapus karena masih memiliki unit.', 422);
         }
 
         $old = $cluster->toArray();

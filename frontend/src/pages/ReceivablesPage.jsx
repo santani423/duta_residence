@@ -23,7 +23,7 @@ export default function ReceivablesPage() {
         <Col xs={24} md={6}><Card><Statistic title="> 90 hari" value={formatCurrency(bucket.gt_90)} /></Card></Col>
       </Row>
       <FilterBar>
-        <Input allowClear placeholder="ID pelanggan" value={table.filters.customer_id} onChange={(event) => table.setFilters({ ...table.filters, customer_id: event.target.value || undefined })} className="filter-input" />
+        <Input allowClear placeholder="ID unit" value={table.filters.unit_id} onChange={(event) => table.setFilters({ ...table.filters, unit_id: event.target.value || undefined })} className="filter-input" />
         <Select allowClear placeholder="Status" value={table.filters.is_settled} onChange={(value) => table.setFilters({ ...table.filters, is_settled: value })} className="filter-input" options={[{ value: false, label: 'Outstanding' }, { value: true, label: 'Settled' }]} />
       </FilterBar>
       <Card>
@@ -31,8 +31,8 @@ export default function ReceivablesPage() {
           query={receivables}
           onChange={table.handleTableChange}
           columns={[
-            { title: 'Pelanggan', dataIndex: ['customer', 'name'] },
-            { title: 'Cluster', dataIndex: ['customer', 'cluster', 'name'] },
+            { title: 'Pelanggan', dataIndex: ['unit', 'customer', 'name'] },
+            { title: 'Cluster', dataIndex: ['unit', 'cluster', 'name'] },
             { title: 'Periode', render: (_, row) => formatPeriod(row.year, row.month) },
             { title: 'Nominal', dataIndex: 'amount', render: formatCurrency },
             { title: 'Snapshot', dataIndex: 'snapshot_date', render: formatDate },

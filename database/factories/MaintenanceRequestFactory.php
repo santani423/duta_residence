@@ -15,7 +15,7 @@ class MaintenanceRequestFactory extends Factory
     public function definition(): array
     {
         return [
-            'customer_id' => 'AL001',
+            'unit_id' => 'AL001',
             'unit_label' => 'Cluster Alamanda A/001',
             'category' => fake()->randomElement(['Plumbing', 'Electrical', 'AC', 'Atap bocor', 'Pintu dan jendela', 'Jalan lingkungan', 'Lampu jalan', 'Saluran air', 'Fasilitas umum', 'Lainnya']),
             'description' => fake()->paragraph(),

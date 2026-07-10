@@ -108,7 +108,7 @@ export default function DashboardPage() {
                 <List.Item>
                   <List.Item.Meta
                     title={<Space><Typography.Text strong>{item.number}</Typography.Text><StatusBadge type="transaction" value={item.status} /></Space>}
-                    description={`${item.customer?.name || item.customer_name} - ${formatDateTime(item.transaction_date)}`}
+                    description={`${item.unit?.customer?.name || item.customer_name} - ${formatDateTime(item.transaction_date)}`}
                   />
                   <Typography.Text strong>{formatCurrency(item.grand_total)}</Typography.Text>
                 </List.Item>

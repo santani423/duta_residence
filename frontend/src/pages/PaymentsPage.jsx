@@ -14,7 +14,7 @@ import { formatCurrency, formatDate, formatDateTime, formatPeriod } from '../uti
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
 
 export default function PaymentsPage() {
-  const [customer, setCustomer] = useState(null);
+  const [unit, setUnit] = useState(null);
   const [selected, setSelected] = useState([]);
   const [preview, setPreview] = useState(null);
   const [transaction, setTransaction] = useState(null);
@@ -33,24 +33,24 @@ export default function PaymentsPage() {
   const receipts = useQuery({ queryKey: ['payment-receipts', receiptTable.params], queryFn: () => api.payments.receipts(receiptTable.params) });
 
   const search = useMutation({
-    mutationFn: (values) => api.payments.search({ customer_id: values.customer_id }),
+    mutationFn: (values) => api.payments.search({ unit_id: values.unit_id }),
     onSuccess: (response) => {
-      setCustomer(response.data);
+      setUnit(response.data);
       setSelected([]);
       setPreview(null);
       setTransaction(null);
     },
-    onError: (error) => message.error(getApiErrorMessage(error, 'Pelanggan tidak ditemukan')),
+    onError: (error) => message.error(getApiErrorMessage(error, 'Unit tidak ditemukan')),
   });
 
   const previewMutation = useMutation({
-    mutationFn: () => api.payments.preview({ customer_id: customer.id, billing_ids: selected }),
+    mutationFn: () => api.payments.preview({ unit_id: unit.id, billing_ids: selected }),
     onSuccess: (response) => setPreview(response.data),
     onError: (error) => message.error(getApiErrorMessage(error)),
   });
 
   const processLoket = useMutation({
-    mutationFn: (values) => api.payments.process({ ...values, customer_id: customer.id, billing_ids: selected }),
+    mutationFn: (values) => api.payments.process({ ...values, unit_id: unit.id, billing_ids: selected }),
     onSuccess: () => {
       message.success('Pembayaran loket berhasil diproses');
       resetPaymentWorkspace();
@@ -64,7 +64,7 @@ export default function PaymentsPage() {
   });
 
   const createGateway = useMutation({
-    mutationFn: (values) => api.payments.createGateway({ ...values, customer_id: customer.id, billing_ids: selected }),
+    mutationFn: (values) => api.payments.createGateway({ ...values, unit_id: unit.id, billing_ids: selected }),
     onSuccess: (response) => {
       message.success('Transaksi gateway berhasil dibuat');
       setTransaction(response.data);
@@ -109,7 +109,7 @@ export default function PaymentsPage() {
   });
 
   function resetPaymentWorkspace() {
-    setCustomer(null);
+    setUnit(null);
     setSelected([]);
     setPreview(null);
     setTransaction(null);
@@ -118,7 +118,7 @@ export default function PaymentsPage() {
     gatewayForm.resetFields();
   }
 
-  const unpaidBillings = customer?.billings || [];
+  const unpaidBillings = unit?.billings || [];
   const activeGateway = config.data?.data?.active_gateway || 'manual';
   const manualInfo = config.data?.data?.manual_payment || {};
 
@@ -150,7 +150,7 @@ export default function PaymentsPage() {
               <div className="stack">
                 <Card>
                   <Form form={searchForm} layout="inline" onFinish={search.mutate}>
-                    <Form.Item label="ID Pelanggan" name="customer_id" rules={[{ required: true }]}>
+                    <Form.Item label="ID Unit" name="unit_id" rules={[{ required: true }]}>
                       <Input placeholder="GA001" />
                     </Form.Item>
                     <Button htmlType="submit" icon={<SearchOutlined />} loading={search.isPending}>Cari Tagihan</Button>
@@ -158,8 +158,8 @@ export default function PaymentsPage() {
                   </Form>
                 </Card>
 
-                {customer ? (
-                  <Card title={`${customer.id} - ${customer.name}`} extra={customer.cluster?.name}>
+                {unit ? (
+                  <Card title={`${unit.id} - ${unit.customer?.name}`} extra={unit.cluster?.name}>
                     <ResponsiveTable
                       data={unpaidBillings}
                       columns={billingColumns}
@@ -254,7 +254,7 @@ export default function PaymentsPage() {
                     scrollX={1320}
                     columns={[
                       { title: 'Invoice', dataIndex: 'invoice_number', width: 190, fixed: 'left' },
-                      { title: 'Pelanggan', dataIndex: ['customer', 'name'], width: 200 },
+                      { title: 'Pelanggan', dataIndex: ['unit', 'customer', 'name'], width: 200 },
                       { title: 'Provider', dataIndex: 'payment_provider', width: 110 },
                       { title: 'Total', dataIndex: 'total', render: formatCurrency, width: 140 },
                       { title: 'Status', dataIndex: 'status', render: (value) => <StatusBadge type="transaction" value={value} />, width: 170 },
@@ -293,7 +293,7 @@ export default function PaymentsPage() {
             children: (
               <>
                 <FilterBar>
-                  <Input allowClear placeholder="ID pelanggan" value={receiptTable.filters.customer_id} onChange={(event) => receiptTable.setFilters({ ...receiptTable.filters, customer_id: event.target.value || undefined })} className="filter-input" />
+                  <Input allowClear placeholder="ID unit" value={receiptTable.filters.unit_id} onChange={(event) => receiptTable.setFilters({ ...receiptTable.filters, unit_id: event.target.value || undefined })} className="filter-input" />
                   <DatePicker placeholder="Tanggal" onChange={(value) => receiptTable.setFilters({ ...receiptTable.filters, date: value?.format('YYYY-MM-DD') })} className="filter-input" />
                 </FilterBar>
                 <Card>

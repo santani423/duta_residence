@@ -7,7 +7,7 @@
     <h2>Informasi Pembayaran</h2>
     <table>
         <tr><th>Invoice Gateway</th><td>{{ $payment->invoice_number }}</td></tr>
-        <tr><th>Customer</th><td>{{ $payment->customer->name ?? '-' }}</td></tr>
+        <tr><th>Customer</th><td>{{ $payment->unit->customer->name ?? '-' }}</td></tr>
         <tr><th>Gateway</th><td>{{ $payment->payment_provider }}</td></tr>
         <tr><th>Status</th><td>{{ $payment->status }}</td></tr>
         <tr><th>Tanggal Transaksi</th><td>{{ optional($payment->created_at)->format('d/m/Y H:i') }}</td></tr>

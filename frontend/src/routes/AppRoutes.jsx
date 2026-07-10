@@ -14,6 +14,7 @@ import NotFoundPage from '../pages/errors/NotFoundPage.jsx';
 const DashboardPage = lazy(() => import('../pages/DashboardPage.jsx'));
 const ClustersPage = lazy(() => import('../pages/ClustersPage.jsx'));
 const CustomersPage = lazy(() => import('../pages/CustomersPage.jsx'));
+const UnitsPage = lazy(() => import('../pages/UnitsPage.jsx'));
 const BillingsPage = lazy(() => import('../pages/BillingsPage.jsx'));
 const PaymentsPage = lazy(() => import('../pages/PaymentsPage.jsx'));
 const InstallmentsPage = lazy(() => import('../pages/InstallmentsPage.jsx'));
@@ -75,6 +76,7 @@ export default function AppRoutes() {
         <Route index element={hasRole('customer') ? <Navigate to="/customer/dashboard" replace /> : <LazyPage><DashboardPage /></LazyPage>} />
         <Route path="clusters" element={<Protected permissions={['clusters.view']}><LazyPage><ClustersPage /></LazyPage></Protected>} />
         <Route path="customers" element={<Protected permissions={['customers.view']}><LazyPage><CustomersPage /></LazyPage></Protected>} />
+        <Route path="units" element={<Protected permissions={['units.view']}><LazyPage><UnitsPage /></LazyPage></Protected>} />
         <Route path="billings" element={<Protected permissions={['billings.view']}><LazyPage><BillingsPage /></LazyPage></Protected>} />
         <Route path="payments" element={<Protected permissions={['payments.view']}><LazyPage><PaymentsPage /></LazyPage></Protected>} />
         <Route path="installments" element={<Protected permissions={['installments.view']}><LazyPage><InstallmentsPage /></LazyPage></Protected>} />

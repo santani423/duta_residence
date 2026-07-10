@@ -15,7 +15,7 @@ class CustomerComplaintFactory extends Factory
     public function definition(): array
     {
         return [
-            'customer_id' => 'AL001',
+            'unit_id' => 'AL001',
             'title' => fake()->sentence(5),
             'category' => fake()->randomElement(['Keamanan', 'Kebersihan', 'Kebisingan', 'Fasilitas', 'Parkir', 'Tetangga', 'Lingkungan', 'Administrasi', 'Tagihan', 'Lainnya']),
             'priority' => fake()->randomElement(['low', 'normal', 'high', 'urgent']),

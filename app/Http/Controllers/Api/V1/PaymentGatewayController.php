@@ -28,28 +28,28 @@ class PaymentGatewayController extends Controller
     public function index(Request $request)
     {
         $query = PaymentTransaction::query()
-            ->with(['customer.cluster', 'billings'])
+            ->with(['unit.cluster', 'unit.customer', 'billings'])
             ->when($request->query('search'), fn ($q, $value) => $q->where(fn ($inner) => $inner
                 ->where('transaction_number', 'like', "%{$value}%")
                 ->orWhere('invoice_number', 'like', "%{$value}%")
                 ->orWhere('provider_reference', 'like', "%{$value}%")
-                ->orWhere('customer_id', 'like', "%{$value}%")))
+                ->orWhere('unit_id', 'like', "%{$value}%")))
             ->when($request->query('provider'), fn ($q, $value) => $q->where('payment_provider', $value))
             ->when($request->query('status'), fn ($q, $value) => $q->where('status', $value))
-            ->when($request->query('customer_id'), fn ($q, $value) => $q->where('customer_id', $value));
+            ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value));
 
         return $this->paginated($query->latest()->paginate($request->integer('per_page', 15)));
     }
 
     public function show(PaymentTransaction $transaction)
     {
-        return $this->success($transaction->load(['customer.cluster', 'billings']));
+        return $this->success($transaction->load(['unit.cluster', 'billings']));
     }
 
     public function create(Request $request, PaymentGatewayFactory $factory)
     {
         $data = $request->validate([
-            'customer_id' => ['required', 'exists:customers,id'],
+            'unit_id' => ['required', 'exists:units,id'],
             'billing_ids' => ['required', 'array', 'min:1'],
             'billing_ids.*' => ['integer', 'exists:billings,id'],
             'provider' => ['nullable', 'in:manual,xendit,midtrans'],
@@ -65,7 +65,7 @@ class PaymentGatewayController extends Controller
         $transaction = DB::transaction(function () use ($data, $request, $factory, $setting, $provider) {
             $billings = Billing::query()
                 ->whereIn('id', $data['billing_ids'])
-                ->where('customer_id', $data['customer_id'])
+                ->where('unit_id', $data['unit_id'])
                 ->unpaid()
                 ->approved()
                 ->lockForUpdate()
@@ -79,7 +79,7 @@ class PaymentGatewayController extends Controller
             $transaction = PaymentTransaction::query()->create([
                 'transaction_number' => 'TRX-'.now()->format('YmdHis').'-'.Str::upper(Str::random(6)),
                 'invoice_number' => 'INV-'.now()->format('YmdHis').'-'.Str::upper(Str::random(6)),
-                'customer_id' => $data['customer_id'],
+                'unit_id' => $data['unit_id'],
                 'subtotal' => $subtotal,
                 'tax' => 0,
                 'admin_fee' => $adminFee,

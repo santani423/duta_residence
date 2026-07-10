@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Customer;
 use App\Models\NotificationQueue;
+use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
@@ -28,19 +28,19 @@ class NotificationSeeder extends Seeder
             'account_changed' => 'Perubahan akun berhasil disimpan.',
         ];
 
-        Customer::where('status_id', 'AK')->orderBy('id')->limit(260)->get()->each(function (Customer $customer, int $i) use ($types) {
-            $count = $customer->id === 'AL012' ? 18 : rand(2, 7);
+        Unit::with('customer')->where('status_id', 'AK')->orderBy('id')->limit(260)->get()->each(function (Unit $unit, int $i) use ($types) {
+            $count = $unit->id === 'AL012' ? 18 : rand(2, 7);
             $keys = array_keys($types);
 
             for ($n = 0; $n < $count; $n++) {
                 $type = $keys[($i + $n) % count($keys)];
                 NotificationQueue::updateOrCreate(
-                    ['customer_id' => $customer->id, 'type' => $type, 'message' => $types[$type]." Ref {$customer->id}-{$n}"],
+                    ['unit_id' => $unit->id, 'type' => $type, 'message' => $types[$type]." Ref {$unit->id}-{$n}"],
                     [
                         'user_id' => null,
                         'channel' => 'in_app',
-                        'recipient' => $customer->email ?: $customer->phone,
-                        'read_status' => $customer->id === 'AL012' || $n % 3 !== 0 ? 'unread' : 'read',
+                        'recipient' => $unit->customer?->email ?: $unit->customer?->phone,
+                        'read_status' => $unit->id === 'AL012' || $n % 3 !== 0 ? 'unread' : 'read',
                         'status' => $n % 5 === 0 ? 'pending' : 'sent',
                         'attempts' => $n % 2,
                         'sent_at' => now()->subDays($n),
@@ -49,7 +49,7 @@ class NotificationSeeder extends Seeder
             }
         });
 
-        User::whereNull('customer_id')->limit(25)->get()->each(function (User $user, int $i) {
+        User::whereNull('unit_id')->limit(25)->get()->each(function (User $user, int $i) {
             NotificationQueue::updateOrCreate(
                 ['user_id' => $user->id, 'type' => 'internal_task', 'message' => "Tugas internal demo {$i} untuk {$user->name}"],
                 [

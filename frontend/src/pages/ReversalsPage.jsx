@@ -63,7 +63,7 @@ export default function ReversalsPage() {
           scrollX={1050}
           columns={[
             { title: 'Receipt', dataIndex: 'receipt_number', width: 190 },
-            { title: 'Pelanggan', render: (_, row) => row.receipt?.customer?.name || row.receipt?.customer_name },
+            { title: 'Pelanggan', render: (_, row) => row.receipt?.unit?.customer?.name || row.receipt?.customer_name },
             { title: 'Alasan', dataIndex: 'reason' },
             { title: 'Status', dataIndex: 'status', render: (value) => <StatusBadge type="approval" value={value} /> },
             { title: 'Diajukan', dataIndex: 'submitted_at', render: formatDateTime },

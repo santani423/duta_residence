@@ -84,10 +84,10 @@ class AuthController extends Controller
             'username' => $user->username,
             'email' => $user->email,
             'phone' => $user->phone,
-            'customer_id' => $user->customer_id,
-            'customer' => $user->customer ? [
-                'id' => $user->customer->id,
-                'name' => $user->customer->name,
+            'unit_id' => $user->unit_id,
+            'unit' => $user->unit ? [
+                'id' => $user->unit->id,
+                'name' => $user->unit->customer?->name,
             ] : null,
             'role' => $user->getRoleNames()->first(),
             'roles' => $user->getRoleNames(),

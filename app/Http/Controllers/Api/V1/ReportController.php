@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\Billing;
 use App\Models\Cluster;
-use App\Models\Customer;
 use App\Models\Receipt;
+use App\Models\Unit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -19,12 +19,12 @@ class ReportController extends Controller
     {
         return $this->success([
             'total_clusters' => Cluster::count(),
-            'total_customers' => Customer::count(),
+            'total_customers' => Unit::count(),
             'total_billings' => Billing::count(),
             'unpaid_billings' => Billing::where('status_id', '01')->count(),
             'paid_billings' => Billing::where('status_id', '02')->count(),
             'today_receipts_total' => Receipt::whereDate('transaction_date', today())->sum('grand_total'),
-            'recent_receipts' => Receipt::with('customer')->latest('transaction_date')->limit(5)->get(),
+            'recent_receipts' => Receipt::with('unit.customer')->latest('transaction_date')->limit(5)->get(),
         ]);
     }
 
@@ -34,11 +34,11 @@ class ReportController extends Controller
         $month = $request->integer('month', now()->month);
 
         $data = Billing::query()
-            ->select('customers.cluster_id', DB::raw('COUNT(*) as billing_count'), DB::raw('SUM(amount) as total_billing'), DB::raw('SUM(CASE WHEN status_id = "02" THEN amount + penalty ELSE 0 END) as total_paid'))
-            ->join('customers', 'customers.id', '=', 'billings.customer_id')
+            ->select('units.cluster_id', DB::raw('COUNT(*) as billing_count'), DB::raw('SUM(amount) as total_billing'), DB::raw('SUM(CASE WHEN billings.status_id = "02" THEN amount + penalty ELSE 0 END) as total_paid'))
+            ->join('units', 'units.id', '=', 'billings.unit_id')
             ->where('year', $year)
             ->where('month', $month)
-            ->groupBy('customers.cluster_id')
+            ->groupBy('units.cluster_id')
             ->get();
 
         return $this->success($data);
@@ -47,7 +47,7 @@ class ReportController extends Controller
     public function dailyReceipt(Request $request)
     {
         $date = $request->query('date', today()->toDateString());
-        $receipts = Receipt::query()->with('customer.cluster')->whereDate('transaction_date', $date)->get();
+        $receipts = Receipt::query()->with('unit.cluster')->whereDate('transaction_date', $date)->get();
 
         return $this->success([
             'date' => $date,

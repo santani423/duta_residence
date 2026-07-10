@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\PaymentGatewaySettingController;
 use App\Http\Controllers\Api\V1\ReceivableController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\ReversalController;
+use App\Http\Controllers\Api\V1\UnitController;
 use App\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -41,8 +42,14 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::get('customers/{customer}', [CustomerController::class, 'show'])->middleware('permission:customers.view');
     Route::put('customers/{customer}', [CustomerController::class, 'update'])->middleware('permission:customers.update');
     Route::delete('customers/{customer}', [CustomerController::class, 'destroy'])->middleware('permission:customers.delete');
-    Route::post('customers/{customer}/convert-property', [CustomerController::class, 'convertProperty'])->middleware('permission:customers.convert-property');
-    Route::get('customers/{customer}/installments', [InstallmentController::class, 'byCustomer'])->middleware('permission:installments.view');
+
+    Route::get('units', [UnitController::class, 'index'])->middleware('permission:units.view');
+    Route::post('units', [UnitController::class, 'store'])->middleware('permission:units.create');
+    Route::get('units/{unit}', [UnitController::class, 'show'])->middleware('permission:units.view');
+    Route::put('units/{unit}', [UnitController::class, 'update'])->middleware('permission:units.update');
+    Route::delete('units/{unit}', [UnitController::class, 'destroy'])->middleware('permission:units.delete');
+    Route::post('units/{unit}/convert-property', [UnitController::class, 'convertProperty'])->middleware('permission:units.convert-property');
+    Route::get('units/{unit}/installments', [InstallmentController::class, 'byUnit'])->middleware('permission:installments.view');
 
     Route::post('billings/prepare-monthly', [BillingController::class, 'prepareMonthly'])->middleware('permission:billings.prepare');
     Route::post('billings/prepare-special', [BillingController::class, 'prepareSpecial'])->middleware('permission:billings.prepare-special');

@@ -14,7 +14,8 @@ class RolePermissionSeeder extends Seeder
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         $permissions = [
-            'customers.view', 'customers.create', 'customers.update', 'customers.delete', 'customers.convert-property',
+            'customers.view', 'customers.create', 'customers.update', 'customers.delete',
+            'units.view', 'units.create', 'units.update', 'units.delete', 'units.convert-property',
             'clusters.view', 'clusters.create', 'clusters.update-rate', 'clusters.delete',
             'billings.view', 'billings.prepare', 'billings.prepare-special', 'billings.prepare-back', 'billings.approve', 'billings.update', 'billings.delete',
             'payments.view', 'payments.create', 'payments.process', 'payments.verify', 'payments.cancel', 'payments.refund',
@@ -34,7 +35,8 @@ class RolePermissionSeeder extends Seeder
             'root' => $permissions,
             'super_admin' => $permissions,
             'admin_estate' => [
-                'customers.view', 'customers.create', 'customers.update', 'customers.convert-property',
+                'customers.view', 'customers.create', 'customers.update',
+                'units.view', 'units.create', 'units.update', 'units.convert-property',
                 'clusters.view', 'clusters.create', 'clusters.update-rate',
                 'billings.view', 'billings.prepare', 'billings.prepare-special', 'billings.prepare-back', 'billings.approve',
                 'payments.view', 'payments.create', 'payments.verify',
@@ -42,7 +44,8 @@ class RolePermissionSeeder extends Seeder
                 'payment-settings.view', 'payment-settings.update',
             ],
             'back_office' => [
-                'customers.view', 'customers.create', 'customers.update', 'customers.convert-property',
+                'customers.view', 'customers.create', 'customers.update',
+                'units.view', 'units.create', 'units.update', 'units.convert-property',
                 'clusters.view', 'clusters.create', 'clusters.update-rate',
                 'billings.view', 'billings.prepare', 'billings.prepare-special', 'billings.prepare-back', 'billings.approve', 'billings.update',
                 'payments.view', 'payments.create', 'payments.process', 'payments.verify',
@@ -51,27 +54,27 @@ class RolePermissionSeeder extends Seeder
                 'reports.view', 'documents.generate',
             ],
             'finance' => [
-                'customers.view', 'billings.view', 'billings.prepare', 'billings.approve',
+                'customers.view', 'units.view', 'billings.view', 'billings.prepare', 'billings.approve',
                 'payments.view', 'payments.create', 'payments.verify', 'payments.refund',
                 'installments.view', 'installments.create', 'reports.view', 'documents.generate',
                 'payment-settings.view',
             ],
             'property_manager' => [
-                'customers.view', 'clusters.view', 'billings.view', 'payments.view',
+                'customers.view', 'units.view', 'clusters.view', 'billings.view', 'payments.view',
                 'reports.view', 'documents.generate', 'users.view',
             ],
-            'operations_staff' => ['customers.view', 'clusters.view', 'billings.view', 'documents.generate'],
-            'security' => ['customers.view', 'clusters.view'],
-            'technician' => ['customers.view', 'clusters.view'],
-            'vendor' => ['customers.view', 'clusters.view'],
+            'operations_staff' => ['customers.view', 'units.view', 'clusters.view', 'billings.view', 'documents.generate'],
+            'security' => ['customers.view', 'units.view', 'clusters.view'],
+            'technician' => ['customers.view', 'units.view', 'clusters.view'],
+            'vendor' => ['customers.view', 'units.view', 'clusters.view'],
             'loket' => [
-                'customers.view', 'clusters.view', 'billings.view',
+                'customers.view', 'units.view', 'clusters.view', 'billings.view',
                 'payments.view', 'payments.process', 'payments.create',
                 'installments.view', 'installments.create',
                 'reversals.view', 'reversals.submit',
                 'documents.generate',
             ],
-            'cs' => ['customers.view', 'clusters.view', 'billings.view'],
+            'cs' => ['customers.view', 'units.view', 'clusters.view', 'billings.view'],
             'customer' => [],
         ];
 

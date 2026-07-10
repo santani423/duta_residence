@@ -15,7 +15,7 @@ class NotificationQueueFactory extends Factory
     public function definition(): array
     {
         return [
-            'customer_id' => null,
+            'unit_id' => null,
             'user_id' => null,
             'type' => fake()->randomElement(['billing_new', 'billing_due_soon', 'payment_success', 'complaint_updated', 'maintenance_scheduled', 'announcement_estate']),
             'channel' => fake()->randomElement(['in_app', 'email', 'whatsapp']),

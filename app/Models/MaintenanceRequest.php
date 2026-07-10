@@ -11,7 +11,7 @@ class MaintenanceRequest extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'customer_id', 'user_id', 'unit_label', 'category', 'description',
+        'unit_id', 'user_id', 'unit_label', 'category', 'description',
         'urgency', 'preferred_schedule', 'status', 'technician_name',
         'technician_schedule', 'technician_notes', 'rating', 'rating_notes',
         'attachment_path', 'completed_at', 'created_by', 'updated_by',
@@ -23,9 +23,9 @@ class MaintenanceRequest extends Model
         'completed_at' => 'datetime',
     ];
 
-    public function customer()
+    public function unit()
     {
-        return $this->belongsTo(Customer::class);
+        return $this->belongsTo(Unit::class);
     }
 
     public function user()

@@ -17,8 +17,8 @@ class Cluster extends Model
         'is_active' => 'boolean',
     ];
 
-    public function customers()
+    public function units()
     {
-        return $this->hasMany(Customer::class);
+        return $this->hasMany(Unit::class);
     }
 }

@@ -3,9 +3,9 @@
 namespace Database\Seeders;
 
 use App\Models\Billing;
-use App\Models\Customer;
 use App\Models\PaymentTransaction;
 use App\Models\Receipt;
+use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
@@ -19,7 +19,7 @@ class PaymentSeeder extends Seeder
         $finance = User::where('username', 'finance')->first() ?: User::where('username', 'root')->first();
         $loket = User::where('username', 'loket')->first() ?: $finance;
 
-        Billing::with('customer.cluster')->where('status_id', '02')->orderBy('id')->limit(900)->get()
+        Billing::with('unit.cluster')->where('status_id', '02')->orderBy('id')->limit(900)->get()
             ->each(function (Billing $billing) use ($loket) {
                 $receipt = $this->receipt($billing, $loket, 'C', 'L');
                 $billing->update(['receipt_number' => $receipt->number, 'loket_code' => 'L01']);
@@ -40,9 +40,9 @@ class PaymentSeeder extends Seeder
             'AL012' => ['xendit', 'expired'],
         ];
 
-        foreach ($scenarios as $customerId => [$provider, $status]) {
-            $billing = Billing::where('customer_id', $customerId)->where('status_id', '01')->whereNotNull('approved_at')->oldest()->first()
-                ?: Billing::where('customer_id', $customerId)->oldest()->first();
+        foreach ($scenarios as $unitId => [$provider, $status]) {
+            $billing = Billing::where('unit_id', $unitId)->where('status_id', '01')->whereNotNull('approved_at')->oldest()->first()
+                ?: Billing::where('unit_id', $unitId)->oldest()->first();
             if (! $billing) {
                 continue;
             }
@@ -57,8 +57,8 @@ class PaymentSeeder extends Seeder
         }
 
         foreach (['pending', 'expired', 'failed', 'cancelled', 'refunded'] as $status) {
-            $customer = Customer::whereNotIn('id', array_keys($scenarios))->where('status_id', 'AK')->inRandomOrder()->first();
-            $billing = $customer ? Billing::where('customer_id', $customer->id)->whereNotNull('approved_at')->oldest()->first() : null;
+            $unit = Unit::whereNotIn('id', array_keys($scenarios))->where('status_id', 'AK')->inRandomOrder()->first();
+            $billing = $unit ? Billing::where('unit_id', $unit->id)->whereNotNull('approved_at')->oldest()->first() : null;
             if ($billing) {
                 $payment = $this->transaction($billing, $status === 'failed' ? 'midtrans' : 'xendit', $status, $finance);
                 $payment->billings()->syncWithoutDetaching([$billing->id]);
@@ -77,7 +77,7 @@ class PaymentSeeder extends Seeder
             ['transaction_number' => "TRX-DEMO-{$number}"],
             [
                 'invoice_number' => "INV-DEMO-{$number}",
-                'customer_id' => $billing->customer_id,
+                'unit_id' => $billing->unit_id,
                 'subtotal' => $subtotal,
                 'tax' => 0,
                 'admin_fee' => $adminFee,
@@ -92,7 +92,7 @@ class PaymentSeeder extends Seeder
                 'paid_at' => in_array($status, ['paid', 'refunded'], true) ? now()->subDays(rand(1, 20)) : null,
                 'manual_proof_path' => $manual ? "dummy/manual-payments/proof-{$number}.jpg" : null,
                 'manual_transfer_date' => $manual ? now()->subDays(rand(1, 7))->toDateString() : null,
-                'manual_notes' => $manual ? "Pengirim: {$billing->customer->name}\nBank: BCA\nRekening: 1234****{$number}\nNominal: ".($subtotal + $adminFee) : null,
+                'manual_notes' => $manual ? "Pengirim: {$billing->unit->customer->name}\nBank: BCA\nRekening: 1234****{$number}\nNominal: ".($subtotal + $adminFee) : null,
                 'verification_notes' => match ($status) {
                     'rejected' => 'Nominal transfer tidak sesuai atau bukti duplikat.',
                     'paid' => $manual ? 'Bukti valid dan disetujui finance.' : null,
@@ -119,12 +119,12 @@ class PaymentSeeder extends Seeder
         $total = (float) $billing->amount + (float) $billing->penalty - (float) $billing->discount;
 
         return Receipt::updateOrCreate(['number' => $number], [
-            'customer_id' => $billing->customer_id,
+            'unit_id' => $billing->unit_id,
             'transaction_date' => $billing->paid_at ?: now()->subDays(rand(1, 15)),
-            'customer_name' => $billing->customer->name,
-            'cluster_name' => $billing->customer->cluster->name,
-            'block' => $billing->customer->block,
-            'lot_number' => $billing->customer->lot_number,
+            'customer_name' => $billing->unit->customer->name,
+            'cluster_name' => $billing->unit->cluster->name,
+            'block' => $billing->unit->block,
+            'lot_number' => $billing->unit->lot_number,
             'total_billing' => $billing->amount,
             'total_penalty' => $billing->penalty,
             'grand_total' => $total,

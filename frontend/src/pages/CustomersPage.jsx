@@ -1,16 +1,15 @@
-import { Button, Card, Descriptions, Drawer, Dropdown, Form, Input, Modal, Select, Space, Tabs, Tag, message } from 'antd';
-import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, PlusOutlined, SwapOutlined } from '@ant-design/icons';
+import { Button, Card, Descriptions, Drawer, Dropdown, Form, Input, Modal, Space, Tabs, Tag, message } from 'antd';
+import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import PageHeader from '../components/common/PageHeader.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
-import StatusBadge from '../components/common/StatusBadge.jsx';
 import Can from '../components/common/Can.jsx';
-import CustomerForm, { customerStatusOptions, propertyTypeOptions } from '../components/forms/CustomerForm.jsx';
+import CustomerForm from '../components/forms/CustomerForm.jsx';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import { api } from '../services/estateApi.js';
 import { useTableState } from '../hooks/useTableState.js';
-import { compactText, formatCurrency, formatDate, formatPeriod } from '../utils/format.js';
+import { compactText } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
 import { useAuth } from '../state/AuthContext.jsx';
 
@@ -18,12 +17,11 @@ export default function CustomersPage() {
   const table = useTableState();
   const [drawer, setDrawer] = useState({ type: null, record: null });
   const [form] = Form.useForm();
-  const [convertForm] = Form.useForm();
   const queryClient = useQueryClient();
   const { can } = useAuth();
 
   const customers = useQuery({ queryKey: ['customers', table.params], queryFn: () => api.customers.list(table.params) });
-  const clusters = useQuery({ queryKey: ['clusters'], queryFn: () => api.clusters.list() });
+  const districts = useQuery({ queryKey: ['lookup-districts'], queryFn: () => api.lookup.districts() });
   const detail = useQuery({
     queryKey: ['customers', drawer.record?.id],
     queryFn: () => api.customers.detail(drawer.record.id),
@@ -53,19 +51,6 @@ export default function CustomersPage() {
     onError: (error) => message.error(getApiErrorMessage(error)),
   });
 
-  const convert = useMutation({
-    mutationFn: (values) => api.customers.convert(drawer.record.id, values),
-    onSuccess: () => {
-      message.success('Properti berhasil dikonversi');
-      setDrawer({ type: null, record: null });
-      queryClient.invalidateQueries({ queryKey: ['customers'] });
-    },
-    onError: (error) => {
-      convertForm.setFields(mapValidationErrors(error));
-      message.error(getApiErrorMessage(error));
-    },
-  });
-
   function openCreate() {
     form.resetFields();
     setDrawer({ type: 'create', record: null });
@@ -76,14 +61,13 @@ export default function CustomersPage() {
     setDrawer({ type: 'edit', record });
   }
 
-  const clusterOptions = (clusters.data?.data || []).map((item) => ({ value: item.id, label: item.name }));
   const detailData = detail.data?.data;
 
   return (
     <section>
       <PageHeader
         title="Pelanggan"
-        subtitle="Master data penghuni dan pemilik unit Grand Duta."
+        subtitle="Master data pemilik unit Grand Duta."
         breadcrumbs={[{ label: 'Pelanggan' }]}
         onRefresh={customers.refetch}
         loading={customers.isFetching}
@@ -91,26 +75,19 @@ export default function CustomersPage() {
       />
 
       <FilterBar>
-        <Input allowClear placeholder="Cari nama, ID, blok, telepon" value={table.search} onChange={(event) => table.setSearch(event.target.value)} className="filter-input" />
-        <Select allowClear placeholder="Cluster" options={clusterOptions} value={table.filters.cluster_id} onChange={(value) => table.setFilters({ ...table.filters, cluster_id: value })} className="filter-input" />
-        <Select allowClear placeholder="Status" options={customerStatusOptions} value={table.filters.status_id} onChange={(value) => table.setFilters({ ...table.filters, status_id: value })} className="filter-input" />
-        <Select allowClear placeholder="Tipe" options={propertyTypeOptions} value={table.filters.property_type_id} onChange={(value) => table.setFilters({ ...table.filters, property_type_id: value })} className="filter-input" />
+        <Input allowClear placeholder="Cari nama, ID, telepon" value={table.search} onChange={(event) => table.setSearch(event.target.value)} className="filter-input" />
       </FilterBar>
 
       <Card>
         <ResponsiveTable
           query={customers}
           onChange={table.handleTableChange}
-          scrollX={1180}
+          scrollX={760}
           columns={[
-            { title: 'ID', dataIndex: 'id', fixed: 'left', width: 90 },
+            { title: 'ID', dataIndex: 'id', fixed: 'left', width: 110 },
             { title: 'Nama', dataIndex: 'name', width: 220 },
-            { title: 'Cluster', dataIndex: ['cluster', 'name'], width: 160 },
-            { title: 'Blok', dataIndex: 'block', width: 80 },
-            { title: 'Kavling', dataIndex: 'lot_number', width: 90 },
-            { title: 'Tipe', render: (_, row) => row.property_type?.name || row.propertyType?.name || row.property_type_id },
-            { title: 'Status', render: (_, row) => <Tag color={row.status_id === 'AK' ? 'green' : 'default'}>{row.status?.name || row.status_id}</Tag> },
             { title: 'Telepon', dataIndex: 'phone' },
+            { title: 'Email', dataIndex: 'email' },
             {
               title: 'Aksi',
               fixed: 'right',
@@ -118,8 +95,7 @@ export default function CustomersPage() {
               render: (_, record) => {
                 const items = [
                   { key: 'detail', label: 'Detail', icon: <EyeOutlined /> },
-                  { key: 'edit', label: 'Edit', icon: <EditOutlined />, disabled: false, permission: 'customers.update' },
-                  { key: 'convert', label: 'Konversi Properti', icon: <SwapOutlined />, disabled: record.property_type_id !== 'K', permission: 'customers.convert-property' },
+                  { key: 'edit', label: 'Edit', icon: <EditOutlined />, permission: 'customers.update' },
                   { type: 'divider' },
                   { key: 'delete', label: 'Hapus', icon: <DeleteOutlined />, danger: true, permission: 'customers.delete' },
                 ].filter((item) => !item.permission || can(item.permission));
@@ -127,7 +103,6 @@ export default function CustomersPage() {
                   <Dropdown menu={{ items, onClick: ({ key }) => {
                     if (key === 'detail') setDrawer({ type: 'detail', record });
                     if (key === 'edit') openEdit(record);
-                    if (key === 'convert') setDrawer({ type: 'convert', record });
                     if (key === 'delete') {
                       Modal.confirm({
                         title: 'Hapus pelanggan?',
@@ -151,11 +126,11 @@ export default function CustomersPage() {
         title={drawer.type === 'edit' ? 'Edit Pelanggan' : 'Tambah Pelanggan'}
         open={drawer.type === 'create' || drawer.type === 'edit'}
         onClose={() => setDrawer({ type: null, record: null })}
-        width={760}
+        width={620}
         extra={<Space><Button onClick={() => setDrawer({ type: null, record: null })}>Batal</Button><Button type="primary" loading={save.isPending} onClick={() => form.submit()}>Simpan</Button></Space>}
         destroyOnHidden
       >
-        <CustomerForm form={form} clusters={clusters.data?.data || []} disabledId={drawer.type === 'edit'} onFinish={save.mutate} loading={save.isPending} />
+        <CustomerForm form={form} districts={districts.data?.data || []} onFinish={save.mutate} loading={save.isPending} />
       </Drawer>
 
       <Drawer title="Detail Pelanggan" open={drawer.type === 'detail'} onClose={() => setDrawer({ type: null, record: null })} width={840}>
@@ -168,30 +143,27 @@ export default function CustomersPage() {
                 <Descriptions bordered column={{ xs: 1, md: 2 }}>
                   <Descriptions.Item label="ID">{detailData?.id}</Descriptions.Item>
                   <Descriptions.Item label="Nama">{detailData?.name}</Descriptions.Item>
-                  <Descriptions.Item label="Cluster">{detailData?.cluster?.name}</Descriptions.Item>
-                  <Descriptions.Item label="Unit">{detailData?.block}-{detailData?.lot_number}</Descriptions.Item>
-                  <Descriptions.Item label="Tipe">{detailData?.property_type?.name || detailData?.propertyType?.name}</Descriptions.Item>
-                  <Descriptions.Item label="Status">{detailData?.status?.name}</Descriptions.Item>
                   <Descriptions.Item label="Telepon">{compactText(detailData?.phone)}</Descriptions.Item>
+                  <Descriptions.Item label="Telepon Rumah">{compactText(detailData?.telephone)}</Descriptions.Item>
                   <Descriptions.Item label="Email">{compactText(detailData?.email)}</Descriptions.Item>
-                  <Descriptions.Item label="Luas">{compactText(detailData?.building_area)} / {compactText(detailData?.land_area)} m2</Descriptions.Item>
-                  <Descriptions.Item label="Serah Terima">{formatDate(detailData?.handover_date)}</Descriptions.Item>
+                  <Descriptions.Item label="Kabupaten/Kota">{detailData?.district?.name}</Descriptions.Item>
                   <Descriptions.Item label="Alamat" span={2}>{compactText(detailData?.id_card_address)}</Descriptions.Item>
                 </Descriptions>
               ),
             },
             {
-              key: 'billings',
-              label: 'Tagihan',
+              key: 'units',
+              label: 'Unit-unit',
               children: (
                 <ResponsiveTable
-                  data={detailData?.billings || []}
+                  data={detailData?.units || []}
                   pagination={false}
                   columns={[
-                    { title: 'Periode', render: (_, row) => formatPeriod(row.year, row.month) },
-                    { title: 'Nominal', dataIndex: 'amount', render: formatCurrency },
-                    { title: 'Denda', dataIndex: 'penalty', render: formatCurrency },
-                    { title: 'Status', dataIndex: 'status_id', render: (value) => <StatusBadge type="billing" value={value} /> },
+                    { title: 'ID', dataIndex: 'id' },
+                    { title: 'Cluster', dataIndex: ['cluster', 'name'] },
+                    { title: 'Blok', dataIndex: 'block' },
+                    { title: 'Kavling', dataIndex: 'lot_number' },
+                    { title: 'Status', render: (_, row) => <Tag color={row.status_id === 'AK' ? 'green' : 'default'}>{row.status?.name || row.status_id}</Tag> },
                   ]}
                 />
               ),
@@ -199,23 +171,6 @@ export default function CustomersPage() {
           ]}
         />
       </Drawer>
-
-      <Modal
-        title="Konversi Kavling Developer"
-        open={drawer.type === 'convert'}
-        onCancel={() => setDrawer({ type: null, record: null })}
-        onOk={() => convertForm.submit()}
-        confirmLoading={convert.isPending}
-      >
-        <Form form={convertForm} layout="vertical" initialValues={{ property_type_id: 'B' }} onFinish={convert.mutate}>
-          <Form.Item label="Tipe tujuan" name="property_type_id" rules={[{ required: true }]}>
-            <Select options={[{ value: 'B', label: 'Bangunan' }]} />
-          </Form.Item>
-          <Form.Item label="Catatan" name="notes">
-            <Input.TextArea rows={3} />
-          </Form.Item>
-        </Form>
-      </Modal>
     </section>
   );
 }

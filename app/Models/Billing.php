@@ -12,7 +12,7 @@ class Billing extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'customer_id', 'year', 'month', 'amount', 'penalty', 'discount', 'status_id',
+        'unit_id', 'year', 'month', 'amount', 'penalty', 'discount', 'status_id',
         'is_penalty_eligible', 'is_discount_eligible', 'billing_type', 'approved_by',
         'approved_at', 'approval_notes', 'paid_at', 'receipt_number', 'loket_code',
         'processed_by', 'spt_print_count', 'created_by',
@@ -28,9 +28,9 @@ class Billing extends Model
         'paid_at' => 'datetime',
     ];
 
-    public function customer()
+    public function unit()
     {
-        return $this->belongsTo(Customer::class);
+        return $this->belongsTo(Unit::class);
     }
 
     public function status()

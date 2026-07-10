@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Services\PaymentService;
-use App\Models\Customer;
+use App\Models\Unit;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\Request;
 
@@ -15,7 +15,7 @@ class BackPaymentController extends Controller
     public function process(Request $request, PaymentService $service)
     {
         $data = $request->validate([
-            'customer_id' => ['required', 'exists:customers,id'],
+            'unit_id' => ['required', 'exists:units,id'],
             'billing_ids' => ['required', 'array', 'min:1'],
             'billing_ids.*' => ['integer', 'exists:billings,id'],
             'payment_method_id' => ['required', 'exists:payment_methods,id'],
@@ -23,7 +23,7 @@ class BackPaymentController extends Controller
             'cashier_name' => ['nullable', 'string', 'max:50'],
         ]);
 
-        $receipt = $service->process(Customer::findOrFail($data['customer_id']), $data['billing_ids'], $data, $request->user()->id);
+        $receipt = $service->process(Unit::findOrFail($data['unit_id']), $data['billing_ids'], $data, $request->user()->id);
 
         return $this->success($receipt, 'Pelunasan mundur berhasil diproses.', 201);
     }

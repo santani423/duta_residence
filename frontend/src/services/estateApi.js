@@ -25,8 +25,15 @@ export const api = {
     create: (payload) => http.post('/customers', payload),
     update: (id, payload) => http.put(`/customers/${id}`, payload),
     remove: (id) => http.delete(`/customers/${id}`),
-    convert: (id, payload) => http.post(`/customers/${id}/convert-property`, payload),
-    installments: (id) => http.get(`/customers/${id}/installments`),
+  },
+  units: {
+    list: (params) => http.get('/units', { params }),
+    detail: (id) => http.get(`/units/${id}`),
+    create: (payload) => http.post('/units', payload),
+    update: (id, payload) => http.put(`/units/${id}`, payload),
+    remove: (id) => http.delete(`/units/${id}`),
+    convert: (id, payload) => http.post(`/units/${id}/convert-property`, payload),
+    installments: (id) => http.get(`/units/${id}/installments`),
   },
   billings: {
     list: (params) => http.get('/billings', { params }),

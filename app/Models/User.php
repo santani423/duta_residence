@@ -26,7 +26,7 @@ class User extends Authenticatable
         'username',
         'email',
         'phone',
-        'customer_id',
+        'unit_id',
         'password',
         'is_active',
         'theme_preference',
@@ -67,8 +67,8 @@ class User extends Authenticatable
         return $this->hasMany(AuditLog::class);
     }
 
-    public function customer()
+    public function unit()
     {
-        return $this->belongsTo(Customer::class);
+        return $this->belongsTo(Unit::class);
     }
 }

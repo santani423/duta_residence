@@ -9,6 +9,7 @@ use App\Models\CustomerComplaint;
 use App\Models\MaintenanceRequest;
 use App\Models\PaymentGatewaySetting;
 use App\Models\PaymentTransaction;
+use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
@@ -24,6 +25,8 @@ class AuditLogSeeder extends Seeder
             ['auth', 'LOGOUT', 'logout'],
             ['customers', 'CREATE', 'customer_created'],
             ['customers', 'UPDATE', 'customer_updated'],
+            ['units', 'CREATE', 'unit_created'],
+            ['units', 'UPDATE', 'unit_updated'],
             ['users', 'ACTIVATE', 'user_activated'],
             ['users', 'DEACTIVATE', 'user_deactivated'],
             ['users', 'ROLE_UPDATE', 'role_changed'],
@@ -97,6 +100,7 @@ class AuditLogSeeder extends Seeder
     {
         return match ($module) {
             'customers' => [Customer::class, (string) Customer::inRandomOrder()->value('id')],
+            'units' => [Unit::class, (string) Unit::inRandomOrder()->value('id')],
             'billings' => [Billing::class, (string) Billing::inRandomOrder()->value('id')],
             'payments' => [PaymentTransaction::class, (string) PaymentTransaction::inRandomOrder()->value('id')],
             'complaints' => [CustomerComplaint::class, (string) CustomerComplaint::inRandomOrder()->value('id')],

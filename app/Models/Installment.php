@@ -6,15 +6,15 @@ use Illuminate\Database\Eloquent\Model;
 
 class Installment extends Model
 {
-    protected $fillable = ['customer_id', 'amount', 'payment_date', 'notes', 'allocated_to', 'created_by'];
+    protected $fillable = ['unit_id', 'amount', 'payment_date', 'notes', 'allocated_to', 'created_by'];
 
     protected $casts = [
         'amount' => 'decimal:2',
         'payment_date' => 'date',
     ];
 
-    public function customer()
+    public function unit()
     {
-        return $this->belongsTo(Customer::class);
+        return $this->belongsTo(Unit::class);
     }
 }

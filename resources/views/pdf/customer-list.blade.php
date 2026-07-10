@@ -3,16 +3,16 @@
 @section('content')
     <h1>Daftar Pelanggan</h1>
     <table>
-        <thead><tr><th>ID</th><th>Nama</th><th>Klaster</th><th>Blok</th><th>Kavling</th><th>Telepon</th></tr></thead>
+        <thead><tr><th>ID</th><th>Pemilik</th><th>Klaster</th><th>Blok</th><th>Kavling</th><th>Telepon</th></tr></thead>
         <tbody>
-            @foreach ($customers as $customer)
+            @foreach ($units as $unit)
                 <tr>
-                    <td>{{ $customer->id }}</td>
-                    <td>{{ $customer->name }}</td>
-                    <td>{{ $customer->cluster->name }}</td>
-                    <td>{{ $customer->block }}</td>
-                    <td>{{ $customer->lot_number }}</td>
-                    <td>{{ $customer->phone }}</td>
+                    <td>{{ $unit->id }}</td>
+                    <td>{{ $unit->customer->name ?? '-' }}</td>
+                    <td>{{ $unit->cluster->name }}</td>
+                    <td>{{ $unit->block }}</td>
+                    <td>{{ $unit->lot_number }}</td>
+                    <td>{{ $unit->customer->phone ?? '-' }}</td>
                 </tr>
             @endforeach
         </tbody>
