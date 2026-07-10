@@ -5,7 +5,7 @@ import '../api/api_exception.dart';
 import '../models/user_session.dart';
 import '../storage/token_store.dart';
 
-enum SessionStatus { booting, authenticated, unauthenticated }
+enum SessionStatus { booting, authenticated, unauthenticated, connectionError }
 
 const _allowedRole = 'customer';
 const _roleMismatchMessage =
@@ -28,6 +28,7 @@ class SessionController extends ChangeNotifier {
     final token = await _tokenStore.read();
     if (token == null || token.isEmpty) {
       _setUnauthenticated();
+      notifyListeners();
       return;
     }
 
@@ -46,8 +47,22 @@ class SessionController extends ChangeNotifier {
       _status = SessionStatus.authenticated;
       _message = null;
     } on ApiException catch (error) {
-      await _tokenStore.clear();
-      _setUnauthenticated(error.message);
+      if (error.statusCode == null) {
+        // Connectivity failure (timeout, DNS, TLS, dropped connection) —
+        // keep the saved token so the user isn't forced to log in again
+        // once the network or server recovers.
+        _status = SessionStatus.connectionError;
+        _message = error.message;
+      } else {
+        // The server explicitly rejected the session (401/403/419/etc).
+        await _tokenStore.clear();
+        _setUnauthenticated(error.message);
+      }
+    } catch (_) {
+      // Anything unexpected (malformed response, etc.) must not crash
+      // startup or leave the app stuck on the splash screen forever.
+      _status = SessionStatus.connectionError;
+      _message = 'Terjadi kesalahan tak terduga. Silakan coba lagi.';
     }
     notifyListeners();
   }

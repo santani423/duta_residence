@@ -7,6 +7,7 @@ import '../screens/splash_screen.dart';
 import '../state/session_controller.dart';
 import '../state/theme_controller.dart';
 import '../theme/app_theme.dart';
+import '../widgets/state_views.dart';
 
 class DutaResidenceApp extends StatelessWidget {
   const DutaResidenceApp({
@@ -35,6 +36,14 @@ class DutaResidenceApp extends StatelessWidget {
           themeAnimationCurve: Curves.easeOutCubic,
           home: switch (sessionController.status) {
             SessionStatus.booting => const SplashScreen(),
+            SessionStatus.connectionError => Scaffold(
+              body: ErrorView(
+                message:
+                    sessionController.message ??
+                    'Tidak dapat terhubung ke server.',
+                onRetry: sessionController.bootstrap,
+              ),
+            ),
             SessionStatus.unauthenticated => LoginScreen(
               sessionController: sessionController,
             ),

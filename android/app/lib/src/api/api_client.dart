@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -110,21 +111,31 @@ class ApiClient {
     return _handle(await _request(request));
   }
 
+  static const _requestTimeout = Duration(seconds: 20);
+  static const _connectionErrorMessage =
+      'Koneksi API tidak tersedia. Periksa server atau jaringan Anda.';
+
   Future<http.Response> _request(
     Future<http.Response> Function() request,
   ) async {
     try {
-      return await request();
-    } on SocketException {
+      return await request().timeout(_requestTimeout);
+    } catch (error) {
+      if (!_isConnectivityError(error)) rethrow;
       try {
-        return await request();
-      } on SocketException {
-        throw const ApiException(
-          'Koneksi API tidak tersedia. Periksa server atau jaringan Anda.',
-        );
+        return await request().timeout(_requestTimeout);
+      } catch (error) {
+        if (!_isConnectivityError(error)) rethrow;
+        throw const ApiException(_connectionErrorMessage);
       }
     }
   }
+
+  bool _isConnectivityError(Object error) =>
+      error is SocketException ||
+      error is HandshakeException ||
+      error is TimeoutException ||
+      error is http.ClientException;
 
   Future<ApiResult> _handle(http.Response response) async {
     final decoded = _decode(response.body);

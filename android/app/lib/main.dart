@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
@@ -23,8 +25,14 @@ Future<void> main() async {
     tokenStore: tokenStore,
   );
   apiClient.onUnauthorized = sessionController.expireSession;
-  await sessionController.bootstrap();
 
+  // `runApp` must not be blocked behind the `auth/me` network call: on a
+  // slow/flaky connection (common right after a fresh release-build
+  // install) that would leave the native launch screen frozen with no
+  // Flutter UI, error message, or retry option at all. The Flutter UI
+  // (starting on SplashScreen) mounts immediately instead, and bootstrap
+  // resolves in the background — session_controller.bootstrap() always
+  // settles into a concrete status and never throws.
   runApp(
     DutaResidenceApp(
       apiClient: apiClient,
@@ -32,4 +40,6 @@ Future<void> main() async {
       themeController: themeController,
     ),
   );
+
+  unawaited(sessionController.bootstrap());
 }
