@@ -16,22 +16,45 @@ class SplashScreen extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              colors.primaryContainer.withValues(alpha: 0.8),
-              colors.surface,
-              colors.tertiaryContainer.withValues(alpha: 0.35),
-            ],
+            colors: [colors.primary, colors.primaryContainer, colors.surface],
           ),
         ),
-        child: const Center(
+        child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              AppLogo(height: 84, alignment: Alignment.center),
-              SizedBox(height: AppSpacing.xl),
-              CircularProgressIndicator(),
-              SizedBox(height: AppSpacing.lg),
-              Text('Menyiapkan ${AppConfig.appName}'),
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.xl),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: colors.shadow.withValues(alpha: 0.18),
+                      blurRadius: 32,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: const AppLogo(height: 64, alignment: Alignment.center),
+              ),
+              const SizedBox(height: AppSpacing.xxl),
+              SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.6,
+                  color: colors.onPrimaryContainer,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Text(
+                'Menyiapkan ${AppConfig.appName}',
+                style: TextStyle(
+                  color: colors.onPrimaryContainer,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ],
           ),
         ),

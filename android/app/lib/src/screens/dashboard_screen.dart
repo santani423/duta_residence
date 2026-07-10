@@ -4,9 +4,11 @@ import '../api/api_client.dart';
 import '../api/api_exception.dart';
 import '../constants/app_config.dart';
 import '../constants/app_spacing.dart';
+import '../theme/app_palette.dart';
 import '../utils/formatters.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/duta_card.dart';
+import '../widgets/fade_in.dart';
 import '../widgets/info_row.dart';
 import '../widgets/state_views.dart';
 import '../widgets/status_badge.dart';
@@ -108,50 +110,80 @@ class _HeroSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return DutaCard(
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [colors.primary, colors.primary.withValues(alpha: 0.82)],
+        ),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        boxShadow: [
+          BoxShadow(
+            color: colors.primary.withValues(alpha: 0.28),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Expanded(child: AppLogo(height: 52)),
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: colors.onPrimary,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                ),
+                child: const AppLogo(height: 30),
+              ),
+              const Spacer(),
               IconButton.filledTonal(
                 tooltip: 'Notifikasi',
                 onPressed: onOpenNotifications,
                 icon: const Icon(Icons.notifications_outlined),
+                style: IconButton.styleFrom(
+                  backgroundColor: colors.onPrimary.withValues(alpha: 0.18),
+                  foregroundColor: colors.onPrimary,
+                ),
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.xl),
           Text(
             'Selamat datang, $userName',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w900,
+              color: colors.onPrimary,
+              letterSpacing: -0.3,
+            ),
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
             '${compact(property['unit_label'])} - ${compact(property['occupancy'])}',
-            style: TextStyle(color: colors.onSurfaceVariant),
+            style: TextStyle(
+              color: colors.onPrimary.withValues(alpha: 0.85),
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: AppSpacing.lg),
           Material(
-            color: colors.primaryContainer.withValues(alpha: 0.7),
+            color: colors.onPrimary.withValues(alpha: 0.14),
             borderRadius: BorderRadius.circular(AppSpacing.radius),
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.lg),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.campaign_outlined,
-                    color: colors.onPrimaryContainer,
-                  ),
+                  Icon(Icons.campaign_outlined, color: colors.onPrimary),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Text(
                       'Informasi tagihan, layanan, dan aktivitas hunian Anda tersaji ringkas di sini.',
                       style: TextStyle(
-                        color: colors.onPrimaryContainer,
+                        color: colors.onPrimary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -232,7 +264,10 @@ class _StatGrid extends StatelessWidget {
             childAspectRatio: columns == 4 ? 1.55 : 1.22,
           ),
           itemCount: stats.length,
-          itemBuilder: (context, index) => _StatCard(item: stats[index]),
+          itemBuilder: (context, index) => FadeSlideIn(
+            index: index,
+            child: _StatCard(item: stats[index], paletteIndex: index),
+          ),
         );
       },
     );
@@ -248,34 +283,47 @@ class _StatItem {
 }
 
 class _StatCard extends StatelessWidget {
-  const _StatCard({required this.item});
+  const _StatCard({required this.item, required this.paletteIndex});
 
   final _StatItem item;
+  final int paletteIndex;
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final palette = Theme.of(context).extension<AppPalette>();
+    final tile = palette?.tile(paletteIndex);
     return DutaCard(
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(item.icon, color: colors.primary),
+          IconBadge(
+            icon: item.icon,
+            size: 36,
+            iconSize: 18,
+            background: tile?.container,
+            foreground: tile?.onContainer,
+          ),
           const Spacer(),
           Text(
             item.value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.3,
+            ),
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
             item.label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: colors.onSurfaceVariant),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
           ),
         ],
       ),
@@ -310,37 +358,59 @@ class _QuickActions extends StatelessWidget {
         children: [
           const SectionHeader(title: 'Akses Cepat'),
           const SizedBox(height: AppSpacing.lg),
-          Wrap(
-            spacing: AppSpacing.md,
-            runSpacing: AppSpacing.md,
+          Row(
             children: [
-              for (final action in actions)
-                SizedBox(
-                  width: 140,
-                  child: FilledButton.icon(
-                    onPressed: action.onTap,
-                    icon: Icon(action.icon),
-                    label: Text(
-                      action.label,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                    ),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: AppSpacing.sm,
-                        horizontal: AppSpacing.md,
-                      ),
-                      textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                      ),
+              for (var i = 0; i < actions.length; i++)
+                Expanded(
+                  child: FadeSlideIn(
+                    index: i,
+                    child: _QuickActionTile(
+                      item: actions[i],
+                      paletteIndex: i + 2,
                     ),
                   ),
                 ),
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _QuickActionTile extends StatelessWidget {
+  const _QuickActionTile({required this.item, required this.paletteIndex});
+
+  final _ActionItem item;
+  final int paletteIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = Theme.of(context).extension<AppPalette>();
+    final tile = palette?.tile(paletteIndex);
+    return InkWell(
+      onTap: item.onTap,
+      borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+        child: Column(
+          children: [
+            IconBadge(
+              icon: item.icon,
+              size: 48,
+              background: tile?.container,
+              foreground: tile?.onContainer,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              item.label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -504,9 +574,17 @@ class _LatestCard extends StatelessWidget {
           SectionHeader(title: title),
           const SizedBox(height: AppSpacing.md),
           if (items.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
-              child: Center(child: Text('Belum ada data.')),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+              child: Center(
+                child: Text(
+                  'Belum ada data.',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             )
           else
             for (final item in items.take(5)) itemBuilder(item),
@@ -573,14 +651,18 @@ class _SimpleLine extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w800),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 if (subtitle != null)
                   Text(
                     subtitle!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
               ],
             ),
@@ -588,7 +670,9 @@ class _SimpleLine extends StatelessWidget {
           if (trailing != null)
             Text(
               trailing!,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w800),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
           ?badge,
         ],

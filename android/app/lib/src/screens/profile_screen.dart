@@ -6,7 +6,6 @@ import '../constants/app_spacing.dart';
 import '../state/session_controller.dart';
 import '../state/theme_controller.dart';
 import '../utils/formatters.dart';
-import '../widgets/app_logo.dart';
 import '../widgets/duta_card.dart';
 import '../widgets/info_row.dart';
 import '../widgets/state_views.dart';
@@ -122,6 +121,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final account = asMap(data['account']);
         final property = asMap(data['property']);
         final security = asMap(data['security']);
+        final colors = Theme.of(context).colorScheme;
         return RefreshIndicator(
           onRefresh: _refresh,
           child: ListView(
@@ -130,30 +130,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
               DutaCard(
                 child: Column(
                   children: [
-                    const AppLogo(height: 54, alignment: Alignment.center),
-                    const SizedBox(height: AppSpacing.xl),
-                    CircleAvatar(
-                      radius: 34,
-                      backgroundColor: Theme.of(
-                        context,
-                      ).colorScheme.primaryContainer,
+                    Container(
+                      width: 76,
+                      height: 76,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            colors.primary,
+                            colors.primary.withValues(alpha: 0.7),
+                          ],
+                        ),
+                      ),
+                      alignment: Alignment.center,
                       child: Text(
                         compact(account['name']).substring(0, 1).toUpperCase(),
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(fontWeight: FontWeight.w900),
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: colors.onPrimary,
+                            ),
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.md),
+                    const SizedBox(height: AppSpacing.lg),
                     Text(
                       compact(account['name']),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w900,
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
                       compact(account['email']),
                       style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        color: colors.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -219,27 +232,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     const SectionHeader(title: 'Tentang'),
                     const SizedBox(height: AppSpacing.md),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.info_outline_rounded),
-                      title: const Text('Duta Residence'),
-                      subtitle: const Text('Aplikasi layanan penghuni'),
+                    _AboutTile(
+                      icon: Icons.info_outline_rounded,
+                      title: 'Duta Residence',
+                      subtitle: 'Aplikasi layanan penghuni',
                     ),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.privacy_tip_outlined),
-                      title: const Text('Kebijakan Privasi'),
-                      subtitle: const Text(
-                        'Mengikuti kebijakan pengelola estate.',
-                      ),
+                    const SizedBox(height: AppSpacing.sm),
+                    _AboutTile(
+                      icon: Icons.privacy_tip_outlined,
+                      title: 'Kebijakan Privasi',
+                      subtitle: 'Mengikuti kebijakan pengelola estate.',
                     ),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.article_outlined),
-                      title: const Text('Syarat dan Ketentuan'),
-                      subtitle: const Text(
-                        'Mengikuti aturan layanan perumahan.',
-                      ),
+                    const SizedBox(height: AppSpacing.sm),
+                    _AboutTile(
+                      icon: Icons.article_outlined,
+                      title: 'Syarat dan Ketentuan',
+                      subtitle: 'Mengikuti aturan layanan perumahan.',
                     ),
                   ],
                 ),
@@ -247,8 +255,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: AppSpacing.lg),
               OutlinedButton.icon(
                 onPressed: _logout,
-                icon: const Icon(Icons.logout_rounded),
-                label: const Text('Keluar'),
+                icon: Icon(Icons.logout_rounded, color: colors.error),
+                label: Text('Keluar', style: TextStyle(color: colors.error)),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: colors.error.withValues(alpha: 0.5)),
+                ),
               ),
             ],
           ),
@@ -262,4 +273,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
     ThemeMode.dark => 'dark',
     ThemeMode.system => 'system',
   };
+}
+
+class _AboutTile extends StatelessWidget {
+  const _AboutTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        IconBadge(icon: icon, size: 40, iconSize: 20),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+              Text(
+                subtitle,
+                style: TextStyle(color: colors.onSurfaceVariant, fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }

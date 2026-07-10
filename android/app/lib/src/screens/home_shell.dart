@@ -27,19 +27,33 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
+class _NavItem {
+  const _NavItem(this.icon, this.selectedIcon, this.label);
+
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+}
+
+const _navItems = [
+  _NavItem(Icons.home_outlined, Icons.home_rounded, 'Beranda'),
+  _NavItem(Icons.domain_outlined, Icons.domain_rounded, 'Properti'),
+  _NavItem(Icons.grid_view_outlined, Icons.grid_view_rounded, 'Layanan'),
+  _NavItem(
+    Icons.notifications_outlined,
+    Icons.notifications_rounded,
+    'Notifikasi',
+  ),
+  _NavItem(Icons.person_outline_rounded, Icons.person_rounded, 'Profil'),
+];
+
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final titles = const [
-      'Beranda',
-      'Properti',
-      'Layanan',
-      'Notifikasi',
-      'Profil',
-    ];
+    final titles = _navItems.map((item) => item.label).toList();
     final pages = [
       DashboardScreen(
         apiClient: widget.apiClient,
@@ -62,7 +76,7 @@ class _HomeShellState extends State<HomeShell> {
         titleSpacing: AppSpacing.lg,
         title: Row(
           children: [
-            const AppLogo(height: 34),
+            const AppLogo(height: 32),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: AnimatedSwitcher(
@@ -78,12 +92,17 @@ class _HomeShellState extends State<HomeShell> {
           ],
         ),
         actions: [
-          IconButton(
-            tooltip: 'Notifikasi',
-            onPressed: () => setState(() => _index = 3),
-            icon: const Icon(Icons.notifications_outlined),
+          Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.md),
+            child: IconButton.filledTonal(
+              tooltip: 'Notifikasi',
+              onPressed: () => setState(() => _index = 3),
+              icon: const Icon(Icons.notifications_outlined),
+              style: IconButton.styleFrom(
+                backgroundColor: colors.primaryContainer.withValues(alpha: 0.6),
+              ),
+            ),
           ),
-          const SizedBox(width: AppSpacing.sm),
         ],
       ),
       body: AnimatedSwitcher(
@@ -102,41 +121,119 @@ class _HomeShellState extends State<HomeShell> {
         },
         child: KeyedSubtree(key: ValueKey(_index), child: pages[_index]),
       ),
-      bottomNavigationBar: DecoratedBox(
+      bottomNavigationBar: _FloatingNavBar(
+        index: _index,
+        onSelect: (value) => setState(() => _index = value),
+      ),
+    );
+  }
+}
+
+class _FloatingNavBar extends StatelessWidget {
+  const _FloatingNavBar({required this.index, required this.onSelect});
+
+  final int index;
+  final ValueChanged<int> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        0,
+        AppSpacing.lg,
+        AppSpacing.md,
+      ),
+      child: Container(
+        height: 84,
         decoration: BoxDecoration(
           color: colors.surface,
-          border: Border(top: BorderSide(color: colors.outlineVariant)),
+          borderRadius: BorderRadius.circular(AppSpacing.pill),
+          boxShadow: [
+            BoxShadow(
+              color: colors.shadow.withValues(alpha: 0.14),
+              blurRadius: 28,
+              offset: const Offset(0, 12),
+            ),
+          ],
         ),
-        child: SafeArea(
-          top: false,
-          child: NavigationBar(
-            selectedIndex: _index,
-            onDestinationSelected: (value) => setState(() => _index = value),
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.home_outlined),
-                selectedIcon: Icon(Icons.home_rounded),
-                label: 'Beranda',
+        child: Row(
+          children: [
+            for (var i = 0; i < _navItems.length; i++)
+              Expanded(
+                child: _NavButton(
+                  item: _navItems[i],
+                  index: i,
+                  selected: i == index,
+                  onTap: () => onSelect(i),
+                ),
               ),
-              NavigationDestination(
-                icon: Icon(Icons.domain_outlined),
-                selectedIcon: Icon(Icons.domain_rounded),
-                label: 'Properti',
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NavButton extends StatelessWidget {
+  const _NavButton({
+    required this.item,
+    required this.index,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _NavItem item;
+  final int index;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppSpacing.pill),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: selected
+                      ? colors.primaryContainer
+                      : Colors.transparent,
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  selected ? item.selectedIcon : item.icon,
+                  size: 22,
+                  color: selected
+                      ? colors.onPrimaryContainer
+                      : colors.onSurfaceVariant,
+                ),
               ),
-              NavigationDestination(
-                icon: Icon(Icons.grid_view_outlined),
-                selectedIcon: Icon(Icons.grid_view_rounded),
-                label: 'Layanan',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.notifications_outlined),
-                selectedIcon: Icon(Icons.notifications_rounded),
-                label: 'Notifikasi',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.person_outline_rounded),
-                selectedIcon: Icon(Icons.person_rounded),
-                label: 'Profil',
+              const SizedBox(height: 4),
+              Text(
+                item.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  color: selected ? colors.primary : colors.onSurfaceVariant,
+                ),
               ),
             ],
           ),

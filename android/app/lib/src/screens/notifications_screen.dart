@@ -5,6 +5,7 @@ import '../api/api_exception.dart';
 import '../constants/app_spacing.dart';
 import '../utils/formatters.dart';
 import '../widgets/duta_card.dart';
+import '../widgets/fade_in.dart';
 import '../widgets/state_views.dart';
 import '../widgets/status_badge.dart';
 
@@ -97,7 +98,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       child: Text(
                         'Pusat Notifikasi',
                         style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(fontWeight: FontWeight.w900),
+                            ?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.3,
+                            ),
                       ),
                     ),
                     FilledButton.tonalIcon(
@@ -112,47 +116,74 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               final readStatus =
                   item['read_status'] ??
                   (item['read_at'] == null ? 'unread' : 'read');
-              return DutaCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            compact(
-                              item['title'] ?? item['subject'] ?? item['type'],
+              final isUnread = readStatus != 'read';
+              final colors = Theme.of(context).colorScheme;
+              return FadeSlideIn(
+                index: index - 1,
+                child: DutaCard(
+                  color: isUnread
+                      ? colors.primaryContainer.withValues(alpha: 0.22)
+                      : null,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (isUnread)
+                            Container(
+                              margin: const EdgeInsets.only(
+                                top: 6,
+                                right: AppSpacing.sm,
+                              ),
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: colors.primary,
+                                shape: BoxShape.circle,
+                              ),
                             ),
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w900),
+                          Expanded(
+                            child: Text(
+                              compact(
+                                item['title'] ??
+                                    item['subject'] ??
+                                    item['type'],
+                              ),
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w900),
+                            ),
                           ),
-                        ),
-                        StatusBadge(readStatus),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    Text(
-                      compact(
-                        item['message'] ?? item['body'] ?? item['description'],
+                          StatusBadge(readStatus),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            dateTime(item['created_at']),
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
+                      const SizedBox(height: AppSpacing.md),
+                      Text(
+                        compact(
+                          item['message'] ??
+                              item['body'] ??
+                              item['description'],
                         ),
-                        if (readStatus != 'read')
-                          TextButton(
-                            onPressed: () => _read(compact(item['id'])),
-                            child: const Text('Dibaca'),
+                        style: TextStyle(color: colors.onSurfaceVariant),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              dateTime(item['created_at']),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
                           ),
-                      ],
-                    ),
-                  ],
+                          if (isUnread)
+                            TextButton(
+                              onPressed: () => _read(compact(item['id'])),
+                              child: const Text('Dibaca'),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               );
             },

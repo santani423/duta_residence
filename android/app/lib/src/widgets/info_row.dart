@@ -41,7 +41,12 @@ class _InfoRow extends StatelessWidget {
       children: [
         Expanded(
           flex: 4,
-          child: Text(label, style: TextStyle(color: colors.onSurfaceVariant)),
+          child: Text(
+            label,
+            style: textTheme.bodyMedium?.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
+          ),
         ),
         const SizedBox(width: AppSpacing.md),
         Expanded(
@@ -49,7 +54,11 @@ class _InfoRow extends StatelessWidget {
           child: Text(
             value,
             textAlign: TextAlign.right,
-            style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700, color: colors.onSurface),
+            style: textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: colors.onSurface,
+              letterSpacing: -0.1,
+            ),
           ),
         ),
       ],

@@ -10,4 +10,6 @@ class AppSpacing {
 
   static const radius = 18.0;
   static const radiusSm = 12.0;
+  static const radiusLg = 22.0;
+  static const pill = 999.0;
 }

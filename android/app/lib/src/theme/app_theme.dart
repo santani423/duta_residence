@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../constants/app_spacing.dart';
+import 'app_palette.dart';
 import 'app_status_colors.dart';
 
 class AppTheme {
@@ -22,6 +23,7 @@ class AppTheme {
       surface: _lightSurface,
     ),
     background: _lightBackground,
+    palette: AppPalette.light,
     statusColors: const AppStatusColors(
       success: StatusColorPair(
         container: Color(0xFFD1FAE5),
@@ -53,6 +55,7 @@ class AppTheme {
       surface: _darkSurface,
     ),
     background: _darkBackground,
+    palette: AppPalette.dark,
     statusColors: const AppStatusColors(
       success: StatusColorPair(
         container: Color(0xFF064E3B),
@@ -80,6 +83,7 @@ class AppTheme {
   static ThemeData _build(
     ColorScheme scheme, {
     required Color background,
+    required AppPalette palette,
     required AppStatusColors statusColors,
   }) {
     final baseText = Typography.material2021().englishLike.apply(
@@ -96,7 +100,7 @@ class AppTheme {
       textTheme: textTheme,
       visualDensity: VisualDensity.standard,
       splashFactory: InkSparkle.splashFactory,
-      extensions: [statusColors],
+      extensions: [statusColors, palette],
       appBarTheme: AppBarTheme(
         elevation: 0,
         centerTitle: false,
@@ -106,24 +110,22 @@ class AppTheme {
         titleTextStyle: textTheme.titleLarge?.copyWith(
           color: scheme.onSurface,
           fontWeight: FontWeight.w900,
+          letterSpacing: -0.2,
         ),
       ),
       cardTheme: CardThemeData(
-        elevation: 1.5,
+        elevation: 0,
         color: scheme.surface,
         surfaceTintColor: Colors.transparent,
-        shadowColor: scheme.shadow.withValues(alpha: 0.10),
+        shadowColor: Colors.transparent,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSpacing.radius),
-          side: BorderSide(
-            color: scheme.outlineVariant.withValues(alpha: 0.55),
-          ),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.52),
+        fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.lg,
           vertical: AppSpacing.lg,
@@ -132,20 +134,20 @@ class AppTheme {
         suffixIconColor: scheme.onSurfaceVariant,
         labelStyle: TextStyle(color: scheme.onSurfaceVariant),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-          borderSide: BorderSide(color: scheme.outlineVariant),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-          borderSide: BorderSide(color: scheme.outlineVariant),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-          borderSide: BorderSide(color: scheme.primary, width: 1.6),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          borderSide: BorderSide(color: scheme.primary, width: 1.8),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-          borderSide: BorderSide(color: scheme.error),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          borderSide: BorderSide(color: scheme.error, width: 1.4),
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
@@ -171,29 +173,31 @@ class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size(0, 50),
+          minimumSize: const Size(0, 54),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
           textStyle: const TextStyle(fontWeight: FontWeight.w800),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(AppSpacing.pill)),
           ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size(0, 50),
+          minimumSize: const Size(0, 54),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
           foregroundColor: scheme.primary,
-          side: BorderSide(color: scheme.outlineVariant),
+          side: BorderSide(color: scheme.outlineVariant, width: 1.4),
           textStyle: const TextStyle(fontWeight: FontWeight.w800),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(AppSpacing.pill)),
           ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           textStyle: const TextStyle(fontWeight: FontWeight.w800),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(AppSpacing.pill)),
           ),
         ),
       ),
@@ -202,32 +206,36 @@ class AppTheme {
           visualDensity: VisualDensity.compact,
           backgroundColor: WidgetStateProperty.resolveWith(
             (states) => states.contains(WidgetState.selected)
-                ? scheme.primaryContainer
-                : scheme.surface,
+                ? scheme.primary
+                : Colors.transparent,
           ),
           foregroundColor: WidgetStateProperty.resolveWith(
             (states) => states.contains(WidgetState.selected)
-                ? scheme.onPrimaryContainer
+                ? scheme.onPrimary
                 : scheme.onSurfaceVariant,
           ),
-          side: WidgetStatePropertyAll(
-            BorderSide(color: scheme.outlineVariant),
+          textStyle: const WidgetStatePropertyAll(
+            TextStyle(fontWeight: FontWeight.w700),
           ),
-          shape: WidgetStatePropertyAll(
+          side: const WidgetStatePropertyAll(BorderSide.none),
+          shape: const WidgetStatePropertyAll(
             RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+              borderRadius: BorderRadius.all(Radius.circular(AppSpacing.pill)),
             ),
           ),
         ),
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: scheme.surfaceContainerHighest,
+        backgroundColor: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
         selectedColor: scheme.primaryContainer,
-        labelStyle: TextStyle(color: scheme.onSurface),
+        labelStyle: TextStyle(
+          color: scheme.onSurface,
+          fontWeight: FontWeight.w700,
+        ),
         secondaryLabelStyle: TextStyle(color: scheme.onPrimaryContainer),
-        side: BorderSide(color: scheme.outlineVariant),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+        side: BorderSide.none,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(AppSpacing.pill)),
         ),
       ),
       bottomSheetTheme: BottomSheetThemeData(
@@ -237,14 +245,14 @@ class AppTheme {
         showDragHandle: true,
         dragHandleColor: scheme.outlineVariant,
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: scheme.surface,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSpacing.radius),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
         ),
         titleTextStyle: textTheme.titleLarge?.copyWith(
           color: scheme.onSurface,
@@ -258,17 +266,20 @@ class AppTheme {
         behavior: SnackBarBehavior.floating,
         backgroundColor: scheme.inverseSurface,
         contentTextStyle: TextStyle(color: scheme.onInverseSurface),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(AppSpacing.radiusSm)),
         ),
       ),
       dividerTheme: DividerThemeData(
-        color: scheme.outlineVariant.withValues(alpha: 0.75),
+        color: scheme.outlineVariant.withValues(alpha: 0.6),
         space: 1,
       ),
       listTileTheme: ListTileThemeData(
         iconColor: scheme.primary,
         textColor: scheme.onSurface,
+        titleTextStyle: textTheme.bodyLarge?.copyWith(
+          fontWeight: FontWeight.w700,
+        ),
         subtitleTextStyle: textTheme.bodyMedium?.copyWith(
           color: scheme.onSurfaceVariant,
         ),
@@ -279,8 +290,9 @@ class AppTheme {
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: scheme.primary,
         foregroundColor: scheme.onPrimary,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSpacing.radius),
+        extendedTextStyle: const TextStyle(fontWeight: FontWeight.w800),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(AppSpacing.pill)),
         ),
       ),
       pageTransitionsTheme: PageTransitionsTheme(

@@ -53,6 +53,7 @@ class _PropertyScreenState extends State<PropertyScreen> {
           return ErrorView(message: message, onRetry: () => _refresh());
         }
         final property = snapshot.data ?? {};
+        final colors = Theme.of(context).colorScheme;
         return RefreshIndicator(
           onRefresh: _refresh,
           child: ListView(
@@ -64,17 +65,10 @@ class _PropertyScreenState extends State<PropertyScreen> {
                   children: [
                     Row(
                       children: [
-                        CircleAvatar(
-                          radius: 28,
-                          backgroundColor: Theme.of(
-                            context,
-                          ).colorScheme.primaryContainer,
-                          child: Icon(
-                            Icons.domain_rounded,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onPrimaryContainer,
-                          ),
+                        IconBadge(
+                          icon: Icons.domain_rounded,
+                          size: 56,
+                          shape: IconBadgeShape.circle,
                         ),
                         const SizedBox(width: AppSpacing.lg),
                         Expanded(
@@ -84,15 +78,17 @@ class _PropertyScreenState extends State<PropertyScreen> {
                               Text(
                                 compact(property['unit_label']),
                                 style: Theme.of(context).textTheme.headlineSmall
-                                    ?.copyWith(fontWeight: FontWeight.w900),
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: -0.3,
+                                    ),
                               ),
                               const SizedBox(height: AppSpacing.xs),
                               Text(
                                 AppConfig.estateName,
                                 style: TextStyle(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
+                                  color: colors.onSurfaceVariant,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ],
@@ -137,7 +133,8 @@ class _PropertyScreenState extends State<PropertyScreen> {
                     Text(
                       'Penanggung jawab tagihan mengikuti data kepemilikan dan konfigurasi backend.',
                       style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        color: colors.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],

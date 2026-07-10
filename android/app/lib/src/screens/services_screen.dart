@@ -10,6 +10,7 @@ import '../api/api_exception.dart';
 import '../constants/app_spacing.dart';
 import '../utils/formatters.dart';
 import '../widgets/duta_card.dart';
+import '../widgets/fade_in.dart';
 import '../widgets/info_row.dart';
 import '../widgets/state_views.dart';
 import '../widgets/status_badge.dart';
@@ -25,6 +26,30 @@ class ServicesScreen extends StatefulWidget {
   State<ServicesScreen> createState() => _ServicesScreenState();
 }
 
+class _ServiceTabItem {
+  const _ServiceTabItem(this.value, this.icon, this.label);
+
+  final ServiceTab value;
+  final IconData icon;
+  final String label;
+}
+
+const _serviceTabs = [
+  _ServiceTabItem(ServiceTab.bills, Icons.receipt_long_outlined, 'Tagihan'),
+  _ServiceTabItem(ServiceTab.payments, Icons.payments_outlined, 'Bayar'),
+  _ServiceTabItem(
+    ServiceTab.complaints,
+    Icons.report_problem_outlined,
+    'Komplain',
+  ),
+  _ServiceTabItem(
+    ServiceTab.maintenance,
+    Icons.handyman_outlined,
+    'Maintenance',
+  ),
+  _ServiceTabItem(ServiceTab.documents, Icons.folder_outlined, 'Dokumen'),
+];
+
 class _ServicesScreenState extends State<ServicesScreen> {
   ServiceTab _tab = ServiceTab.bills;
 
@@ -32,44 +57,44 @@ class _ServicesScreenState extends State<ServicesScreen> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
+        Padding(
           padding: const EdgeInsets.fromLTRB(
+            0,
             AppSpacing.lg,
-            AppSpacing.lg,
-            AppSpacing.lg,
+            0,
             AppSpacing.sm,
           ),
-          child: SegmentedButton<ServiceTab>(
-            selected: {_tab},
-            onSelectionChanged: (value) => setState(() => _tab = value.first),
-            segments: const [
-              ButtonSegment(
-                value: ServiceTab.bills,
-                icon: Icon(Icons.receipt_long_outlined),
-                label: Text('Tagihan'),
+          child: SizedBox(
+            height: 40,
+            child: ShaderMask(
+              shaderCallback: (rect) => const LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [
+                  Colors.transparent,
+                  Colors.black,
+                  Colors.black,
+                  Colors.transparent,
+                ],
+                stops: [0.0, 0.03, 0.94, 1.0],
+              ).createShader(rect),
+              blendMode: BlendMode.dstIn,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                itemCount: _serviceTabs.length,
+                separatorBuilder: (_, _) =>
+                    const SizedBox(width: AppSpacing.sm),
+                itemBuilder: (context, index) {
+                  final item = _serviceTabs[index];
+                  return _ServiceTabChip(
+                    item: item,
+                    selected: item.value == _tab,
+                    onTap: () => setState(() => _tab = item.value),
+                  );
+                },
               ),
-              ButtonSegment(
-                value: ServiceTab.payments,
-                icon: Icon(Icons.payments_outlined),
-                label: Text('Bayar'),
-              ),
-              ButtonSegment(
-                value: ServiceTab.complaints,
-                icon: Icon(Icons.report_problem_outlined),
-                label: Text('Komplain'),
-              ),
-              ButtonSegment(
-                value: ServiceTab.maintenance,
-                icon: Icon(Icons.handyman_outlined),
-                label: Text('Maintenance'),
-              ),
-              ButtonSegment(
-                value: ServiceTab.documents,
-                icon: Icon(Icons.folder_outlined),
-                label: Text('Dokumen'),
-              ),
-            ],
+            ),
           ),
         ),
         Expanded(
@@ -92,6 +117,57 @@ class _ServicesScreenState extends State<ServicesScreen> {
           },
         ),
       ],
+    );
+  }
+}
+
+class _ServiceTabChip extends StatelessWidget {
+  const _ServiceTabChip({
+    required this.item,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _ServiceTabItem item;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      color: selected
+          ? colors.primary
+          : colors.surfaceContainerHighest.withValues(alpha: 0.5),
+      borderRadius: BorderRadius.circular(AppSpacing.pill),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppSpacing.pill),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.sm,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                item.icon,
+                size: 18,
+                color: selected ? colors.onPrimary : colors.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                item.label,
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: selected ? colors.onPrimary : colors.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -198,46 +274,49 @@ class _BillsSectionState extends State<_BillsSection> {
             itemBuilder: (context, index) {
               final invoice = asMap(items[index]);
               final canPay = ['unpaid', 'overdue'].contains(invoice['status']);
-              return DutaCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            compact(invoice['invoice_number']),
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w900),
+              return FadeSlideIn(
+                index: index,
+                child: DutaCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              compact(invoice['invoice_number']),
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w900),
+                            ),
+                          ),
+                          StatusBadge(invoice['status']),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      InfoRows(
+                        items: {
+                          'Jenis': invoice['billing_type'],
+                          'Periode': invoice['period'],
+                          'Jatuh Tempo': dateOnly(invoice['due_date']),
+                          'Subtotal': money(invoice['subtotal']),
+                          'Denda': money(invoice['penalty']),
+                          'Diskon': money(invoice['discount']),
+                          'Total': money(invoice['total']),
+                        },
+                      ),
+                      if (canPay) ...[
+                        const SizedBox(height: AppSpacing.lg),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: () => _pay(invoice),
+                            icon: const Icon(Icons.credit_card_rounded),
+                            label: const Text('Bayar Tagihan'),
                           ),
                         ),
-                        StatusBadge(invoice['status']),
                       ],
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    InfoRows(
-                      items: {
-                        'Jenis': invoice['billing_type'],
-                        'Periode': invoice['period'],
-                        'Jatuh Tempo': dateOnly(invoice['due_date']),
-                        'Subtotal': money(invoice['subtotal']),
-                        'Denda': money(invoice['penalty']),
-                        'Diskon': money(invoice['discount']),
-                        'Total': money(invoice['total']),
-                      },
-                    ),
-                    if (canPay) ...[
-                      const SizedBox(height: AppSpacing.lg),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: () => _pay(invoice),
-                          icon: const Icon(Icons.credit_card_rounded),
-                          label: const Text('Bayar Tagihan'),
-                        ),
-                      ),
                     ],
-                  ],
+                  ),
                 ),
               );
             },
@@ -270,48 +349,54 @@ class _PaymentMethodSheet extends StatelessWidget {
         : methods.map((value) => value.toString()).toList();
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Pilih Metode Pembayaran',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              '${compact(invoice['invoice_number'])} - ${money(invoice['total'])}',
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            for (final provider in available) ...[
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.tonalIcon(
-                  onPressed: () => onSelect(provider),
-                  icon: const Icon(Icons.payment_rounded),
-                  label: Text(_providerLabel(provider)),
-                ),
+        padding: EdgeInsets.only(
+          left: AppSpacing.lg,
+          right: AppSpacing.lg,
+          bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpacing.lg,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Pilih Metode Pembayaran',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: AppSpacing.sm),
-            ],
-            if (asMap(config['manual_payment']).isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.md),
-              InfoRows(
-                items: {
-                  'Bank': asMap(config['manual_payment'])['bank_name'],
-                  'Nomor Rekening': asMap(
-                    config['manual_payment'],
-                  )['account_number'],
-                  'Nama Rekening': asMap(
-                    config['manual_payment'],
-                  )['account_name'],
-                },
+              Text(
+                '${compact(invoice['invoice_number'])} - ${money(invoice['total'])}',
               ),
+              const SizedBox(height: AppSpacing.lg),
+              for (final provider in available) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.tonalIcon(
+                    onPressed: () => onSelect(provider),
+                    icon: const Icon(Icons.payment_rounded),
+                    label: Text(_providerLabel(provider)),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+              ],
+              if (asMap(config['manual_payment']).isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.md),
+                InfoRows(
+                  items: {
+                    'Bank': asMap(config['manual_payment'])['bank_name'],
+                    'Nomor Rekening': asMap(
+                      config['manual_payment'],
+                    )['account_number'],
+                    'Nama Rekening': asMap(
+                      config['manual_payment'],
+                    )['account_name'],
+                  },
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -397,59 +482,62 @@ class _PaymentsSectionState extends State<_PaymentsSection> {
               final canUpload =
                   payment['payment_gateway'] == 'manual' &&
                   ['pending', 'rejected'].contains(payment['status']);
-              return DutaCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            compact(payment['transaction_number']),
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w900),
-                          ),
-                        ),
-                        StatusBadge(payment['status']),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    InfoRows(
-                      items: {
-                        'Invoice': payment['invoice_number'],
-                        'Gateway': payment['payment_gateway'],
-                        'Metode': payment['payment_method'],
-                        'Nominal': money(payment['total']),
-                        'Transaksi': dateTime(payment['created_at']),
-                        'Dibayar': dateTime(payment['paid_at']),
-                      },
-                    ),
-                    if ((paymentUrl != null && paymentUrl.isNotEmpty) ||
-                        canUpload) ...[
-                      const SizedBox(height: AppSpacing.lg),
-                      Wrap(
-                        spacing: AppSpacing.sm,
-                        runSpacing: AppSpacing.sm,
+              return FadeSlideIn(
+                index: index,
+                child: DutaCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
-                          if (paymentUrl != null && paymentUrl.isNotEmpty)
-                            FilledButton.tonalIcon(
-                              onPressed: () => launchUrl(
-                                Uri.parse(paymentUrl),
-                                mode: LaunchMode.externalApplication,
-                              ),
-                              icon: const Icon(Icons.open_in_new_rounded),
-                              label: const Text('Lanjut Bayar'),
+                          Expanded(
+                            child: Text(
+                              compact(payment['transaction_number']),
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w900),
                             ),
-                          if (canUpload)
-                            FilledButton.icon(
-                              onPressed: () => _showManualProof(payment),
-                              icon: const Icon(Icons.upload_file_rounded),
-                              label: const Text('Upload Bukti'),
-                            ),
+                          ),
+                          StatusBadge(payment['status']),
                         ],
                       ),
+                      const SizedBox(height: AppSpacing.md),
+                      InfoRows(
+                        items: {
+                          'Invoice': payment['invoice_number'],
+                          'Gateway': payment['payment_gateway'],
+                          'Metode': payment['payment_method'],
+                          'Nominal': money(payment['total']),
+                          'Transaksi': dateTime(payment['created_at']),
+                          'Dibayar': dateTime(payment['paid_at']),
+                        },
+                      ),
+                      if ((paymentUrl != null && paymentUrl.isNotEmpty) ||
+                          canUpload) ...[
+                        const SizedBox(height: AppSpacing.lg),
+                        Wrap(
+                          spacing: AppSpacing.sm,
+                          runSpacing: AppSpacing.sm,
+                          children: [
+                            if (paymentUrl != null && paymentUrl.isNotEmpty)
+                              FilledButton.tonalIcon(
+                                onPressed: () => launchUrl(
+                                  Uri.parse(paymentUrl),
+                                  mode: LaunchMode.externalApplication,
+                                ),
+                                icon: const Icon(Icons.open_in_new_rounded),
+                                label: const Text('Lanjut Bayar'),
+                              ),
+                            if (canUpload)
+                              FilledButton.icon(
+                                onPressed: () => _showManualProof(payment),
+                                icon: const Icon(Icons.upload_file_rounded),
+                                label: const Text('Upload Bukti'),
+                              ),
+                          ],
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               );
             },
@@ -716,8 +804,9 @@ class _TicketSectionState extends State<_TicketSection> {
                     const SizedBox(height: AppSpacing.md),
                 itemBuilder: (context, index) {
                   final item = asMap(items[index]);
-                  return DutaCard(
-                    child: InkWell(
+                  return FadeSlideIn(
+                    index: index,
+                    child: DutaCard(
                       onTap: () => _detail(item),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1067,31 +1156,36 @@ class _DocumentsSectionState extends State<_DocumentsSection> {
             separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
             itemBuilder: (context, index) {
               final document = asMap(items[index]);
-              return DutaCard(
-                child: Row(
-                  children: [
-                    const Icon(Icons.picture_as_pdf_outlined),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            compact(document['name']),
-                            style: const TextStyle(fontWeight: FontWeight.w900),
-                          ),
-                          Text(
-                            '${compact(document['type'])} - ${dateOnly(document['created_at'])}',
-                          ),
-                        ],
+              return FadeSlideIn(
+                index: index,
+                child: DutaCard(
+                  child: Row(
+                    children: [
+                      const IconBadge(icon: Icons.picture_as_pdf_rounded),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              compact(document['name']),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            Text(
+                              '${compact(document['type'])} - ${dateOnly(document['created_at'])}',
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    IconButton(
-                      tooltip: 'Download',
-                      onPressed: () => _download(document),
-                      icon: const Icon(Icons.download_rounded),
-                    ),
-                  ],
+                      IconButton(
+                        tooltip: 'Download',
+                        onPressed: () => _download(document),
+                        icon: const Icon(Icons.download_rounded),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
