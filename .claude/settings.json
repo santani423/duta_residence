@@ -19,7 +19,8 @@
       "Bash(node verify-resident-detail.mjs)",
       "Bash(node verify-resident-crud.mjs)",
       "Bash(node verify-resident-doc-perm.mjs)",
-      "Bash(node verify-loket-perm.mjs)"
+      "Bash(node verify-loket-perm.mjs)",
+      "Bash(xargs ls)"
     ],
     "additionalDirectories": [
       "/tmp/pw-verify",

@@ -84,7 +84,7 @@ class UnitSeeder extends Seeder
                 ]);
 
                 if ($statusId !== 'RK') {
-                    $username = $id === 'GA012' ? 'resident' : 'resident.'.strtolower($id);
+                    $username = $id === 'GA012' ? 'customer' : 'customer.'.strtolower($id);
                     $user = User::updateOrCreate(['username' => $username], [
                         'name' => $resident->name,
                         'email' => $resident->email,

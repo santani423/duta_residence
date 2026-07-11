@@ -37,7 +37,7 @@ php artisan storage:link
 php artisan serve
 ```
 
-Sample akun lokal:
+Sample akun lokal (sesuai `database/seeders/AdminUserSeeder.php`, `ResidentSeeder.php`, dan `UnitSeeder.php`):
 
 ```text
 Root / legacy test
@@ -63,69 +63,91 @@ Email: finance@example.com
 Password: password
 Skenario: approval tagihan, verifikasi pembayaran manual, laporan.
 
-Back Office
-Username: backoffice
+Property Manager
+Username: property.manager
+Email: property.manager@example.com
 Password: password
+Skenario: akses baca estate, billing, payment, laporan (read-only).
 
 Loket
 Username: loket
+Email: loket@grandduta.test
 Password: password
 
 Customer Service
 Username: cs
+Email: cs@grandduta.test
 Password: password
 
-Customer Lunas
+Customer Lunas (AL001)
 Username: customer.al001
-Email: customer.paid@example.com
+Email: resident.paid@example.com
 Password: password
 Skenario: seluruh tagihan lunas dan histori pembayaran berhasil.
 
-Customer Menunggak
+Customer Menunggak (AL002)
 Username: customer.al002
-Email: customer.overdue@example.com
+Email: resident.overdue@example.com
 Password: password
 Skenario: tagihan jatuh tempo, denda, dan dashboard overdue.
 
-Customer Manual Pending
+Customer Manual Pending (AL003)
 Username: customer.al003
-Email: customer.manual.pending@example.com
+Email: resident.manual.pending@example.com
 Password: password
 Skenario: pembayaran manual menunggu verifikasi.
 
-Customer Komplain Aktif
+Customer Komplain Aktif (AL004)
 Username: customer.al004
-Email: customer.complaint@example.com
+Email: resident.complaint@example.com
 Password: password
 Skenario: komplain aktif dan maintenance baru.
 
-Customer Tanpa Tagihan
+Customer Tanpa Tagihan (AL005)
 Username: customer.al005
-Email: customer.nobills@example.com
+Email: resident.nobills@example.com
 Password: password
 Skenario: akun aktif tanpa invoice aktif.
 
-Customer Manual Ditolak
+Customer Manual Ditolak (AL006)
 Username: customer.al006
-Email: customer.manual.rejected@example.com
+Email: resident.manual.rejected@example.com
 Password: password
 Skenario: pembayaran manual ditolak dan upload ulang bukti.
 
-Customer Xendit
+Customer Xendit (AL007)
 Username: customer.al007
-Email: customer.xendit@example.com
+Email: resident.xendit@example.com
 Password: password
 Skenario: histori pembayaran Xendit berhasil.
 
-Customer Midtrans Gagal
+Customer Midtrans Gagal (AL008)
 Username: customer.al008
-Email: customer.midtrans.failed@example.com
+Email: resident.midtrans.failed@example.com
 Password: password
 Skenario: pembayaran Midtrans gagal dan invoice pending approval.
 
-Customer Banyak Notifikasi
+Customer Maintenance Aktif (AL009)
+Username: customer.al009
+Email: resident.maintenance@example.com
+Password: password
+Skenario: memiliki maintenance terjadwal dan selesai.
+
+Customer Nonaktif (AL010)
+Username: customer.al010
+Email: resident.inactive@example.com
+Password: password
+Skenario: akun nonaktif (is_active = false), tidak bisa login.
+
+Customer Bayar Sebagian (AL011)
+Username: customer.al011
+Email: resident.partial@example.com
+Password: password
+Skenario: invoice dengan pembayaran sebagian.
+
+Customer Banyak Notifikasi (AL012)
 Username: customer.al012
-Email: customer.notifications@example.com
+Email: resident.notifications@example.com
 Password: password
 Skenario: badge notifikasi unread besar.
 ```
