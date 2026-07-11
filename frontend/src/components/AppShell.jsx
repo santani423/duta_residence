@@ -43,8 +43,8 @@ export default function AppShell() {
   const selectedKey = items.find((item) => item.key !== '/' && location.pathname.startsWith(item.key))?.key || '/';
 
   const profileItems = [
-    { key: hasRole('customer') ? '/customer/profile' : '/profile', icon: <UserOutlined />, label: 'Profil' },
-    { key: hasRole('customer') ? '/customer/settings' : '/change-password', icon: <SettingOutlined />, label: hasRole('customer') ? 'Pengaturan' : 'Ganti Password' },
+    { key: hasRole('customer') ? '/resident/profile' : '/profile', icon: <UserOutlined />, label: 'Profil' },
+    { key: hasRole('customer') ? '/resident/settings' : '/change-password', icon: <SettingOutlined />, label: hasRole('customer') ? 'Pengaturan' : 'Ganti Password' },
     { type: 'divider' },
     { key: 'logout', icon: <LogoutOutlined />, label: 'Logout' },
   ];

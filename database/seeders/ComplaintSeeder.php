@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\CustomerComplaint;
-use App\Models\CustomerComplaintComment;
+use App\Models\ResidentComplaint;
+use App\Models\ResidentComplaintComment;
 use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -41,7 +41,7 @@ class ComplaintSeeder extends Seeder
         }
 
         $user = User::where('unit_id', $unit->id)->first();
-        $complaint = CustomerComplaint::updateOrCreate(
+        $complaint = ResidentComplaint::updateOrCreate(
             ['unit_id' => $unit->id, 'title' => $title],
             [
                 'user_id' => $user?->id,
@@ -57,8 +57,8 @@ class ComplaintSeeder extends Seeder
         );
 
         for ($i = 1; $i <= $comments; $i++) {
-            CustomerComplaintComment::updateOrCreate(
-                ['customer_complaint_id' => $complaint->id, 'body' => "Komentar demo {$i} untuk {$title}"],
+            ResidentComplaintComment::updateOrCreate(
+                ['resident_complaint_id' => $complaint->id, 'body' => "Komentar demo {$i} untuk {$title}"],
                 [
                     'user_id' => $i % 2 === 0 ? $staff?->id : $user?->id,
                     'is_staff_response' => $i % 2 === 0,

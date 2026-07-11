@@ -16,12 +16,12 @@ class UnitController extends Controller
     public function index(Request $request)
     {
         $query = Unit::query()
-            ->with(['cluster', 'propertyType', 'status', 'occupancy', 'customer'])
+            ->with(['cluster', 'propertyType', 'status', 'occupancy', 'resident'])
             ->search($request->query('search'))
             ->when($request->query('cluster_id'), fn ($q, $value) => $q->where('cluster_id', $value))
             ->when($request->query('status_id'), fn ($q, $value) => $q->where('status_id', $value))
             ->when($request->query('property_type_id'), fn ($q, $value) => $q->where('property_type_id', $value))
-            ->when($request->query('customer_id'), fn ($q, $value) => $q->where('customer_id', $value));
+            ->when($request->query('resident_id'), fn ($q, $value) => $q->where('resident_id', $value));
 
         return $this->paginated($query->orderBy('cluster_id')->orderBy('block')->paginate($request->integer('per_page', 15)));
     }
@@ -33,12 +33,12 @@ class UnitController extends Controller
         $unit = Unit::query()->create($data);
         $auditService->log('unit_created', 'units', 'CREATE', $unit, [], $unit->toArray());
 
-        return $this->success($unit->load(['cluster', 'status', 'customer']), 'Unit berhasil dibuat.', 201);
+        return $this->success($unit->load(['cluster', 'status', 'resident']), 'Unit berhasil dibuat.', 201);
     }
 
     public function show(Unit $unit)
     {
-        return $this->success($unit->load(['cluster', 'propertyType', 'occupancy', 'status', 'customer', 'billings.status']));
+        return $this->success($unit->load(['cluster', 'propertyType', 'occupancy', 'status', 'resident', 'billings.status']));
     }
 
     public function update(Request $request, Unit $unit, AuditService $auditService)
@@ -49,7 +49,7 @@ class UnitController extends Controller
         $unit->update($data);
         $auditService->log('unit_updated', 'units', 'UPDATE', $unit, $old, $unit->toArray());
 
-        return $this->success($unit->refresh()->load(['cluster', 'status', 'customer']), 'Unit berhasil diperbarui.');
+        return $this->success($unit->refresh()->load(['cluster', 'status', 'resident']), 'Unit berhasil diperbarui.');
     }
 
     public function destroy(Unit $unit, AuditService $auditService)
@@ -88,7 +88,7 @@ class UnitController extends Controller
     {
         return $request->validate([
             'id' => ['required', 'string', 'size:5', Rule::unique('units', 'id')->ignore($unit?->id, 'id')],
-            'customer_id' => ['required', 'exists:customers,id'],
+            'resident_id' => ['required', 'exists:residents,id'],
             'cluster_id' => ['required', 'exists:clusters,id'],
             'block' => ['required', 'string', 'max:5'],
             'lot_number' => ['required', 'string', 'max:10'],
@@ -97,7 +97,7 @@ class UnitController extends Controller
             'land_area' => ['nullable', 'numeric', 'min:0'],
             'handover_date' => ['nullable', 'date'],
             'occupancy_id' => ['required', 'exists:occupancy_statuses,id'],
-            'status_id' => ['required', 'exists:customer_statuses,id'],
+            'status_id' => ['required', 'exists:resident_statuses,id'],
             'is_penalty_eligible' => ['sometimes', 'boolean'],
             'is_discount_eligible' => ['sometimes', 'boolean'],
             'notes' => ['nullable', 'string'],

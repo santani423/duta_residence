@@ -15,7 +15,7 @@ class ReceivableController extends Controller
     public function index(Request $request)
     {
         $query = Receivable::query()
-            ->with(['unit.cluster', 'unit.customer'])
+            ->with(['unit.cluster', 'unit.resident'])
             ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value))
             ->when($request->query('is_settled') !== null, fn ($q) => $q->where('is_settled', request()->boolean('is_settled')));
 

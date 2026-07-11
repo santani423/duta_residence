@@ -39,12 +39,12 @@ class DocumentController extends Controller
             ->download('billing-recap.pdf');
     }
 
-    public function customerList()
+    public function residentList()
     {
-        $units = Unit::with(['cluster', 'customer'])->orderBy('cluster_id')->orderBy('block')->get();
+        $units = Unit::with(['cluster', 'resident'])->orderBy('cluster_id')->orderBy('block')->get();
 
-        return Pdf::loadHTML(view('pdf.customer-list', compact('units'))->render())
-            ->download('customer-list.pdf');
+        return Pdf::loadHTML(view('pdf.resident-list', compact('units'))->render())
+            ->download('resident-list.pdf');
     }
 
     public function clusterRecap()

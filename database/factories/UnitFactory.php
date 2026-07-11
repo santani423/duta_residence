@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Models\Customer;
+use App\Models\Resident;
 use App\Models\Unit;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -25,7 +25,7 @@ class UnitFactory extends Factory
 
         return [
             'id' => strtoupper(fake()->bothify('??###')),
-            'customer_id' => Customer::factory(),
+            'resident_id' => Resident::factory(),
             'cluster_id' => 'AL',
             'block' => fake()->randomElement(['A', 'B', 'C', 'D', 'E']),
             'lot_number' => str_pad((string) fake()->unique()->numberBetween(1, 999), 3, '0', STR_PAD_LEFT),

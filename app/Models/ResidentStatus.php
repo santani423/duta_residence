@@ -5,7 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\HasStringPrimaryKey;
 use Illuminate\Database\Eloquent\Model;
 
-class CustomerStatus extends Model
+class ResidentStatus extends Model
 {
     use HasStringPrimaryKey;
 

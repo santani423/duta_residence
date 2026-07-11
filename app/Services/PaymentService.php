@@ -53,7 +53,7 @@ class PaymentService
                 'number' => $receiptNumber,
                 'unit_id' => $unit->id,
                 'transaction_date' => now(),
-                'customer_name' => $unit->customer->name,
+                'resident_name' => $unit->resident->name,
                 'cluster_name' => $unit->cluster->name,
                 'block' => $unit->block,
                 'lot_number' => $unit->lot_number,

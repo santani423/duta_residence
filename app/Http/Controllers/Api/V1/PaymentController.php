@@ -17,7 +17,7 @@ class PaymentController extends Controller
     {
         $data = $request->validate(['unit_id' => ['required', 'exists:units,id']]);
         $unit = Unit::query()
-            ->with(['cluster', 'customer', 'billings' => fn ($q) => $q->unpaid()->approved()->orderBy('year')->orderBy('month')])
+            ->with(['cluster', 'resident', 'billings' => fn ($q) => $q->unpaid()->approved()->orderBy('year')->orderBy('month')])
             ->findOrFail($data['unit_id']);
 
         return $this->success($unit);

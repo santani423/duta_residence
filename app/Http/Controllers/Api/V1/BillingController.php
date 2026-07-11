@@ -17,7 +17,7 @@ class BillingController extends Controller
     public function index(Request $request)
     {
         $query = Billing::query()
-            ->with(['unit.cluster', 'unit.customer', 'status', 'approver'])
+            ->with(['unit.cluster', 'unit.resident', 'status', 'approver'])
             ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value))
             ->when($request->query('year'), fn ($q, $value) => $q->where('year', $value))
             ->when($request->query('month'), fn ($q, $value) => $q->where('month', $value))
@@ -75,7 +75,7 @@ class BillingController extends Controller
 
     public function pendingApproval(Request $request)
     {
-        $query = Billing::query()->with(['unit.cluster', 'unit.customer'])->whereNull('approved_at')->where('status_id', '01');
+        $query = Billing::query()->with(['unit.cluster', 'unit.resident'])->whereNull('approved_at')->where('status_id', '01');
 
         return $this->paginated($query->paginate($request->integer('per_page', 15)));
     }

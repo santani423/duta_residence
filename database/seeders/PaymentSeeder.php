@@ -92,7 +92,7 @@ class PaymentSeeder extends Seeder
                 'paid_at' => in_array($status, ['paid', 'refunded'], true) ? now()->subDays(rand(1, 20)) : null,
                 'manual_proof_path' => $manual ? "dummy/manual-payments/proof-{$number}.jpg" : null,
                 'manual_transfer_date' => $manual ? now()->subDays(rand(1, 7))->toDateString() : null,
-                'manual_notes' => $manual ? "Pengirim: {$billing->unit->customer->name}\nBank: BCA\nRekening: 1234****{$number}\nNominal: ".($subtotal + $adminFee) : null,
+                'manual_notes' => $manual ? "Pengirim: {$billing->unit->resident->name}\nBank: BCA\nRekening: 1234****{$number}\nNominal: ".($subtotal + $adminFee) : null,
                 'verification_notes' => match ($status) {
                     'rejected' => 'Nominal transfer tidak sesuai atau bukti duplikat.',
                     'paid' => $manual ? 'Bukti valid dan disetujui finance.' : null,
@@ -121,7 +121,7 @@ class PaymentSeeder extends Seeder
         return Receipt::updateOrCreate(['number' => $number], [
             'unit_id' => $billing->unit_id,
             'transaction_date' => $billing->paid_at ?: now()->subDays(rand(1, 15)),
-            'customer_name' => $billing->unit->customer->name,
+            'resident_name' => $billing->unit->resident->name,
             'cluster_name' => $billing->unit->cluster->name,
             'block' => $billing->unit->block,
             'lot_number' => $billing->unit->lot_number,

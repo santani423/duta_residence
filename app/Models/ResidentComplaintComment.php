@@ -4,10 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class CustomerComplaintComment extends Model
+class ResidentComplaintComment extends Model
 {
     protected $fillable = [
-        'customer_complaint_id', 'user_id', 'body', 'attachment_path', 'is_staff_response',
+        'resident_complaint_id', 'user_id', 'body', 'attachment_path', 'is_staff_response',
     ];
 
     protected $casts = [
@@ -16,7 +16,7 @@ class CustomerComplaintComment extends Model
 
     public function complaint()
     {
-        return $this->belongsTo(CustomerComplaint::class, 'customer_complaint_id');
+        return $this->belongsTo(ResidentComplaint::class, 'resident_complaint_id');
     }
 
     public function user()

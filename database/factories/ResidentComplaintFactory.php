@@ -2,15 +2,15 @@
 
 namespace Database\Factories;
 
-use App\Models\CustomerComplaint;
+use App\Models\ResidentComplaint;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<CustomerComplaint>
+ * @extends Factory<ResidentComplaint>
  */
-class CustomerComplaintFactory extends Factory
+class ResidentComplaintFactory extends Factory
 {
-    protected $model = CustomerComplaint::class;
+    protected $model = ResidentComplaint::class;
 
     public function definition(): array
     {

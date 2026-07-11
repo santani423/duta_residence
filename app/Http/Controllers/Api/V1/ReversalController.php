@@ -14,7 +14,7 @@ class ReversalController extends Controller
 
     public function index(Request $request)
     {
-        $query = Reversal::query()->with('receipt.unit.customer')
+        $query = Reversal::query()->with('receipt.unit.resident')
             ->when($request->query('status'), fn ($q, $value) => $q->where('status', $value));
 
         return $this->paginated($query->latest()->paginate($request->integer('per_page', 15)));

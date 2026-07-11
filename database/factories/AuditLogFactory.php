@@ -15,7 +15,7 @@ class AuditLogFactory extends Factory
 
     public function definition(): array
     {
-        $module = fake()->randomElement(['auth', 'customers', 'billings', 'payments', 'complaints', 'maintenance', 'documents', 'payment-settings']);
+        $module = fake()->randomElement(['auth', 'residents', 'billings', 'payments', 'complaints', 'maintenance', 'documents', 'payment-settings']);
 
         return [
             'user_id' => null,

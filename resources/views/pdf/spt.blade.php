@@ -3,9 +3,9 @@
 @section('content')
     <h1>Surat Pembayaran Tunai</h1>
     <div class="muted">No. Kuitansi: {{ $receipt->number }}</div>
-    <h2>Informasi Pelanggan</h2>
+    <h2>Informasi Penghuni</h2>
     <table>
-        <tr><th>Nama</th><td>{{ $receipt->customer_name }}</td></tr>
+        <tr><th>Nama</th><td>{{ $receipt->resident_name }}</td></tr>
         <tr><th>Klaster</th><td>{{ $receipt->cluster_name }}</td></tr>
         <tr><th>Blok/Kavling</th><td>{{ $receipt->block }}/{{ $receipt->lot_number }}</td></tr>
         <tr><th>Tanggal</th><td>{{ $receipt->transaction_date->format('d/m/Y H:i') }}</td></tr>

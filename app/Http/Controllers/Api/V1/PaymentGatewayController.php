@@ -28,7 +28,7 @@ class PaymentGatewayController extends Controller
     public function index(Request $request)
     {
         $query = PaymentTransaction::query()
-            ->with(['unit.cluster', 'unit.customer', 'billings'])
+            ->with(['unit.cluster', 'unit.resident', 'billings'])
             ->when($request->query('search'), fn ($q, $value) => $q->where(fn ($inner) => $inner
                 ->where('transaction_number', 'like', "%{$value}%")
                 ->orWhere('invoice_number', 'like', "%{$value}%")

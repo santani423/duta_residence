@@ -39,7 +39,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('customer_complaints', function (Blueprint $table) {
+        Schema::create('resident_complaints', function (Blueprint $table) {
             $table->id();
             $table->string('unit_id', 5);
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
@@ -58,9 +58,9 @@ return new class extends Migration
             $table->index(['unit_id', 'status']);
         });
 
-        Schema::create('customer_complaint_comments', function (Blueprint $table) {
+        Schema::create('resident_complaint_comments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('customer_complaint_id')->constrained('customer_complaints')->cascadeOnDelete();
+            $table->foreignId('resident_complaint_id')->constrained('resident_complaints')->cascadeOnDelete();
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->text('body');
             $table->string('attachment_path')->nullable();
@@ -97,8 +97,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('maintenance_requests');
-        Schema::dropIfExists('customer_complaint_comments');
-        Schema::dropIfExists('customer_complaints');
+        Schema::dropIfExists('resident_complaint_comments');
+        Schema::dropIfExists('resident_complaints');
         Schema::dropIfExists('payment_gateway_settings');
 
         Schema::table('users', function (Blueprint $table) {

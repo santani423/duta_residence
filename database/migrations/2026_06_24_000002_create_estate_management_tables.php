@@ -28,7 +28,7 @@ return new class extends Migration
             $table->string('name', 20);
         });
 
-        Schema::create('customer_statuses', function (Blueprint $table) {
+        Schema::create('resident_statuses', function (Blueprint $table) {
             $table->string('id', 2)->primary();
             $table->string('name', 30);
             $table->string('description', 100)->nullable();
@@ -62,7 +62,7 @@ return new class extends Migration
             $table->index('regency_id');
         });
 
-        Schema::create('customers', function (Blueprint $table) {
+        Schema::create('residents', function (Blueprint $table) {
             $table->string('id', 8)->primary();
             $table->string('name', 100);
             $table->string('phone', 20)->nullable();
@@ -80,7 +80,7 @@ return new class extends Migration
 
         Schema::create('units', function (Blueprint $table) {
             $table->string('id', 5)->primary();
-            $table->string('customer_id', 8);
+            $table->string('resident_id', 8);
             $table->string('cluster_id', 2);
             $table->string('block', 5);
             $table->string('lot_number', 10);
@@ -97,14 +97,14 @@ return new class extends Migration
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->softDeletes();
-            $table->foreign('customer_id')->references('id')->on('customers');
+            $table->foreign('resident_id')->references('id')->on('residents');
             $table->foreign('cluster_id')->references('id')->on('clusters');
             $table->foreign('property_type_id')->references('id')->on('property_types');
             $table->foreign('occupancy_id')->references('id')->on('occupancy_statuses');
-            $table->foreign('status_id')->references('id')->on('customer_statuses');
+            $table->foreign('status_id')->references('id')->on('resident_statuses');
             $table->unique(['cluster_id', 'block', 'lot_number']);
             $table->index(['cluster_id', 'status_id']);
-            $table->index('customer_id');
+            $table->index('resident_id');
         });
 
         Schema::create('special_billing_rates', function (Blueprint $table) {
@@ -154,7 +154,7 @@ return new class extends Migration
             $table->string('number', 20)->primary();
             $table->string('unit_id', 5);
             $table->dateTime('transaction_date');
-            $table->string('customer_name', 100);
+            $table->string('resident_name', 100);
             $table->string('cluster_name', 50);
             $table->string('block', 5);
             $table->string('lot_number', 10);
@@ -346,13 +346,13 @@ return new class extends Migration
             'billings',
             'special_billing_rates',
             'units',
-            'customers',
+            'residents',
             'districts',
             'regencies',
             'payment_channels',
             'payment_methods',
             'billing_statuses',
-            'customer_statuses',
+            'resident_statuses',
             'occupancy_statuses',
             'property_types',
             'clusters',

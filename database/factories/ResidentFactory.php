@@ -2,20 +2,20 @@
 
 namespace Database\Factories;
 
-use App\Models\Customer;
+use App\Models\Resident;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<Customer>
+ * @extends Factory<Resident>
  */
-class CustomerFactory extends Factory
+class ResidentFactory extends Factory
 {
-    protected $model = Customer::class;
+    protected $model = Resident::class;
 
     public function definition(): array
     {
         return [
-            'id' => 'CU'.str_pad((string) fake()->unique()->numberBetween(1, 999999), 6, '0', STR_PAD_LEFT),
+            'id' => 'RS'.str_pad((string) fake()->unique()->numberBetween(1, 999999), 6, '0', STR_PAD_LEFT),
             'name' => fake()->name(),
             'phone' => '08'.fake()->unique()->numerify('##########'),
             'telephone' => fake()->optional(0.35)->numerify('021#######'),

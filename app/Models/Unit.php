@@ -13,7 +13,7 @@ class Unit extends Model
     use HasFactory, HasStringPrimaryKey, SoftDeletes;
 
     protected $fillable = [
-        'id', 'customer_id', 'cluster_id', 'block', 'lot_number', 'property_type_id',
+        'id', 'resident_id', 'cluster_id', 'block', 'lot_number', 'property_type_id',
         'building_area', 'land_area', 'handover_date', 'occupancy_id', 'status_id',
         'is_penalty_eligible', 'is_discount_eligible', 'notes', 'created_by', 'updated_by',
     ];
@@ -26,9 +26,9 @@ class Unit extends Model
         'is_discount_eligible' => 'boolean',
     ];
 
-    public function customer()
+    public function resident()
     {
-        return $this->belongsTo(Customer::class);
+        return $this->belongsTo(Resident::class);
     }
 
     public function cluster()
@@ -48,7 +48,7 @@ class Unit extends Model
 
     public function status()
     {
-        return $this->belongsTo(CustomerStatus::class, 'status_id');
+        return $this->belongsTo(ResidentStatus::class, 'status_id');
     }
 
     public function billings()
@@ -78,7 +78,7 @@ class Unit extends Model
 
     public function complaints()
     {
-        return $this->hasMany(CustomerComplaint::class);
+        return $this->hasMany(ResidentComplaint::class);
     }
 
     public function maintenanceRequests()
@@ -92,7 +92,7 @@ class Unit extends Model
             $inner->where('id', 'like', "%{$search}%")
                 ->orWhere('block', 'like', "%{$search}%")
                 ->orWhere('lot_number', 'like', "%{$search}%")
-                ->orWhereHas('customer', fn (Builder $c) => $c->where('name', 'like', "%{$search}%")
+                ->orWhereHas('resident', fn (Builder $c) => $c->where('name', 'like', "%{$search}%")
                     ->orWhere('phone', 'like', "%{$search}%"));
         }));
     }

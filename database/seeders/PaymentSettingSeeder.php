@@ -21,7 +21,7 @@ class PaymentSettingSeeder extends Seeder
             'manual_bank_name' => 'BCA',
             'manual_account_number' => '1234567890',
             'manual_account_name' => 'PT Grand Duta Residence',
-            'manual_instructions' => 'Transfer sesuai total tagihan ke rekening estate, lalu unggah bukti pembayaran melalui portal customer.',
+            'manual_instructions' => 'Transfer sesuai total tagihan ke rekening estate, lalu unggah bukti pembayaran melalui portal penghuni.',
             'proof_max_size_kb' => 5120,
             'proof_allowed_extensions' => ['jpg', 'jpeg', 'png', 'pdf'],
             'xendit_public_key' => 'xnd_public_development_demo',

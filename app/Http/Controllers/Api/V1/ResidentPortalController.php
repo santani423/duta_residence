@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\AuditLog;
 use App\Models\Billing;
-use App\Models\CustomerComplaint;
-use App\Models\CustomerComplaintComment;
+use App\Models\ResidentComplaint;
+use App\Models\ResidentComplaintComment;
 use App\Models\ManagedFile;
 use App\Models\MaintenanceRequest;
 use App\Models\NotificationQueue;
@@ -25,7 +25,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
-class CustomerPortalController extends Controller
+class ResidentPortalController extends Controller
 {
     use ApiResponse;
 
@@ -38,7 +38,7 @@ class CustomerPortalController extends Controller
         $activeMaintenance = $unit->maintenanceRequests()->whereNotIn('status', ['completed', 'closed', 'rejected'])->count();
 
         return $this->success([
-            'customer' => $this->unitProfile($unit, $request->user()),
+            'resident' => $this->unitProfile($unit, $request->user()),
             'estate' => [
                 'name' => 'Grand Duta Residence',
                 'cluster' => $unit->cluster?->name,
@@ -103,7 +103,7 @@ class CustomerPortalController extends Controller
     public function updateProfile(Request $request, AuditService $auditService)
     {
         $unit = $this->unit($request);
-        $customer = $unit->customer;
+        $resident = $unit->resident;
         $user = $request->user();
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
@@ -117,7 +117,7 @@ class CustomerPortalController extends Controller
         ]);
 
         $oldUser = $user->toArray();
-        $oldCustomer = $customer->toArray();
+        $oldResident = $resident->toArray();
 
         $user->update([
             'name' => $data['name'],
@@ -128,20 +128,20 @@ class CustomerPortalController extends Controller
             'notification_preferences' => $data['notification_preferences'] ?? $user->notification_preferences,
         ]);
 
-        $customer->update([
+        $resident->update([
             'name' => $data['name'],
-            'phone' => $data['phone'] ?? $customer->phone,
-            'email' => $data['email'] ?? $customer->email,
-            'id_card_address' => $data['id_card_address'] ?? $customer->id_card_address,
+            'phone' => $data['phone'] ?? $resident->phone,
+            'email' => $data['email'] ?? $resident->email,
+            'id_card_address' => $data['id_card_address'] ?? $resident->id_card_address,
             'updated_by' => $user->id,
         ]);
 
         if ($request->hasFile('photo')) {
-            $this->storeManagedFile($request->file('photo'), $user, $customer, 'customer-profiles');
+            $this->storeManagedFile($request->file('photo'), $user, $resident, 'resident-profiles');
         }
 
-        $auditService->log('customer_profile_updated', 'customer-profile', 'UPDATE', $customer, $oldCustomer, $customer->refresh()->toArray());
-        $auditService->log('customer_account_updated', 'customer-account', 'UPDATE', $user, $oldUser, $user->refresh()->toArray());
+        $auditService->log('resident_profile_updated', 'resident-profile', 'UPDATE', $resident, $oldResident, $resident->refresh()->toArray());
+        $auditService->log('resident_account_updated', 'resident-account', 'UPDATE', $user, $oldUser, $user->refresh()->toArray());
 
         return $this->success($this->unitProfile($unit, $user->refresh()), 'Profil berhasil diperbarui.');
     }
@@ -185,7 +185,7 @@ class CustomerPortalController extends Controller
 
         return $this->success([
             ...$this->invoicePayload($billing),
-            'customer' => $this->unitProfile($billing->unit, $request->user()),
+            'resident' => $this->unitProfile($billing->unit, $request->user()),
             'estate' => ['name' => 'Grand Duta Residence'],
             'unit' => $this->propertyPayload($billing->unit),
             'payment_history' => $billing->paymentTransactions->map(fn (PaymentTransaction $transaction) => $this->paymentPayload($transaction)),
@@ -196,7 +196,7 @@ class CustomerPortalController extends Controller
     {
         $billing = $this->ownedBilling($request, $billing);
 
-        return Pdf::loadHTML(view('pdf.customer-invoice', compact('billing'))->render())
+        return Pdf::loadHTML(view('pdf.resident-invoice', compact('billing'))->render())
             ->download("Invoice-{$billing->id}.pdf");
     }
 
@@ -269,7 +269,7 @@ class CustomerPortalController extends Controller
 
         return $this->success([
             ...$this->paymentPayload($payment),
-            'customer' => $this->unitProfile($payment->unit, $request->user()),
+            'resident' => $this->unitProfile($payment->unit, $request->user()),
             'fee_breakdown' => [
                 'subtotal' => (float) $payment->subtotal,
                 'tax' => (float) $payment->tax,
@@ -337,7 +337,7 @@ class CustomerPortalController extends Controller
     {
         $payment = $this->ownedPayment($request, $payment);
 
-        return Pdf::loadHTML(view('pdf.customer-payment-receipt', compact('payment'))->render())
+        return Pdf::loadHTML(view('pdf.resident-payment-receipt', compact('payment'))->render())
             ->download("Receipt-{$payment->transaction_number}.pdf");
     }
 
@@ -386,19 +386,19 @@ class CustomerPortalController extends Controller
             $this->storeManagedFile($request->file('attachment'), $request->user(), $complaint, 'complaints', $attachment);
         }
 
-        $auditService->log('customer_complaint_created', 'complaints', 'CREATE', $complaint, [], $complaint->toArray());
+        $auditService->log('resident_complaint_created', 'complaints', 'CREATE', $complaint, [], $complaint->toArray());
 
         return $this->success($complaint->load('comments.user'), 'Komplain berhasil dibuat.', 201);
     }
 
-    public function complaint(Request $request, CustomerComplaint $complaint)
+    public function complaint(Request $request, ResidentComplaint $complaint)
     {
         $complaint = $this->ownedComplaint($request, $complaint);
 
         return $this->success($complaint->load(['comments.user', 'unit.cluster']));
     }
 
-    public function updateComplaint(Request $request, CustomerComplaint $complaint, AuditService $auditService)
+    public function updateComplaint(Request $request, ResidentComplaint $complaint, AuditService $auditService)
     {
         $complaint = $this->ownedComplaint($request, $complaint);
 
@@ -422,12 +422,12 @@ class CustomerPortalController extends Controller
         }
 
         $complaint->update([...$payload, 'updated_by' => $request->user()->id]);
-        $auditService->log('customer_complaint_updated', 'complaints', 'UPDATE', $complaint, $old, $complaint->refresh()->toArray());
+        $auditService->log('resident_complaint_updated', 'complaints', 'UPDATE', $complaint, $old, $complaint->refresh()->toArray());
 
         return $this->success($complaint->load('comments.user'), 'Komplain berhasil diperbarui.');
     }
 
-    public function addComplaintComment(Request $request, CustomerComplaint $complaint, AuditService $auditService)
+    public function addComplaintComment(Request $request, ResidentComplaint $complaint, AuditService $auditService)
     {
         $complaint = $this->ownedComplaint($request, $complaint);
         $data = $request->validate([
@@ -436,8 +436,8 @@ class CustomerPortalController extends Controller
         ]);
 
         $attachment = $request->hasFile('attachment') ? $request->file('attachment')->store('complaints', 'public') : null;
-        $comment = CustomerComplaintComment::query()->create([
-            'customer_complaint_id' => $complaint->id,
+        $comment = ResidentComplaintComment::query()->create([
+            'resident_complaint_id' => $complaint->id,
             'user_id' => $request->user()->id,
             'body' => $data['body'],
             'attachment_path' => $attachment,
@@ -448,17 +448,17 @@ class CustomerPortalController extends Controller
             $this->storeManagedFile($request->file('attachment'), $request->user(), $comment, 'complaints', $attachment);
         }
 
-        $auditService->log('customer_complaint_comment_added', 'complaints', 'COMMENT', $complaint, [], $comment->toArray());
+        $auditService->log('resident_complaint_comment_added', 'complaints', 'COMMENT', $complaint, [], $comment->toArray());
 
         return $this->success($comment->load('user'), 'Komentar berhasil ditambahkan.', 201);
     }
 
-    public function closeComplaint(Request $request, CustomerComplaint $complaint, AuditService $auditService)
+    public function closeComplaint(Request $request, ResidentComplaint $complaint, AuditService $auditService)
     {
         $complaint = $this->ownedComplaint($request, $complaint);
         $old = $complaint->toArray();
         $complaint->update(['status' => 'closed', 'closed_at' => now(), 'updated_by' => $request->user()->id]);
-        $auditService->log('customer_complaint_closed', 'complaints', 'CLOSE', $complaint, $old, $complaint->refresh()->toArray());
+        $auditService->log('resident_complaint_closed', 'complaints', 'CLOSE', $complaint, $old, $complaint->refresh()->toArray());
 
         return $this->success($complaint, 'Komplain berhasil ditutup.');
     }
@@ -620,7 +620,7 @@ class CustomerPortalController extends Controller
         $user = $request->user();
         $old = $user->toArray();
         $user->update($data);
-        $auditService->log('customer_settings_updated', 'customer-settings', 'UPDATE', $user, $old, $user->refresh()->toArray());
+        $auditService->log('resident_settings_updated', 'resident-settings', 'UPDATE', $user, $old, $user->refresh()->toArray());
 
         return $this->success($this->settings($request)->getData(true)['data'], 'Pengaturan berhasil disimpan.');
     }
@@ -629,10 +629,10 @@ class CustomerPortalController extends Controller
     {
         $unit = $request->user()
             ->unit()
-            ->with(['cluster', 'propertyType', 'occupancy', 'status', 'customer.district'])
+            ->with(['cluster', 'propertyType', 'occupancy', 'status', 'resident.district'])
             ->first();
 
-        abort_if(! $unit, 403, 'Akun customer belum terhubung dengan data unit.');
+        abort_if(! $unit, 403, 'Akun penghuni belum terhubung dengan data unit.');
 
         return $unit;
     }
@@ -660,7 +660,7 @@ class CustomerPortalController extends Controller
         return $payment->load(['unit.cluster', 'billings']);
     }
 
-    private function ownedComplaint(Request $request, CustomerComplaint $complaint): CustomerComplaint
+    private function ownedComplaint(Request $request, ResidentComplaint $complaint): ResidentComplaint
     {
         $unit = $this->unit($request);
         abort_if($complaint->unit_id !== $unit->id, 404);
@@ -678,20 +678,20 @@ class CustomerPortalController extends Controller
 
     private function unitProfile(Unit $unit, $user): array
     {
-        $customer = $unit->customer;
+        $resident = $unit->resident;
 
         return [
             'id' => $unit->id,
-            'name' => $customer?->name,
-            'email' => $customer?->email ?: $user->email,
-            'phone' => $customer?->phone ?: $user->phone,
-            'customer_number' => $unit->id,
+            'name' => $resident?->name,
+            'email' => $resident?->email ?: $user->email,
+            'phone' => $resident?->phone ?: $user->phone,
+            'resident_number' => $unit->id,
             'status' => $unit->status?->name,
             'estate' => 'Grand Duta Residence',
             'unit' => "{$unit->cluster?->name} {$unit->block}/{$unit->lot_number}",
             'joined_at' => $unit->created_at,
             'last_login_at' => $user->last_login_at,
-            'address' => $customer?->id_card_address,
+            'address' => $resident?->id_card_address,
             'language_preference' => $user->language_preference,
             'theme_preference' => $user->theme_preference,
             'notification_preferences' => $user->notification_preferences,

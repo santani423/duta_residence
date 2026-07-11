@@ -56,7 +56,7 @@ class PaymentTransactionFactory extends Factory
             'admin_fee' => 0,
             'manual_proof_path' => 'dummy/manual-payments/proof-sandbox.jpg',
             'manual_transfer_date' => now()->subDay(),
-            'manual_notes' => "Pengirim: Demo Customer\nBank: BCA\nRekening: 1234****7890\nNominal sesuai transfer.",
+            'manual_notes' => "Pengirim: Demo Penghuni\nBank: BCA\nRekening: 1234****7890\nNominal sesuai transfer.",
         ]);
     }
 

@@ -19,12 +19,12 @@ class ReportController extends Controller
     {
         return $this->success([
             'total_clusters' => Cluster::count(),
-            'total_customers' => Unit::count(),
+            'total_residents' => Unit::count(),
             'total_billings' => Billing::count(),
             'unpaid_billings' => Billing::where('status_id', '01')->count(),
             'paid_billings' => Billing::where('status_id', '02')->count(),
             'today_receipts_total' => Receipt::whereDate('transaction_date', today())->sum('grand_total'),
-            'recent_receipts' => Receipt::with('unit.customer')->latest('transaction_date')->limit(5)->get(),
+            'recent_receipts' => Receipt::with('unit.resident')->latest('transaction_date')->limit(5)->get(),
         ]);
     }
 

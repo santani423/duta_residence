@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class CustomerComplaint extends Model
+class ResidentComplaint extends Model
 {
     use HasFactory, SoftDeletes;
 
@@ -31,6 +31,6 @@ class CustomerComplaint extends Model
 
     public function comments()
     {
-        return $this->hasMany(CustomerComplaintComment::class);
+        return $this->hasMany(ResidentComplaintComment::class);
     }
 }

@@ -1,12 +1,12 @@
 @extends('pdf.layout')
 
 @section('content')
-    <h1>Invoice Customer</h1>
+    <h1>Invoice Penghuni</h1>
     <div class="muted">Invoice: BIL-{{ $billing->id }}</div>
 
-    <h2>Informasi Customer</h2>
+    <h2>Informasi Penghuni</h2>
     <table>
-        <tr><th>Nama</th><td>{{ $billing->unit->customer->name }}</td></tr>
+        <tr><th>Nama</th><td>{{ $billing->unit->resident->name }}</td></tr>
         <tr><th>Estate</th><td>Grand Duta Residence</td></tr>
         <tr><th>Unit</th><td>{{ $billing->unit->cluster->name ?? '-' }} {{ $billing->unit->block }}/{{ $billing->unit->lot_number }}</td></tr>
         <tr><th>Periode</th><td>{{ sprintf('%04d-%02d', $billing->year, $billing->month) }}</td></tr>

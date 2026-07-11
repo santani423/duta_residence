@@ -5,7 +5,15 @@
       "Bash(php -r '$d=json_decode\\(file_get_contents\\(\"php://stdin\"\\),true\\); $t=$d[\"data\"][\"token\"]; $r=shell_exec\\(\"curl -s -X DELETE http://localhost:8000/api/v1/clusters/ZZ -H \\\\\"Authorization: Bearer $t\\\\\"\"\\); echo $r;')",
       "Bash(cat routes/console.php)",
       "Bash(find app/Console -type f)",
-      "Bash(crontab -l)"
+      "Bash(crontab -l)",
+      "Bash(grep -rniI --line-number -E \"customer\" app/Models)",
+      "Bash(grep -rniI --line-number -E \"customer\" app/Services)",
+      "Bash(grep -rniI --line-number -E \"customer\" app/Providers)",
+      "Bash(grep -rniI --line-number -E \"customer\" app/Console)",
+      "Bash(grep -rniI --line-number -E \"customer\" routes)",
+      "Bash(grep -rniI --line-number -E \"customer\" tests)",
+      "Bash(grep -rniI --line-number -E \"customer\" resources)",
+      "Bash(grep -rniI --line-number -E \"customer\" config)"
     ]
   }
 }

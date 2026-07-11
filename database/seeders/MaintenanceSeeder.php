@@ -52,7 +52,7 @@ class MaintenanceSeeder extends Seeder
                 'technician_schedule' => $scheduled,
                 'technician_notes' => $completed ? 'Pekerjaan selesai. Foto sebelum/sesudah tersedia di dokumen dummy.' : ($scheduled ? 'Teknisi sudah dijadwalkan.' : null),
                 'rating' => $completed ? rand(3, 5) : null,
-                'rating_notes' => $completed ? 'Customer memberi rating setelah pekerjaan selesai.' : null,
+                'rating_notes' => $completed ? 'Penghuni memberi rating setelah pekerjaan selesai.' : null,
                 'attachment_path' => 'dummy/maintenance/'.$unit->id.'-'.$category.'.jpg',
                 'completed_at' => $completed,
                 'created_by' => $user?->id,

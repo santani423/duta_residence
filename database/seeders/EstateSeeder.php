@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\BillingStatus;
 use App\Models\Cluster;
-use App\Models\CustomerStatus;
+use App\Models\ResidentStatus;
 use App\Models\District;
 use App\Models\OccupancyStatus;
 use App\Models\PaymentChannel;
@@ -38,17 +38,17 @@ class EstateSeeder extends Seeder
         collect([
             ['id' => 'B', 'name' => 'Bangunan', 'description' => 'Unit bangunan siap huni'],
             ['id' => 'K', 'name' => 'Kavling Developer', 'description' => 'Kavling milik developer'],
-            ['id' => 'P', 'name' => 'Kavling Pelanggan', 'description' => 'Kavling milik pelanggan'],
+            ['id' => 'P', 'name' => 'Kavling Penghuni', 'description' => 'Kavling milik penghuni'],
         ])->each(fn ($row) => PropertyType::updateOrCreate(['id' => $row['id']], $row));
 
         collect([['id' => '1', 'name' => 'Dihuni'], ['id' => '2', 'name' => 'Kosong']])
             ->each(fn ($row) => OccupancyStatus::updateOrCreate(['id' => $row['id']], $row));
 
         collect([
-            ['id' => 'AK', 'name' => 'Aktif', 'description' => 'Pelanggan aktif'],
+            ['id' => 'AK', 'name' => 'Aktif', 'description' => 'Penghuni aktif'],
             ['id' => 'RK', 'name' => 'Rumah Kosong', 'description' => 'Unit kosong atau renovasi'],
-            ['id' => 'TA', 'name' => 'Tidak Aktif', 'description' => 'Pelanggan tidak aktif'],
-        ])->each(fn ($row) => CustomerStatus::updateOrCreate(['id' => $row['id']], $row));
+            ['id' => 'TA', 'name' => 'Tidak Aktif', 'description' => 'Penghuni tidak aktif'],
+        ])->each(fn ($row) => ResidentStatus::updateOrCreate(['id' => $row['id']], $row));
 
         collect([['id' => '01', 'name' => 'Belum Bayar'], ['id' => '02', 'name' => 'Lunas']])
             ->each(fn ($row) => BillingStatus::updateOrCreate(['id' => $row['id']], $row));

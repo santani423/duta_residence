@@ -4,8 +4,8 @@ namespace Database\Seeders;
 
 use App\Models\AuditLog;
 use App\Models\Billing;
-use App\Models\Customer;
-use App\Models\CustomerComplaint;
+use App\Models\Resident;
+use App\Models\ResidentComplaint;
 use App\Models\MaintenanceRequest;
 use App\Models\PaymentGatewaySetting;
 use App\Models\PaymentTransaction;
@@ -23,8 +23,8 @@ class AuditLogSeeder extends Seeder
             ['auth', 'LOGIN', 'login_success'],
             ['auth', 'LOGIN_FAILED', 'login_failed'],
             ['auth', 'LOGOUT', 'logout'],
-            ['customers', 'CREATE', 'customer_created'],
-            ['customers', 'UPDATE', 'customer_updated'],
+            ['residents', 'CREATE', 'resident_created'],
+            ['residents', 'UPDATE', 'resident_updated'],
             ['units', 'CREATE', 'unit_created'],
             ['units', 'UPDATE', 'unit_updated'],
             ['users', 'ACTIVATE', 'user_activated'],
@@ -99,11 +99,11 @@ class AuditLogSeeder extends Seeder
     private function entity(string $module): array
     {
         return match ($module) {
-            'customers' => [Customer::class, (string) Customer::inRandomOrder()->value('id')],
+            'residents' => [Resident::class, (string) Resident::inRandomOrder()->value('id')],
             'units' => [Unit::class, (string) Unit::inRandomOrder()->value('id')],
             'billings' => [Billing::class, (string) Billing::inRandomOrder()->value('id')],
             'payments' => [PaymentTransaction::class, (string) PaymentTransaction::inRandomOrder()->value('id')],
-            'complaints' => [CustomerComplaint::class, (string) CustomerComplaint::inRandomOrder()->value('id')],
+            'complaints' => [ResidentComplaint::class, (string) ResidentComplaint::inRandomOrder()->value('id')],
             'maintenance' => [MaintenanceRequest::class, (string) MaintenanceRequest::inRandomOrder()->value('id')],
             'payment-settings' => [PaymentGatewaySetting::class, (string) PaymentGatewaySetting::query()->value('id')],
             default => [User::class, (string) User::inRandomOrder()->value('id')],

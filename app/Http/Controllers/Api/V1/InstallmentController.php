@@ -16,7 +16,7 @@ class InstallmentController extends Controller
     public function index(Request $request)
     {
         $query = Installment::query()
-            ->with(['unit.cluster', 'unit.customer'])
+            ->with(['unit.cluster', 'unit.resident'])
             ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value));
 
         return $this->paginated($query->latest('payment_date')->paginate($request->integer('per_page', 15)));

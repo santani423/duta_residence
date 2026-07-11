@@ -23,12 +23,12 @@ export const api = {
     updateRateSchedule: (id, payload) => http.put(`/rate-schedules/${id}`, payload),
     removeRateSchedule: (id) => http.delete(`/rate-schedules/${id}`),
   },
-  customers: {
-    list: (params) => http.get('/customers', { params }),
-    detail: (id) => http.get(`/customers/${id}`),
-    create: (payload) => http.post('/customers', payload),
-    update: (id, payload) => http.put(`/customers/${id}`, payload),
-    remove: (id) => http.delete(`/customers/${id}`),
+  residents: {
+    list: (params) => http.get('/residents', { params }),
+    detail: (id) => http.get(`/residents/${id}`),
+    create: (payload) => http.post('/residents', payload),
+    update: (id, payload) => http.put(`/residents/${id}`, payload),
+    remove: (id) => http.delete(`/residents/${id}`),
   },
   units: {
     list: (params) => http.get('/units', { params }),
@@ -64,57 +64,57 @@ export const api = {
     verifyManual: (id, payload) => http.post(`/payments/${id}/verify`, payload),
     rejectManual: (id, payload) => http.post(`/payments/${id}/reject`, payload),
   },
-  customer: {
-    dashboard: () => http.get('/customer/dashboard'),
-    account: () => http.get('/customer/account'),
-    profile: () => http.get('/customer/profile'),
-    updateProfile: (payload) => http.post('/customer/profile', payload, {
+  resident: {
+    dashboard: () => http.get('/resident/dashboard'),
+    account: () => http.get('/resident/account'),
+    profile: () => http.get('/resident/profile'),
+    updateProfile: (payload) => http.post('/resident/profile', payload, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-    property: () => http.get('/customer/property'),
-    bills: (params) => http.get('/customer/bills', { params }),
-    invoices: (params) => http.get('/customer/invoices', { params }),
-    invoice: (id) => http.get(`/customer/invoices/${id}`),
-    downloadInvoice: (id) => http.get(`/customer/invoices/${id}/download`, { responseType: 'blob' }),
-    createPayment: (invoiceId, payload) => http.post(`/customer/invoices/${invoiceId}/payments`, payload),
-    paymentConfig: () => http.get('/customer/payment-config'),
-    paymentMethods: () => http.get('/customer/payment-methods'),
-    payments: (params) => http.get('/customer/payments', { params }),
-    payment: (id) => http.get(`/customer/payments/${id}`),
-    paymentStatus: (id) => http.get(`/customer/payments/${id}/status`),
-    uploadManualProof: (id, payload) => http.post(`/customer/payments/${id}/manual-proof`, payload, {
+    property: () => http.get('/resident/property'),
+    bills: (params) => http.get('/resident/bills', { params }),
+    invoices: (params) => http.get('/resident/invoices', { params }),
+    invoice: (id) => http.get(`/resident/invoices/${id}`),
+    downloadInvoice: (id) => http.get(`/resident/invoices/${id}/download`, { responseType: 'blob' }),
+    createPayment: (invoiceId, payload) => http.post(`/resident/invoices/${invoiceId}/payments`, payload),
+    paymentConfig: () => http.get('/resident/payment-config'),
+    paymentMethods: () => http.get('/resident/payment-methods'),
+    payments: (params) => http.get('/resident/payments', { params }),
+    payment: (id) => http.get(`/resident/payments/${id}`),
+    paymentStatus: (id) => http.get(`/resident/payments/${id}/status`),
+    uploadManualProof: (id, payload) => http.post(`/resident/payments/${id}/manual-proof`, payload, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-    downloadPaymentReceipt: (id) => http.get(`/customer/payments/${id}/receipt/download`, { responseType: 'blob' }),
-    downloadCashReceipt: (number) => http.get(`/customer/receipts/${number}/download`, { responseType: 'blob' }),
-    complaints: (params) => http.get('/customer/complaints', { params }),
-    complaint: (id) => http.get(`/customer/complaints/${id}`),
-    createComplaint: (payload) => http.post('/customer/complaints', payload, {
+    downloadPaymentReceipt: (id) => http.get(`/resident/payments/${id}/receipt/download`, { responseType: 'blob' }),
+    downloadCashReceipt: (number) => http.get(`/resident/receipts/${number}/download`, { responseType: 'blob' }),
+    complaints: (params) => http.get('/resident/complaints', { params }),
+    complaint: (id) => http.get(`/resident/complaints/${id}`),
+    createComplaint: (payload) => http.post('/resident/complaints', payload, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-    updateComplaint: (id, payload) => http.post(`/customer/complaints/${id}`, payload, {
+    updateComplaint: (id, payload) => http.post(`/resident/complaints/${id}`, payload, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-    addComplaintComment: (id, payload) => http.post(`/customer/complaints/${id}/comments`, payload, {
+    addComplaintComment: (id, payload) => http.post(`/resident/complaints/${id}/comments`, payload, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-    closeComplaint: (id) => http.post(`/customer/complaints/${id}/close`),
-    maintenanceRequests: (params) => http.get('/customer/maintenance-requests', { params }),
-    maintenanceRequest: (id) => http.get(`/customer/maintenance-requests/${id}`),
-    createMaintenanceRequest: (payload) => http.post('/customer/maintenance-requests', payload, {
+    closeComplaint: (id) => http.post(`/resident/complaints/${id}/close`),
+    maintenanceRequests: (params) => http.get('/resident/maintenance-requests', { params }),
+    maintenanceRequest: (id) => http.get(`/resident/maintenance-requests/${id}`),
+    createMaintenanceRequest: (payload) => http.post('/resident/maintenance-requests', payload, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-    updateMaintenanceRequest: (id, payload) => http.post(`/customer/maintenance-requests/${id}`, payload, {
+    updateMaintenanceRequest: (id, payload) => http.post(`/resident/maintenance-requests/${id}`, payload, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-    rateMaintenanceRequest: (id, payload) => http.post(`/customer/maintenance-requests/${id}/rating`, payload),
-    documents: () => http.get('/customer/documents'),
-    notifications: (params) => http.get('/customer/notifications', { params }),
-    readNotification: (id) => http.post(`/customer/notifications/${id}/read`),
-    readAllNotifications: () => http.post('/customer/notifications/read-all'),
-    activity: (params) => http.get('/customer/activity', { params }),
-    settings: () => http.get('/customer/settings'),
-    updateSettings: (payload) => http.put('/customer/settings', payload),
+    rateMaintenanceRequest: (id, payload) => http.post(`/resident/maintenance-requests/${id}/rating`, payload),
+    documents: () => http.get('/resident/documents'),
+    notifications: (params) => http.get('/resident/notifications', { params }),
+    readNotification: (id) => http.post(`/resident/notifications/${id}/read`),
+    readAllNotifications: () => http.post('/resident/notifications/read-all'),
+    activity: (params) => http.get('/resident/activity', { params }),
+    settings: () => http.get('/resident/settings'),
+    updateSettings: (payload) => http.put('/resident/settings', payload),
   },
   adminPaymentGateway: {
     show: () => http.get('/admin/settings/payment-gateway'),

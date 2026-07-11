@@ -4,7 +4,7 @@
     <h1>Surat Pemberitahuan Kredit</h1>
     <div class="muted">Billing ID: {{ $billing->id }}</div>
     <table>
-        <tr><th>Pelanggan</th><td>{{ $billing->unit->customer->name }}</td></tr>
+        <tr><th>Penghuni</th><td>{{ $billing->unit->resident->name }}</td></tr>
         <tr><th>Klaster</th><td>{{ $billing->unit->cluster->name }}</td></tr>
         <tr><th>Periode</th><td>{{ sprintf('%04d-%02d', $billing->year, $billing->month) }}</td></tr>
         <tr><th>Nominal</th><td>Rp {{ number_format($billing->amount, 0, ',', '.') }}</td></tr>
