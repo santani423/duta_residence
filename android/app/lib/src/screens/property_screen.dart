@@ -29,7 +29,7 @@ class _PropertyScreenState extends State<PropertyScreen> {
   }
 
   Future<Map<String, dynamic>> _load() async {
-    final result = await widget.apiClient.get('customer/property');
+    final result = await widget.apiClient.get('resident/property');
     return asMap(result.data);
   }
 

@@ -34,7 +34,7 @@ export default function InstallmentsPage() {
 
   return (
     <section>
-      <PageHeader title="Cicilan" subtitle="Pencatatan pembayaran cicilan pelanggan." breadcrumbs={[{ label: 'Cicilan' }]} onRefresh={installments.refetch} extra={<Can permission="installments.create"><Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>Tambah Cicilan</Button></Can>} />
+      <PageHeader title="Cicilan" subtitle="Pencatatan pembayaran cicilan penghuni." breadcrumbs={[{ label: 'Cicilan' }]} onRefresh={installments.refetch} extra={<Can permission="installments.create"><Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>Tambah Cicilan</Button></Can>} />
       <FilterBar>
         <Input allowClear placeholder="ID unit" value={table.filters.unit_id} onChange={(event) => table.setFilters({ ...table.filters, unit_id: event.target.value || undefined })} className="filter-input" />
       </FilterBar>
@@ -43,7 +43,7 @@ export default function InstallmentsPage() {
           query={installments}
           onChange={table.handleTableChange}
           columns={[
-            { title: 'Pelanggan', dataIndex: ['unit', 'customer', 'name'] },
+            { title: 'Penghuni', dataIndex: ['unit', 'resident', 'name'] },
             { title: 'Cluster', dataIndex: ['unit', 'cluster', 'name'] },
             { title: 'Tanggal', dataIndex: 'payment_date', render: formatDate },
             { title: 'Nominal', dataIndex: 'amount', render: formatCurrency },

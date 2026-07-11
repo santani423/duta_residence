@@ -38,7 +38,7 @@ class UnitController extends Controller
 
     public function show(Unit $unit)
     {
-        return $this->success($unit->load(['cluster', 'propertyType', 'occupancy', 'status', 'resident', 'billings.status']));
+        return $this->success($unit->load(['cluster', 'propertyType', 'occupancy', 'status', 'resident', 'billings.status', 'users.roles']));
     }
 
     public function update(Request $request, Unit $unit, AuditService $auditService)

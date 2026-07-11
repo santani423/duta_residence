@@ -31,7 +31,7 @@ export default function ReceivablesPage() {
           query={receivables}
           onChange={table.handleTableChange}
           columns={[
-            { title: 'Pelanggan', dataIndex: ['unit', 'customer', 'name'] },
+            { title: 'Penghuni', dataIndex: ['unit', 'resident', 'name'] },
             { title: 'Cluster', dataIndex: ['unit', 'cluster', 'name'] },
             { title: 'Periode', render: (_, row) => formatPeriod(row.year, row.month) },
             { title: 'Nominal', dataIndex: 'amount', render: formatCurrency },

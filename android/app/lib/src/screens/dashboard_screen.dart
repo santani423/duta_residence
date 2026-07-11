@@ -41,7 +41,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<Map<String, dynamic>> _load() async {
-    final result = await widget.apiClient.get('customer/dashboard');
+    final result = await widget.apiClient.get('resident/dashboard');
     return asMap(result.data);
   }
 
@@ -72,7 +72,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               _HeroSummary(
                 userName: compact(
-                  asMap(data['customer'])['name'] ?? widget.userName,
+                  asMap(data['resident'])['name'] ?? widget.userName,
                 ),
                 property: asMap(data['property']),
                 onOpenNotifications: widget.onOpenNotifications,
@@ -438,17 +438,17 @@ class _InfoCards extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SectionHeader(title: 'Informasi Customer'),
+                const SectionHeader(title: 'Informasi Penghuni'),
                 const SizedBox(height: AppSpacing.lg),
                 InfoRows(
                   items: {
-                    'Nama': asMap(data['customer'])['name'],
-                    'Nomor Customer': asMap(
-                      data['customer'],
-                    )['customer_number'],
-                    'Email': asMap(data['customer'])['email'],
-                    'Telepon': asMap(data['customer'])['phone'],
-                    'Status': asMap(data['customer'])['status'],
+                    'Nama': asMap(data['resident'])['name'],
+                    'Nomor Penghuni': asMap(
+                      data['resident'],
+                    )['resident_number'],
+                    'Email': asMap(data['resident'])['email'],
+                    'Telepon': asMap(data['resident'])['phone'],
+                    'Status': asMap(data['resident'])['status'],
                   },
                 ),
               ],

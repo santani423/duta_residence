@@ -36,7 +36,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<Map<String, dynamic>> _load() async {
-    final result = await widget.apiClient.get('customer/account');
+    final result = await widget.apiClient.get('resident/account');
     return asMap(result.data);
   }
 
@@ -72,9 +72,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await widget.themeController.setMode(mode);
       final settings = asMap(
-        (await widget.apiClient.get('customer/settings')).data,
+        (await widget.apiClient.get('resident/settings')).data,
       );
-      await widget.apiClient.putJson('customer/settings', {
+      await widget.apiClient.putJson('resident/settings', {
         'theme_preference': _themeValue(mode),
         'language_preference': settings['language_preference'] ?? 'id',
         'notification_preferences':
@@ -181,7 +181,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: AppSpacing.lg),
                     InfoRows(
                       items: {
-                        'Nomor Customer': account['customer_number'],
+                        'Nomor Penghuni': account['resident_number'],
                         'Telepon': account['phone'],
                         'Alamat': account['address'],
                         'Unit': property['unit_label'],

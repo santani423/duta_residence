@@ -5,7 +5,7 @@ class UserSession {
     required this.username,
     this.email,
     this.phone,
-    this.customerId,
+    this.residentId,
     this.role,
   });
 
@@ -14,7 +14,7 @@ class UserSession {
   final String username;
   final String? email;
   final String? phone;
-  final String? customerId;
+  final String? residentId;
   final String? role;
 
   factory UserSession.fromJson(Map<String, dynamic> json) {
@@ -24,7 +24,7 @@ class UserSession {
       username: json['username']?.toString() ?? '-',
       email: json['email']?.toString(),
       phone: json['phone']?.toString(),
-      customerId: json['customer_id']?.toString(),
+      residentId: json['resident_id']?.toString(),
       role: json['role']?.toString(),
     );
   }

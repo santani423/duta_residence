@@ -29,7 +29,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<List<dynamic>> _load() async {
     final result = await widget.apiClient.get(
-      'customer/notifications',
+      'resident/notifications',
       query: {'per_page': 30},
     );
     return asList(result.data);
@@ -42,7 +42,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _read(String id) async {
     try {
-      await widget.apiClient.postJson('customer/notifications/$id/read', {});
+      await widget.apiClient.postJson('resident/notifications/$id/read', {});
       await _refresh();
     } on ApiException catch (error) {
       if (mounted) {
@@ -55,7 +55,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _readAll() async {
     try {
-      await widget.apiClient.postJson('customer/notifications/read-all', {});
+      await widget.apiClient.postJson('resident/notifications/read-all', {});
       await _refresh();
     } on ApiException catch (error) {
       if (mounted) {

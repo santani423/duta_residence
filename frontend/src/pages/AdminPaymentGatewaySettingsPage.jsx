@@ -37,7 +37,7 @@ export default function AdminPaymentGatewaySettingsPage() {
       message.success('Pengaturan payment gateway disimpan.');
       queryClient.invalidateQueries({ queryKey: ['admin-payment-gateway-setting'] });
       queryClient.invalidateQueries({ queryKey: ['payment-gateway-config'] });
-      queryClient.invalidateQueries({ queryKey: ['customer-payment-config'] });
+      queryClient.invalidateQueries({ queryKey: ['resident-payment-config'] });
     },
     onError: (error) => {
       form.setFields(mapValidationErrors(error));
@@ -64,7 +64,7 @@ export default function AdminPaymentGatewaySettingsPage() {
         onRefresh={query.refetch}
       />
       {query.isLoading ? <LoadingState rows={8} /> : query.isError ? <ErrorState error={query.error} onRetry={query.refetch} /> : (
-        <div className="customer-grid customer-grid-2">
+        <div className="resident-grid resident-grid-2">
           <Card title="Gateway Aktif">
             <Form form={form} layout="vertical" className="responsive-form" onFinish={update.mutate}>
               <Form.Item label="Gateway utama" name="active_gateway" rules={[{ required: true }]}>
@@ -125,12 +125,12 @@ export default function AdminPaymentGatewaySettingsPage() {
               </Form.Item>
             </Form>
           </Card>
-          <Card title="Konfigurasi Public untuk Customer">
+          <Card title="Konfigurasi Public untuk Penghuni">
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
               <Alert
                 type="info"
                 showIcon
-                message="Data yang dikirim ke frontend customer"
+                message="Data yang dikirim ke frontend penghuni"
                 description="Secret key, server key, API key, dan callback token tidak pernah ditampilkan di halaman ini."
               />
               <p>Gateway aktif: <strong>{setting.public_config?.active_gateway}</strong></p>

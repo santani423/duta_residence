@@ -35,7 +35,7 @@ export default function AuditLogsPage() {
       <FilterBar>
         <Input allowClear placeholder="Cari aktivitas, endpoint" value={table.search} onChange={(event) => table.setSearch(event.target.value)} className="filter-input" />
         <Input allowClear placeholder="Role" value={table.filters.role} onChange={(event) => table.setFilters({ ...table.filters, role: event.target.value || undefined })} className="filter-input" />
-        <Select allowClear placeholder="Modul" value={table.filters.module} onChange={(value) => table.setFilters({ ...table.filters, module: value })} className="filter-input" options={['auth', 'customers', 'billings', 'payments', 'users', 'installments', 'clusters'].map((value) => ({ value, label: value }))} />
+        <Select allowClear placeholder="Modul" value={table.filters.module} onChange={(value) => table.setFilters({ ...table.filters, module: value })} className="filter-input" options={['auth', 'residents', 'billings', 'payments', 'users', 'installments', 'clusters'].map((value) => ({ value, label: value }))} />
         <Input allowClear placeholder="Action" value={table.filters.action} onChange={(event) => table.setFilters({ ...table.filters, action: event.target.value || undefined })} className="filter-input" />
         <Select allowClear placeholder="Status" value={table.filters.status} onChange={(value) => table.setFilters({ ...table.filters, status: value })} className="filter-input" options={[{ value: 'success', label: 'Success' }, { value: 'failed', label: 'Failed' }]} />
         <DatePicker.RangePicker onChange={(value) => table.setFilters({ ...table.filters, date_from: value?.[0]?.format('YYYY-MM-DD'), date_to: value?.[1]?.format('YYYY-MM-DD') })} />

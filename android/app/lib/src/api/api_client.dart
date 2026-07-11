@@ -101,9 +101,9 @@ class ApiClient {
     final type = document['download_type']?.toString();
     final id = Uri.encodeComponent(document['download_id']?.toString() ?? '');
     return switch (type) {
-      'payment_receipt' => _uri('customer/payments/$id/receipt/download'),
-      'receipt' => _uri('customer/receipts/$id/download'),
-      _ => _uri('customer/invoices/$id/download'),
+      'payment_receipt' => _uri('resident/payments/$id/receipt/download'),
+      'receipt' => _uri('resident/receipts/$id/download'),
+      _ => _uri('resident/invoices/$id/download'),
     };
   }
 

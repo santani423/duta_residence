@@ -53,7 +53,7 @@ export default function DashboardPage() {
 
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}><Card><Statistic title="Total Cluster" value={data.total_clusters || 0} /></Card></Col>
-        <Col xs={24} sm={12} lg={6}><Card><Statistic title="Total Pelanggan" value={data.total_customers || 0} /></Card></Col>
+        <Col xs={24} sm={12} lg={6}><Card><Statistic title="Total Penghuni" value={data.total_residents || 0} /></Card></Col>
         <Col xs={24} sm={12} lg={6}><Card><Statistic title="Tagihan" value={data.total_billings || 0} /></Card></Col>
         <Col xs={24} sm={12} lg={6}><Card><Statistic title="Penerimaan Hari Ini" value={formatCurrency(data.today_receipts_total)} /></Card></Col>
       </Row>
@@ -108,7 +108,7 @@ export default function DashboardPage() {
                 <List.Item>
                   <List.Item.Meta
                     title={<Space><Typography.Text strong>{item.number}</Typography.Text><StatusBadge type="transaction" value={item.status} /></Space>}
-                    description={`${item.unit?.customer?.name || item.customer_name} - ${formatDateTime(item.transaction_date)}`}
+                    description={`${item.unit?.resident?.name || item.resident_name} - ${formatDateTime(item.transaction_date)}`}
                   />
                   <Typography.Text strong>{formatCurrency(item.grand_total)}</Typography.Text>
                 </List.Item>

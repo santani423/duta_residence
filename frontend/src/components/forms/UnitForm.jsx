@@ -4,7 +4,7 @@ import dayjs from 'dayjs';
 export const propertyTypeOptions = [
   { value: 'B', label: 'Bangunan' },
   { value: 'K', label: 'Kavling Developer' },
-  { value: 'P', label: 'Kavling Pelanggan' },
+  { value: 'P', label: 'Kavling Penghuni' },
 ];
 
 export const occupancyOptions = [
@@ -12,13 +12,13 @@ export const occupancyOptions = [
   { value: '2', label: 'Kosong' },
 ];
 
-export const customerStatusOptions = [
+export const residentStatusOptions = [
   { value: 'AK', label: 'Aktif' },
   { value: 'RK', label: 'Rumah Kosong' },
   { value: 'TA', label: 'Tidak Aktif' },
 ];
 
-export default function UnitForm({ form, clusters = [], customers = [], disabledId = false, onFinish, loading }) {
+export default function UnitForm({ form, clusters = [], residents = [], disabledId = false, onFinish, loading }) {
   return (
     <Form
       form={form}
@@ -40,8 +40,8 @@ export default function UnitForm({ form, clusters = [], customers = [], disabled
       <Form.Item label="ID Unit" name="id" rules={[{ required: true }, { len: 5 }]} getValueFromEvent={(event) => event.target.value.toUpperCase()}>
         <Input placeholder="GA099" disabled={disabledId} />
       </Form.Item>
-      <Form.Item label="Pemilik" name="customer_id" rules={[{ required: true }]}>
-        <Select showSearch optionFilterProp="label" options={customers.map((item) => ({ value: item.id, label: `${item.id} - ${item.name}` }))} />
+      <Form.Item label="Pemilik" name="resident_id" rules={[{ required: true }]}>
+        <Select showSearch optionFilterProp="label" options={residents.map((item) => ({ value: item.id, label: `${item.id} - ${item.name}` }))} />
       </Form.Item>
       <Form.Item label="Cluster" name="cluster_id" rules={[{ required: true }]}>
         <Select showSearch optionFilterProp="label" options={clusters.map((item) => ({ value: item.id, label: `${item.id} - ${item.name}` }))} />
@@ -68,7 +68,7 @@ export default function UnitForm({ form, clusters = [], customers = [], disabled
         <Select options={occupancyOptions} />
       </Form.Item>
       <Form.Item label="Status Unit" name="status_id">
-        <Select options={customerStatusOptions} />
+        <Select options={residentStatusOptions} />
       </Form.Item>
       <Form.Item label="Catatan" name="notes" className="full-span">
         <Input.TextArea rows={3} />

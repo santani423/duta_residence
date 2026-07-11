@@ -159,7 +159,7 @@ export default function PaymentsPage() {
                 </Card>
 
                 {unit ? (
-                  <Card title={`${unit.id} - ${unit.customer?.name}`} extra={unit.cluster?.name}>
+                  <Card title={`${unit.id} - ${unit.resident?.name}`} extra={unit.cluster?.name}>
                     <ResponsiveTable
                       data={unpaidBillings}
                       columns={billingColumns}
@@ -243,7 +243,7 @@ export default function PaymentsPage() {
             children: (
               <>
                 <FilterBar>
-                  <Input allowClear placeholder="Cari invoice, transaksi, pelanggan" value={transactionTable.search} onChange={(event) => transactionTable.setSearch(event.target.value)} className="filter-input" />
+                  <Input allowClear placeholder="Cari invoice, transaksi, penghuni" value={transactionTable.search} onChange={(event) => transactionTable.setSearch(event.target.value)} className="filter-input" />
                   <Select allowClear placeholder="Provider" value={transactionTable.filters.provider} onChange={(value) => transactionTable.setFilters({ ...transactionTable.filters, provider: value })} className="filter-input" options={[{ value: 'manual', label: 'Manual' }, { value: 'xendit', label: 'Xendit' }, { value: 'midtrans', label: 'Midtrans' }]} />
                   <Select allowClear placeholder="Status" value={transactionTable.filters.status} onChange={(value) => transactionTable.setFilters({ ...transactionTable.filters, status: value })} className="filter-input" options={['pending', 'waiting_verification', 'paid', 'rejected', 'failed', 'expired'].map((value) => ({ value, label: value }))} />
                 </FilterBar>
@@ -254,7 +254,7 @@ export default function PaymentsPage() {
                     scrollX={1320}
                     columns={[
                       { title: 'Invoice', dataIndex: 'invoice_number', width: 190, fixed: 'left' },
-                      { title: 'Pelanggan', dataIndex: ['unit', 'customer', 'name'], width: 200 },
+                      { title: 'Penghuni', dataIndex: ['unit', 'resident', 'name'], width: 200 },
                       { title: 'Provider', dataIndex: 'payment_provider', width: 110 },
                       { title: 'Total', dataIndex: 'total', render: formatCurrency, width: 140 },
                       { title: 'Status', dataIndex: 'status', render: (value) => <StatusBadge type="transaction" value={value} />, width: 170 },
@@ -304,7 +304,7 @@ export default function PaymentsPage() {
                     rowKey="number"
                     columns={[
                       { title: 'Nomor', dataIndex: 'number', width: 190, fixed: 'left' },
-                      { title: 'Pelanggan', dataIndex: 'customer_name', width: 220 },
+                      { title: 'Penghuni', dataIndex: 'resident_name', width: 220 },
                       { title: 'Tanggal', dataIndex: 'transaction_date', render: formatDateTime, width: 170 },
                       { title: 'Periode', dataIndex: 'billing_periods' },
                       { title: 'Total', dataIndex: 'grand_total', render: formatCurrency, width: 150 },

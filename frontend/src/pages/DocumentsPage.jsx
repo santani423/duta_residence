@@ -13,7 +13,7 @@ export default function DocumentsPage() {
 
   const links = [
     { label: 'Rekap Billing', path: `/documents/billing-recap?year=${year}&month=${month}` },
-    { label: 'Daftar Customer', path: '/documents/customer-list' },
+    { label: 'Daftar Penghuni', path: '/documents/resident-list' },
     { label: 'Rekap Cluster', path: '/documents/cluster-recap' },
   ];
 

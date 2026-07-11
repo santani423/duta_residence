@@ -192,7 +192,7 @@ class _BillsSectionState extends State<_BillsSection> {
 
   Future<List<dynamic>> _load() async {
     final result = await widget.apiClient.get(
-      'customer/bills',
+      'resident/bills',
       query: {'per_page': 30},
     );
     return asList(result.data);
@@ -206,7 +206,7 @@ class _BillsSectionState extends State<_BillsSection> {
   Future<void> _pay(Map<String, dynamic> invoice) async {
     try {
       final config = asMap(
-        (await widget.apiClient.get('customer/payment-config')).data,
+        (await widget.apiClient.get('resident/payment-config')).data,
       );
       if (!mounted) return;
       await showModalBottomSheet<void>(
@@ -218,7 +218,7 @@ class _BillsSectionState extends State<_BillsSection> {
           onSelect: (provider) async {
             Navigator.pop(sheetContext);
             final result = await widget.apiClient.postJson(
-              'customer/invoices/${invoice['id']}/payments',
+              'resident/invoices/${invoice['id']}/payments',
               {'provider': provider},
             );
             final payment = asMap(result.data);
@@ -430,7 +430,7 @@ class _PaymentsSectionState extends State<_PaymentsSection> {
 
   Future<List<dynamic>> _load() async {
     final result = await widget.apiClient.get(
-      'customer/payments',
+      'resident/payments',
       query: {'per_page': 30},
     );
     return asList(result.data);
@@ -598,7 +598,7 @@ class _ManualProofSheetState extends State<_ManualProofSheet> {
     try {
       final now = DateTime.now();
       await widget.apiClient.postMultipart(
-        'customer/payments/${widget.payment['id']}/manual-proof',
+        'resident/payments/${widget.payment['id']}/manual-proof',
         fileField: 'proof',
         file: _file,
         fields: {
@@ -718,7 +718,7 @@ class _TicketSectionState extends State<_TicketSection> {
 
   bool get _isComplaint => widget.kind == _TicketKind.complaint;
   String get _path =>
-      _isComplaint ? 'customer/complaints' : 'customer/maintenance-requests';
+      _isComplaint ? 'resident/complaints' : 'resident/maintenance-requests';
 
   @override
   void initState() {
@@ -908,7 +908,7 @@ class _TicketFormState extends State<_TicketForm> {
     setState(() => _saving = true);
     try {
       await widget.apiClient.postMultipart(
-        _isComplaint ? 'customer/complaints' : 'customer/maintenance-requests',
+        _isComplaint ? 'resident/complaints' : 'resident/maintenance-requests',
         file: _file,
         fields: {
           if (_isComplaint) 'title': _title.text.trim(),
@@ -1099,7 +1099,7 @@ class _DocumentsSectionState extends State<_DocumentsSection> {
   }
 
   Future<List<dynamic>> _load() async {
-    final result = await widget.apiClient.get('customer/documents');
+    final result = await widget.apiClient.get('resident/documents');
     return asList(result.data);
   }
 
