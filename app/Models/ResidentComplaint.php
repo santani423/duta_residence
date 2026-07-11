@@ -12,11 +12,13 @@ class ResidentComplaint extends Model
 
     protected $fillable = [
         'unit_id', 'user_id', 'title', 'category', 'priority', 'description',
-        'status', 'attachment_path', 'closed_at', 'created_by', 'updated_by',
+        'status', 'attachment_path', 'closed_at', 'assigned_to', 'division',
+        'target_date', 'created_by', 'updated_by',
     ];
 
     protected $casts = [
         'closed_at' => 'datetime',
+        'target_date' => 'date',
     ];
 
     public function unit()
@@ -27,6 +29,11 @@ class ResidentComplaint extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function assignee()
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
     }
 
     public function comments()

@@ -1,5 +1,12 @@
 import { Form, Input, Select } from 'antd';
 
+export const identityTypeOptions = [
+  { value: 'KTP', label: 'KTP' },
+  { value: 'SIM', label: 'SIM' },
+  { value: 'Paspor', label: 'Paspor' },
+  { value: 'KITAS', label: 'KITAS' },
+];
+
 export default function ResidentForm({ form, districts = [], onFinish, loading }) {
   return (
     <Form
@@ -21,10 +28,25 @@ export default function ResidentForm({ form, districts = [], onFinish, loading }
       <Form.Item label="Email" name="email" rules={[{ type: 'email' }]}>
         <Input />
       </Form.Item>
+      <Form.Item label="Jenis Identitas" name="identity_type">
+        <Select allowClear options={identityTypeOptions} />
+      </Form.Item>
+      <Form.Item label="Nomor Identitas" name="identity_number">
+        <Input />
+      </Form.Item>
       <Form.Item label="Kabupaten/Kota" name="district_id">
         <Select allowClear showSearch optionFilterProp="label" options={districts.map((item) => ({ value: item.id, label: item.name }))} />
       </Form.Item>
       <Form.Item label="Alamat KTP" name="id_card_address" className="full-span">
+        <Input.TextArea rows={2} />
+      </Form.Item>
+      <Form.Item label="Nama Kontak Darurat" name="emergency_contact_name">
+        <Input />
+      </Form.Item>
+      <Form.Item label="Telepon Kontak Darurat" name="emergency_contact_phone">
+        <Input />
+      </Form.Item>
+      <Form.Item label="Catatan" name="notes" className="full-span">
         <Input.TextArea rows={2} />
       </Form.Item>
     </Form>

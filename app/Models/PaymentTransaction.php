@@ -38,4 +38,14 @@ class PaymentTransaction extends Model
     {
         return $this->belongsTo(Unit::class);
     }
+
+    public function verifier()
+    {
+        return $this->belongsTo(User::class, 'verified_by');
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 }

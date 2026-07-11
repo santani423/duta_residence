@@ -14,7 +14,9 @@ class Resident extends Model
 
     protected $fillable = [
         'id', 'name', 'phone', 'telephone', 'id_card_address',
-        'district_id', 'email', 'created_by', 'updated_by',
+        'district_id', 'email', 'identity_number', 'identity_type',
+        'emergency_contact_name', 'emergency_contact_phone', 'notes',
+        'created_by', 'updated_by',
     ];
 
     public function district()
@@ -25,6 +27,16 @@ class Resident extends Model
     public function units()
     {
         return $this->hasMany(Unit::class);
+    }
+
+    public function documents()
+    {
+        return $this->morphMany(ResidentDocument::class, 'documentable');
+    }
+
+    public function photos()
+    {
+        return $this->morphMany(ManagedFile::class, 'entity')->latest();
     }
 
     public function scopeSearch(Builder $query, ?string $search): Builder

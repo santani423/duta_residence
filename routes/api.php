@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\BackPaymentController;
 use App\Http\Controllers\Api\V1\BillingController;
 use App\Http\Controllers\Api\V1\ClusterController;
 use App\Http\Controllers\Api\V1\ClusterRateScheduleController;
+use App\Http\Controllers\Api\V1\CollectorVisitController;
 use App\Http\Controllers\Api\V1\DocumentController;
 use App\Http\Controllers\Api\V1\InstallmentController;
 use App\Http\Controllers\Api\V1\LookupController;
@@ -13,12 +14,17 @@ use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PaymentGatewayController;
 use App\Http\Controllers\Api\V1\PaymentGatewaySettingController;
+use App\Http\Controllers\Api\V1\PaymentPromiseController;
 use App\Http\Controllers\Api\V1\ReceivableController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\ResidentController;
+use App\Http\Controllers\Api\V1\ResidentDetailController;
+use App\Http\Controllers\Api\V1\ResidentDocumentController;
 use App\Http\Controllers\Api\V1\ResidentPortalController;
 use App\Http\Controllers\Api\V1\ReversalController;
 use App\Http\Controllers\Api\V1\UnitController;
+use App\Http\Controllers\Api\V1\UnitOccupantController;
+use App\Http\Controllers\Api\V1\UnitVehicleController;
 use App\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -48,6 +54,44 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::get('residents/{resident}', [ResidentController::class, 'show'])->middleware('permission:residents.view');
     Route::put('residents/{resident}', [ResidentController::class, 'update'])->middleware('permission:residents.update');
     Route::delete('residents/{resident}', [ResidentController::class, 'destroy'])->middleware('permission:residents.delete');
+
+    Route::get('residents/{resident}/summary', [ResidentDetailController::class, 'summary'])->middleware('permission:residents.view');
+    Route::get('residents/{resident}/billings', [ResidentDetailController::class, 'billings'])->middleware('permission:residents.view');
+    Route::get('residents/{resident}/transactions', [ResidentDetailController::class, 'transactions'])->middleware('permission:residents.view');
+    Route::get('residents/{resident}/receipts', [ResidentDetailController::class, 'receipts'])->middleware('permission:residents.view');
+    Route::post('residents/{resident}/receipts/{receipt}/send', [ResidentDetailController::class, 'sendReceipt'])->middleware('permission:residents.update');
+    Route::get('residents/{resident}/complaints', [ResidentDetailController::class, 'complaints'])->middleware('permission:residents.view');
+    Route::post('residents/{resident}/complaints', [ResidentDetailController::class, 'storeComplaint'])->middleware('permission:residents.update');
+    Route::get('residents/{resident}/maintenance-requests', [ResidentDetailController::class, 'maintenanceRequests'])->middleware('permission:residents.view');
+    Route::post('residents/{resident}/maintenance-requests', [ResidentDetailController::class, 'storeMaintenanceRequest'])->middleware('permission:residents.update');
+    Route::get('residents/{resident}/notifications', [ResidentDetailController::class, 'notifications'])->middleware('permission:residents.view');
+    Route::post('residents/{resident}/notifications/send', [ResidentDetailController::class, 'sendNotification'])->middleware('permission:residents.update');
+    Route::get('residents/{resident}/activity', [ResidentDetailController::class, 'activity'])->middleware('permission:residents.view');
+
+    Route::get('residents/{resident}/visits', [CollectorVisitController::class, 'index'])->middleware('permission:visits.view');
+    Route::post('units/{unit}/visits', [CollectorVisitController::class, 'store'])->middleware('permission:visits.create');
+    Route::put('visits/{visit}', [CollectorVisitController::class, 'update'])->middleware('permission:visits.update');
+
+    Route::get('residents/{resident}/payment-promises', [PaymentPromiseController::class, 'index'])->middleware('permission:payment-promises.view');
+    Route::post('units/{unit}/payment-promises', [PaymentPromiseController::class, 'store'])->middleware('permission:payment-promises.create');
+    Route::put('payment-promises/{promise}', [PaymentPromiseController::class, 'update'])->middleware('permission:payment-promises.update');
+
+    Route::get('residents/{resident}/resident-documents', [ResidentDocumentController::class, 'indexForResident'])->middleware('permission:resident-documents.view');
+    Route::get('units/{unit}/resident-documents', [ResidentDocumentController::class, 'indexForUnit'])->middleware('permission:resident-documents.view');
+    Route::post('residents/{resident}/resident-documents', [ResidentDocumentController::class, 'storeForResident'])->middleware('permission:resident-documents.create');
+    Route::post('units/{unit}/resident-documents', [ResidentDocumentController::class, 'storeForUnit'])->middleware('permission:resident-documents.create');
+    Route::put('resident-documents/{document}', [ResidentDocumentController::class, 'update'])->middleware('permission:resident-documents.update|resident-documents.verify');
+    Route::delete('resident-documents/{document}', [ResidentDocumentController::class, 'destroy'])->middleware('permission:resident-documents.delete');
+
+    Route::get('residents/{resident}/vehicles', [UnitVehicleController::class, 'index'])->middleware('permission:vehicles.view');
+    Route::post('units/{unit}/vehicles', [UnitVehicleController::class, 'store'])->middleware('permission:vehicles.create');
+    Route::put('vehicles/{vehicle}', [UnitVehicleController::class, 'update'])->middleware('permission:vehicles.update');
+    Route::delete('vehicles/{vehicle}', [UnitVehicleController::class, 'destroy'])->middleware('permission:vehicles.delete');
+
+    Route::get('residents/{resident}/occupants', [UnitOccupantController::class, 'index'])->middleware('permission:occupants.view');
+    Route::post('units/{unit}/occupants', [UnitOccupantController::class, 'store'])->middleware('permission:occupants.create');
+    Route::put('occupants/{occupant}', [UnitOccupantController::class, 'update'])->middleware('permission:occupants.update');
+    Route::delete('occupants/{occupant}', [UnitOccupantController::class, 'destroy'])->middleware('permission:occupants.delete');
 
     Route::get('units', [UnitController::class, 'index'])->middleware('permission:units.view');
     Route::post('units', [UnitController::class, 'store'])->middleware('permission:units.create');

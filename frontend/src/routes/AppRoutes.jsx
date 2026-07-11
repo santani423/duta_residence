@@ -15,6 +15,7 @@ const DashboardPage = lazy(() => import('../pages/DashboardPage.jsx'));
 const ClustersPage = lazy(() => import('../pages/ClustersPage.jsx'));
 const ClusterDetailPage = lazy(() => import('../pages/ClusterDetailPage.jsx'));
 const ResidentsPage = lazy(() => import('../pages/ResidentsPage.jsx'));
+const ResidentDetailPage = lazy(() => import('../pages/ResidentDetailPage.jsx'));
 const UnitsPage = lazy(() => import('../pages/UnitsPage.jsx'));
 const BillingsPage = lazy(() => import('../pages/BillingsPage.jsx'));
 const PaymentsPage = lazy(() => import('../pages/PaymentsPage.jsx'));
@@ -78,6 +79,7 @@ export default function AppRoutes() {
         <Route path="clusters" element={<Protected permissions={['clusters.view']}><LazyPage><ClustersPage /></LazyPage></Protected>} />
         <Route path="clusters/:id" element={<Protected permissions={['clusters.view']}><LazyPage><ClusterDetailPage /></LazyPage></Protected>} />
         <Route path="residents" element={<Protected permissions={['residents.view']}><LazyPage><ResidentsPage /></LazyPage></Protected>} />
+        <Route path="residents/:id" element={<Protected permissions={['residents.view']}><LazyPage><ResidentDetailPage /></LazyPage></Protected>} />
         <Route path="units" element={<Protected permissions={['units.view']}><LazyPage><UnitsPage /></LazyPage></Protected>} />
         <Route path="billings" element={<Protected permissions={['billings.view']}><LazyPage><BillingsPage /></LazyPage></Protected>} />
         <Route path="payments" element={<Protected permissions={['payments.view']}><LazyPage><PaymentsPage /></LazyPage></Protected>} />

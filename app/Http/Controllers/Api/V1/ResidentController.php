@@ -35,7 +35,15 @@ class ResidentController extends Controller
 
     public function show(Resident $resident)
     {
-        return $this->success($resident->load(['district.regency', 'units.cluster', 'units.status']));
+        return $this->success($resident->load([
+            'district.regency',
+            'units.cluster',
+            'units.status',
+            'units.propertyType',
+            'units.occupancy',
+            'units.users',
+            'photos',
+        ]));
     }
 
     public function update(Request $request, Resident $resident, AuditService $auditService)
@@ -86,6 +94,11 @@ class ResidentController extends Controller
             'id_card_address' => ['nullable', 'string', 'max:200'],
             'district_id' => ['nullable', 'exists:districts,id'],
             'email' => ['nullable', 'email', 'max:100'],
+            'identity_number' => ['nullable', 'string', 'max:30'],
+            'identity_type' => ['nullable', 'string', 'max:20'],
+            'emergency_contact_name' => ['nullable', 'string', 'max:100'],
+            'emergency_contact_phone' => ['nullable', 'string', 'max:20'],
+            'notes' => ['nullable', 'string'],
         ]);
     }
 }

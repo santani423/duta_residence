@@ -1,5 +1,7 @@
 import { http } from '../api/http.js';
 
+export const storageUrl = (path) => (path ? `${http.defaults.baseURL.replace(/\/api\/v1\/?$/, '')}/storage/${path}` : null);
+
 export const api = {
   auth: {
     login: (payload) => http.post('/auth/login', payload),
@@ -29,6 +31,51 @@ export const api = {
     create: (payload) => http.post('/residents', payload),
     update: (id, payload) => http.put(`/residents/${id}`, payload),
     remove: (id) => http.delete(`/residents/${id}`),
+    summary: (id, params) => http.get(`/residents/${id}/summary`, { params }),
+    billings: (id, params) => http.get(`/residents/${id}/billings`, { params }),
+    transactions: (id, params) => http.get(`/residents/${id}/transactions`, { params }),
+    receipts: (id, params) => http.get(`/residents/${id}/receipts`, { params }),
+    sendReceipt: (id, receiptNumber) => http.post(`/residents/${id}/receipts/${receiptNumber}/send`),
+    complaints: (id, params) => http.get(`/residents/${id}/complaints`, { params }),
+    createComplaint: (id, payload) => http.post(`/residents/${id}/complaints`, payload),
+    maintenanceRequests: (id, params) => http.get(`/residents/${id}/maintenance-requests`, { params }),
+    createMaintenanceRequest: (id, payload) => http.post(`/residents/${id}/maintenance-requests`, payload),
+    notifications: (id, params) => http.get(`/residents/${id}/notifications`, { params }),
+    sendNotification: (id, payload) => http.post(`/residents/${id}/notifications/send`, payload),
+    activity: (id, params) => http.get(`/residents/${id}/activity`, { params }),
+    visits: (id, params) => http.get(`/residents/${id}/visits`, { params }),
+    paymentPromises: (id, params) => http.get(`/residents/${id}/payment-promises`, { params }),
+    documents: (id, params) => http.get(`/residents/${id}/resident-documents`, { params }),
+    createDocument: (id, formData) => http.post(`/residents/${id}/resident-documents`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+    vehicles: (id, params) => http.get(`/residents/${id}/vehicles`, { params }),
+    occupants: (id, params) => http.get(`/residents/${id}/occupants`, { params }),
+  },
+  visits: {
+    create: (unitId, payload) => http.post(`/units/${unitId}/visits`, payload),
+    update: (id, payload) => http.put(`/visits/${id}`, payload),
+  },
+  paymentPromises: {
+    create: (unitId, payload) => http.post(`/units/${unitId}/payment-promises`, payload),
+    update: (id, payload) => http.put(`/payment-promises/${id}`, payload),
+  },
+  residentDocuments: {
+    createForUnit: (unitId, formData) => http.post(`/units/${unitId}/resident-documents`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+    update: (id, payload) => http.put(`/resident-documents/${id}`, payload),
+    remove: (id) => http.delete(`/resident-documents/${id}`),
+  },
+  vehicles: {
+    create: (unitId, payload) => http.post(`/units/${unitId}/vehicles`, payload),
+    update: (id, payload) => http.put(`/vehicles/${id}`, payload),
+    remove: (id) => http.delete(`/vehicles/${id}`),
+  },
+  occupants: {
+    create: (unitId, payload) => http.post(`/units/${unitId}/occupants`, payload),
+    update: (id, payload) => http.put(`/occupants/${id}`, payload),
+    remove: (id) => http.delete(`/occupants/${id}`),
   },
   units: {
     list: (params) => http.get('/units', { params }),

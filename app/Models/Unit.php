@@ -15,6 +15,7 @@ class Unit extends Model
     protected $fillable = [
         'id', 'resident_id', 'cluster_id', 'block', 'lot_number', 'property_type_id',
         'building_area', 'land_area', 'handover_date', 'occupancy_id', 'status_id',
+        'occupancy_role', 'tenancy_start_date', 'tenancy_end_date',
         'is_penalty_eligible', 'is_discount_eligible', 'notes', 'created_by', 'updated_by',
     ];
 
@@ -22,6 +23,8 @@ class Unit extends Model
         'building_area' => 'decimal:2',
         'land_area' => 'decimal:2',
         'handover_date' => 'date',
+        'tenancy_start_date' => 'date',
+        'tenancy_end_date' => 'date',
         'is_penalty_eligible' => 'boolean',
         'is_discount_eligible' => 'boolean',
     ];
@@ -84,6 +87,31 @@ class Unit extends Model
     public function maintenanceRequests()
     {
         return $this->hasMany(MaintenanceRequest::class);
+    }
+
+    public function visits()
+    {
+        return $this->hasMany(CollectorVisit::class);
+    }
+
+    public function paymentPromises()
+    {
+        return $this->hasMany(PaymentPromise::class);
+    }
+
+    public function documents()
+    {
+        return $this->morphMany(ResidentDocument::class, 'documentable');
+    }
+
+    public function vehicles()
+    {
+        return $this->hasMany(UnitVehicle::class);
+    }
+
+    public function occupants()
+    {
+        return $this->hasMany(UnitOccupant::class);
     }
 
     public function scopeSearch(Builder $query, ?string $search): Builder

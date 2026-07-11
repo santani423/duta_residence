@@ -1,7 +1,8 @@
-import { Button, Card, Descriptions, Drawer, Dropdown, Form, Input, Modal, Space, Tabs, Tag, message } from 'antd';
+import { Button, Card, Drawer, Dropdown, Form, Input, Modal, Space, message } from 'antd';
 import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/common/PageHeader.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
 import Can from '../components/common/Can.jsx';
@@ -9,7 +10,6 @@ import ResidentForm from '../components/forms/ResidentForm.jsx';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import { api } from '../services/estateApi.js';
 import { useTableState } from '../hooks/useTableState.js';
-import { compactText } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
 import { useAuth } from '../state/AuthContext.jsx';
 
@@ -18,15 +18,11 @@ export default function ResidentsPage() {
   const [drawer, setDrawer] = useState({ type: null, record: null });
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { can } = useAuth();
 
   const residents = useQuery({ queryKey: ['residents', table.params], queryFn: () => api.residents.list(table.params) });
   const districts = useQuery({ queryKey: ['lookup-districts'], queryFn: () => api.lookup.districts() });
-  const detail = useQuery({
-    queryKey: ['residents', drawer.record?.id],
-    queryFn: () => api.residents.detail(drawer.record.id),
-    enabled: drawer.type === 'detail' && Boolean(drawer.record?.id),
-  });
 
   const save = useMutation({
     mutationFn: (values) => drawer.type === 'edit' ? api.residents.update(drawer.record.id, values) : api.residents.create(values),
@@ -61,8 +57,6 @@ export default function ResidentsPage() {
     setDrawer({ type: 'edit', record });
   }
 
-  const detailData = detail.data?.data;
-
   return (
     <section>
       <PageHeader
@@ -83,6 +77,7 @@ export default function ResidentsPage() {
           query={residents}
           onChange={table.handleTableChange}
           scrollX={760}
+          onRow={(record) => ({ onClick: () => navigate(`/residents/${record.id}`), style: { cursor: 'pointer' } })}
           columns={[
             { title: 'ID', dataIndex: 'id', fixed: 'left', width: 110 },
             { title: 'Nama', dataIndex: 'name', width: 220 },
@@ -100,8 +95,9 @@ export default function ResidentsPage() {
                   { key: 'delete', label: 'Hapus', icon: <DeleteOutlined />, danger: true, permission: 'residents.delete' },
                 ].filter((item) => !item.permission || can(item.permission));
                 return (
-                  <Dropdown menu={{ items, onClick: ({ key }) => {
-                    if (key === 'detail') setDrawer({ type: 'detail', record });
+                  <Dropdown menu={{ items, onClick: ({ key, domEvent }) => {
+                    domEvent.stopPropagation();
+                    if (key === 'detail') navigate(`/residents/${record.id}`);
                     if (key === 'edit') openEdit(record);
                     if (key === 'delete') {
                       Modal.confirm({
@@ -113,7 +109,7 @@ export default function ResidentsPage() {
                       });
                     }
                   } }}>
-                    <Button icon={<MoreOutlined />} />
+                    <Button icon={<MoreOutlined />} onClick={(event) => event.stopPropagation()} />
                   </Dropdown>
                 );
               },
@@ -131,45 +127,6 @@ export default function ResidentsPage() {
         destroyOnHidden
       >
         <ResidentForm form={form} districts={districts.data?.data || []} onFinish={save.mutate} loading={save.isPending} />
-      </Drawer>
-
-      <Drawer title="Detail Penghuni" open={drawer.type === 'detail'} onClose={() => setDrawer({ type: null, record: null })} width={840}>
-        <Tabs
-          items={[
-            {
-              key: 'info',
-              label: 'Informasi',
-              children: (
-                <Descriptions bordered column={{ xs: 1, md: 2 }}>
-                  <Descriptions.Item label="ID">{detailData?.id}</Descriptions.Item>
-                  <Descriptions.Item label="Nama">{detailData?.name}</Descriptions.Item>
-                  <Descriptions.Item label="Telepon">{compactText(detailData?.phone)}</Descriptions.Item>
-                  <Descriptions.Item label="Telepon Rumah">{compactText(detailData?.telephone)}</Descriptions.Item>
-                  <Descriptions.Item label="Email">{compactText(detailData?.email)}</Descriptions.Item>
-                  <Descriptions.Item label="Kabupaten/Kota">{detailData?.district?.name}</Descriptions.Item>
-                  <Descriptions.Item label="Alamat" span={2}>{compactText(detailData?.id_card_address)}</Descriptions.Item>
-                </Descriptions>
-              ),
-            },
-            {
-              key: 'units',
-              label: 'Unit-unit',
-              children: (
-                <ResponsiveTable
-                  data={detailData?.units || []}
-                  pagination={false}
-                  columns={[
-                    { title: 'ID', dataIndex: 'id' },
-                    { title: 'Cluster', dataIndex: ['cluster', 'name'] },
-                    { title: 'Blok', dataIndex: 'block' },
-                    { title: 'Kavling', dataIndex: 'lot_number' },
-                    { title: 'Status', render: (_, row) => <Tag color={row.status_id === 'AK' ? 'green' : 'default'}>{row.status?.name || row.status_id}</Tag> },
-                  ]}
-                />
-              ),
-            },
-          ]}
-        />
       </Drawer>
     </section>
   );

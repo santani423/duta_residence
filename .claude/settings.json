@@ -13,7 +13,17 @@
       "Bash(grep -rniI --line-number -E \"customer\" routes)",
       "Bash(grep -rniI --line-number -E \"customer\" tests)",
       "Bash(grep -rniI --line-number -E \"customer\" resources)",
-      "Bash(grep -rniI --line-number -E \"customer\" config)"
+      "Bash(grep -rniI --line-number -E \"customer\" config)",
+      "Bash(lsof -ti:8000)",
+      "Bash(curl -s http://127.0.0.1:5173/src/pages/ResidentDetailPage.jsx -o /tmp/rdp-check.js -w \"%{http_code}\\\\n\")",
+      "Bash(node verify-resident-detail.mjs)",
+      "Bash(node verify-resident-crud.mjs)",
+      "Bash(node verify-resident-doc-perm.mjs)",
+      "Bash(node verify-loket-perm.mjs)"
+    ],
+    "additionalDirectories": [
+      "/tmp/pw-verify",
+      "/private/tmp/pw-verify"
     ]
   }
 }
