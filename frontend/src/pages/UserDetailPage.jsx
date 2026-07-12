@@ -41,8 +41,10 @@ export default function UserDetailPage() {
                   <Descriptions.Item label="Theme">{user.theme_preference}</Descriptions.Item>
                   <Descriptions.Item label="Login Terakhir">{formatDateTime(user.last_login_at)}</Descriptions.Item>
                   <Descriptions.Item label="IP Terakhir">{user.last_login_ip || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="Unit Terhubung">{user.unit?.id || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="Penghuni">{user.unit?.resident?.name || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="Unit Terhubung">
+                    {user.unit?.id || (user.resident ? <Tag color="orange">Menunggu Unit dibuat</Tag> : '-')}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Penghuni">{user.unit?.resident?.name || user.resident?.name || '-'}</Descriptions.Item>
                 </Descriptions>
               </Card>
             ),

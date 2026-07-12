@@ -148,7 +148,9 @@ class ResidentPortalController extends Controller
 
     public function property(Request $request)
     {
-        return $this->success($this->propertyPayload($this->unit($request)));
+        return $this->success(
+            $this->residentUnits($request)->map(fn (Unit $unit) => $this->propertyPayload($unit))->values()
+        );
     }
 
     public function bills(Request $request)
@@ -635,6 +637,25 @@ class ResidentPortalController extends Controller
         abort_if(! $unit, 403, 'Akun penghuni belum terhubung dengan data unit.');
 
         return $unit;
+    }
+
+    /**
+     * Semua unit milik penghuni yang sama dengan akun ini (bukan hanya unit_id yang
+     * dipakai untuk scoping billing/pembayaran), supaya halaman daftar properti bisa
+     * menampilkan seluruh unit yang dimiliki satu penghuni.
+     */
+    private function residentUnits(Request $request)
+    {
+        $user = $request->user();
+        $residentId = $user->resident_id ?? $user->unit?->resident_id;
+
+        abort_if(! $residentId, 403, 'Akun penghuni belum terhubung dengan data unit.');
+
+        return Unit::query()
+            ->where('resident_id', $residentId)
+            ->with(['cluster', 'propertyType', 'occupancy', 'status'])
+            ->orderBy('id')
+            ->get();
     }
 
     private function billingBaseQuery(Unit $unit): Builder

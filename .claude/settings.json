@@ -40,7 +40,12 @@
       "Bash(kill 53084)",
       "Bash(nohup npm run dev)",
       "Bash(php -l routes/api.php)",
-      "Bash(node node_modules/eslint/bin/eslint.js src/components/forms/ResidentForm.jsx src/pages/ResidentsPage.jsx src/services/estateApi.js)"
+      "Bash(node node_modules/eslint/bin/eslint.js src/components/forms/ResidentForm.jsx src/pages/ResidentsPage.jsx src/services/estateApi.js)",
+      "Bash(php -l app/Http/Controllers/Api/V1/UnitController.php)",
+      "Bash(php -l app/Models/User.php)",
+      "Bash(node node_modules/eslint/bin/eslint.js src/pages/UsersPage.jsx src/pages/UserDetailPage.jsx)",
+      "Bash(php -l app/Http/Controllers/Api/V1/ResidentPortalController.php)",
+      "Bash(node node_modules/eslint/bin/eslint.js src/pages/resident/ResidentPortalPage.jsx)"
     ],
     "additionalDirectories": [
       "/tmp/pw-verify",

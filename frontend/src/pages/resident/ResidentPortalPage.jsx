@@ -330,11 +330,21 @@ function ResidentAccount({ mode = 'account' }) {
 
 function ResidentProperty() {
   const query = useQuery({ queryKey: ['resident-property'], queryFn: api.resident.property });
-  const data = unwrapQuery(query) || {};
+  const properties = asList(unwrapQuery(query));
   return (
     <section>
       <PageHeader title="Properti atau Unit" breadcrumbs={[{ label: 'Penghuni' }, { label: 'Properti' }]} onRefresh={query.refetch} />
-      {query.isLoading ? <LoadingState /> : <Card><InfoList data={{ Estate: data.estate, Cluster: data.cluster, Unit: data.unit_label, Blok: data.block, Kavling: data.lot_number, 'Tipe Properti': data.property_type, Hunian: data.occupancy, 'Luas Bangunan': data.building_area, 'Luas Tanah': data.land_area, 'Serah Terima': formatDate(data.handover_date), Status: data.status }} /></Card>}
+      {query.isLoading ? <LoadingState /> : null}
+      {!query.isLoading && properties.length === 0 ? (
+        <Card><Typography.Text type="secondary">Belum ada unit yang terhubung dengan akun ini.</Typography.Text></Card>
+      ) : null}
+      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        {properties.map((data) => (
+          <Card key={data.unit_id} title={data.unit_label}>
+            <InfoList data={{ Estate: data.estate, Cluster: data.cluster, Unit: data.unit_label, Blok: data.block, Kavling: data.lot_number, 'Tipe Properti': data.property_type, Hunian: data.occupancy, 'Luas Bangunan': data.building_area, 'Luas Tanah': data.land_area, 'Serah Terima': formatDate(data.handover_date), Status: data.status }} />
+          </Card>
+        ))}
+      </Space>
     </section>
   );
 }

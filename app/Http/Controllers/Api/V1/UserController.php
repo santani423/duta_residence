@@ -18,7 +18,7 @@ class UserController extends Controller
     public function index(Request $request)
     {
         $query = User::query()
-            ->with(['roles', 'unit.resident'])
+            ->with(['roles', 'unit.resident', 'resident'])
             ->when($request->query('search'), fn ($q, $value) => $q->where(fn ($inner) => $inner
                 ->where('name', 'like', "%{$value}%")
                 ->orWhere('username', 'like', "%{$value}%")
@@ -43,7 +43,7 @@ class UserController extends Controller
     public function show(User $user)
     {
         return $this->success([
-            'user' => $user->load(['roles', 'unit.resident']),
+            'user' => $user->load(['roles', 'unit.resident', 'resident']),
             'permissions' => $user->getAllPermissions()->pluck('name')->values(),
             'activity_logs' => $user->auditLogs()->latest()->limit(20)->get(),
         ]);

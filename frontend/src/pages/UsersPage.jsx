@@ -101,7 +101,16 @@ export default function UsersPage() {
             { title: 'Username', dataIndex: 'username', width: 150 },
             { title: 'Email', dataIndex: 'email', width: 220 },
             { title: 'Role', dataIndex: 'roles', render: (items) => items?.map((role) => <Tag key={role.id}>{role.name}</Tag>) },
-            { title: 'Unit / Penghuni', dataIndex: 'unit', width: 200, render: (unit) => (unit ? `${unit.id} - ${unit.resident?.name || '-'}` : '-') },
+            {
+              title: 'Unit / Penghuni',
+              dataIndex: 'unit',
+              width: 220,
+              render: (unit, record) => {
+                if (unit) return `${unit.id} - ${unit.resident?.name || '-'}`;
+                if (record.resident) return <Tag color="orange">Menunggu Unit - {record.resident.name}</Tag>;
+                return '-';
+              },
+            },
             { title: 'Status', dataIndex: 'is_active', render: (value) => <StatusBadge type="active" value={value} /> },
             { title: 'Login Terakhir', dataIndex: 'last_login_at', render: formatDateTime, width: 170 },
             {

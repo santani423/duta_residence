@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\Unit;
+use App\Models\User;
 use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -32,8 +33,31 @@ class UnitController extends Controller
         $data['created_by'] = $request->user()->id;
         $unit = Unit::query()->create($data);
         $auditService->log('unit_created', 'units', 'CREATE', $unit, [], $unit->toArray());
+        $this->linkPendingCustomerAccount($unit, $auditService);
 
         return $this->success($unit->load(['cluster', 'status', 'resident']), 'Unit berhasil dibuat.', 201);
+    }
+
+    /**
+     * Saat penghuni dibuat, akun login customer-nya otomatis dibuat tapi unit_id masih
+     * kosong (belum ada Unit). Begitu Unit pertama untuk penghuni tsb dibuat/ditautkan,
+     * akun yang masih menunggu (unit_id null) langsung ditautkan ke Unit ini supaya
+     * penghuni bisa langsung melihat data unitnya di portal tanpa langkah manual tambahan.
+     */
+    private function linkPendingCustomerAccount(Unit $unit, AuditService $auditService): void
+    {
+        $pendingUser = User::query()
+            ->where('resident_id', $unit->resident_id)
+            ->whereNull('unit_id')
+            ->first();
+
+        if (! $pendingUser) {
+            return;
+        }
+
+        $old = $pendingUser->toArray();
+        $pendingUser->forceFill(['unit_id' => $unit->id])->save();
+        $auditService->log('user_linked_to_unit', 'users', 'UPDATE', $pendingUser, $old, $pendingUser->toArray());
     }
 
     public function show(Unit $unit)
@@ -48,6 +72,7 @@ class UnitController extends Controller
         $old = $unit->toArray();
         $unit->update($data);
         $auditService->log('unit_updated', 'units', 'UPDATE', $unit, $old, $unit->toArray());
+        $this->linkPendingCustomerAccount($unit, $auditService);
 
         return $this->success($unit->refresh()->load(['cluster', 'status', 'resident']), 'Unit berhasil diperbarui.');
     }

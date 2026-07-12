@@ -27,6 +27,7 @@ class User extends Authenticatable
         'email',
         'phone',
         'unit_id',
+        'resident_id',
         'password',
         'is_active',
         'theme_preference',
@@ -70,5 +71,10 @@ class User extends Authenticatable
     public function unit()
     {
         return $this->belongsTo(Unit::class);
+    }
+
+    public function resident()
+    {
+        return $this->belongsTo(Resident::class);
     }
 }
