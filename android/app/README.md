@@ -88,6 +88,18 @@ File APK hasil build biasanya berada di:
 build/app/outputs/flutter-apk/app-release.apk
 ```
 
+### Menentukan versi aplikasi
+
+Versi default diambil dari `version: 1.0.0+1` di `pubspec.yaml` (format `version-name+build-number`). Untuk menentukan versi tertentu saat build tanpa mengubah `pubspec.yaml`, gunakan flag `--build-name` dan `--build-number`:
+
+```bash
+flutter build apk --build-name=1.2.0 --build-number=5
+flutter build ios --build-name=1.2.0 --build-number=5
+```
+
+- `--build-name` → version name yang tampil ke user (versionName di Android, CFBundleShortVersionString di iOS).
+- `--build-number` → build number/kode internal (versionCode di Android, CFBundleVersion di iOS), harus selalu naik setiap kali submit ke store.
+
 ## 7. Memindahkan file APK ke lokasi lain
 
 Kalau ingin menyalin hasil APK ke folder yang lebih mudah ditemukan, gunakan:
