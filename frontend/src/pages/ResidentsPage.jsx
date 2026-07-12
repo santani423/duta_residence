@@ -26,11 +26,27 @@ export default function ResidentsPage() {
 
   const save = useMutation({
     mutationFn: (values) => drawer.type === 'edit' ? api.residents.update(drawer.record.id, values) : api.residents.create(values),
-    onSuccess: () => {
+    onSuccess: (response) => {
       message.success('Penghuni berhasil disimpan');
       setDrawer({ type: null, record: null });
       form.resetFields();
       queryClient.invalidateQueries({ queryKey: ['residents'] });
+
+      const account = response?.data?.login_account;
+      if (account) {
+        Modal.success({
+          title: 'Akun login penghuni dibuat',
+          width: 480,
+          content: (
+            <div>
+              <p>Akun customer otomatis dibuat untuk penghuni ini. Sampaikan detail berikut ke penghuni (password ini hanya ditampilkan sekali):</p>
+              <p><strong>Username:</strong> {account.username}</p>
+              <p><strong>Password sementara:</strong> {account.temporary_password}</p>
+              <p>Akun baru bisa login penuh setelah Unit penghuni dibuat dan ditautkan lewat menu User Management.</p>
+            </div>
+          ),
+        });
+      }
     },
     onError: (error) => {
       form.setFields(mapValidationErrors(error));
@@ -126,7 +142,14 @@ export default function ResidentsPage() {
         extra={<Space><Button onClick={() => setDrawer({ type: null, record: null })}>Batal</Button><Button type="primary" loading={save.isPending} onClick={() => form.submit()}>Simpan</Button></Space>}
         destroyOnHidden
       >
-        <ResidentForm form={form} districts={districts.data?.data || []} onFinish={save.mutate} loading={save.isPending} />
+        <ResidentForm
+          form={form}
+          districts={districts.data?.data || []}
+          onFinish={save.mutate}
+          loading={save.isPending}
+          editing={drawer.type === 'edit'}
+          residentId={drawer.record?.id}
+        />
       </Drawer>
     </section>
   );

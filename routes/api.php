@@ -51,6 +51,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
 
     Route::get('residents', [ResidentController::class, 'index'])->middleware('permission:residents.view');
     Route::post('residents', [ResidentController::class, 'store'])->middleware('permission:residents.create');
+    Route::get('residents/check-availability', [ResidentController::class, 'checkAvailability'])->middleware('permission:residents.create|residents.update');
     Route::get('residents/{resident}', [ResidentController::class, 'show'])->middleware('permission:residents.view');
     Route::put('residents/{resident}', [ResidentController::class, 'update'])->middleware('permission:residents.update');
     Route::delete('residents/{resident}', [ResidentController::class, 'destroy'])->middleware('permission:residents.delete');

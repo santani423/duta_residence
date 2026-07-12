@@ -31,6 +31,7 @@ export const api = {
     create: (payload) => http.post('/residents', payload),
     update: (id, payload) => http.put(`/residents/${id}`, payload),
     remove: (id) => http.delete(`/residents/${id}`),
+    checkAvailability: (params) => http.get('/residents/check-availability', { params }),
     summary: (id, params) => http.get(`/residents/${id}/summary`, { params }),
     billings: (id, params) => http.get(`/residents/${id}/billings`, { params }),
     transactions: (id, params) => http.get(`/residents/${id}/transactions`, { params }),

@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\Resident;
+use App\Models\User;
 use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
 class ResidentController extends Controller
@@ -22,15 +24,82 @@ class ResidentController extends Controller
         return $this->paginated($query->orderBy('name')->paginate($request->integer('per_page', 15)));
     }
 
+    /**
+     * Cek ketersediaan email/phone/username secara langsung dari form (dipanggil saat blur).
+     */
+    public function checkAvailability(Request $request)
+    {
+        $data = $request->validate([
+            'field' => ['required', Rule::in(['email', 'phone', 'username'])],
+            'value' => ['required', 'string'],
+            'exclude_id' => ['nullable', 'string'],
+        ]);
+
+        if ($data['field'] === 'username') {
+            return $this->success([
+                'taken' => User::query()->where('username', $data['value'])->exists(),
+            ]);
+        }
+
+        $owner = Resident::query()
+            ->where($data['field'], $data['value'])
+            ->when($data['exclude_id'] ?? null, fn ($q, $id) => $q->where('id', '!=', $id))
+            ->first();
+
+        return $this->success([
+            'taken' => (bool) $owner,
+            'owner_name' => $owner?->name,
+        ]);
+    }
+
     public function store(Request $request, AuditService $auditService)
     {
         $data = $this->validateResident($request);
+        $username = $data['username'] ?? null;
+        unset($data['username']);
         $data['id'] = $this->generateResidentId();
         $data['created_by'] = $request->user()->id;
         $resident = Resident::query()->create($data);
         $auditService->log('resident_created', 'residents', 'CREATE', $resident, [], $resident->toArray());
 
-        return $this->success($resident, 'Penghuni berhasil dibuat.', 201);
+        $loginAccount = $this->createCustomerAccount($resident, $auditService, $username);
+
+        return $this->success([
+            'resident' => $resident,
+            'login_account' => $loginAccount,
+        ], 'Penghuni berhasil dibuat.', 201);
+    }
+
+    /**
+     * Setiap penghuni baru otomatis mendapat akun login (role customer).
+     * unit_id akan kosong sampai admin membuat/menghubungkan Unit untuk penghuni ini
+     * (bisa ditautkan lewat User Management setelah Unit dibuat).
+     */
+    private function createCustomerAccount(Resident $resident, AuditService $auditService, ?string $username = null): array
+    {
+        $username = $username ?: 'customer.'.strtolower($resident->id);
+        $email = $resident->email && ! User::query()->where('email', $resident->email)->exists()
+            ? $resident->email
+            : null;
+        $temporaryPassword = 'password';
+
+        $user = User::query()->create([
+            'name' => $resident->name,
+            'username' => $username,
+            'email' => $email,
+            'phone' => $resident->phone,
+            'password' => Hash::make($temporaryPassword),
+            'is_active' => true,
+        ]);
+        $user->assignRole('customer');
+
+        $auditService->log('user_created', 'users', 'CREATE', $user, [], $user->toArray());
+
+        return [
+            'user_id' => $user->id,
+            'username' => $user->username,
+            'temporary_password' => $temporaryPassword,
+        ];
     }
 
     public function show(Resident $resident)
@@ -73,13 +142,12 @@ class ResidentController extends Controller
     private function generateResidentId(): string
     {
         return DB::transaction(function () {
-            $last = Resident::query()
+            $next = Resident::query()
                 ->where('id', 'like', 'RS%')
                 ->lockForUpdate()
-                ->orderByDesc('id')
-                ->value('id');
-
-            $next = $last ? ((int) substr($last, 2)) + 1 : 1;
+                ->pluck('id')
+                ->map(fn ($id) => preg_match('/^RS(\d{6})$/', $id, $matches) ? (int) $matches[1] : 0)
+                ->max() + 1;
 
             return 'RS'.str_pad((string) $next, 6, '0', STR_PAD_LEFT);
         });
@@ -89,16 +157,31 @@ class ResidentController extends Controller
     {
         return $request->validate([
             'name' => ['required', 'string', 'max:100'],
-            'phone' => ['nullable', 'string', 'max:20'],
+            'phone' => [
+                'nullable', 'string', 'max:20',
+                'regex:/^(\+62|62|0)8[1-9][0-9]{6,10}$/',
+                Rule::unique('residents', 'phone')->ignore($resident?->id),
+            ],
             'telephone' => ['nullable', 'string', 'max:20'],
             'id_card_address' => ['nullable', 'string', 'max:200'],
             'district_id' => ['nullable', 'exists:districts,id'],
-            'email' => ['nullable', 'email', 'max:100'],
+            'email' => [
+                'nullable', 'email', 'max:100',
+                Rule::unique('residents', 'email')->ignore($resident?->id),
+            ],
             'identity_number' => ['nullable', 'string', 'max:30'],
             'identity_type' => ['nullable', 'string', 'max:20'],
             'emergency_contact_name' => ['nullable', 'string', 'max:100'],
             'emergency_contact_phone' => ['nullable', 'string', 'max:20'],
             'notes' => ['nullable', 'string'],
+            'username' => [
+                'nullable', 'string', 'min:4', 'max:50',
+                'regex:/^[a-zA-Z0-9._-]+$/',
+                Rule::unique('users', 'username'),
+            ],
+        ], [
+            'phone.regex' => 'Nomor HP tidak valid.',
+            'username.regex' => 'Username hanya boleh huruf, angka, titik, - dan _.',
         ]);
     }
 }
