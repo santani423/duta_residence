@@ -18,7 +18,7 @@ class UserController extends Controller
     public function index(Request $request)
     {
         $query = User::query()
-            ->with('roles')
+            ->with(['roles', 'unit.resident'])
             ->when($request->query('search'), fn ($q, $value) => $q->where(fn ($inner) => $inner
                 ->where('name', 'like', "%{$value}%")
                 ->orWhere('username', 'like', "%{$value}%")
@@ -43,7 +43,7 @@ class UserController extends Controller
     public function show(User $user)
     {
         return $this->success([
-            'user' => $user->load('roles'),
+            'user' => $user->load(['roles', 'unit.resident']),
             'permissions' => $user->getAllPermissions()->pluck('name')->values(),
             'activity_logs' => $user->auditLogs()->latest()->limit(20)->get(),
         ]);
@@ -100,6 +100,10 @@ class UserController extends Controller
             'phone' => ['nullable', 'string', 'max:20'],
             'password' => [$user ? 'nullable' : 'required', 'string', 'min:8'],
             'role' => ['required', Rule::in(Role::query()->pluck('name')->all())],
+            'unit_id' => [
+                Rule::requiredIf(fn () => $request->input('role') === 'customer'),
+                'nullable', 'string', Rule::exists('units', 'id'),
+            ],
             'is_active' => ['sometimes', 'boolean'],
             'theme_preference' => ['sometimes', Rule::in(['light', 'dark', 'system'])],
         ]);

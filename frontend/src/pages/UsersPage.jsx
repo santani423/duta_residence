@@ -24,6 +24,7 @@ export default function UsersPage() {
   const navigate = useNavigate();
   const { can } = useAuth();
   const users = useQuery({ queryKey: ['users', table.params], queryFn: () => api.users.list(table.params) });
+  const units = useQuery({ queryKey: ['units-lookup'], queryFn: () => api.units.list({ per_page: 1000 }) });
   const save = useMutation({
     mutationFn: (values) => drawer.type === 'edit' ? api.users.update(drawer.record.id, values) : api.users.create(values),
     onSuccess: () => {
@@ -100,6 +101,7 @@ export default function UsersPage() {
             { title: 'Username', dataIndex: 'username', width: 150 },
             { title: 'Email', dataIndex: 'email', width: 220 },
             { title: 'Role', dataIndex: 'roles', render: (items) => items?.map((role) => <Tag key={role.id}>{role.name}</Tag>) },
+            { title: 'Unit / Penghuni', dataIndex: 'unit', width: 200, render: (unit) => (unit ? `${unit.id} - ${unit.resident?.name || '-'}` : '-') },
             { title: 'Status', dataIndex: 'is_active', render: (value) => <StatusBadge type="active" value={value} /> },
             { title: 'Login Terakhir', dataIndex: 'last_login_at', render: formatDateTime, width: 170 },
             {
@@ -140,7 +142,7 @@ export default function UsersPage() {
         extra={<Space><Button onClick={() => setDrawer({ type: null, record: null })}>Batal</Button><Button type="primary" loading={save.isPending} onClick={() => form.submit()}>Simpan</Button></Space>}
         destroyOnHidden
       >
-        <UserForm form={form} editing={drawer.type === 'edit'} onFinish={save.mutate} loading={save.isPending} />
+        <UserForm form={form} editing={drawer.type === 'edit'} onFinish={save.mutate} loading={save.isPending} units={units.data?.data || []} />
       </Drawer>
     </section>
   );

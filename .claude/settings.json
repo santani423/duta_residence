@@ -21,7 +21,11 @@
       "Bash(node verify-resident-doc-perm.mjs)",
       "Bash(node verify-loket-perm.mjs)",
       "Bash(xargs ls)",
-      "Bash(xargs cat)"
+      "Bash(xargs cat)",
+      "Bash(php -l app/Http/Controllers/Api/V1/UserController.php)",
+      "Bash(npx eslint *)",
+      "Bash(node node_modules/eslint/bin/eslint.js src/components/forms/UserForm.jsx src/pages/UsersPage.jsx src/pages/UserDetailPage.jsx)",
+      "Bash(node node_modules/vite/bin/vite.js build)"
     ],
     "additionalDirectories": [
       "/tmp/pw-verify",

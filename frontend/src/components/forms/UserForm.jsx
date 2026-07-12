@@ -1,7 +1,12 @@
 import { Form, Input, Select, Switch } from 'antd';
 import { roles } from '../../constants/permissions.js';
 
-export default function UserForm({ form, onFinish, editing = false, loading = false }) {
+export default function UserForm({ form, onFinish, editing = false, loading = false, units = [] }) {
+  const unitOptions = units.map((unit) => ({
+    value: unit.id,
+    label: `${unit.id} - ${unit.resident?.name || 'Tanpa penghuni'}`,
+  }));
+
   return (
     <Form
       form={form}
@@ -30,6 +35,27 @@ export default function UserForm({ form, onFinish, editing = false, loading = fa
       ) : null}
       <Form.Item label="Role" name="role" rules={[{ required: true }]}>
         <Select options={roles.map((role) => ({ value: role, label: role }))} />
+      </Form.Item>
+      <Form.Item noStyle shouldUpdate={(prev, next) => prev.role !== next.role}>
+        {({ getFieldValue }) => {
+          const isCustomer = getFieldValue('role') === 'customer';
+          return (
+            <Form.Item
+              label="Unit / Penghuni"
+              name="unit_id"
+              tooltip="Menghubungkan akun login ini ke data penghuni pemilik unit. Wajib untuk role customer agar penghuni bisa login melihat data miliknya."
+              rules={[{ required: isCustomer, message: 'Unit wajib dipilih untuk role customer' }]}
+            >
+              <Select
+                showSearch
+                allowClear
+                optionFilterProp="label"
+                placeholder="Pilih unit penghuni"
+                options={unitOptions}
+              />
+            </Form.Item>
+          );
+        }}
       </Form.Item>
       <Form.Item label="Theme" name="theme_preference">
         <Select options={[
