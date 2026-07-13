@@ -74,7 +74,7 @@ class ResidentController extends Controller
      * Setiap penghuni baru otomatis mendapat akun login (role customer).
      * unit_id akan kosong sampai Unit pertama penghuni ini dibuat — resident_id disimpan
      * di sini supaya UnitController bisa auto-link akun ini begitu Unit-nya tersedia
-     * (lihat UnitController::linkPendingCustomerAccount()).
+     * (lihat UnitController::syncUnitOwnership()).
      */
     private function createCustomerAccount(Resident $resident, AuditService $auditService, ?string $username = null): array
     {
@@ -113,6 +113,7 @@ class ResidentController extends Controller
             'units.propertyType',
             'units.occupancy',
             'units.users',
+            'users.roles',
             'photos',
         ]));
     }

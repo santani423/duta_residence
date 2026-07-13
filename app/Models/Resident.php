@@ -29,6 +29,11 @@ class Resident extends Model
         return $this->hasMany(Unit::class);
     }
 
+    public function users()
+    {
+        return $this->hasMany(User::class);
+    }
+
     public function documents()
     {
         return $this->morphMany(ResidentDocument::class, 'documentable');

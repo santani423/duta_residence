@@ -71,4 +71,51 @@ class UnitApiTest extends TestCase
 
         $this->assertEqualsCanonicalizing(['ZZ997', 'ZZ998'], $unitIds);
     }
+
+    public function test_reassigning_unit_ownership_relinks_new_owner_and_releases_old_owner(): void
+    {
+        $this->seed();
+
+        Sanctum::actingAs(User::where('username', 'root')->first());
+
+        $oldResidentId = $this->postJson('/api/v1/residents', ['name' => 'Old Owner'])->json('data.resident.id');
+        $newResidentId = $this->postJson('/api/v1/residents', ['name' => 'New Owner'])->json('data.resident.id');
+
+        $this->postJson('/api/v1/units', [
+            'id' => 'ZZ996',
+            'resident_id' => $oldResidentId,
+            'cluster_id' => 'GA',
+            'block' => 'Z',
+            'lot_number' => '96',
+            'property_type_id' => 'B',
+            'occupancy_id' => '1',
+            'status_id' => 'AK',
+        ])->assertCreated();
+
+        $oldUser = User::where('resident_id', $oldResidentId)->first();
+        $newUser = User::where('resident_id', $newResidentId)->first();
+        $this->assertSame('ZZ996', $oldUser->unit_id);
+        $this->assertNull($newUser->unit_id);
+
+        // Transfer ownership of the same unit to the new resident via the admin edit flow.
+        $this->putJson('/api/v1/units/ZZ996', [
+            'id' => 'ZZ996',
+            'resident_id' => $newResidentId,
+            'cluster_id' => 'GA',
+            'block' => 'Z',
+            'lot_number' => '96',
+            'property_type_id' => 'B',
+            'occupancy_id' => '1',
+            'status_id' => 'AK',
+        ])->assertOk();
+
+        $this->assertNull($oldUser->refresh()->unit_id, 'old owner should be released once the unit no longer belongs to them');
+        $this->assertSame('ZZ996', $newUser->refresh()->unit_id, 'new owner should be linked to the reassigned unit');
+
+        Sanctum::actingAs($oldUser);
+        $this->getJson('/api/v1/resident/dashboard')->assertForbidden();
+
+        Sanctum::actingAs($newUser);
+        $this->getJson('/api/v1/resident/dashboard')->assertOk()->assertJsonPath('data.property.unit_id', 'ZZ996');
+    }
 }

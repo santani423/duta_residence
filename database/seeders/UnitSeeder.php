@@ -90,6 +90,7 @@ class UnitSeeder extends Seeder
                         'email' => $resident->email,
                         'phone' => $resident->phone,
                         'unit_id' => $unit->id,
+                        'resident_id' => $resident->id,
                         'password' => Hash::make('password'),
                         'is_active' => $statusId === 'AK',
                         'theme_preference' => ['system', 'light', 'dark'][($i + $clusterIndex) % 3],
@@ -124,6 +125,15 @@ class UnitSeeder extends Seeder
         $orphanedResidentIds = Unit::whereIn('id', ['BO001', 'CE001'])->pluck('resident_id')->diff([$multiOwner->id]);
 
         Unit::whereIn('id', ['BO001', 'CE001'])->update(['resident_id' => $multiOwner->id]);
+
+        // Unit direassign langsung via query, bukan lewat UnitController, jadi bersihkan
+        // manual akun customer lama yang unit_id-nya masih menunjuk ke BO001/CE001 padahal
+        // penghuninya sudah bukan pemilik lagi.
+        User::query()->role('customer')
+            ->whereIn('unit_id', ['BO001', 'CE001'])
+            ->where(fn ($q) => $q->whereNull('resident_id')->orWhere('resident_id', '!=', $multiOwner->id))
+            ->update(['unit_id' => null]);
+
         Resident::whereIn('id', $orphanedResidentIds)->doesntHave('units')->delete();
     }
 

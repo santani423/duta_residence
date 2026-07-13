@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
+use App\Models\Unit;
 use App\Models\User;
 use App\Services\AuditService;
 use Illuminate\Http\Request;
@@ -32,7 +33,7 @@ class UserController extends Controller
 
     public function store(Request $request, AuditService $auditService)
     {
-        $data = $this->validateUser($request);
+        $data = $this->syncResidentIdFromUnit($this->validateUser($request));
         $user = User::query()->create([...$data, 'password' => Hash::make($data['password'])]);
         $user->assignRole($data['role']);
         $auditService->log('user_created', 'users', 'CREATE', $user, [], $user->toArray());
@@ -51,7 +52,7 @@ class UserController extends Controller
 
     public function update(Request $request, User $user, AuditService $auditService)
     {
-        $data = $this->validateUser($request, $user);
+        $data = $this->syncResidentIdFromUnit($this->validateUser($request, $user));
         $old = $user->toArray();
 
         unset($data['password']);
@@ -89,6 +90,20 @@ class UserController extends Controller
     public function activities(User $user)
     {
         return $this->paginated($user->auditLogs()->latest()->paginate(request()->integer('per_page', 15)));
+    }
+
+    /**
+     * Saat admin menautkan unit_id lewat User Management, samakan juga resident_id-nya
+     * dengan pemilik Unit tsb, supaya identitas penghuni pada akun ini tetap konsisten
+     * dengan relasi yang dipakai halaman Customer (lihat ResidentPortalController).
+     */
+    private function syncResidentIdFromUnit(array $data): array
+    {
+        if (! empty($data['unit_id'])) {
+            $data['resident_id'] = Unit::query()->find($data['unit_id'])?->resident_id;
+        }
+
+        return $data;
     }
 
     private function validateUser(Request $request, ?User $user = null): array

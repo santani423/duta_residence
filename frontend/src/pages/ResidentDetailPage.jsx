@@ -117,31 +117,85 @@ function SummaryTab({ residentId, unitId, units }) {
 // ---------- Data Penghuni ----------
 function ResidentInfoTab({ resident, onEdit }) {
   const photo = resident.photos?.[0];
+  const accounts = resident.users || [];
+
   return (
-    <Card
-      extra={<Can permission="residents.update"><Button icon={<EditOutlined />} onClick={onEdit}>Edit Data Penghuni</Button></Can>}
-    >
-      <Space align="start" size="large" wrap>
-        <Avatar size={96} icon={<UserOutlined />} src={photo ? storageUrl(photo.path) : undefined} />
-        <Descriptions bordered column={{ xs: 1, md: 2 }} style={{ minWidth: 320 }}>
-          <Descriptions.Item label="ID">{resident.id}</Descriptions.Item>
-          <Descriptions.Item label="Nama">{resident.name}</Descriptions.Item>
-          <Descriptions.Item label="Telepon">{compactText(resident.phone)}</Descriptions.Item>
-          <Descriptions.Item label="Telepon Rumah">{compactText(resident.telephone)}</Descriptions.Item>
-          <Descriptions.Item label="Email">{compactText(resident.email)}</Descriptions.Item>
-          <Descriptions.Item label="Kabupaten/Kota">{resident.district?.name}</Descriptions.Item>
-          <Descriptions.Item label="Jenis Identitas">{compactText(resident.identity_type)}</Descriptions.Item>
-          <Descriptions.Item label="Nomor Identitas">{compactText(resident.identity_number)}</Descriptions.Item>
-          <Descriptions.Item label="Kontak Darurat" span={2}>
-            {resident.emergency_contact_name || resident.emergency_contact_phone
-              ? `${resident.emergency_contact_name || '-'} (${resident.emergency_contact_phone || '-'})`
-              : '-'}
-          </Descriptions.Item>
-          <Descriptions.Item label="Alamat KTP" span={2}>{compactText(resident.id_card_address)}</Descriptions.Item>
-          <Descriptions.Item label="Catatan" span={2}>{compactText(resident.notes)}</Descriptions.Item>
-        </Descriptions>
-      </Space>
-    </Card>
+    <section>
+      <Card
+        className="section-row"
+        extra={<Can permission="residents.update"><Button icon={<EditOutlined />} onClick={onEdit}>Edit Data Penghuni</Button></Can>}
+      >
+        <Space align="center" size="large">
+          <Avatar size={80} icon={<UserOutlined />} src={photo ? storageUrl(photo.path) : undefined} />
+          <Space direction="vertical" size={0}>
+            <Typography.Title level={4} style={{ margin: 0 }}>{resident.name}</Typography.Title>
+            <Typography.Text type="secondary">{resident.id}</Typography.Text>
+          </Space>
+        </Space>
+      </Card>
+
+      <Row gutter={[16, 16]}>
+        <Col xs={24} md={12} lg={8}>
+          <Card title="Kontak" size="small">
+            <Descriptions column={1} size="small">
+              <Descriptions.Item label="Telepon">{compactText(resident.phone)}</Descriptions.Item>
+              <Descriptions.Item label="Telepon Rumah">{compactText(resident.telephone)}</Descriptions.Item>
+              <Descriptions.Item label="Email">{compactText(resident.email)}</Descriptions.Item>
+            </Descriptions>
+          </Card>
+        </Col>
+        <Col xs={24} md={12} lg={8}>
+          <Card title="Identitas & Domisili" size="small">
+            <Descriptions column={1} size="small">
+              <Descriptions.Item label="Jenis Identitas">{compactText(resident.identity_type)}</Descriptions.Item>
+              <Descriptions.Item label="Nomor Identitas">{compactText(resident.identity_number)}</Descriptions.Item>
+              <Descriptions.Item label="Kabupaten/Kota">{compactText(resident.district?.name)}</Descriptions.Item>
+            </Descriptions>
+          </Card>
+        </Col>
+        <Col xs={24} md={12} lg={8}>
+          <Card title="Kontak Darurat" size="small">
+            <Descriptions column={1} size="small">
+              <Descriptions.Item label="Nama">{compactText(resident.emergency_contact_name)}</Descriptions.Item>
+              <Descriptions.Item label="Telepon">{compactText(resident.emergency_contact_phone)}</Descriptions.Item>
+            </Descriptions>
+          </Card>
+        </Col>
+        <Col xs={24} lg={8}>
+          <Card title="Akun Login (Portal Customer)" size="small">
+            {accounts.length === 0 ? (
+              <Typography.Text type="secondary">Belum ada akun login untuk penghuni ini.</Typography.Text>
+            ) : (
+              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                {accounts.map((account) => (
+                  <div key={account.id}>
+                    <Space wrap>
+                      <Typography.Text strong>{account.username}</Typography.Text>
+                      <StatusBadge type="active" value={account.is_active} />
+                    </Space>
+                    <div>
+                      {account.unit_id ? (
+                        <Typography.Text type="secondary">Unit: {account.unit_id}</Typography.Text>
+                      ) : (
+                        <Tag color="orange">Menunggu Unit</Tag>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </Space>
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} lg={16}>
+          <Card title="Alamat & Catatan" size="small">
+            <Descriptions column={1} size="small">
+              <Descriptions.Item label="Alamat KTP">{compactText(resident.id_card_address)}</Descriptions.Item>
+              <Descriptions.Item label="Catatan">{compactText(resident.notes)}</Descriptions.Item>
+            </Descriptions>
+          </Card>
+        </Col>
+      </Row>
+    </section>
   );
 }
 
@@ -1127,7 +1181,7 @@ export default function ResidentDetailPage() {
         extra={<Space><Button onClick={() => setEditOpen(false)}>Batal</Button><Button type="primary" loading={updateResident.isPending} onClick={() => editForm.submit()}>Simpan</Button></Space>}
         destroyOnHidden
       >
-        <ResidentForm form={editForm} districts={districts.data?.data || []} onFinish={updateResident.mutate} loading={updateResident.isPending} />
+        <ResidentForm form={editForm} districts={districts.data?.data || []} onFinish={updateResident.mutate} loading={updateResident.isPending} editing residentId={id} />
       </Drawer>
 
       <Modal title="Kirim Notifikasi ke Penghuni" open={notifyOpen} onCancel={() => setNotifyOpen(false)} onOk={() => notifyForm.submit()} confirmLoading={sendNotification.isPending}>

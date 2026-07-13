@@ -51,6 +51,11 @@ const gateways = [
   { value: 'manual', label: 'Manual Transfer' },
 ];
 
+// Kepemilikan unit bisa berubah kapan saja dari sisi admin; halaman ini menampilkan
+// data yang terikat kepemilikan tsb jadi disegarkan berkala + saat tab difokuskan lagi,
+// supaya penghuni tidak perlu refresh manual atau login ulang untuk melihat perubahan.
+const OWNERSHIP_SENSITIVE_QUERY_OPTIONS = { refetchInterval: 30000, refetchOnWindowFocus: true };
+
 function unwrapQuery(query) {
   return query.data?.data;
 }
@@ -200,7 +205,7 @@ function useResidentPaymentActions() {
 
 function ResidentDashboard() {
   const navigate = useNavigate();
-  const query = useQuery({ queryKey: ['resident-dashboard'], queryFn: api.resident.dashboard });
+  const query = useQuery({ queryKey: ['resident-dashboard'], queryFn: api.resident.dashboard, ...OWNERSHIP_SENSITIVE_QUERY_OPTIONS });
   const data = unwrapQuery(query) || {};
   const billing = data.billing_summary || {};
   const payment = data.payment_summary || {};
@@ -292,7 +297,7 @@ function ProfileForm({ initial, onSaved }) {
 }
 
 function ResidentAccount({ mode = 'account' }) {
-  const query = useQuery({ queryKey: ['resident-account'], queryFn: api.resident.account });
+  const query = useQuery({ queryKey: ['resident-account'], queryFn: api.resident.account, ...OWNERSHIP_SENSITIVE_QUERY_OPTIONS });
   const data = unwrapQuery(query) || {};
 
   if (query.isLoading) return <LoadingState rows={10} />;
@@ -329,7 +334,7 @@ function ResidentAccount({ mode = 'account' }) {
 }
 
 function ResidentProperty() {
-  const query = useQuery({ queryKey: ['resident-property'], queryFn: api.resident.property });
+  const query = useQuery({ queryKey: ['resident-property'], queryFn: api.resident.property, ...OWNERSHIP_SENSITIVE_QUERY_OPTIONS });
   const properties = asList(unwrapQuery(query));
   return (
     <section>
