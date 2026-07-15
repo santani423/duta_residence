@@ -8,8 +8,11 @@ use App\Http\Controllers\Api\V1\ClusterController;
 use App\Http\Controllers\Api\V1\ClusterRateScheduleController;
 use App\Http\Controllers\Api\V1\CollectorVisitController;
 use App\Http\Controllers\Api\V1\DocumentController;
+use App\Http\Controllers\Api\V1\GuidedTourController;
+use App\Http\Controllers\Api\V1\HelpSettingController;
 use App\Http\Controllers\Api\V1\InstallmentController;
 use App\Http\Controllers\Api\V1\LookupController;
+use App\Http\Controllers\Api\V1\ManualBookController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PaymentGatewayController;
@@ -158,6 +161,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
 
     Route::get('lookup/regencies', [LookupController::class, 'regencies']);
     Route::get('lookup/districts', [LookupController::class, 'districts']);
+    Route::get('lookup/roles', [LookupController::class, 'roles']);
 
     Route::get('audit-logs', [AuditLogController::class, 'index'])->middleware('permission:audit-logs.view');
 
@@ -168,6 +172,33 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::get('notifications', [NotificationController::class, 'index']);
     Route::post('notifications/{notification}/read', [NotificationController::class, 'read']);
     Route::post('notifications/read-all', [NotificationController::class, 'readAll']);
+
+    // Manual Book & panduan interaktif - baca terbuka untuk semua role yang login,
+    // konten difilter otomatis sesuai role di controller. Pengelolaan konten dibatasi permission.
+    Route::get('manual-book/sections', [ManualBookController::class, 'index']);
+    Route::get('manual-book/sections/{section}', [ManualBookController::class, 'show']);
+    Route::post('manual-book/sections/{section}/read', [ManualBookController::class, 'markRead']);
+
+    Route::get('admin/manual-book/sections', [ManualBookController::class, 'adminIndex'])->middleware('permission:manual-book.manage');
+    Route::get('admin/manual-book/sections/{section}', [ManualBookController::class, 'adminShow'])->middleware('permission:manual-book.manage');
+    Route::post('admin/manual-book/sections', [ManualBookController::class, 'store'])->middleware('permission:manual-book.manage');
+    Route::put('admin/manual-book/sections/{section}', [ManualBookController::class, 'update'])->middleware('permission:manual-book.manage');
+    Route::delete('admin/manual-book/sections/{section}', [ManualBookController::class, 'destroy'])->middleware('permission:manual-book.manage');
+    Route::post('admin/manual-book/sections/reorder', [ManualBookController::class, 'reorder'])->middleware('permission:manual-book.manage');
+    Route::post('admin/manual-book/sections/{section}/images', [ManualBookController::class, 'uploadImage'])->middleware('permission:manual-book.manage');
+    Route::delete('admin/manual-book/sections/{section}/images/{image}', [ManualBookController::class, 'destroyImage'])->middleware('permission:manual-book.manage');
+
+    Route::get('help-settings', [HelpSettingController::class, 'index']);
+    Route::put('admin/help-settings', [HelpSettingController::class, 'upsert'])->middleware('permission:help-settings.manage');
+    Route::delete('admin/help-settings/{setting}', [HelpSettingController::class, 'destroy'])->middleware('permission:help-settings.manage');
+
+    Route::get('guided-tours', [GuidedTourController::class, 'index']);
+    Route::post('guided-tours/{tour}/progress', [GuidedTourController::class, 'progress']);
+
+    Route::get('admin/guided-tours', [GuidedTourController::class, 'adminIndex'])->middleware('permission:guided-tours.manage');
+    Route::post('admin/guided-tours', [GuidedTourController::class, 'store'])->middleware('permission:guided-tours.manage');
+    Route::put('admin/guided-tours/{tour}', [GuidedTourController::class, 'update'])->middleware('permission:guided-tours.manage');
+    Route::delete('admin/guided-tours/{tour}', [GuidedTourController::class, 'destroy'])->middleware('permission:guided-tours.manage');
 });
 
 Route::middleware(['auth:sanctum', 'audit', 'role:customer'])->prefix('resident')->group(function () {

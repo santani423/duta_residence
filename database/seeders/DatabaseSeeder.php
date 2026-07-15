@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
                 NotificationSeeder::class,
                 DocumentSeeder::class,
                 AuditLogSeeder::class,
+                HelpCenterSeeder::class,
             ]);
         });
     }

@@ -213,5 +213,32 @@ export const api = {
   lookup: {
     regencies: () => http.get('/lookup/regencies'),
     districts: (params) => http.get('/lookup/districts', { params }),
+    roles: () => http.get('/lookup/roles'),
+  },
+  manualBook: {
+    list: () => http.get('/manual-book/sections'),
+    detail: (id) => http.get(`/manual-book/sections/${id}`),
+    markRead: (id) => http.post(`/manual-book/sections/${id}/read`),
+    adminList: (params) => http.get('/admin/manual-book/sections', { params }),
+    adminDetail: (id) => http.get(`/admin/manual-book/sections/${id}`),
+    create: (payload) => http.post('/admin/manual-book/sections', payload),
+    update: (id, payload) => http.put(`/admin/manual-book/sections/${id}`, payload),
+    remove: (id) => http.delete(`/admin/manual-book/sections/${id}`),
+    reorder: (ids) => http.post('/admin/manual-book/sections/reorder', { ids }),
+    uploadImage: (id, formData) => http.post(`/admin/manual-book/sections/${id}/images`, formData),
+    removeImage: (id, imageId) => http.delete(`/admin/manual-book/sections/${id}/images/${imageId}`),
+  },
+  helpSettings: {
+    list: () => http.get('/help-settings'),
+    upsert: (settings) => http.put('/admin/help-settings', { settings }),
+    remove: (id) => http.delete(`/admin/help-settings/${id}`),
+  },
+  guidedTours: {
+    list: () => http.get('/guided-tours'),
+    progress: (id, payload) => http.post(`/guided-tours/${id}/progress`, payload),
+    adminList: (params) => http.get('/admin/guided-tours', { params }),
+    create: (payload) => http.post('/admin/guided-tours', payload),
+    update: (id, payload) => http.put(`/admin/guided-tours/${id}`, payload),
+    remove: (id) => http.delete(`/admin/guided-tours/${id}`),
   },
 };

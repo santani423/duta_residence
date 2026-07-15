@@ -30,6 +30,7 @@ class RolePermissionSeeder extends Seeder
             'resident-documents.view', 'resident-documents.create', 'resident-documents.update', 'resident-documents.delete', 'resident-documents.verify',
             'vehicles.view', 'vehicles.create', 'vehicles.update', 'vehicles.delete',
             'occupants.view', 'occupants.create', 'occupants.update', 'occupants.delete',
+            'manual-book.manage', 'help-settings.manage', 'guided-tours.manage',
         ];
 
         foreach ($permissions as $permission) {
@@ -52,6 +53,7 @@ class RolePermissionSeeder extends Seeder
                 'resident-documents.view', 'resident-documents.create', 'resident-documents.update', 'resident-documents.delete', 'resident-documents.verify',
                 'vehicles.view', 'vehicles.create', 'vehicles.update', 'vehicles.delete',
                 'occupants.view', 'occupants.create', 'occupants.update', 'occupants.delete',
+                'manual-book.manage',
             ],
             'back_office' => [
                 'residents.view', 'residents.create', 'residents.update',

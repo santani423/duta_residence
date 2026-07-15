@@ -32,6 +32,9 @@ const ProfilePage = lazy(() => import('../pages/auth/ProfilePage.jsx'));
 const ChangePasswordPage = lazy(() => import('../pages/auth/ChangePasswordPage.jsx'));
 const AdminPaymentGatewaySettingsPage = lazy(() => import('../pages/AdminPaymentGatewaySettingsPage.jsx'));
 const ResidentPortalPage = lazy(() => import('../pages/resident/ResidentPortalPage.jsx'));
+const ManualBookPage = lazy(() => import('../pages/ManualBookPage.jsx'));
+const AdminManualBookPage = lazy(() => import('../pages/AdminManualBookPage.jsx'));
+const AdminHelpSettingsPage = lazy(() => import('../pages/AdminHelpSettingsPage.jsx'));
 
 function Protected({ children, permissions = [], roles = [] }) {
   const { token, canAny, hasRole } = useAuth();
@@ -95,6 +98,11 @@ export default function AppRoutes() {
         <Route path="profile" element={<LazyPage><ProfilePage /></LazyPage>} />
         <Route path="change-password" element={<LazyPage><ChangePasswordPage /></LazyPage>} />
         <Route path="admin/settings/payment-gateway" element={<Protected permissions={['payment-settings.view']}><LazyPage><AdminPaymentGatewaySettingsPage /></LazyPage></Protected>} />
+        <Route path="manual-book" element={<LazyPage><ManualBookPage /></LazyPage>} />
+        <Route path="manual-book/:module" element={<LazyPage><ManualBookPage /></LazyPage>} />
+        <Route path="manual-book/:module/:section" element={<LazyPage><ManualBookPage /></LazyPage>} />
+        <Route path="admin/manual-book" element={<Protected permissions={['manual-book.manage']}><LazyPage><AdminManualBookPage /></LazyPage></Protected>} />
+        <Route path="admin/help-settings" element={<Protected permissions={['help-settings.manage']}><LazyPage><AdminHelpSettingsPage /></LazyPage></Protected>} />
         <Route path="resident/dashboard" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="dashboard" /></LazyPage></Protected>} />
         <Route path="resident/account" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="account" /></LazyPage></Protected>} />
         <Route path="resident/profile" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="profile" /></LazyPage></Protected>} />

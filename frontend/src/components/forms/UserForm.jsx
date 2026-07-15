@@ -1,5 +1,6 @@
-import { Form, Input, Select, Switch } from 'antd';
+import { Form, Input, Select, Space, Switch } from 'antd';
 import { roles } from '../../constants/permissions.js';
+import InfoIcon from '../help/InfoIcon.jsx';
 
 export default function UserForm({ form, onFinish, editing = false, loading = false, units = [] }) {
   const unitOptions = units.map((unit) => ({
@@ -41,9 +42,8 @@ export default function UserForm({ form, onFinish, editing = false, loading = fa
           const isCustomer = getFieldValue('role') === 'customer';
           return (
             <Form.Item
-              label="Unit / Penghuni"
+              label={<Space size={4}>Unit / Penghuni<InfoIcon scope={{ module: 'users', component: 'user-unit-field' }} tooltip="Menghubungkan akun login ini ke data penghuni pemilik unit. Wajib untuk role customer agar penghuni bisa login melihat data miliknya." module="users" slug="kelola-user" /></Space>}
               name="unit_id"
-              tooltip="Menghubungkan akun login ini ke data penghuni pemilik unit. Wajib untuk role customer agar penghuni bisa login melihat data miliknya."
               rules={[{ required: isCustomer, message: 'Unit wajib dipilih untuk role customer' }]}
             >
               <Select

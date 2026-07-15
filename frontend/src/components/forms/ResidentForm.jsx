@@ -1,5 +1,6 @@
-import { Form, Input, Select } from 'antd';
+import { Form, Input, Select, Space } from 'antd';
 import { api } from '../../services/estateApi.js';
+import InfoIcon from '../help/InfoIcon.jsx';
 
 export const identityTypeOptions = [
   { value: 'KTP', label: 'KTP' },
@@ -61,10 +62,9 @@ export default function ResidentForm({ form, districts = [], onFinish, loading, 
       </Form.Item>
       {!editing ? (
         <Form.Item
-          label="Username Akun Login"
+          label={<Space size={4}>Username Akun Login<InfoIcon scope={{ module: 'residents', component: 'resident-username-field' }} tooltip="Username akun customer (untuk login penghuni). Kosongkan untuk digenerate otomatis." module="residents" slug="kelola-data-penghuni" /></Space>}
           name="username"
           validateTrigger="onBlur"
-          tooltip="Username akun customer (untuk login penghuni). Kosongkan untuk digenerate otomatis."
           rules={[
             { min: 4, message: 'Minimal 4 karakter' },
             { pattern: /^[a-zA-Z0-9_.-]+$/, message: 'Hanya huruf, angka, titik, - dan _' },

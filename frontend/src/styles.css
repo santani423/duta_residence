@@ -401,3 +401,40 @@ a {
     flex-direction: column;
   }
 }
+
+.gd-tour-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  z-index: 2000;
+}
+
+.gd-tour-highlight {
+  position: relative;
+  z-index: 2001;
+  outline: 3px solid var(--brand);
+  outline-offset: 3px;
+  border-radius: 6px;
+  transition: outline-offset 0.2s ease;
+}
+
+.gd-tour-card {
+  z-index: 2002;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.35);
+}
+
+@media print {
+  .app-sider,
+  .app-header,
+  .mobile-nav,
+  .manual-book-page .page-header,
+  .manual-book-page .ant-col:first-child,
+  .manual-book-page .ant-space {
+    display: none !important;
+  }
+
+  .manual-book-page .ant-col:last-child {
+    max-width: 100%;
+    flex: 0 0 100%;
+  }
+}

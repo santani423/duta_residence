@@ -18,12 +18,14 @@ import {
   WalletOutlined,
   ToolOutlined,
   SafetyCertificateOutlined,
+  ReadOutlined,
 } from '@ant-design/icons';
 
 export const roles = ['root', 'back_office', 'loket', 'cs', 'customer'];
 
 export const menuItems = [
   { key: '/', label: 'Dashboard', icon: DashboardOutlined, permissions: ['reports.view', 'residents.view', 'billings.view'] },
+  { key: '/manual-book', label: 'Manual Book', icon: ReadOutlined, permissions: [] },
   { key: '/clusters', label: 'Cluster', icon: HomeOutlined, permissions: ['clusters.view'] },
   { key: '/residents', label: 'Penghuni', icon: BankOutlined, permissions: ['residents.view'] },
   { key: '/units', label: 'Unit Rumah', icon: ApartmentOutlined, permissions: ['units.view'] },
@@ -37,6 +39,8 @@ export const menuItems = [
   { key: '/users', label: 'User', icon: TeamOutlined, permissions: ['users.view'] },
   { key: '/audit-logs', label: 'Audit Log', icon: AuditOutlined, permissions: ['audit-logs.view'] },
   { key: '/admin/settings/payment-gateway', label: 'Payment Gateway', icon: SafetyCertificateOutlined, permissions: ['payment-settings.view'] },
+  { key: '/admin/manual-book', label: 'Kelola Manual Book', icon: ReadOutlined, permissions: ['manual-book.manage'] },
+  { key: '/admin/help-settings', label: 'Pengaturan Bantuan', icon: SettingOutlined, permissions: ['help-settings.manage'] },
   { key: '/notifications', label: 'Notifikasi', icon: BellOutlined, permissions: [], roles: ['root', 'back_office', 'loket', 'cs'] },
   { key: '/profile', label: 'Profil', icon: UserOutlined, permissions: [], roles: ['root', 'back_office', 'loket', 'cs'] },
   { key: '/change-password', label: 'Ganti Password', icon: FileDoneOutlined, permissions: [], roles: ['root', 'back_office', 'loket', 'cs'] },
@@ -88,4 +92,7 @@ export const permissionLabels = {
   'documents.generate': 'Generate dokumen',
   'payment-settings.view': 'Lihat pengaturan payment gateway',
   'payment-settings.update': 'Ubah pengaturan payment gateway',
+  'manual-book.manage': 'Kelola Manual Book',
+  'help-settings.manage': 'Kelola pengaturan ikon bantuan',
+  'guided-tours.manage': 'Kelola Guided Tour',
 };
