@@ -311,24 +311,25 @@ function BillingsTab({ residentId, unitId, units }) {
         <InputNumber placeholder="Tahun" value={table.filters.year} onChange={(value) => table.setFilters({ ...table.filters, year: value })} className="filter-input" />
         <Select allowClear placeholder="Bulan" value={table.filters.month} onChange={(value) => table.setFilters({ ...table.filters, month: value })} className="filter-input" options={Array.from({ length: 12 }, (_, index) => ({ value: index + 1, label: dayjs().month(index).format('MMMM') }))} />
         <Select allowClear placeholder="Jenis Tagihan" value={table.filters.billing_type} onChange={(value) => table.setFilters({ ...table.filters, billing_type: value })} className="filter-input" options={[{ value: 'regular', label: 'Reguler' }, { value: 'special', label: 'Khusus' }, { value: 'back', label: 'Mundur' }]} />
-        <Select allowClear placeholder="Status" value={table.filters.status_id} onChange={(value) => table.setFilters({ ...table.filters, status_id: value })} className="filter-input" options={[{ value: '01', label: 'Belum Bayar' }, { value: '02', label: 'Lunas' }]} />
+        <Select allowClear placeholder="Status" value={table.filters.status_id} onChange={(value) => table.setFilters({ ...table.filters, status_id: value })} className="filter-input" options={[{ value: '01', label: 'Belum Bayar' }, { value: '02', label: 'Lunas' }, { value: '03', label: 'Sebagian' }, { value: '04', label: 'Dibatalkan' }]} />
       </FilterBar>
       <Card>
         <ResponsiveTable
           query={query}
           onChange={table.handleTableChange}
-          scrollX={1400}
+          scrollX={1530}
           columns={[
             { title: 'Invoice', render: (_, row) => `BIL-${row.id}`, width: 110, fixed: 'left' },
             { title: 'Unit', dataIndex: 'unit_id', width: 90 },
             { title: 'Jenis', dataIndex: 'billing_type', width: 100 },
             { title: 'Periode', render: (_, row) => formatPeriod(row.year, row.month), width: 130 },
             { title: 'Nominal', dataIndex: 'amount', render: formatCurrency, width: 130 },
-            { title: 'Denda', dataIndex: 'penalty', render: formatCurrency, width: 120 },
             { title: 'Diskon', dataIndex: 'discount', render: formatCurrency, width: 120 },
-            { title: 'Total', render: (_, row) => formatCurrency(Number(row.amount) + Number(row.penalty) - Number(row.discount)), width: 130 },
-            { title: 'Dibayar', render: (_, row) => formatCurrency(row.status_id === '02' ? Number(row.amount) + Number(row.penalty) - Number(row.discount) : 0), width: 130 },
-            { title: 'Sisa', render: (_, row) => formatCurrency(row.status_id === '02' ? 0 : Number(row.amount) + Number(row.penalty) - Number(row.discount)), width: 130 },
+            { title: 'Umur Tunggakan', render: (_, row) => `${row.penalty_detail?.overdue_months ?? 0} bulan`, width: 130 },
+            { title: 'Denda', render: (_, row) => formatCurrency(row.penalty_detail?.penalty_amount ?? 0), width: 120 },
+            { title: 'Total', render: (_, row) => formatCurrency(row.penalty_detail?.total_amount ?? row.amount), width: 130 },
+            { title: 'Dibayar', render: (_, row) => formatCurrency(row.penalty_detail?.total_paid ?? 0), width: 130 },
+            { title: 'Sisa', render: (_, row) => formatCurrency(row.penalty_detail?.total_outstanding ?? 0), width: 130 },
             { title: 'Status', dataIndex: 'status_id', render: (value) => <StatusBadge type="billing" value={value} />, width: 120 },
           ]}
         />

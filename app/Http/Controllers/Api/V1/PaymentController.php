@@ -4,21 +4,32 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
+use App\Models\Billing;
 use App\Models\Receipt;
 use App\Models\Unit;
 use App\Services\PaymentService;
+use App\Services\PenaltyService;
 use Illuminate\Http\Request;
 
 class PaymentController extends Controller
 {
     use ApiResponse;
 
-    public function search(Request $request)
+    public function search(Request $request, PenaltyService $penaltyService)
     {
         $data = $request->validate(['unit_id' => ['required', 'exists:units,id']]);
         $unit = Unit::query()
             ->with(['cluster', 'resident', 'billings' => fn ($q) => $q->outstanding()->approved()->orderBy('year')->orderBy('month')])
             ->findOrFail($data['unit_id']);
+
+        $unit->setRelation('billings', $unit->billings->map(function (Billing $billing) use ($unit, $penaltyService) {
+            $billing->setRelation('unit', $unit);
+
+            return [
+                ...$billing->toArray(),
+                'penalty_detail' => $penaltyService->calculateInvoiceTotal($billing),
+            ];
+        }));
 
         return $this->success($unit);
     }

@@ -125,7 +125,9 @@ export default function PaymentsPage() {
   const billingColumns = [
     { title: 'Periode', render: (_, row) => formatPeriod(row.year, row.month) },
     { title: 'Nominal', dataIndex: 'amount', render: formatCurrency },
-    { title: 'Denda', dataIndex: 'penalty', render: formatCurrency },
+    { title: 'Umur Tunggakan', render: (_, row) => `${row.penalty_detail?.overdue_months ?? 0} bulan` },
+    { title: 'Denda', render: (_, row) => formatCurrency(row.penalty_detail?.penalty_amount ?? 0) },
+    { title: 'Sisa Tagihan', render: (_, row) => formatCurrency(row.penalty_detail?.total_outstanding ?? 0) },
   ];
 
   return (
@@ -165,7 +167,7 @@ export default function PaymentsPage() {
                       columns={billingColumns}
                       pagination={false}
                       rowSelection={{ selectedRowKeys: selected, onChange: setSelected }}
-                      scrollX={700}
+                      scrollX={1000}
                     />
                     <Space className="action-row" wrap>
                       <Button disabled={!selected.length} onClick={() => previewMutation.mutate()} loading={previewMutation.isPending}>Preview Total</Button>

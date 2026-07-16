@@ -92,7 +92,10 @@ export default function BillingsPage() {
     { title: 'Periode', render: (_, row) => formatPeriod(row.year, row.month), width: 140 },
     { title: 'Tipe', dataIndex: 'billing_type', width: 100 },
     { title: 'Nominal', dataIndex: 'amount', render: formatCurrency, width: 140 },
-    { title: 'Denda', dataIndex: 'penalty', render: formatCurrency, width: 130 },
+    { title: 'Umur Tunggakan', render: (_, row) => `${row.penalty_detail?.overdue_months ?? 0} bulan`, width: 130 },
+    { title: 'Denda', render: (_, row) => formatCurrency(row.penalty_detail?.penalty_amount ?? 0), width: 130 },
+    { title: 'Total', render: (_, row) => formatCurrency(row.penalty_detail?.total_amount ?? row.amount), width: 140 },
+    { title: 'Sisa Tagihan', render: (_, row) => formatCurrency(row.penalty_detail?.total_outstanding ?? 0), width: 140 },
     { title: 'Status', dataIndex: 'status_id', render: (value) => <StatusBadge type="billing" value={value} />, width: 120 },
     { title: 'Approval', render: (_, row) => <StatusBadge type="approval" value={row.approved_at ? 'approved' : 'pending'} />, width: 130 },
     { title: 'Approved At', dataIndex: 'approved_at', render: formatDateTime, width: 170 },
@@ -146,7 +149,7 @@ export default function BillingsPage() {
         <Select allowClear placeholder="Cluster" options={(clusters.data?.data || []).map((item) => ({ value: item.id, label: item.name }))} value={table.filters.cluster_id} onChange={(value) => table.setFilters({ ...table.filters, cluster_id: value })} className="filter-input" />
         <InputNumber placeholder="Tahun" value={table.filters.year} onChange={(value) => table.setFilters({ ...table.filters, year: value })} className="filter-input" />
         <Select allowClear placeholder="Bulan" value={table.filters.month} onChange={(value) => table.setFilters({ ...table.filters, month: value })} className="filter-input" options={Array.from({ length: 12 }, (_, index) => ({ value: index + 1, label: dayjs().month(index).format('MMMM') }))} />
-        <Select allowClear placeholder="Status" value={table.filters.status_id} onChange={(value) => table.setFilters({ ...table.filters, status_id: value })} className="filter-input" options={[{ value: '01', label: 'Belum Bayar' }, { value: '02', label: 'Lunas' }]} />
+        <Select allowClear placeholder="Status" value={table.filters.status_id} onChange={(value) => table.setFilters({ ...table.filters, status_id: value })} className="filter-input" options={[{ value: '01', label: 'Belum Bayar' }, { value: '02', label: 'Lunas' }, { value: '03', label: 'Sebagian' }, { value: '04', label: 'Dibatalkan' }]} />
       </FilterBar>
 
       <Card>
@@ -161,7 +164,7 @@ export default function BillingsPage() {
                   columns={columns}
                   onChange={table.handleTableChange}
                   rowSelection={{ selectedRowKeys: selected, onChange: setSelected, getCheckboxProps: (record) => ({ disabled: Boolean(record.approved_at) }) }}
-                  scrollX={1320}
+                  scrollX={1730}
                 />
               ),
             },

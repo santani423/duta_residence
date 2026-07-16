@@ -191,7 +191,9 @@ export default function UnitsPage() {
                   columns={[
                     { title: 'Periode', render: (_, row) => formatPeriod(row.year, row.month) },
                     { title: 'Nominal', dataIndex: 'amount', render: formatCurrency },
-                    { title: 'Denda', dataIndex: 'penalty', render: formatCurrency },
+                    { title: 'Umur Tunggakan', render: (_, row) => `${row.penalty_detail?.overdue_months ?? 0} bulan` },
+                    { title: 'Denda', render: (_, row) => formatCurrency(row.penalty_detail?.penalty_amount ?? 0) },
+                    { title: 'Sisa Tagihan', render: (_, row) => formatCurrency(row.penalty_detail?.total_outstanding ?? 0) },
                     { title: 'Status', dataIndex: 'status_id', render: (value) => <StatusBadge type="billing" value={value} /> },
                   ]}
                 />

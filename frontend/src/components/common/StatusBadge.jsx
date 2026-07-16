@@ -4,6 +4,8 @@ const maps = {
   billing: {
     '01': ['Belum Bayar', 'gold'],
     '02': ['Lunas', 'green'],
+    '03': ['Sebagian', 'blue'],
+    '04': ['Dibatalkan', 'default'],
   },
   approval: {
     approved: ['Approved', 'green'],

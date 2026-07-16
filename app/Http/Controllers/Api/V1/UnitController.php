@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
+use App\Models\Billing;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\AuditService;
+use App\Services\PenaltyService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -74,9 +76,15 @@ class UnitController extends Controller
         }
     }
 
-    public function show(Unit $unit)
+    public function show(Unit $unit, PenaltyService $penaltyService)
     {
-        return $this->success($unit->load(['cluster', 'propertyType', 'occupancy', 'status', 'resident', 'billings.status', 'users.roles']));
+        $unit->load(['cluster', 'propertyType', 'occupancy', 'status', 'resident', 'billings.status', 'users.roles']);
+        $unit->setRelation('billings', $unit->billings->map(fn (Billing $billing) => [
+            ...$billing->toArray(),
+            'penalty_detail' => $penaltyService->calculateInvoiceTotal($billing->setRelation('unit', $unit)),
+        ]));
+
+        return $this->success($unit);
     }
 
     public function update(Request $request, Unit $unit, AuditService $auditService)

@@ -61,7 +61,12 @@
       "Bash(curl -s -H \"Authorization: Bearer 1|yNUEQN8t2w2sdgmOIURynNV9PUmoCvO5RBNvV56tceca9fe4\" -H \"Accept: application/json\" \"http://127.0.0.1:8000/api/v1/billings?unit_id=GA004&per_page=5\")",
       "Bash(python3 -m json.tool)",
       "Bash(curl -s -H \"Authorization: Bearer 1|yNUEQN8t2w2sdgmOIURynNV9PUmoCvO5RBNvV56tceca9fe4\" -H \"Accept: application/json\" \"http://127.0.0.1:8000/api/v1/billings?unit_id=GA004&status_id=01&per_page=5\")",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(php -l app/Http/Controllers/Api/V1/PaymentController.php)",
+      "Bash(chmod +x node_modules/.bin/eslint)",
+      "Bash(node node_modules/eslint/bin/eslint.js src/pages/BillingsPage.jsx src/pages/PaymentsPage.jsx src/pages/ResidentDetailPage.jsx src/pages/UnitsPage.jsx src/components/common/StatusBadge.jsx)",
+      "Bash(curl -s -X POST -H 'Authorization: Bearer 2|BmbpgBeIEg9NFgU477QM1x363lyRXOFAIi0pIAh7870e5f9a' -H 'Accept: application/json' -H 'Content-Type: application/json' -d '{\"unit_id\":\"GA004\"}' http://127.0.0.1:8000/api/v1/payments/search)",
+      "Bash(curl -s -H 'Authorization: Bearer 2|BmbpgBeIEg9NFgU477QM1x363lyRXOFAIi0pIAh7870e5f9a' -H 'Accept: application/json' http://127.0.0.1:8000/api/v1/payments/search?unit_id=GA004)"
     ],
     "additionalDirectories": [
       "/tmp/pw-verify",
