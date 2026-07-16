@@ -95,6 +95,13 @@ export const api = {
     prepareBack: (payload) => http.post('/billings/prepare-back', payload),
     approve: (id, payload) => http.post(`/billings/${id}/approve`, payload),
     approveBatch: (payload) => http.post('/billings/approve-batch', payload),
+    updateDiscount: (id, payload) => http.put(`/billings/${id}/discount`, payload),
+  },
+  discountRules: {
+    list: (params) => http.get('/discount-rules', { params }),
+    create: (payload) => http.post('/discount-rules', payload),
+    update: (id, payload) => http.put(`/discount-rules/${id}`, payload),
+    remove: (id) => http.delete(`/discount-rules/${id}`),
   },
   payments: {
     search: (params) => http.get('/payments/search', { params }),

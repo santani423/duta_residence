@@ -21,7 +21,8 @@ class Billing extends Model
 
     protected $fillable = [
         'unit_id', 'year', 'month', 'amount', 'principal_paid', 'penalty', 'penalty_paid',
-        'penalty_waived_amount', 'penalty_notified_tier', 'discount', 'status_id',
+        'penalty_waived_amount', 'penalty_notified_tier', 'discount', 'discount_rule_id',
+        'discount_set_by', 'discount_set_at', 'discount_reason', 'status_id',
         'is_penalty_eligible', 'is_discount_eligible', 'billing_type', 'approved_by',
         'approved_at', 'approval_notes', 'paid_at', 'receipt_number', 'loket_code',
         'processed_by', 'spt_print_count', 'created_by',
@@ -36,6 +37,7 @@ class Billing extends Model
         'penalty_waived_amount' => 'decimal:2',
         'penalty_notified_tier' => 'integer',
         'discount' => 'decimal:2',
+        'discount_set_at' => 'datetime',
         'is_penalty_eligible' => 'boolean',
         'is_discount_eligible' => 'boolean',
         'approved_at' => 'datetime',
@@ -66,6 +68,16 @@ class Billing extends Model
     public function canceller()
     {
         return $this->belongsTo(User::class, 'cancelled_by');
+    }
+
+    public function discountRule()
+    {
+        return $this->belongsTo(DiscountRule::class);
+    }
+
+    public function discountSetter()
+    {
+        return $this->belongsTo(User::class, 'discount_set_by');
     }
 
     public function receipt()

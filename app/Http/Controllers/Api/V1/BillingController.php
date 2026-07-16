@@ -8,6 +8,7 @@ use App\Models\Billing;
 use App\Models\Unit;
 use App\Services\AuditService;
 use App\Services\BillingService;
+use App\Services\DiscountService;
 use App\Services\PenaltyService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -155,6 +156,22 @@ class BillingController extends Controller
             ->map(fn (Billing $billing) => $service->approve($billing, $request->user()->id, $data['approval_notes'] ?? null));
 
         return $this->success($billings->values(), 'Tagihan batch berhasil disetujui.');
+    }
+
+    /**
+     * Override manual nominal diskon oleh admin berwenang - berlaku kapan saja sebelum
+     * tagihan lunas, tidak terikat pada aturan diskon otomatis milik unit.
+     */
+    public function updateDiscount(Request $request, Billing $billing, DiscountService $service)
+    {
+        $data = $request->validate([
+            'discount' => ['required', 'numeric', 'min:0'],
+            'reason' => ['required', 'string', 'max:200'],
+        ]);
+
+        $billing = $service->applyManualDiscount($billing, (float) $data['discount'], $data['reason'], $request->user()->id);
+
+        return $this->success($billing->fresh(['unit.cluster', 'unit.resident', 'status']), 'Diskon tagihan berhasil diperbarui.');
     }
 
     private function whereOverdueMonths(Builder $query, Carbon $now, string $operator, int $threshold): Builder

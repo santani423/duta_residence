@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\BillingController;
 use App\Http\Controllers\Api\V1\ClusterController;
 use App\Http\Controllers\Api\V1\ClusterRateScheduleController;
 use App\Http\Controllers\Api\V1\CollectorVisitController;
+use App\Http\Controllers\Api\V1\DiscountRuleController;
 use App\Http\Controllers\Api\V1\DocumentController;
 use App\Http\Controllers\Api\V1\GuidedTourController;
 use App\Http\Controllers\Api\V1\HelpSettingController;
@@ -115,6 +116,12 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::get('billings/pending-approval', [BillingController::class, 'pendingApproval'])->middleware('permission:billings.approve');
     Route::post('billings/{billing}/approve', [BillingController::class, 'approve'])->middleware('permission:billings.approve');
     Route::post('billings/approve-batch', [BillingController::class, 'approveBatch'])->middleware('permission:billings.approve');
+    Route::put('billings/{billing}/discount', [BillingController::class, 'updateDiscount'])->middleware('permission:billings.set-discount');
+
+    Route::get('discount-rules', [DiscountRuleController::class, 'index'])->middleware('permission:discount-config.view');
+    Route::post('discount-rules', [DiscountRuleController::class, 'store'])->middleware('permission:discount-config.create');
+    Route::put('discount-rules/{discountRule}', [DiscountRuleController::class, 'update'])->middleware('permission:discount-config.update');
+    Route::delete('discount-rules/{discountRule}', [DiscountRuleController::class, 'destroy'])->middleware('permission:discount-config.delete');
 
     Route::get('penalty-rules', [PenaltyRuleController::class, 'index'])->middleware('permission:penalty-config.view');
     Route::post('penalty-rules', [PenaltyRuleController::class, 'store'])->middleware('permission:penalty-config.create');

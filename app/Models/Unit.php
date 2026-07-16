@@ -16,7 +16,7 @@ class Unit extends Model
         'id', 'resident_id', 'cluster_id', 'block', 'lot_number', 'property_type_id',
         'building_area', 'land_area', 'handover_date', 'occupancy_id', 'status_id',
         'occupancy_role', 'tenancy_start_date', 'tenancy_end_date',
-        'is_penalty_eligible', 'is_discount_eligible', 'notes', 'created_by', 'updated_by',
+        'is_penalty_eligible', 'is_discount_eligible', 'discount_rule_id', 'notes', 'created_by', 'updated_by',
     ];
 
     protected $casts = [
@@ -37,6 +37,11 @@ class Unit extends Model
     public function cluster()
     {
         return $this->belongsTo(Cluster::class);
+    }
+
+    public function discountRule()
+    {
+        return $this->belongsTo(DiscountRule::class);
     }
 
     public function propertyType()

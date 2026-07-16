@@ -9,17 +9,21 @@ use Illuminate\Support\Facades\DB;
 
 class BillingService
 {
-    public function __construct(private readonly ClusterRateScheduleService $rateScheduleService) {}
+    public function __construct(
+        private readonly ClusterRateScheduleService $rateScheduleService,
+        private readonly DiscountService $discountService,
+    ) {}
 
     public function prepareMonthly(int $year, int $month, int $userId): Collection
     {
         return DB::transaction(function () use ($year, $month, $userId) {
             return Unit::query()
-                ->with('cluster')
+                ->with(['cluster', 'discountRule'])
                 ->where('status_id', 'AK')
                 ->get()
                 ->map(function (Unit $unit) use ($year, $month, $userId) {
                     $rate = $this->rateScheduleService->rateForPeriod($unit->cluster, $year, $month);
+                    $discount = $this->discountService->calculateForNewBilling($unit, $rate);
 
                     return Billing::query()->firstOrCreate(
                         [
@@ -29,6 +33,8 @@ class BillingService
                         ],
                         [
                             'amount' => $rate,
+                            'discount' => $discount['amount'],
+                            'discount_rule_id' => $discount['rule']?->id,
                             'status_id' => '01',
                             'is_penalty_eligible' => $unit->is_penalty_eligible,
                             'is_discount_eligible' => $unit->is_discount_eligible,
@@ -42,11 +48,15 @@ class BillingService
 
     public function prepareSpecial(Unit $unit, int $year, int $month, float $amount, int $userId): Billing
     {
+        $discount = $this->discountService->calculateForNewBilling($unit, $amount);
+
         return Billing::query()->create([
             'unit_id' => $unit->id,
             'year' => $year,
             'month' => $month,
             'amount' => $amount,
+            'discount' => $discount['amount'],
+            'discount_rule_id' => $discount['rule']?->id,
             'status_id' => '01',
             'billing_type' => 'special',
             'is_penalty_eligible' => $unit->is_penalty_eligible,

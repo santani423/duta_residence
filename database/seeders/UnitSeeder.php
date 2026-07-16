@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\DiscountRule;
 use App\Models\Resident;
 use App\Models\Unit;
 use App\Models\User;
@@ -14,6 +15,7 @@ class UnitSeeder extends Seeder
     public function run(): void
     {
         $creator = User::where('username', 'admin.estate')->first() ?: User::where('username', 'root')->first();
+        $discountRuleIds = DiscountRule::query()->pluck('id', 'name');
         $districts = ['367101', '367102', '367103'];
         $unitProfiles = [
             ['type' => 'B', 'building' => 36, 'land' => 72],
@@ -78,6 +80,9 @@ class UnitSeeder extends Seeder
                     'status_id' => $statusId,
                     'is_penalty_eligible' => $i % 9 !== 0,
                     'is_discount_eligible' => $i % 11 === 0,
+                    'discount_rule_id' => $i % 11 === 0
+                        ? ($i % 22 === 0 ? $discountRuleIds['Diskon Awal Bulan'] ?? null : $discountRuleIds['Diskon Karyawan Estate'] ?? null)
+                        : null,
                     'notes' => trim($notes),
                     'created_by' => $creator?->id,
                     'updated_by' => $creator?->id,

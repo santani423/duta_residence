@@ -78,7 +78,7 @@ class UnitController extends Controller
 
     public function show(Unit $unit, PenaltyService $penaltyService)
     {
-        $unit->load(['cluster', 'propertyType', 'occupancy', 'status', 'resident', 'billings.status', 'users.roles']);
+        $unit->load(['cluster', 'propertyType', 'occupancy', 'status', 'resident', 'discountRule', 'billings.status', 'users.roles']);
         $unit->setRelation('billings', $unit->billings->map(fn (Billing $billing) => [
             ...$billing->toArray(),
             'penalty_detail' => $penaltyService->calculateInvoiceTotal($billing->setRelation('unit', $unit)),
@@ -150,6 +150,7 @@ class UnitController extends Controller
             'tenancy_end_date' => ['nullable', 'date'],
             'is_penalty_eligible' => ['sometimes', 'boolean'],
             'is_discount_eligible' => ['sometimes', 'boolean'],
+            'discount_rule_id' => ['nullable', 'exists:discount_rules,id'],
             'notes' => ['nullable', 'string'],
         ]);
     }

@@ -1,5 +1,5 @@
 import { Button, Card, DatePicker, Drawer, Form, Input, InputNumber, Modal, Select, Space, Tabs, message } from 'antd';
-import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
+import { CheckOutlined, PercentageOutlined, PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { useState } from 'react';
@@ -17,8 +17,10 @@ export default function BillingsPage() {
   const table = useTableState({ year: dayjs().year() });
   const [drawer, setDrawer] = useState(null);
   const [selected, setSelected] = useState([]);
+  const [discountTarget, setDiscountTarget] = useState(null);
   const [form] = Form.useForm();
   const [approveForm] = Form.useForm();
+  const [discountForm] = Form.useForm();
   const queryClient = useQueryClient();
 
   const billings = useQuery({ queryKey: ['billings', table.params], queryFn: () => api.billings.list(table.params) });
@@ -85,6 +87,20 @@ export default function BillingsPage() {
     onError: (error) => message.error(getApiErrorMessage(error)),
   });
 
+  const setDiscount = useMutation({
+    mutationFn: ({ id, discount, reason }) => api.billings.updateDiscount(id, { discount, reason }),
+    onSuccess: () => {
+      message.success('Diskon tagihan berhasil diperbarui');
+      setDiscountTarget(null);
+      discountForm.resetFields();
+      queryClient.invalidateQueries({ queryKey: ['billings'] });
+    },
+    onError: (error) => {
+      discountForm.setFields(mapValidationErrors(error));
+      message.error(getApiErrorMessage(error));
+    },
+  });
+
   const columns = [
     { title: 'ID', dataIndex: 'id', width: 80, fixed: 'left' },
     { title: 'Penghuni', dataIndex: ['unit', 'resident', 'name'], width: 220 },
@@ -92,6 +108,7 @@ export default function BillingsPage() {
     { title: 'Periode', render: (_, row) => formatPeriod(row.year, row.month), width: 140 },
     { title: 'Tipe', dataIndex: 'billing_type', width: 100 },
     { title: 'Nominal', dataIndex: 'amount', render: formatCurrency, width: 140 },
+    { title: 'Diskon', dataIndex: 'discount', render: formatCurrency, width: 120 },
     { title: 'Umur Tunggakan', render: (_, row) => `${row.penalty_detail?.overdue_months ?? 0} bulan`, width: 130 },
     { title: 'Denda', render: (_, row) => formatCurrency(row.penalty_detail?.penalty_amount ?? 0), width: 130 },
     { title: 'Total', render: (_, row) => formatCurrency(row.penalty_detail?.total_amount ?? row.amount), width: 140 },
@@ -102,19 +119,34 @@ export default function BillingsPage() {
     {
       title: 'Aksi',
       fixed: 'right',
-      width: 120,
+      width: 220,
       render: (_, row) => (
-        <Can permission="billings.approve">
-          <Button
-            size="small"
-            icon={<CheckOutlined />}
-            disabled={Boolean(row.approved_at)}
-            onClick={() => approve.mutate({ ids: [row.id], notes: null })}
-            loading={approve.isPending}
-          >
-            Approve
-          </Button>
-        </Can>
+        <Space>
+          <Can permission="billings.approve">
+            <Button
+              size="small"
+              icon={<CheckOutlined />}
+              disabled={Boolean(row.approved_at)}
+              onClick={() => approve.mutate({ ids: [row.id], notes: null })}
+              loading={approve.isPending}
+            >
+              Approve
+            </Button>
+          </Can>
+          <Can permission="billings.set-discount">
+            <Button
+              size="small"
+              icon={<PercentageOutlined />}
+              disabled={!['01', '03'].includes(row.status_id)}
+              onClick={() => {
+                setDiscountTarget(row);
+                discountForm.setFieldsValue({ discount: Number(row.discount) || 0, reason: '' });
+              }}
+            >
+              Set Diskon
+            </Button>
+          </Can>
+        </Space>
       ),
     },
   ];
@@ -209,6 +241,31 @@ export default function BillingsPage() {
           </Form>
         )}
       </Drawer>
+
+      <Modal
+        title={`Set Diskon - BIL-${discountTarget?.id ?? ''}`}
+        open={Boolean(discountTarget)}
+        onCancel={() => setDiscountTarget(null)}
+        onOk={() => discountForm.submit()}
+        confirmLoading={setDiscount.isPending}
+        destroyOnHidden
+      >
+        <Form
+          form={discountForm}
+          layout="vertical"
+          onFinish={(values) => setDiscount.mutate({ id: discountTarget.id, discount: values.discount, reason: values.reason })}
+        >
+          <Form.Item label="Nominal Tagihan">
+            <Input value={formatCurrency(discountTarget?.amount ?? 0)} disabled />
+          </Form.Item>
+          <Form.Item label="Nominal Diskon" name="discount" rules={[{ required: true, message: 'Nominal diskon wajib diisi' }]}>
+            <InputNumber min={0} max={Number(discountTarget?.amount) - Number(discountTarget?.principal_paid || 0)} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item label="Alasan" name="reason" rules={[{ required: true, message: 'Alasan diskon wajib diisi' }]}>
+            <Input.TextArea rows={3} placeholder="Contoh: Kompensasi keluhan layanan, diskon karyawan, dll." />
+          </Form.Item>
+        </Form>
+      </Modal>
     </section>
   );
 }

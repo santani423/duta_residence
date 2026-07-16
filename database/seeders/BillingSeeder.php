@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Billing;
 use App\Models\Unit;
 use App\Models\User;
+use App\Services\DiscountService;
 use App\Services\PenaltyService;
 use Illuminate\Database\Seeder;
 
@@ -35,13 +36,14 @@ class BillingSeeder extends Seeder
     {
         $finance = User::where('username', 'finance')->first() ?: User::where('username', 'root')->first();
         $penaltyService = app(PenaltyService::class);
+        $discountService = app(DiscountService::class);
         $types = ['regular', 'security', 'cleaning', 'water', 'common-electricity', 'parking', 'maintenance', 'facility', 'special'];
         $skipUnits = ['AL005'];
 
-        Unit::with('cluster')
+        Unit::with(['cluster', 'discountRule'])
             ->where('status_id', '!=', 'RK')
             ->orderBy('id')
-            ->chunk(100, function ($units) use ($finance, $penaltyService, $types, $skipUnits) {
+            ->chunk(100, function ($units) use ($finance, $penaltyService, $discountService, $types, $skipUnits) {
                 foreach ($units as $unit) {
                     if (in_array($unit->id, $skipUnits, true)) {
                         continue;
@@ -56,7 +58,9 @@ class BillingSeeder extends Seeder
                     for ($offset = $historyMonths - 1; $offset >= 0; $offset--) {
                         $period = now()->subMonths($offset);
                         $amount = (float) $unit->cluster->monthly_rate + (($offset % 2) * 25000);
-                        $discount = $unit->is_discount_eligible ? 15000 : 0;
+                        $discountResult = $discountService->calculateForNewBilling($unit, $amount);
+                        $discount = $discountResult['amount'];
+                        $discountRuleId = $discountResult['rule']?->id;
                         $approvedAt = now()->subMonths($offset)->subDays(6);
                         $notes = 'Approved dari demo seeder.';
                         $cancelledAt = null;
@@ -130,6 +134,7 @@ class BillingSeeder extends Seeder
                                 'penalty' => $penalty,
                                 'penalty_paid' => $penaltyPaid,
                                 'discount' => $discount,
+                                'discount_rule_id' => $discountRuleId,
                                 'status_id' => $status,
                                 'is_penalty_eligible' => $unit->is_penalty_eligible,
                                 'is_discount_eligible' => $unit->is_discount_eligible,
