@@ -12,6 +12,7 @@ use App\Models\Receipt;
 use App\Models\Resident;
 use App\Models\ResidentComplaint;
 use App\Services\AuditService;
+use App\Services\PenaltyService;
 use App\Services\ResidentDetailService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -20,7 +21,7 @@ class ResidentDetailController extends Controller
 {
     use ApiResponse;
 
-    public function __construct(private readonly ResidentDetailService $service) {}
+    public function __construct(private readonly ResidentDetailService $service, private readonly PenaltyService $penaltyService) {}
 
     public function summary(Request $request, Resident $resident)
     {
@@ -41,7 +42,13 @@ class ResidentDetailController extends Controller
             ->when($request->query('billing_type'), fn ($q, $value) => $q->where('billing_type', $value))
             ->when($request->query('status_id'), fn ($q, $value) => $q->where('status_id', $value));
 
-        return $this->paginated($query->latest()->paginate($request->integer('per_page', 15)));
+        $paginator = $query->latest()->paginate($request->integer('per_page', 15));
+        $paginator->setCollection($paginator->getCollection()->map(fn (Billing $billing) => [
+            ...$billing->toArray(),
+            'penalty_detail' => $this->penaltyService->calculateInvoiceTotal($billing),
+        ]));
+
+        return $this->paginated($paginator);
     }
 
     public function transactions(Request $request, Resident $resident)

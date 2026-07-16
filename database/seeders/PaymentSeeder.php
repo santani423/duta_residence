@@ -52,7 +52,14 @@ class PaymentSeeder extends Seeder
 
             if ($status === 'paid') {
                 $receipt = $this->receipt($billing, $finance, $provider === 'manual' ? 'D' : 'D', $provider === 'xendit' ? 'X' : ($provider === 'midtrans' ? 'T' : 'M'));
-                $billing->update(['status_id' => '02', 'paid_at' => $payment->paid_at, 'receipt_number' => $receipt->number, 'processed_by' => $finance?->id]);
+                $billing->update([
+                    'status_id' => '02',
+                    'principal_paid' => (float) $billing->amount - (float) $billing->discount,
+                    'penalty_paid' => (float) $billing->penalty,
+                    'paid_at' => $payment->paid_at,
+                    'receipt_number' => $receipt->number,
+                    'processed_by' => $finance?->id,
+                ]);
             }
         }
 

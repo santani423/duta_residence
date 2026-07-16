@@ -10,6 +10,8 @@ use App\Models\PaymentGatewaySetting;
 use App\Models\PaymentTransaction;
 use App\Models\PaymentWebhookEvent;
 use App\Services\AuditService;
+use App\Services\PaymentService;
+use App\Services\PenaltyService;
 use App\Services\Payments\PaymentGatewayFactory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -46,7 +48,7 @@ class PaymentGatewayController extends Controller
         return $this->success($transaction->load(['unit.cluster', 'billings']));
     }
 
-    public function create(Request $request, PaymentGatewayFactory $factory)
+    public function create(Request $request, PaymentGatewayFactory $factory, PenaltyService $penaltyService)
     {
         $data = $request->validate([
             'unit_id' => ['required', 'exists:units,id'],
@@ -62,18 +64,20 @@ class PaymentGatewayController extends Controller
             throw ValidationException::withMessages(['provider' => ['Metode pembayaran sedang tidak tersedia.']]);
         }
 
-        $transaction = DB::transaction(function () use ($data, $request, $factory, $setting, $provider) {
+        $transaction = DB::transaction(function () use ($data, $request, $factory, $setting, $provider, $penaltyService) {
             $billings = Billing::query()
                 ->whereIn('id', $data['billing_ids'])
                 ->where('unit_id', $data['unit_id'])
-                ->unpaid()
+                ->outstanding()
                 ->approved()
                 ->lockForUpdate()
                 ->get();
 
             abort_if($billings->count() !== count(array_unique($data['billing_ids'])), 422, 'Tagihan tidak valid untuk pembayaran.');
 
-            $subtotal = $billings->sum('amount');
+            $calculations = $billings->map(fn (Billing $billing) => $penaltyService->calculateInvoiceTotal($billing));
+            $subtotal = $calculations->sum('outstanding_principal');
+            $penaltyTotal = $calculations->sum('outstanding_penalty');
             $adminFee = (float) $setting->admin_fee;
 
             $transaction = PaymentTransaction::query()->create([
@@ -83,7 +87,7 @@ class PaymentGatewayController extends Controller
                 'subtotal' => $subtotal,
                 'tax' => 0,
                 'admin_fee' => $adminFee,
-                'total' => $subtotal + $adminFee,
+                'total' => $subtotal + $penaltyTotal + $adminFee,
                 'currency' => $setting->currency,
                 'payment_provider' => $provider,
                 'status' => 'pending',
@@ -131,10 +135,10 @@ class PaymentGatewayController extends Controller
         return $this->success($transaction->refresh(), 'Bukti pembayaran berhasil diunggah.');
     }
 
-    public function verifyManual(Request $request, PaymentTransaction $transaction, AuditService $auditService)
+    public function verifyManual(Request $request, PaymentTransaction $transaction, AuditService $auditService, PaymentService $paymentService)
     {
         $data = $request->validate(['verification_notes' => ['nullable', 'string']]);
-        DB::transaction(function () use ($transaction, $request, $data, $auditService) {
+        DB::transaction(function () use ($transaction, $request, $data, $auditService, $paymentService) {
             $old = $transaction->toArray();
             $transaction->update([
                 'status' => 'paid',
@@ -143,7 +147,7 @@ class PaymentGatewayController extends Controller
                 'verified_at' => now(),
                 'verification_notes' => $data['verification_notes'] ?? null,
             ]);
-            $this->markBillingsPaid($transaction->refresh());
+            $paymentService->settleGatewayTransaction($transaction->refresh());
             $auditService->log('payment_manual_verified', 'payments', 'VERIFY', $transaction, $old, $transaction->toArray());
         });
 
@@ -163,17 +167,17 @@ class PaymentGatewayController extends Controller
         return $this->success($transaction->refresh(), 'Pembayaran manual berhasil ditolak.');
     }
 
-    public function xenditWebhook(Request $request, PaymentGatewayFactory $factory)
+    public function xenditWebhook(Request $request, PaymentGatewayFactory $factory, PaymentService $paymentService)
     {
-        return $this->handleWebhook('xendit', $request, $factory);
+        return $this->handleWebhook('xendit', $request, $factory, $paymentService);
     }
 
-    public function midtransWebhook(Request $request, PaymentGatewayFactory $factory)
+    public function midtransWebhook(Request $request, PaymentGatewayFactory $factory, PaymentService $paymentService)
     {
-        return $this->handleWebhook('midtrans', $request, $factory);
+        return $this->handleWebhook('midtrans', $request, $factory, $paymentService);
     }
 
-    private function handleWebhook(string $provider, Request $request, PaymentGatewayFactory $factory)
+    private function handleWebhook(string $provider, Request $request, PaymentGatewayFactory $factory, PaymentService $paymentService)
     {
         $eventId = $request->input('id') ?? $request->input('order_id') ?? hash('sha256', $request->getContent());
 
@@ -186,11 +190,11 @@ class PaymentGatewayController extends Controller
             return $this->success(['duplicate' => true], 'Webhook sudah diproses.');
         }
 
-        $transaction = DB::transaction(function () use ($provider, $request, $factory) {
+        $transaction = DB::transaction(function () use ($provider, $request, $factory, $paymentService) {
             $transaction = $factory->make($provider)->handleWebhook($request);
 
             if ($transaction->status === 'paid') {
-                $this->markBillingsPaid($transaction);
+                $paymentService->settleGatewayTransaction($transaction);
             }
 
             return $transaction;
@@ -198,13 +202,5 @@ class PaymentGatewayController extends Controller
         $event->update(['status' => 'processed', 'provider_reference' => $transaction->provider_reference]);
 
         return $this->success($transaction, 'Webhook berhasil diproses.');
-    }
-
-    private function markBillingsPaid(PaymentTransaction $transaction): void
-    {
-        $transaction->billings()->update([
-            'status_id' => '02',
-            'paid_at' => $transaction->paid_at ?? now(),
-        ]);
     }
 }

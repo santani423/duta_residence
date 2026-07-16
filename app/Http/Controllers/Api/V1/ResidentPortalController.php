@@ -16,6 +16,7 @@ use App\Models\PaymentTransaction;
 use App\Models\Receipt;
 use App\Models\Unit;
 use App\Services\AuditService;
+use App\Services\PenaltyService;
 use App\Services\Payments\PaymentGatewayFactory;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
@@ -29,10 +30,17 @@ class ResidentPortalController extends Controller
 {
     use ApiResponse;
 
+    public function __construct(private readonly PenaltyService $penaltyService) {}
+
     public function dashboard(Request $request)
     {
         $unit = $this->unit($request);
         $billings = $this->billingBaseQuery($unit)->get();
+        // Hitung sekali per tagihan lalu pakai ulang, alih-alih memanggil PenaltyService
+        // berkali-kali untuk baris yang sama di setiap filter/sum di bawah.
+        $billingCalcs = $billings->map(fn (Billing $billing) => ['billing' => $billing, 'calc' => $this->penaltyService->calculateInvoiceTotal($billing)]);
+        $outstanding = $billingCalcs->filter(fn (array $row) => $row['billing']->isOutstanding());
+        $overdue = $billingCalcs->filter(fn (array $row) => $row['calc']['status'] === 'overdue');
         $payments = PaymentTransaction::query()->where('unit_id', $unit->id)->latest()->get();
         $activeComplaints = $unit->complaints()->whereNotIn('status', ['closed', 'resolved', 'rejected'])->count();
         $activeMaintenance = $unit->maintenanceRequests()->whereNotIn('status', ['completed', 'closed', 'rejected'])->count();
@@ -45,10 +53,15 @@ class ResidentPortalController extends Controller
             ],
             'property' => $this->propertyPayload($unit),
             'billing_summary' => [
-                'active_total' => $billings->where('status_id', '01')->sum(fn (Billing $billing) => $this->billingTotal($billing)),
-                'unpaid_count' => $billings->where('status_id', '01')->count(),
-                'overdue_count' => $billings->filter(fn (Billing $billing) => $this->invoiceStatus($billing) === 'overdue')->count(),
-                'overdue_total' => $billings->filter(fn (Billing $billing) => $this->invoiceStatus($billing) === 'overdue')->sum(fn (Billing $billing) => $this->billingTotal($billing)),
+                'active_total' => $outstanding->sum(fn (array $row) => $row['calc']['total_outstanding']),
+                'unpaid_count' => $outstanding->count(),
+                'overdue_count' => $overdue->count(),
+                'overdue_total' => $overdue->sum(fn (array $row) => $row['calc']['total_outstanding']),
+                'penalty_rules_info' => [
+                    'current_month' => 'Tagihan bulan berjalan tidak dikenakan denda.',
+                    'tier_1_2_months' => 'Tunggakan 1-2 bulan dikenakan denda Rp15.000.',
+                    'tier_3_plus_months' => 'Tunggakan 3 bulan atau lebih dikenakan denda Rp30.000.',
+                ],
                 'latest' => $billings->sortByDesc('created_at')->take(5)->map(fn (Billing $billing) => $this->invoicePayload($billing))->values(),
             ],
             'payment_summary' => [
@@ -166,7 +179,7 @@ class ResidentPortalController extends Controller
             });
 
         if ($status = $request->query('status')) {
-            $query = $query->get()->filter(fn (Billing $billing) => $this->invoiceStatus($billing) === $status)->values();
+            $query = $query->get()->filter(fn (Billing $billing) => $this->penaltyService->invoiceStatus($billing) === $status)->values();
 
             return $this->success($query->map(fn (Billing $billing) => $this->invoicePayload($billing))->values());
         }
@@ -197,8 +210,10 @@ class ResidentPortalController extends Controller
     public function downloadInvoice(Request $request, Billing $billing)
     {
         $billing = $this->ownedBilling($request, $billing);
+        $billing->load('status');
+        $penaltyDetail = $this->penaltyService->calculateInvoiceTotal($billing);
 
-        return Pdf::loadHTML(view('pdf.resident-invoice', compact('billing'))->render())
+        return Pdf::loadHTML(view('pdf.resident-invoice', compact('billing', 'penaltyDetail'))->render())
             ->download("Invoice-{$billing->id}.pdf");
     }
 
@@ -220,19 +235,20 @@ class ResidentPortalController extends Controller
             throw ValidationException::withMessages(['provider' => ['Metode pembayaran sedang tidak tersedia.']]);
         }
 
-        if ($billing->status_id !== '01' || blank($billing->approved_at)) {
+        if (! $billing->isOutstanding() || blank($billing->approved_at)) {
             throw ValidationException::withMessages(['billing' => ['Invoice tidak dapat dibayar.']]);
         }
 
         $transaction = DB::transaction(function () use ($billing, $request, $setting, $provider, $factory) {
+            $calc = $this->penaltyService->calculateInvoiceTotal($billing);
             $transaction = PaymentTransaction::query()->create([
                 'transaction_number' => 'TRX-'.now()->format('YmdHis').'-'.Str::upper(Str::random(6)),
                 'invoice_number' => 'INV-'.now()->format('YmdHis').'-'.Str::upper(Str::random(6)),
                 'unit_id' => $billing->unit_id,
-                'subtotal' => $this->billingTotal($billing),
+                'subtotal' => $calc['outstanding_principal'],
                 'tax' => 0,
                 'admin_fee' => (float) $setting->admin_fee,
-                'total' => $this->billingTotal($billing) + (float) $setting->admin_fee,
+                'total' => $calc['total_outstanding'] + (float) $setting->admin_fee,
                 'currency' => $setting->currency,
                 'payment_provider' => $provider,
                 'status' => 'pending',
@@ -347,7 +363,7 @@ class ResidentPortalController extends Controller
     {
         $unit = $this->unit($request);
         abort_if($receipt->unit_id !== $unit->id, 404);
-        $receipt->load(['unit.cluster', 'billings']);
+        $receipt->load(['unit.cluster', 'billings', 'paymentTransaction.allocations.billing']);
 
         return Pdf::loadHTML(view('pdf.spt', compact('receipt'))->render())
             ->download("SPT-{$receipt->number}.pdf");
@@ -739,23 +755,33 @@ class ResidentPortalController extends Controller
 
     private function invoicePayload(Billing $billing): array
     {
+        $calc = $this->penaltyService->calculateInvoiceTotal($billing);
+
         return [
             'id' => $billing->id,
             'invoice_number' => 'BIL-'.$billing->id,
             'billing_type' => $billing->billing_type,
-            'period' => sprintf('%04d-%02d', $billing->year, $billing->month),
+            'period' => $calc['period'],
             'year' => $billing->year,
             'month' => $billing->month,
             'issued_at' => $billing->created_at,
-            'due_date' => $this->dueDate($billing),
+            'due_date' => $calc['due_date'],
             'subtotal' => (float) $billing->amount,
             'tax' => 0,
             'admin_fee' => 0,
             'discount' => (float) $billing->discount,
-            'penalty' => (float) $billing->penalty,
-            'total' => $this->billingTotal($billing),
-            'total_paid' => $billing->status_id === '02' ? $this->billingTotal($billing) : 0,
-            'status' => $this->invoiceStatus($billing),
+            'principal_amount' => $calc['principal_amount'],
+            'outstanding_principal' => $calc['outstanding_principal'],
+            'overdue_months' => $calc['overdue_months'],
+            'penalty' => $calc['penalty_amount'],
+            'penalty_amount' => $calc['penalty_amount'],
+            'outstanding_penalty' => $calc['outstanding_penalty'],
+            'penalty_rule' => $calc['penalty_rule'],
+            'total' => $calc['total_amount'],
+            'total_amount' => $calc['total_amount'],
+            'total_paid' => $calc['total_paid'],
+            'total_outstanding' => $calc['total_outstanding'],
+            'status' => $calc['status'],
             'approved_at' => $billing->approved_at,
             'paid_at' => $billing->paid_at,
         ];
@@ -786,31 +812,6 @@ class ResidentPortalController extends Controller
             'paid_at' => $transaction->paid_at,
             'expired_at' => $transaction->expired_at,
         ];
-    }
-
-    private function invoiceStatus(Billing $billing): string
-    {
-        if ($billing->status_id === '02') {
-            return 'paid';
-        }
-
-        if (blank($billing->approved_at)) {
-            return 'pending';
-        }
-
-        return now()->greaterThan($this->dueDate($billing)) ? 'overdue' : 'unpaid';
-    }
-
-    private function dueDate(Billing $billing)
-    {
-        $day = min((int) config('grandduta.notification.penalty_day', 20), 28);
-
-        return now()->setDate((int) $billing->year, (int) $billing->month, $day)->startOfDay();
-    }
-
-    private function billingTotal(Billing $billing): float
-    {
-        return (float) $billing->amount + (float) $billing->penalty - (float) $billing->discount;
     }
 
     private function paymentStatusHistory(PaymentTransaction $payment): array

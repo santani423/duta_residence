@@ -18,6 +18,8 @@ use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PaymentGatewayController;
 use App\Http\Controllers\Api\V1\PaymentGatewaySettingController;
 use App\Http\Controllers\Api\V1\PaymentPromiseController;
+use App\Http\Controllers\Api\V1\PenaltyRuleController;
+use App\Http\Controllers\Api\V1\PenaltyWaiverController;
 use App\Http\Controllers\Api\V1\ReceivableController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\ResidentController;
@@ -109,9 +111,23 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::post('billings/prepare-special', [BillingController::class, 'prepareSpecial'])->middleware('permission:billings.prepare-special');
     Route::post('billings/prepare-back', [BillingController::class, 'prepareBack'])->middleware('permission:billings.prepare-back');
     Route::get('billings', [BillingController::class, 'index'])->middleware('permission:billings.view');
+    Route::get('billings/summary', [BillingController::class, 'summary'])->middleware('permission:billings.view');
     Route::get('billings/pending-approval', [BillingController::class, 'pendingApproval'])->middleware('permission:billings.approve');
     Route::post('billings/{billing}/approve', [BillingController::class, 'approve'])->middleware('permission:billings.approve');
     Route::post('billings/approve-batch', [BillingController::class, 'approveBatch'])->middleware('permission:billings.approve');
+
+    Route::get('penalty-rules', [PenaltyRuleController::class, 'index'])->middleware('permission:penalty-config.view');
+    Route::post('penalty-rules', [PenaltyRuleController::class, 'store'])->middleware('permission:penalty-config.create');
+    Route::get('penalty-rules/history', [PenaltyRuleController::class, 'history'])->middleware('permission:penalty-config.view-history');
+    Route::put('penalty-rules/{penaltyRule}', [PenaltyRuleController::class, 'update'])->middleware('permission:penalty-config.update');
+    Route::delete('penalty-rules/{penaltyRule}', [PenaltyRuleController::class, 'destroy'])->middleware('permission:penalty-config.delete');
+    Route::get('admin/settings/penalty', [PenaltyRuleController::class, 'showSetting'])->middleware('permission:penalty-config.view');
+    Route::put('admin/settings/penalty', [PenaltyRuleController::class, 'updateSetting'])->middleware('permission:penalty-config.update');
+
+    Route::get('penalty-waivers', [PenaltyWaiverController::class, 'index'])->middleware('permission:billings.view');
+    Route::post('penalty-waivers', [PenaltyWaiverController::class, 'store'])->middleware('permission:billings.waive-penalty');
+    Route::post('penalty-waivers/{penaltyWaiver}/approve', [PenaltyWaiverController::class, 'approve'])->middleware('permission:billings.approve-penalty-waiver');
+    Route::post('penalty-waivers/{penaltyWaiver}/reject', [PenaltyWaiverController::class, 'reject'])->middleware('permission:billings.approve-penalty-waiver');
 
     Route::get('payments/search', [PaymentController::class, 'search'])->middleware('permission:payments.view');
     Route::post('payments/preview', [PaymentController::class, 'preview'])->middleware('permission:payments.view');

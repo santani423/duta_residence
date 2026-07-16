@@ -7,6 +7,7 @@ use App\Models\Billing;
 use App\Models\Cluster;
 use App\Models\Receipt;
 use App\Models\Unit;
+use App\Services\PenaltyService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 
@@ -14,28 +15,30 @@ class DocumentController extends Controller
 {
     public function spt(Receipt $receipt)
     {
-        $receipt->load(['unit.cluster', 'billings']);
+        $receipt->load(['unit.cluster', 'billings', 'paymentTransaction.allocations.billing']);
 
         return Pdf::loadHTML(view('pdf.spt', compact('receipt'))->render())
             ->download("SPT-{$receipt->number}.pdf");
     }
 
-    public function spk(Billing $billing)
+    public function spk(Billing $billing, PenaltyService $penaltyService)
     {
-        $billing->load('unit.cluster');
+        $billing->load(['unit.cluster', 'status']);
+        $penaltyDetail = $penaltyService->calculateInvoiceTotal($billing);
 
-        return Pdf::loadHTML(view('pdf.spk', compact('billing'))->render())
+        return Pdf::loadHTML(view('pdf.spk', compact('billing', 'penaltyDetail'))->render())
             ->download("SPK-{$billing->id}.pdf");
     }
 
-    public function billingRecap(Request $request)
+    public function billingRecap(Request $request, PenaltyService $penaltyService)
     {
-        $billings = Billing::with('unit.cluster')
+        $billings = Billing::with(['unit.cluster', 'status'])
             ->when($request->query('year'), fn ($q, $value) => $q->where('year', $value))
             ->when($request->query('month'), fn ($q, $value) => $q->where('month', $value))
             ->get();
+        $penaltyDetails = $billings->mapWithKeys(fn (Billing $billing) => [$billing->id => $penaltyService->calculateInvoiceTotal($billing)]);
 
-        return Pdf::loadHTML(view('pdf.billing-recap', compact('billings'))->render())
+        return Pdf::loadHTML(view('pdf.billing-recap', compact('billings', 'penaltyDetails'))->render())
             ->download('billing-recap.pdf');
     }
 

@@ -34,49 +34,55 @@ class BillingFactory extends Factory
 
     public function paid(): static
     {
-        return $this->state(fn () => [
-            'status_id' => '02',
+        return $this->state(fn (array $attributes) => [
+            'status_id' => Billing::STATUS_PAID,
+            'principal_paid' => (float) ($attributes['amount'] ?? 0) - (float) ($attributes['discount'] ?? 0),
+            'penalty_paid' => (float) ($attributes['penalty'] ?? 0),
             'paid_at' => now()->subDays(fake()->numberBetween(1, 45)),
         ]);
     }
 
     public function unpaid(): static
     {
-        return $this->state(fn () => ['status_id' => '01', 'approved_at' => now()->subDays(3), 'paid_at' => null]);
+        return $this->state(fn () => ['status_id' => Billing::STATUS_UNPAID, 'approved_at' => now()->subDays(3), 'paid_at' => null]);
     }
 
     public function pending(): static
     {
-        return $this->state(fn () => ['status_id' => '01', 'approved_at' => null, 'approval_notes' => 'Menunggu approval finance.']);
+        return $this->state(fn () => ['status_id' => Billing::STATUS_UNPAID, 'approved_at' => null, 'approval_notes' => 'Menunggu approval finance.']);
     }
 
+    /**
+     * 2 bulan menunggak - jatuh pada tier denda Rp15.000 (1-2 bulan) secara dinamis.
+     */
     public function overdue(): static
     {
         return $this->state(fn () => [
-            'status_id' => '01',
+            'status_id' => Billing::STATUS_UNPAID,
             'approved_at' => now()->subMonths(2),
             'year' => now()->subMonths(2)->year,
             'month' => now()->subMonths(2)->month,
-            'penalty' => 25000,
         ]);
     }
 
     public function partiallyPaid(): static
     {
-        return $this->state(fn () => [
-            'status_id' => '01',
+        return $this->state(fn (array $attributes) => [
+            'status_id' => Billing::STATUS_PARTIAL,
+            'principal_paid' => round((float) ($attributes['amount'] ?? 0) / 2, 2),
             'approved_at' => now()->subDays(20),
-            'approval_notes' => 'Sebagian dibayar melalui cicilan.',
+            'approval_notes' => 'Sebagian dibayar - sisa pokok dan denda masih tertunggak.',
         ]);
     }
 
     public function cancelled(): static
     {
         return $this->state(fn () => [
-            'status_id' => '01',
+            'status_id' => Billing::STATUS_CANCELLED,
             'approved_at' => null,
             'approval_notes' => 'Dibatalkan pada skenario demo.',
-            'amount' => 0,
+            'cancelled_at' => now(),
+            'cancellation_reason' => 'Dibatalkan pada skenario demo.',
         ]);
     }
 }

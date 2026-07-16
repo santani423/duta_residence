@@ -11,3 +11,7 @@ Artisan::command('inspire', function () {
 Schedule::command('clusters:activate-rate-schedules')
     ->hourly()
     ->withoutOverlapping();
+
+Schedule::command('billings:notify-penalty-changes')
+    ->dailyAt('07:00')
+    ->withoutOverlapping();

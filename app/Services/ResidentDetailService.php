@@ -17,6 +17,8 @@ use Illuminate\Support\Collection;
 
 class ResidentDetailService
 {
+    public function __construct(private readonly PenaltyService $penaltyService) {}
+
     public function unitIds(Resident $resident, ?string $unitId = null): array
     {
         if ($unitId) {
@@ -30,18 +32,21 @@ class ResidentDetailService
 
     public function summary(array $unitIds): array
     {
-        $billings = Billing::query()->whereIn('unit_id', $unitIds)->get();
-        $unpaid = $billings->where('status_id', '01');
-        $overdue = $unpaid->filter(fn (Billing $billing) => now()->greaterThan($this->dueDate($billing)));
-        $dueSoon = $unpaid->filter(function (Billing $billing) {
-            $due = $this->dueDate($billing);
+        $billings = Billing::query()->with('unit')->whereIn('unit_id', $unitIds)->outstanding()->get();
+        $calculations = $billings->map(fn (Billing $billing) => [
+            'billing' => $billing,
+            'calc' => $this->penaltyService->calculateInvoiceTotal($billing),
+        ]);
+        $overdue = $calculations->filter(fn (array $row) => $row['calc']['overdue_months'] >= 1);
+        $dueSoon = $calculations->filter(function (array $row) {
+            $due = $this->penaltyService->dueDate($row['billing']);
 
-            return now()->lessThanOrEqualTo($due) && now()->diffInDays($due) <= 14;
+            return $row['calc']['overdue_months'] === 0 && now()->lessThanOrEqualTo($due) && now()->diffInDays($due) <= 14;
         });
 
-        $activeTotal = $unpaid->sum(fn (Billing $billing) => $this->billingTotal($billing));
-        $overdueTotal = $overdue->sum(fn (Billing $billing) => $this->billingTotal($billing));
-        $penaltyTotal = $unpaid->sum(fn (Billing $billing) => (float) $billing->penalty);
+        $activeTotal = $calculations->sum(fn (array $row) => $row['calc']['total_outstanding']);
+        $overdueTotal = $overdue->sum(fn (array $row) => $row['calc']['total_outstanding']);
+        $penaltyTotal = $calculations->sum(fn (array $row) => $row['calc']['outstanding_penalty']);
         $paidTotal = (float) PaymentTransaction::query()->whereIn('unit_id', $unitIds)->where('status', 'paid')->sum('total');
         $waitingVerification = PaymentTransaction::query()->whereIn('unit_id', $unitIds)->where('status', 'waiting_verification')->count();
 
@@ -52,22 +57,20 @@ class ResidentDetailService
             'paid_total' => $paidTotal,
             'outstanding_total' => $activeTotal,
             'due_soon_count' => $dueSoon->count(),
-            'due_soon_total' => $dueSoon->sum(fn (Billing $billing) => $this->billingTotal($billing)),
+            'due_soon_total' => $dueSoon->sum(fn (array $row) => $row['calc']['total_outstanding']),
             'waiting_verification_count' => $waitingVerification,
-            'financial_status' => $this->financialStatus($overdue->count(), $unpaid->count()),
+            'financial_status' => $this->financialStatus($overdue->count(), $calculations->count()),
         ];
     }
 
     public function dueDate(Billing $billing)
     {
-        $day = min((int) config('grandduta.notification.penalty_day', 20), 28);
-
-        return now()->setDate((int) $billing->year, (int) $billing->month, $day)->startOfDay();
+        return $this->penaltyService->dueDate($billing);
     }
 
     public function billingTotal(Billing $billing): float
     {
-        return (float) $billing->amount + (float) $billing->penalty - (float) $billing->discount;
+        return $this->penaltyService->calculateInvoiceTotal($billing)['total_outstanding'];
     }
 
     private function financialStatus(int $overdueCount, int $unpaidCount): string

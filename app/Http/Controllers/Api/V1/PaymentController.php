@@ -17,7 +17,7 @@ class PaymentController extends Controller
     {
         $data = $request->validate(['unit_id' => ['required', 'exists:units,id']]);
         $unit = Unit::query()
-            ->with(['cluster', 'resident', 'billings' => fn ($q) => $q->unpaid()->approved()->orderBy('year')->orderBy('month')])
+            ->with(['cluster', 'resident', 'billings' => fn ($q) => $q->outstanding()->approved()->orderBy('year')->orderBy('month')])
             ->findOrFail($data['unit_id']);
 
         return $this->success($unit);
@@ -40,6 +40,7 @@ class PaymentController extends Controller
             'unit_id' => ['required', 'exists:units,id'],
             'billing_ids' => ['required', 'array', 'min:1'],
             'billing_ids.*' => ['integer', 'exists:billings,id'],
+            'amount' => ['nullable', 'numeric', 'min:0.01'],
             'payment_method_id' => ['required', 'exists:payment_methods,id'],
             'payment_channel_id' => ['nullable', 'exists:payment_channels,id'],
             'loket_code' => ['nullable', 'string', 'max:20'],

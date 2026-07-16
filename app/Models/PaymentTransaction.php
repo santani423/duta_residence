@@ -34,6 +34,11 @@ class PaymentTransaction extends Model
         return $this->belongsToMany(Billing::class);
     }
 
+    public function allocations()
+    {
+        return $this->hasMany(PaymentAllocation::class);
+    }
+
     public function unit()
     {
         return $this->belongsTo(Unit::class);

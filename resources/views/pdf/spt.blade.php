@@ -12,18 +12,30 @@
     </table>
     <h2>Rincian</h2>
     <table>
-        <thead><tr><th>Periode</th><th class="right">Tagihan</th><th class="right">Denda</th></tr></thead>
+        <thead><tr><th>Periode</th><th class="right">Umur Tunggakan</th><th class="right">Pokok Dibayar</th><th class="right">Denda Dibayar</th></tr></thead>
         <tbody>
-            @foreach ($receipt->billings as $billing)
-                <tr>
-                    <td>{{ sprintf('%04d-%02d', $billing->year, $billing->month) }}</td>
-                    <td class="right">Rp {{ number_format($billing->amount, 0, ',', '.') }}</td>
-                    <td class="right">Rp {{ number_format($billing->penalty, 0, ',', '.') }}</td>
-                </tr>
-            @endforeach
+            @if ($receipt->paymentTransaction && $receipt->paymentTransaction->allocations->isNotEmpty())
+                @foreach ($receipt->paymentTransaction->allocations as $allocation)
+                    <tr>
+                        <td>{{ sprintf('%04d-%02d', $allocation->billing->year, $allocation->billing->month) }}</td>
+                        <td class="right">{{ $allocation->overdue_months }} bulan</td>
+                        <td class="right">Rp {{ number_format($allocation->principal_amount, 0, ',', '.') }}</td>
+                        <td class="right">Rp {{ number_format($allocation->penalty_amount, 0, ',', '.') }}</td>
+                    </tr>
+                @endforeach
+            @else
+                @foreach ($receipt->billings as $billing)
+                    <tr>
+                        <td>{{ sprintf('%04d-%02d', $billing->year, $billing->month) }}</td>
+                        <td class="right">-</td>
+                        <td class="right">Rp {{ number_format($billing->amount, 0, ',', '.') }}</td>
+                        <td class="right">Rp {{ number_format($billing->penalty, 0, ',', '.') }}</td>
+                    </tr>
+                @endforeach
+            @endif
         </tbody>
         <tfoot>
-            <tr><th colspan="2">Total</th><th class="right">Rp {{ number_format($receipt->grand_total, 0, ',', '.') }}</th></tr>
+            <tr><th colspan="3">Total</th><th class="right">Rp {{ number_format($receipt->grand_total, 0, ',', '.') }}</th></tr>
         </tfoot>
     </table>
 @endsection

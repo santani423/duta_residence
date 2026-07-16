@@ -12,7 +12,7 @@ class Receipt extends Model
     protected $primaryKey = 'number';
 
     protected $fillable = [
-        'number', 'unit_id', 'transaction_date', 'resident_name', 'cluster_name',
+        'number', 'payment_transaction_id', 'unit_id', 'transaction_date', 'resident_name', 'cluster_name',
         'block', 'lot_number', 'total_billing', 'total_penalty', 'grand_total',
         'billing_count', 'billing_periods', 'loket_code', 'cashier_name',
         'payment_method_id', 'payment_channel_id', 'status', 'notes', 'created_by',
@@ -33,5 +33,10 @@ class Receipt extends Model
     public function billings()
     {
         return $this->hasMany(Billing::class, 'receipt_number', 'number');
+    }
+
+    public function paymentTransaction()
+    {
+        return $this->belongsTo(PaymentTransaction::class);
     }
 }

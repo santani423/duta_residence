@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
                 RolePermissionSeeder::class,
                 EstateSeeder::class,
                 AdminUserSeeder::class,
+                PenaltyRuleSeeder::class,
                 PaymentSettingSeeder::class,
                 ResidentSeeder::class,
                 UnitSeeder::class,
