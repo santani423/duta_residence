@@ -41,6 +41,7 @@ import { api } from '../../services/estateApi.js';
 import { useTableState } from '../../hooks/useTableState.js';
 import { compactText, formatCurrency, formatDate, formatDateTime } from '../../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../../utils/apiError.js';
+import { downloadBlob } from '../../utils/download.js';
 import { useThemeMode } from '../../state/ThemeContext.jsx';
 
 const invoiceStatuses = ['unpaid', 'pending', 'partially_paid', 'paid', 'overdue', 'cancelled'];
@@ -62,15 +63,6 @@ function unwrapQuery(query) {
 
 function asList(value) {
   return Array.isArray(value) ? value : [];
-}
-
-function downloadBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
 }
 
 function StatCard({ title, value, suffix, loading }) {

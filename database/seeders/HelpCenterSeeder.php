@@ -209,6 +209,27 @@ class HelpCenterSeeder extends Seeder
                 'faqs' => [],
             ],
 
+            // ---------- Piutang / Receivables ----------
+            [
+                'module' => 'receivables', 'slug' => 'monitoring-piutang',
+                'roles' => ['root', 'super_admin', 'admin_estate', 'back_office', 'finance', 'property_manager'],
+                'title' => 'Monitoring Piutang',
+                'summary' => 'Cara membaca daftar tagihan belum lunas, aging piutang, dan tier denda tunggakan.',
+                'content' => "Menu Piutang menampilkan seluruh tagihan yang belum lunas (status Belum Bayar maupun Sebagian) beserta denda tunggakannya, dihitung ulang secara real-time setiap kali halaman dibuka. Bedanya dengan menu Tagihan: menu Tagihan menampilkan semua tagihan termasuk yang sudah lunas, sedangkan menu ini fokus khusus pada apa yang masih harus ditagih ke penghuni.\n\nDenda dihitung otomatis berjenjang berdasarkan umur tunggakan tiap tagihan (bukan diakumulasi tiap bulan): tagihan bulan berjalan tidak kena denda, tunggakan 1-2 bulan kena Rp15.000, dan tunggakan 3 bulan atau lebih kena Rp30.000 — nilainya tetap Rp30.000 meski tunggakan sudah lebih dari 3 bulan.",
+                'steps' => [
+                    ['title' => 'Baca ringkasan tier denda', 'description' => 'Tiga kartu di bagian atas (Bulan Berjalan, Tunggakan 1-2 Bulan, Tunggakan 3 Bulan+) menjumlahkan total tagihan pada tiap tingkatan denda, supaya cepat lihat seberapa besar risiko tunggakan lama.'],
+                    ['title' => 'Baca ringkasan aging', 'description' => 'Empat kartu di bawahnya (< 30 hari, 30-60 hari, 60-90 hari, > 90 hari) menunjukkan sebaran nilai piutang berdasarkan lama hari sejak periode tagihan dimulai.'],
+                    ['title' => 'Filter per unit atau status', 'description' => 'Gunakan kolom ID Unit atau dropdown Status untuk mempersempit daftar. Secara default hanya tagihan berstatus Belum Bayar atau Sebagian yang ditampilkan.'],
+                    ['title' => 'Baca detail per tagihan', 'description' => 'Kolom Umur Tunggakan, Denda, Total, dan Sisa Tagihan pada tabel dihitung otomatis dan selalu konsisten dengan angka yang tampil di menu Tagihan.'],
+                ],
+                'tips' => ['Nilai denda di halaman ini otomatis bertambah begitu tunggakan memasuki tier bulan berikutnya — tidak perlu proses atau tombol tambahan untuk memicunya.'],
+                'warnings' => ['Halaman ini khusus untuk monitoring. Untuk memproses pembayaran gunakan menu Pembayaran, dan untuk memberi keringanan denda atau diskon gunakan menu Tagihan.'],
+                'faqs' => [
+                    ['question' => 'Kenapa nominal denda bertambah padahal saya tidak mengubah apa pun?', 'answer' => 'Itu wajar. Denda dihitung otomatis dari umur tunggakan saat ini, jadi begitu tagihan bertambah tua dan melewati batas tier berikutnya (1-2 bulan atau 3 bulan+), dendanya ikut naik otomatis tanpa perlu ada perubahan manual dari admin.'],
+                    ['question' => 'Kenapa jumlah tagihan di Piutang berbeda dengan menu Tagihan?', 'answer' => 'Menu Piutang secara default hanya menampilkan tagihan yang belum lunas (Belum Bayar/Sebagian), sedangkan menu Tagihan menampilkan semua tagihan termasuk yang sudah Lunas atau Dibatalkan.'],
+                ],
+            ],
+
             // ---------- Payments ----------
             [
                 'module' => 'payments', 'slug' => 'proses-pembayaran',

@@ -1,5 +1,5 @@
 import { Button, Card, DatePicker, Drawer, Form, Input, InputNumber, Modal, Select, Space, Tabs, message } from 'antd';
-import { CheckOutlined, PercentageOutlined, PlusOutlined } from '@ant-design/icons';
+import { CheckOutlined, FileExcelOutlined, FilePdfOutlined, PercentageOutlined, PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { useState } from 'react';
@@ -12,12 +12,14 @@ import { api } from '../services/estateApi.js';
 import { useTableState } from '../hooks/useTableState.js';
 import { formatCurrency, formatDateTime, formatPeriod } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
+import { downloadBlob } from '../utils/download.js';
 
 export default function BillingsPage() {
   const table = useTableState({ year: dayjs().year() });
   const [drawer, setDrawer] = useState(null);
   const [selected, setSelected] = useState([]);
   const [discountTarget, setDiscountTarget] = useState(null);
+  const [exporting, setExporting] = useState(null);
   const [form] = Form.useForm();
   const [approveForm] = Form.useForm();
   const [discountForm] = Form.useForm();
@@ -101,6 +103,21 @@ export default function BillingsPage() {
     },
   });
 
+  async function handleExport(format) {
+    setExporting(format);
+    try {
+      const { search: _search, page: _page, per_page: _perPage, ...filters } = table.params;
+      const blob = format === 'pdf'
+        ? await api.documents.billingRecapPdf(filters)
+        : await api.documents.billingRecapExcel(filters);
+      downloadBlob(blob, format === 'pdf' ? 'tagihan.pdf' : 'tagihan.csv');
+    } catch (error) {
+      message.error(getApiErrorMessage(error, 'Gagal mengunduh data tagihan'));
+    } finally {
+      setExporting(null);
+    }
+  }
+
   const columns = [
     { title: 'ID', dataIndex: 'id', width: 80, fixed: 'left' },
     { title: 'Penghuni', dataIndex: ['unit', 'resident', 'name'], width: 220 },
@@ -164,6 +181,10 @@ export default function BillingsPage() {
             <Can permission="billings.prepare"><Button icon={<PlusOutlined />} onClick={() => setDrawer('monthly')}>Generate Bulanan</Button></Can>
             <Can permission="billings.prepare-special"><Button onClick={() => setDrawer('special')}>Tagihan Khusus</Button></Can>
             <Can permission="billings.prepare-back"><Button onClick={() => setDrawer('back')}>Tagihan Mundur</Button></Can>
+            <Can permission="documents.generate">
+              <Button icon={<FilePdfOutlined />} loading={exporting === 'pdf'} disabled={Boolean(exporting)} onClick={() => handleExport('pdf')}>Download PDF</Button>
+              <Button icon={<FileExcelOutlined />} loading={exporting === 'excel'} disabled={Boolean(exporting)} onClick={() => handleExport('excel')}>Download Excel</Button>
+            </Can>
           </Space>
         }
       />

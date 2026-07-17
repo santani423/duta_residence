@@ -82,7 +82,13 @@
       "Bash(node node_modules/eslint/bin/eslint.js src/pages/BillingsPage.jsx src/services/estateApi.js src/constants/permissions.js)",
       "Bash(curl -s -H 'Authorization: Bearer 2|IIan4prnllQ2Is6YnbrrEesiUI68kwatgfBeTyYi79ec52c3' -H 'Accept: application/json' http://127.0.0.1:8000/api/v1/discount-rules)",
       "Bash(curl -s -H 'Authorization: Bearer 2|IIan4prnllQ2Is6YnbrrEesiUI68kwatgfBeTyYi79ec52c3' -H 'Accept: application/json' 'http://127.0.0.1:8000/api/v1/billings?unit_id=__TRACKED_VAR__&per_page=3')",
-      "Bash(curl -s -X PUT -H 'Authorization: Bearer 2|IIan4prnllQ2Is6YnbrrEesiUI68kwatgfBeTyYi79ec52c3' -H 'Accept: application/json' -H 'Content-Type: application/json' -d '{\"discount\": 20000, \"reason\": \"Uji coba diskon manual\"}' http://127.0.0.1:8000/api/v1/billings/5212/discount)"
+      "Bash(curl -s -X PUT -H 'Authorization: Bearer 2|IIan4prnllQ2Is6YnbrrEesiUI68kwatgfBeTyYi79ec52c3' -H 'Accept: application/json' -H 'Content-Type: application/json' -d '{\"discount\": 20000, \"reason\": \"Uji coba diskon manual\"}' http://127.0.0.1:8000/api/v1/billings/5212/discount)",
+      "Bash(php -l app/Http/Controllers/Api/V1/ReceivableController.php)",
+      "Bash(node node_modules/eslint/bin/eslint.js src/pages/ReceivablesPage.jsx)",
+      "Bash(curl -s -H 'Authorization: Bearer 2|zDQGQrM5e3H7ybvztN6xv3mJOQfvb2Z4GFR21IRpfcb10382' -H 'Accept: application/json' http://127.0.0.1:8000/api/v1/receivables?per_page=3)",
+      "Bash(curl -s -H 'Authorization: Bearer 3|rkTWVKH3PZMmf8d6ZuYNiEWNeLTMXcX2L9EoN0Zqef33e3ee' -H 'Accept: application/json' http://127.0.0.1:8000/api/v1/manual-book/sections?module=receivables)",
+      "Bash(composer show *)",
+      "Bash(curl -s -H 'Authorization: Bearer 4|ijzJf19NxUA7csgm6l4kunuRNP89o0r4am1eSIE0eb073e85' -H 'Accept: application/json' http://127.0.0.1:8000/api/v1/receivables/aging)"
     ],
     "additionalDirectories": [
       "/tmp/pw-verify",
