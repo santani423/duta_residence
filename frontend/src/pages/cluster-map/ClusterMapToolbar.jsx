@@ -1,4 +1,4 @@
-import { Badge, Button, Divider, Space, Tooltip } from 'antd';
+import { Badge, Button, Divider, Space, Tooltip, theme } from 'antd';
 import {
   CopyOutlined, DeleteOutlined, ExpandOutlined, FullscreenExitOutlined, FullscreenOutlined,
   GroupOutlined, HistoryOutlined, LockOutlined, RedoOutlined, ReloadOutlined, SaveOutlined,
@@ -15,8 +15,10 @@ export default function ClusterMapToolbar({
   isFullscreen, onToggleFullscreen,
   dirty, saving, onSave, onOpenVersions,
 }) {
+  const { token } = theme.useToken();
+
   return (
-    <Space wrap size={4} style={{ padding: '8px 12px', borderBottom: '1px solid #f0f0f0', background: '#fff' }}>
+    <Space wrap size={4} style={{ padding: '8px 12px', borderBottom: `1px solid ${token.colorBorderSecondary}`, background: token.colorBgContainer }}>
       <Tooltip title="Urungkan (Undo)"><Button size="small" icon={<UndoOutlined />} disabled={!canUndo} onClick={onUndo} /></Tooltip>
       <Tooltip title="Ulangi (Redo)"><Button size="small" icon={<RedoOutlined />} disabled={!canRedo} onClick={onRedo} /></Tooltip>
       <Divider type="vertical" />

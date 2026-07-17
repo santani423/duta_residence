@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Alert, Button, Card, Form, Radio, Segmented, Tooltip, Typography, Upload, message } from 'antd';
+import { Alert, Button, Card, Form, Radio, Segmented, Tooltip, Typography, Upload, message, theme } from 'antd';
 import { CloudUploadOutlined, MenuFoldOutlined, MenuUnfoldOutlined, PlusOutlined } from '@ant-design/icons';
 import PageHeader from '../../components/common/PageHeader.jsx';
 import { ErrorState, LoadingState } from '../../components/common/ApiState.jsx';
@@ -102,6 +102,7 @@ export default function ClusterMapPage() {
   const { id: clusterId } = useParams();
   const { can } = useAuth();
   const canEdit = can('cluster-maps.edit');
+  const { token } = theme.useToken();
 
   const mapQuery = useQuery({
     queryKey: ['cluster-map', clusterId],
@@ -398,7 +399,7 @@ export default function ClusterMapPage() {
         <div
           ref={containerRef}
           className="section-row"
-          style={{ background: '#fff', border: '1px solid #f0f0f0', borderRadius: 8, overflow: 'hidden' }}
+          style={{ background: token.colorBgContainer, border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 8, overflow: 'hidden' }}
         >
           {mode === 'view' && (
             <ClusterMapSearchBar objects={objects} onFocusUnit={handleFocusUnit} onDimmedChange={setDimmedIds} />
@@ -445,13 +446,13 @@ export default function ClusterMapPage() {
                   getContainer={() => containerRef.current}
                 />
                 {layerPanelCollapsed ? (
-                  <div style={{ flexShrink: 0, width: 36, borderRight: '1px solid #f0f0f0', display: 'flex', justifyContent: 'center', paddingTop: 12 }}>
+                  <div style={{ flexShrink: 0, width: 36, borderRight: `1px solid ${token.colorBorderSecondary}`, background: token.colorBgContainer, display: 'flex', justifyContent: 'center', paddingTop: 12 }}>
                     <Tooltip title="Tampilkan panel layer" placement="right">
                       <Button size="small" type="text" icon={<MenuUnfoldOutlined />} onClick={() => setLayerPanelCollapsed(false)} />
                     </Tooltip>
                   </div>
                 ) : (
-                  <div style={{ flexShrink: 0, width: 160, borderRight: '1px solid #f0f0f0', overflowY: 'auto' }}>
+                  <div style={{ flexShrink: 0, width: 160, borderRight: `1px solid ${token.colorBorderSecondary}`, background: token.colorBgContainer, overflowY: 'auto' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 8px 0' }}>
                       <Typography.Text strong style={{ fontSize: 12 }}>Layer</Typography.Text>
                       <Tooltip title="Sembunyikan panel">

@@ -1,4 +1,4 @@
-import { Button, ColorPicker, Descriptions, Divider, Empty, Input, InputNumber, Slider, Space, Switch, Tag, Typography } from 'antd';
+import { Button, ColorPicker, Descriptions, Divider, Empty, Input, InputNumber, Slider, Space, Switch, Tag, Typography, theme } from 'antd';
 import { DeleteOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { formatCurrency } from '../../utils/format.js';
@@ -9,9 +9,11 @@ function toHex(value) {
 }
 
 export default function ClusterMapObjectPanel({ object, editable, onChange, onDelete }) {
+  const { token } = theme.useToken();
+
   if (!object) {
     return (
-      <div style={{ flexShrink: 0, width: 280, borderLeft: '1px solid #f0f0f0', padding: 16 }}>
+      <div style={{ flexShrink: 0, width: 280, borderLeft: `1px solid ${token.colorBorderSecondary}`, background: token.colorBgContainer, padding: 16 }}>
         <Empty description="Pilih objek pada peta" image={Empty.PRESENTED_IMAGE_SIMPLE} />
       </div>
     );
@@ -22,7 +24,7 @@ export default function ClusterMapObjectPanel({ object, editable, onChange, onDe
   const autoColor = isUnit && object.is_color_auto !== false;
 
   return (
-    <div style={{ flexShrink: 0, width: 280, borderLeft: '1px solid #f0f0f0', padding: 16, overflowY: 'auto' }}>
+    <div style={{ flexShrink: 0, width: 280, borderLeft: `1px solid ${token.colorBorderSecondary}`, background: token.colorBgContainer, padding: 16, overflowY: 'auto' }}>
       <Typography.Text strong>{isUnit ? `Unit ${object.unit_id}` : (object.componentType?.name || object.label_text || 'Komponen')}</Typography.Text>
 
       {isUnit && detail && (

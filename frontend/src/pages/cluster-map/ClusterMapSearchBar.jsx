@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Input, Select, Space } from 'antd';
+import { Input, Select, Space, theme } from 'antd';
 import { residentStatusOptions, occupancyOptions } from '../../components/forms/UnitForm.jsx';
 
 const paymentOptions = [
@@ -12,6 +12,7 @@ export default function ClusterMapSearchBar({ objects, onFocusUnit, onDimmedChan
   const [statusId, setStatusId] = useState();
   const [occupancyId, setOccupancyId] = useState();
   const [paymentStatus, setPaymentStatus] = useState();
+  const { token } = theme.useToken();
 
   useEffect(() => {
     if (!statusId && !occupancyId && !paymentStatus) {
@@ -47,7 +48,7 @@ export default function ClusterMapSearchBar({ objects, onFocusUnit, onDimmedChan
   }
 
   return (
-    <Space wrap style={{ padding: '8px 12px', borderBottom: '1px solid #f0f0f0' }}>
+    <Space wrap style={{ padding: '8px 12px', borderBottom: `1px solid ${token.colorBorderSecondary}`, background: token.colorBgContainer }}>
       <Input.Search
         placeholder="Cari nomor unit, blok, atau nama penghuni"
         style={{ width: 260 }}

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Button, Empty, Space, Tooltip, Typography } from 'antd';
+import { Button, Empty, Space, Tooltip, Typography, theme } from 'antd';
 import { MenuFoldOutlined, MenuUnfoldOutlined, PlusOutlined, SettingOutlined } from '@ant-design/icons';
 import Can from '../../components/common/Can.jsx';
 import ClusterMapComponentTypeManager from './ClusterMapComponentTypeManager.jsx';
@@ -7,6 +7,7 @@ import ClusterMapComponentTypeManager from './ClusterMapComponentTypeManager.jsx
 export default function ClusterMapComponentPalette({ componentTypes, onPlace, onComponentTypesChange, getContainer }) {
   const [managerOpen, setManagerOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const { token } = theme.useToken();
 
   const grouped = useMemo(() => {
     const active = componentTypes.filter((type) => type.is_active);
@@ -21,7 +22,7 @@ export default function ClusterMapComponentPalette({ componentTypes, onPlace, on
 
   if (collapsed) {
     return (
-      <div style={{ flexShrink: 0, width: 36, borderRight: '1px solid #f0f0f0', display: 'flex', justifyContent: 'center', paddingTop: 12 }}>
+      <div style={{ flexShrink: 0, width: 36, borderRight: `1px solid ${token.colorBorderSecondary}`, background: token.colorBgContainer, display: 'flex', justifyContent: 'center', paddingTop: 12 }}>
         <Tooltip title="Tampilkan panel komponen" placement="right">
           <Button size="small" type="text" icon={<MenuUnfoldOutlined />} onClick={() => setCollapsed(false)} />
         </Tooltip>
@@ -30,7 +31,7 @@ export default function ClusterMapComponentPalette({ componentTypes, onPlace, on
   }
 
   return (
-    <div style={{ flexShrink: 0, width: 220, borderRight: '1px solid #f0f0f0', padding: 12, overflowY: 'auto' }}>
+    <div style={{ flexShrink: 0, width: 220, borderRight: `1px solid ${token.colorBorderSecondary}`, background: token.colorBgContainer, padding: 12, overflowY: 'auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <Typography.Text strong>Komponen</Typography.Text>
         <Space size={0}>

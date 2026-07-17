@@ -1,4 +1,4 @@
-import { Button, Space, Typography } from 'antd';
+import { Button, Space, Typography, theme } from 'antd';
 import { ArrowDownOutlined, ArrowUpOutlined, EyeInvisibleOutlined, EyeOutlined, LockOutlined, UnlockOutlined } from '@ant-design/icons';
 
 const CATEGORY_LABELS = { unit: 'Unit', component: 'Fasilitas', label: 'Label' };
@@ -9,6 +9,7 @@ function objectLabel(object) {
 }
 
 export default function ClusterMapLayerPanel({ objects, selectedIds, hiddenIds, onSelect, onToggleHidden, onToggleLock, onMoveLayer, editable }) {
+  const { token } = theme.useToken();
   const sorted = [...objects].sort((a, b) => (b.layer_order || 0) - (a.layer_order || 0));
   const grouped = { unit: [], component: [], label: [] };
   sorted.forEach((object) => { grouped[object.object_category]?.push(object); });
@@ -26,7 +27,7 @@ export default function ClusterMapLayerPanel({ objects, selectedIds, hiddenIds, 
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '4px 6px', borderRadius: 4, cursor: 'pointer',
-                  background: selectedIds.includes(object.id) ? '#e6f4ff' : 'transparent',
+                  background: selectedIds.includes(object.id) ? token.colorPrimaryBg : 'transparent',
                 }}
               >
                 <Typography.Text

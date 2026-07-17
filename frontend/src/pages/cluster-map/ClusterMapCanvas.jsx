@@ -1,5 +1,6 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { Fragment, forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { Circle, Image as KonvaImage, Layer, Line, Rect, RegularPolygon, Stage, Text, Transformer } from 'react-konva';
+import { theme } from 'antd';
 import { storageUrl } from '../../services/estateApi.js';
 import { objectColor, POLYGON_LIKE_SHAPES } from './mapConstants.js';
 
@@ -42,7 +43,7 @@ function snap(value, gridSize, enabled) {
   return Math.round(value / gridSize) * gridSize;
 }
 
-function GridLayer({ map }) {
+function GridLayer({ map, paperColor, gridColor }) {
   const lines = useMemo(() => {
     if (!map.grid_enabled || !map.grid_visible) return [];
     const result = [];
@@ -55,13 +56,11 @@ function GridLayer({ map }) {
     return result;
   }, [map.grid_enabled, map.grid_visible, map.grid_size, map.canvas_width, map.canvas_height]);
 
-  if (!lines.length) return null;
-
   return (
     <Layer listening={false}>
-      <Rect x={0} y={0} width={map.canvas_width} height={map.canvas_height} fill="#ffffff" />
+      <Rect x={0} y={0} width={map.canvas_width} height={map.canvas_height} fill={paperColor} />
       {lines.map((line) => (
-        <Line key={line.key} points={line.points} stroke="#f0f0f0" strokeWidth={1} />
+        <Line key={line.key} points={line.points} stroke={gridColor} strokeWidth={1} />
       ))}
     </Layer>
   );
@@ -111,6 +110,34 @@ function ShapeNode({ shapeRef, object, isSelected, isDimmed, isHighlighted, edit
   return <Rect {...commonProps} width={object.width || 60} height={object.height || 90} cornerRadius={2} />;
 }
 
+function UnitLabel({ object, isDimmed }) {
+  const detail = object.unit_detail;
+  if (object.object_category !== 'unit' || !detail) return null;
+  const text = [detail.block, detail.lot_number].filter(Boolean).join('/');
+  if (!text) return null;
+
+  return (
+    <Text
+      x={object.x}
+      y={object.y}
+      width={object.width || 60}
+      height={object.height || 90}
+      rotation={object.rotation || 0}
+      text={text}
+      fontSize={11}
+      fontStyle="bold"
+      fill="#1f1f1f"
+      align="center"
+      verticalAlign="middle"
+      wrap="none"
+      ellipsis
+      opacity={isDimmed ? 0.25 : 1}
+      listening={false}
+      perfectDrawEnabled={false}
+    />
+  );
+}
+
 const ClusterMapCanvas = forwardRef(function ClusterMapCanvas(
   { map, objects, selectedIds, editable, highlightedId, dimmedIds = [], hiddenIds = [], onSelectionChange, onObjectsChange },
   ref,
@@ -121,6 +148,7 @@ const ClusterMapCanvas = forwardRef(function ClusterMapCanvas(
   const shapeRefs = useRef({});
   const [size, setSize] = useState({ width: 800, height: 500 });
   const [viewport, setViewport] = useState({ scale: 1, x: 0, y: 0 });
+  const { token } = theme.useToken();
   const backgroundImage = useBackgroundImage(map.canvas_type === 'image' ? map.background_image_path : null);
 
   useEffect(() => {
@@ -237,7 +265,7 @@ const ClusterMapCanvas = forwardRef(function ClusterMapCanvas(
     : null;
 
   return (
-    <div ref={containerRef} style={{ width: '100%', height: '100%', minHeight: 480, background: '#fafafa', overflow: 'hidden' }}>
+    <div ref={containerRef} style={{ width: '100%', height: '100%', minHeight: 480, background: token.colorBgLayout, overflow: 'hidden' }}>
       <Stage
         ref={stageRef}
         width={size.width}
@@ -253,7 +281,7 @@ const ClusterMapCanvas = forwardRef(function ClusterMapCanvas(
         onWheel={handleWheel}
         onClick={(e) => { if (e.target === stageRef.current) onSelectionChange([]); }}
       >
-        <GridLayer map={map} />
+        <GridLayer map={map} paperColor={token.colorBgContainer} gridColor={token.colorSplit} />
         {map.canvas_type === 'image' && backgroundImage && (
           <Layer listening={false}>
             <KonvaImage
@@ -268,27 +296,29 @@ const ClusterMapCanvas = forwardRef(function ClusterMapCanvas(
         )}
         <Layer>
           {[...objects].filter((object) => !hiddenIds.includes(object.id)).sort((a, b) => (a.layer_order || 0) - (b.layer_order || 0)).map((object) => (
-            <ShapeNode
-              key={object.id}
-              object={object}
-              editable={editable}
-              isSelected={selectedIds.includes(object.id)}
-              isDimmed={dimmedIds.includes(object.id)}
-              isHighlighted={highlightedId === object.id}
-              shapeRef={(node) => {
-                if (node) { node.attrs.__objectId = object.id; shapeRefs.current[object.id] = node; } else delete shapeRefs.current[object.id];
-              }}
-              onSelect={(id, e) => {
-                if (e.evt?.shiftKey) {
-                  onSelectionChange(selectedIds.includes(id) ? selectedIds.filter((s) => s !== id) : [...selectedIds, id]);
-                } else {
-                  onSelectionChange([id]);
-                }
-              }}
-              onDragEnd={handleDragEnd}
-              onTransformEnd={handleTransformEnd}
-              onDblClick={(id, e) => handleAddVertex(id, e)}
-            />
+            <Fragment key={object.id}>
+              <ShapeNode
+                object={object}
+                editable={editable}
+                isSelected={selectedIds.includes(object.id)}
+                isDimmed={dimmedIds.includes(object.id)}
+                isHighlighted={highlightedId === object.id}
+                shapeRef={(node) => {
+                  if (node) { node.attrs.__objectId = object.id; shapeRefs.current[object.id] = node; } else delete shapeRefs.current[object.id];
+                }}
+                onSelect={(id, e) => {
+                  if (e.evt?.shiftKey) {
+                    onSelectionChange(selectedIds.includes(id) ? selectedIds.filter((s) => s !== id) : [...selectedIds, id]);
+                  } else {
+                    onSelectionChange([id]);
+                  }
+                }}
+                onDragEnd={handleDragEnd}
+                onTransformEnd={handleTransformEnd}
+                onDblClick={(id, e) => handleAddVertex(id, e)}
+              />
+              <UnitLabel object={object} isDimmed={dimmedIds.includes(object.id)} />
+            </Fragment>
           ))}
           {editable && <Transformer ref={transformerRef} rotateEnabled boundBoxFunc={(oldBox, newBox) => (newBox.width < 5 || newBox.height < 5 ? oldBox : newBox)} />}
           {editable && selectedPolygon && (selectedPolygon.points || []).map((_, index) => {
