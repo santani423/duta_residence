@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class PreferencesStore {
   static const _themeKey = 'duta_theme_mode';
+  static const _biometricEnabledKey = 'duta_biometric_enabled';
 
   Future<ThemeMode> readThemeMode() async {
     final prefs = await SharedPreferences.getInstance();
@@ -20,5 +21,15 @@ class PreferencesStore {
       ThemeMode.dark => 'dark',
       ThemeMode.system => 'system',
     });
+  }
+
+  Future<bool> readBiometricEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_biometricEnabledKey) ?? false;
+  }
+
+  Future<void> saveBiometricEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_biometricEnabledKey, enabled);
   }
 }

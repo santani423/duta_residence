@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
@@ -43,6 +44,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _refresh() async {
     setState(() => _future = _load());
     await _future;
+  }
+
+  Future<void> _editProfile(Map<String, dynamic> account) async {
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) =>
+          _EditProfileForm(apiClient: widget.apiClient, initial: account),
+    );
+    if (saved == true) await _refresh();
+  }
+
+  Future<void> _changePassword() async {
+    await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => _ChangePasswordForm(apiClient: widget.apiClient),
+    );
   }
 
   Future<void> _logout() async {
@@ -169,6 +190,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+                    const SizedBox(height: AppSpacing.lg),
+                    OutlinedButton.icon(
+                      onPressed: () => _editProfile(account),
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      label: const Text('Edit Profil'),
+                    ),
                   ],
                 ),
               ),
@@ -221,6 +248,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ],
                       ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              _NotificationPreferencesCard(apiClient: widget.apiClient),
+              const SizedBox(height: AppSpacing.lg),
+              DutaCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SectionHeader(title: 'Keamanan Akun'),
+                    const SizedBox(height: AppSpacing.md),
+                    _BiometricSettingTile(
+                      sessionController: widget.sessionController,
+                    ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const IconBadge(
+                        icon: Icons.lock_outline_rounded,
+                        size: 40,
+                        iconSize: 20,
+                      ),
+                      title: const Text(
+                        'Ganti Password',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: _changePassword,
                     ),
                   ],
                 ),
@@ -306,6 +362,447 @@ class _AboutTile extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _NotificationPreferencesCard extends StatefulWidget {
+  const _NotificationPreferencesCard({required this.apiClient});
+
+  final ApiClient apiClient;
+
+  @override
+  State<_NotificationPreferencesCard> createState() =>
+      _NotificationPreferencesCardState();
+}
+
+class _NotificationPreferencesCardState
+    extends State<_NotificationPreferencesCard> {
+  static const _labels = {
+    'billing': 'Tagihan',
+    'payments': 'Pembayaran',
+    'complaints': 'Komplain',
+    'maintenance': 'Maintenance',
+    'documents': 'Dokumen',
+    'announcements': 'Pengumuman',
+  };
+
+  late Future<Map<String, dynamic>> _future;
+  Map<String, dynamic> _preferences = {};
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  Future<Map<String, dynamic>> _load() async {
+    final result = await widget.apiClient.get('resident/settings');
+    final data = asMap(result.data);
+    final preferences = asMap(data['notification_preferences']);
+    _preferences = preferences.isEmpty
+        ? {for (final key in _labels.keys) key: true}
+        : preferences;
+    return data;
+  }
+
+  Future<void> _toggle(String key, bool value) async {
+    final current = await _future;
+    setState(() {
+      _preferences = {..._preferences, key: value};
+      _saving = true;
+    });
+    try {
+      await widget.apiClient.putJson('resident/settings', {
+        'theme_preference': current['theme_preference'] ?? 'system',
+        'language_preference': current['language_preference'] ?? 'id',
+        'notification_preferences': _preferences,
+      });
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const DutaCard(
+            child: Padding(
+              padding: EdgeInsets.all(AppSpacing.lg),
+              child: LinearProgressIndicator(),
+            ),
+          );
+        }
+        if (snapshot.hasError) return const SizedBox.shrink();
+        return DutaCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SectionHeader(title: 'Preferensi Notifikasi'),
+              const SizedBox(height: AppSpacing.sm),
+              for (final entry in _labels.entries)
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(entry.value),
+                  value: _preferences[entry.key] == true,
+                  onChanged: _saving
+                      ? null
+                      : (value) => _toggle(entry.key, value),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _EditProfileForm extends StatefulWidget {
+  const _EditProfileForm({required this.apiClient, required this.initial});
+
+  final ApiClient apiClient;
+  final Map<String, dynamic> initial;
+
+  @override
+  State<_EditProfileForm> createState() => _EditProfileFormState();
+}
+
+class _EditProfileFormState extends State<_EditProfileForm> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _name;
+  late final TextEditingController _phone;
+  late final TextEditingController _email;
+  late final TextEditingController _address;
+  PlatformFile? _photo;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _name = TextEditingController(text: widget.initial['name']?.toString());
+    _phone = TextEditingController(text: widget.initial['phone']?.toString());
+    _email = TextEditingController(text: widget.initial['email']?.toString());
+    _address = TextEditingController(
+      text: widget.initial['address']?.toString(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _phone.dispose();
+    _email.dispose();
+    _address.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickPhoto() async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.image);
+    if (result != null) setState(() => _photo = result.files.single);
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate() || _saving) return;
+    setState(() => _saving = true);
+    try {
+      await widget.apiClient.postMultipart(
+        'resident/profile',
+        fields: {
+          'name': _name.text.trim(),
+          if (_phone.text.trim().isNotEmpty) 'phone': _phone.text.trim(),
+          if (_email.text.trim().isNotEmpty) 'email': _email.text.trim(),
+          if (_address.text.trim().isNotEmpty)
+            'id_card_address': _address.text.trim(),
+        },
+        file: _photo,
+        fileField: 'photo',
+      );
+      if (mounted) Navigator.pop(context, true);
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: AppSpacing.lg,
+        right: AppSpacing.lg,
+        top: AppSpacing.lg,
+        bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpacing.lg,
+      ),
+      child: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Edit Profil',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              TextFormField(
+                controller: _name,
+                decoration: const InputDecoration(labelText: 'Nama'),
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'Wajib diisi.'
+                    : null,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextFormField(
+                controller: _phone,
+                decoration: const InputDecoration(labelText: 'Telepon'),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextFormField(
+                controller: _email,
+                decoration: const InputDecoration(labelText: 'Email'),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextFormField(
+                controller: _address,
+                minLines: 2,
+                maxLines: 3,
+                decoration: const InputDecoration(labelText: 'Alamat KTP'),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              OutlinedButton.icon(
+                onPressed: _pickPhoto,
+                icon: const Icon(Icons.image_outlined),
+                label: Text(_photo?.name ?? 'Ganti Foto Profil (opsional)'),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              FilledButton(
+                onPressed: _saving ? null : _save,
+                child: Text(_saving ? 'Menyimpan...' : 'Simpan'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ChangePasswordForm extends StatefulWidget {
+  const _ChangePasswordForm({required this.apiClient});
+
+  final ApiClient apiClient;
+
+  @override
+  State<_ChangePasswordForm> createState() => _ChangePasswordFormState();
+}
+
+class _ChangePasswordFormState extends State<_ChangePasswordForm> {
+  final _formKey = GlobalKey<FormState>();
+  final _current = TextEditingController();
+  final _next = TextEditingController();
+  final _confirm = TextEditingController();
+  bool _obscure = true;
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _current.dispose();
+    _next.dispose();
+    _confirm.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate() || _saving) return;
+    setState(() => _saving = true);
+    try {
+      await widget.apiClient.postJson('auth/change-password', {
+        'current_password': _current.text,
+        'new_password': _next.text,
+        'new_password_confirmation': _confirm.text,
+      });
+      if (mounted) {
+        Navigator.pop(context, true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Password berhasil diubah.')),
+        );
+      }
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: AppSpacing.lg,
+        right: AppSpacing.lg,
+        top: AppSpacing.lg,
+        bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpacing.lg,
+      ),
+      child: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Ganti Password',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              TextFormField(
+                controller: _current,
+                obscureText: _obscure,
+                decoration: const InputDecoration(labelText: 'Password Saat Ini'),
+                validator: (value) =>
+                    value == null || value.isEmpty ? 'Wajib diisi.' : null,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextFormField(
+                controller: _next,
+                obscureText: _obscure,
+                decoration: const InputDecoration(labelText: 'Password Baru'),
+                validator: (value) => value == null || value.length < 8
+                    ? 'Minimal 8 karakter.'
+                    : null,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextFormField(
+                controller: _confirm,
+                obscureText: _obscure,
+                decoration: const InputDecoration(
+                  labelText: 'Konfirmasi Password Baru',
+                ),
+                validator: (value) =>
+                    value != _next.text ? 'Konfirmasi tidak cocok.' : null,
+              ),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: !_obscure,
+                controlAffinity: ListTileControlAffinity.leading,
+                title: const Text('Tampilkan password'),
+                onChanged: (value) =>
+                    setState(() => _obscure = !(value ?? false)),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              FilledButton(
+                onPressed: _saving ? null : _save,
+                child: Text(_saving ? 'Menyimpan...' : 'Simpan'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BiometricSettingTile extends StatefulWidget {
+  const _BiometricSettingTile({required this.sessionController});
+
+  final SessionController sessionController;
+
+  @override
+  State<_BiometricSettingTile> createState() => _BiometricSettingTileState();
+}
+
+class _BiometricSettingTileState extends State<_BiometricSettingTile> {
+  late final Future<bool> _supported;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _supported = widget.sessionController.canUseBiometrics();
+  }
+
+  Future<void> _toggle(bool value) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      if (value) {
+        final confirmed = await widget.sessionController
+            .unlockWithBiometrics();
+        if (!confirmed) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Verifikasi biometrik gagal. Login biometrik tidak diaktifkan.',
+                ),
+              ),
+            );
+          }
+          return;
+        }
+        await widget.sessionController.setBiometricEnabled(true);
+      } else {
+        await widget.sessionController.setBiometricEnabled(false);
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: _supported,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done ||
+            snapshot.data != true) {
+          return const SizedBox.shrink();
+        }
+        return AnimatedBuilder(
+          animation: widget.sessionController,
+          builder: (context, _) => SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            secondary: const IconBadge(
+              icon: Icons.fingerprint_rounded,
+              size: 40,
+              iconSize: 20,
+            ),
+            title: const Text(
+              'Login Biometrik',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            subtitle: const Text(
+              'Gunakan sidik jari atau wajah untuk masuk lebih cepat.',
+            ),
+            value: widget.sessionController.biometricEnabled,
+            onChanged: _busy ? null : _toggle,
+          ),
+        );
+      },
     );
   }
 }

@@ -134,7 +134,7 @@ class BillingController extends Controller
     {
         $query = Billing::query()->with(['unit.cluster', 'unit.resident'])->whereNull('approved_at')->where('status_id', '01');
 
-        return $this->paginated($query->paginate($request->integer('per_page', 15)));
+        return $this->paginated($query->latest()->paginate($request->integer('per_page', 15)));
     }
 
     public function approve(Request $request, Billing $billing, BillingService $service)

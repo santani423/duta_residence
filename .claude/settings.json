@@ -109,7 +109,11 @@
       "Bash(curl -sS -X PUT http://localhost:8000/api/v1/resident/tenant/billing-payer -H 'Authorization: Bearer 23|a6aLDthMHHKg4zNtZAulju2tFUX8EasIcc1Fcf7Tec5d6a67' -H 'Accept: application/json' -H 'Content-Type: application/json' -d '{\"billing_payer\":\"pemilik\"}' -w '\\\\nHTTP_STATUS:%{http_code}\\\\n')",
       "Bash(curl -sS -X PUT http://localhost:8000/api/v1/resident/tenant/billing-payer -H 'Authorization: Bearer 24|onfpYytSz3yXawlW9HC1K8aBAJ515FZH8ty54bfXcc0213d1' -H 'Accept: application/json' -H 'Content-Type: application/json' -d '{\"billing_payer\":\"penyewa\"}' -w '\\\\nHTTP_STATUS:%{http_code}\\\\n')",
       "Bash(curl -sS -X DELETE http://localhost:8000/api/v1/resident/tenant -H 'Authorization: Bearer 24|onfpYytSz3yXawlW9HC1K8aBAJ515FZH8ty54bfXcc0213d1' -H 'Accept: application/json' -w '\\\\nHTTP_STATUS:%{http_code}\\\\n')",
-      "Bash(curl -sS -X DELETE http://localhost:8000/api/v1/resident/tenant -H 'Authorization: Bearer 23|a6aLDthMHHKg4zNtZAulju2tFUX8EasIcc1Fcf7Tec5d6a67' -H 'Accept: application/json' -w '\\\\nHTTP_STATUS:%{http_code}\\\\n')"
+      "Bash(curl -sS -X DELETE http://localhost:8000/api/v1/resident/tenant -H 'Authorization: Bearer 23|a6aLDthMHHKg4zNtZAulju2tFUX8EasIcc1Fcf7Tec5d6a67' -H 'Accept: application/json' -w '\\\\nHTTP_STATUS:%{http_code}\\\\n')",
+      "Bash(php -l app/Http/Controllers/Api/V1/ReportController.php)",
+      "Bash(curl -sS http://localhost:8000/api/v1/resident/bills?status=paid -H 'Authorization: Bearer 23|a6aLDthMHHKg4zNtZAulju2tFUX8EasIcc1Fcf7Tec5d6a67' -H 'Accept: application/json')",
+      "Bash(node get_token.js)",
+      "Bash(curl -sS http://localhost:8000/api/v1/resident/bills?status=paid -H 'Authorization: Bearer 2|DbjkPPSSrJrMt5s80c1zUlyUGjZNcDhKEtO2LCFZ7bdbc0a7' -H 'Accept: application/json')"
     ],
     "additionalDirectories": [
       "/tmp/pw-verify",

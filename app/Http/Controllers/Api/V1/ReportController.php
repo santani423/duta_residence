@@ -47,7 +47,7 @@ class ReportController extends Controller
     public function dailyReceipt(Request $request)
     {
         $date = $request->query('date', today()->toDateString());
-        $receipts = Receipt::query()->with('unit.cluster')->whereDate('transaction_date', $date)->get();
+        $receipts = Receipt::query()->with('unit.cluster')->whereDate('transaction_date', $date)->latest('transaction_date')->get();
 
         return $this->success([
             'date' => $date,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
+import '../api/api_exception.dart';
 import '../constants/app_spacing.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/notifications_screen.dart';
@@ -50,6 +51,69 @@ const _navItems = [
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
 
+  Future<void> _triggerEmergency() async {
+    final noteController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Kirim sinyal darurat ke admin?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Admin akan segera menerima peringatan darurat untuk unit Anda.',
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              controller: noteController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Catatan (opsional)',
+                hintText: 'Contoh: kebakaran di dapur, ada pencuri, dll.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Kirim Sekarang'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      final note = noteController.text.trim();
+      await widget.apiClient.postJson('resident/emergency', {
+        if (note.isNotEmpty) 'note': note,
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Sinyal darurat berhasil dikirim ke admin.'),
+          ),
+        );
+      }
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -92,6 +156,18 @@ class _HomeShellState extends State<HomeShell> {
           ],
         ),
         actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.sm),
+            child: IconButton.filledTonal(
+              tooltip: 'Darurat',
+              onPressed: _triggerEmergency,
+              icon: const Icon(Icons.warning_amber_rounded),
+              style: IconButton.styleFrom(
+                backgroundColor: colors.errorContainer,
+                foregroundColor: colors.onErrorContainer,
+              ),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: AppSpacing.md),
             child: IconButton.filledTonal(

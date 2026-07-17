@@ -35,6 +35,7 @@ class RolePermissionSeeder extends Seeder
             'vehicles.view', 'vehicles.create', 'vehicles.update', 'vehicles.delete',
             'occupants.view', 'occupants.create', 'occupants.update', 'occupants.delete',
             'manual-book.manage', 'help-settings.manage', 'guided-tours.manage',
+            'emergency-alerts.view', 'emergency-alerts.acknowledge',
         ];
 
         foreach ($permissions as $permission) {
@@ -62,6 +63,7 @@ class RolePermissionSeeder extends Seeder
                 'vehicles.view', 'vehicles.create', 'vehicles.update', 'vehicles.delete',
                 'occupants.view', 'occupants.create', 'occupants.update', 'occupants.delete',
                 'manual-book.manage',
+                'emergency-alerts.view', 'emergency-alerts.acknowledge',
             ],
             'back_office' => [
                 'residents.view', 'residents.create', 'residents.update',
@@ -96,9 +98,10 @@ class RolePermissionSeeder extends Seeder
                 'reports.view', 'documents.generate', 'users.view',
                 'visits.view', 'payment-promises.view',
                 'resident-documents.view', 'vehicles.view', 'occupants.view',
+                'emergency-alerts.view', 'emergency-alerts.acknowledge',
             ],
-            'operations_staff' => ['residents.view', 'units.view', 'clusters.view', 'cluster-maps.view', 'billings.view', 'documents.generate'],
-            'security' => ['residents.view', 'units.view', 'clusters.view', 'cluster-maps.view', 'vehicles.view', 'occupants.view'],
+            'operations_staff' => ['residents.view', 'units.view', 'clusters.view', 'cluster-maps.view', 'billings.view', 'documents.generate', 'emergency-alerts.view', 'emergency-alerts.acknowledge'],
+            'security' => ['residents.view', 'units.view', 'clusters.view', 'cluster-maps.view', 'vehicles.view', 'occupants.view', 'emergency-alerts.view', 'emergency-alerts.acknowledge'],
             'technician' => ['residents.view', 'units.view', 'clusters.view', 'cluster-maps.view'],
             'vendor' => ['residents.view', 'units.view', 'clusters.view', 'cluster-maps.view'],
             'loket' => [
@@ -112,6 +115,7 @@ class RolePermissionSeeder extends Seeder
                 'residents.view', 'residents.update', 'units.view', 'clusters.view', 'cluster-maps.view', 'billings.view',
                 'resident-documents.view', 'resident-documents.create',
                 'occupants.view', 'occupants.create', 'occupants.update',
+                'emergency-alerts.view', 'emergency-alerts.acknowledge',
             ],
             'collector' => [
                 'residents.view', 'units.view', 'clusters.view', 'cluster-maps.view', 'billings.view',

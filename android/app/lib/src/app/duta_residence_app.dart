@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
+import '../screens/biometric_lock_screen.dart';
 import '../screens/home_shell.dart';
 import '../screens/login_screen.dart';
 import '../screens/splash_screen.dart';
@@ -47,11 +48,14 @@ class DutaResidenceApp extends StatelessWidget {
             SessionStatus.unauthenticated => LoginScreen(
               sessionController: sessionController,
             ),
-            SessionStatus.authenticated => HomeShell(
-              apiClient: apiClient,
-              sessionController: sessionController,
-              themeController: themeController,
-            ),
+            SessionStatus.authenticated =>
+              sessionController.requiresBiometricUnlock
+                  ? BiometricLockScreen(sessionController: sessionController)
+                  : HomeShell(
+                      apiClient: apiClient,
+                      sessionController: sessionController,
+                      themeController: themeController,
+                    ),
           },
         );
       },

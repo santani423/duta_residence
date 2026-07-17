@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\AuditLog;
 use App\Models\Billing;
+use App\Models\EmergencyAlert;
 use App\Models\ResidentComplaint;
 use App\Models\ResidentComplaintComment;
 use App\Models\ManagedFile;
@@ -119,8 +120,8 @@ class ResidentPortalController extends Controller
     public function updateProfile(Request $request, AuditService $auditService)
     {
         $unit = $this->unit($request);
-        $resident = $unit->resident;
         $user = $request->user();
+        $resident = $user->resident ?: $unit->resident;
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'phone' => ['nullable', 'string', 'max:20'],
@@ -182,7 +183,7 @@ class ResidentPortalController extends Controller
             });
 
         if ($status = $request->query('status')) {
-            $query = $query->get()->filter(fn (Billing $billing) => $this->penaltyService->invoiceStatus($billing) === $status)->values();
+            $query = $query->latest()->get()->filter(fn (Billing $billing) => $this->penaltyService->invoiceStatus($billing) === $status)->values();
 
             return $this->success($query->map(fn (Billing $billing) => $this->invoicePayload($billing))->values());
         }
@@ -646,6 +647,42 @@ class ResidentPortalController extends Controller
         $auditService->log('resident_settings_updated', 'resident-settings', 'UPDATE', $user, $old, $user->refresh()->toArray());
 
         return $this->success($this->settings($request)->getData(true)['data'], 'Pengaturan berhasil disimpan.');
+    }
+
+    public function emergency(Request $request, AuditService $auditService)
+    {
+        $unit = $this->unit($request);
+        $user = $request->user();
+        $data = $request->validate([
+            'note' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $alert = EmergencyAlert::query()->create([
+            'unit_id' => $unit->id,
+            'resident_id' => $user->resident_id ?: $unit->resident_id,
+            'note' => $data['note'] ?? null,
+            'status' => 'active',
+            'created_by' => $user->id,
+        ]);
+
+        $reporterName = ($user->resident ?: $unit->resident)?->name ?? $user->name;
+        $unitLabel = "{$unit->cluster?->name} {$unit->block}/{$unit->lot_number}";
+
+        NotificationQueue::query()->create([
+            'unit_id' => $unit->id,
+            'user_id' => null,
+            'type' => 'emergency_alert',
+            'channel' => 'in_app',
+            'recipient' => 'staff',
+            'message' => "SINYAL DARURAT dari {$reporterName} (Unit {$unitLabel})".($alert->note ? ": {$alert->note}" : '.'),
+            'read_status' => 'unread',
+            'status' => 'sent',
+            'sent_at' => now(),
+        ]);
+
+        $auditService->log('emergency_alert_triggered', 'emergency-alerts', 'CREATE', $alert, [], $alert->toArray());
+
+        return $this->success($alert, 'Sinyal darurat berhasil dikirim ke admin.', 201);
     }
 
     public function tenantInfo(Request $request)

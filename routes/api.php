@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\ClusterRateScheduleController;
 use App\Http\Controllers\Api\V1\CollectorVisitController;
 use App\Http\Controllers\Api\V1\DiscountRuleController;
 use App\Http\Controllers\Api\V1\DocumentController;
+use App\Http\Controllers\Api\V1\EmergencyAlertController;
 use App\Http\Controllers\Api\V1\GuidedTourController;
 use App\Http\Controllers\Api\V1\HelpSettingController;
 use App\Http\Controllers\Api\V1\InstallmentController;
@@ -212,6 +213,9 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::post('notifications/{notification}/read', [NotificationController::class, 'read']);
     Route::post('notifications/read-all', [NotificationController::class, 'readAll']);
 
+    Route::get('emergency-alerts', [EmergencyAlertController::class, 'index'])->middleware('permission:emergency-alerts.view');
+    Route::post('emergency-alerts/{emergencyAlert}/acknowledge', [EmergencyAlertController::class, 'acknowledge'])->middleware('permission:emergency-alerts.acknowledge');
+
     // Manual Book & panduan interaktif - baca terbuka untuk semua role yang login,
     // konten difilter otomatis sesuai role di controller. Pengelolaan konten dibatasi permission.
     Route::get('manual-book/sections', [ManualBookController::class, 'index']);
@@ -277,6 +281,7 @@ Route::middleware(['auth:sanctum', 'audit', 'role:customer'])->prefix('resident'
     Route::get('activity', [ResidentPortalController::class, 'activity']);
     Route::get('settings', [ResidentPortalController::class, 'settings']);
     Route::put('settings', [ResidentPortalController::class, 'updateSettings']);
+    Route::post('emergency', [ResidentPortalController::class, 'emergency']);
     Route::get('tenant', [ResidentPortalController::class, 'tenantInfo']);
     Route::post('tenant', [ResidentPortalController::class, 'storeTenant']);
     Route::put('tenant/billing-payer', [ResidentPortalController::class, 'updateBillingPayer']);

@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'src/api/api_client.dart';
 import 'src/app/duta_residence_app.dart';
+import 'src/services/biometric_auth_service.dart';
 import 'src/state/session_controller.dart';
 import 'src/state/theme_controller.dart';
 import 'src/storage/preferences_store.dart';
@@ -23,6 +24,8 @@ Future<void> main() async {
   final sessionController = SessionController(
     apiClient: apiClient,
     tokenStore: tokenStore,
+    preferencesStore: preferencesStore,
+    biometricAuth: BiometricAuthService(),
   );
   apiClient.onUnauthorized = sessionController.expireSession;
 

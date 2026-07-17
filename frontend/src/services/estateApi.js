@@ -242,6 +242,10 @@ export const api = {
     read: (id) => http.post(`/notifications/${id}/read`),
     readAll: () => http.post('/notifications/read-all'),
   },
+  emergencyAlerts: {
+    list: (params) => http.get('/emergency-alerts', { params }),
+    acknowledge: (id) => http.post(`/emergency-alerts/${id}/acknowledge`),
+  },
   lookup: {
     regencies: () => http.get('/lookup/regencies'),
     districts: (params) => http.get('/lookup/districts', { params }),

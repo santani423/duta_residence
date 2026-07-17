@@ -753,10 +753,16 @@ class _TicketSectionState extends State<_TicketSection> {
       if (!mounted) return;
       await showModalBottomSheet<void>(
         context: context,
+        isScrollControlled: true,
         showDragHandle: true,
-        builder: (context) =>
-            _TicketDetail(item: asMap(result.data), isComplaint: _isComplaint),
+        builder: (context) => _TicketDetail(
+          apiClient: widget.apiClient,
+          path: _path,
+          item: asMap(result.data),
+          isComplaint: _isComplaint,
+        ),
       );
+      await _refresh();
     } on ApiException catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -1014,17 +1020,157 @@ class _TicketFormState extends State<_TicketForm> {
       value == null || value.trim().isEmpty ? 'Wajib diisi.' : null;
 }
 
-class _TicketDetail extends StatelessWidget {
-  const _TicketDetail({required this.item, required this.isComplaint});
+class _TicketDetail extends StatefulWidget {
+  const _TicketDetail({
+    required this.apiClient,
+    required this.path,
+    required this.item,
+    required this.isComplaint,
+  });
 
+  final ApiClient apiClient;
+  final String path;
   final Map<String, dynamic> item;
   final bool isComplaint;
 
   @override
+  State<_TicketDetail> createState() => _TicketDetailState();
+}
+
+class _TicketDetailState extends State<_TicketDetail> {
+  late Map<String, dynamic> _item;
+  final _commentController = TextEditingController();
+  final _ratingNotesController = TextEditingController();
+  int _ratingValue = 0;
+  bool _submittingComment = false;
+  bool _closing = false;
+  bool _submittingRating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _item = widget.item;
+    _ratingValue = (_item['rating'] as num?)?.toInt() ?? 0;
+  }
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    _ratingNotesController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _reloadItem() async {
+    final result = await widget.apiClient.get(
+      '${widget.path}/${_item['id']}',
+    );
+    if (mounted) setState(() => _item = asMap(result.data));
+  }
+
+  void _showError(Object error) {
+    if (!mounted) return;
+    final message = error is ApiException
+        ? error.message
+        : 'Terjadi kesalahan. Coba lagi.';
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _submitComment() async {
+    final body = _commentController.text.trim();
+    if (body.isEmpty || _submittingComment) return;
+    setState(() => _submittingComment = true);
+    try {
+      await widget.apiClient.postMultipart(
+        '${widget.path}/${_item['id']}/comments',
+        fields: {'body': body},
+      );
+      _commentController.clear();
+      await _reloadItem();
+    } catch (error) {
+      _showError(error);
+    } finally {
+      if (mounted) setState(() => _submittingComment = false);
+    }
+  }
+
+  Future<void> _closeComplaint() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Tutup komplain ini?'),
+        content: const Text(
+          'Komplain yang sudah ditutup tidak dapat dibuka kembali.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Tutup'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || _closing) return;
+    setState(() => _closing = true);
+    try {
+      await widget.apiClient.postJson(
+        '${widget.path}/${_item['id']}/close',
+        const {},
+      );
+      await _reloadItem();
+    } catch (error) {
+      _showError(error);
+    } finally {
+      if (mounted) setState(() => _closing = false);
+    }
+  }
+
+  Future<void> _submitRating() async {
+    if (_ratingValue < 1 || _submittingRating) return;
+    setState(() => _submittingRating = true);
+    try {
+      await widget.apiClient.postJson(
+        '${widget.path}/${_item['id']}/rating',
+        {
+          'rating': _ratingValue,
+          if (_ratingNotesController.text.trim().isNotEmpty)
+            'rating_notes': _ratingNotesController.text.trim(),
+        },
+      );
+      await _reloadItem();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Rating berhasil dikirim.')),
+        );
+      }
+    } catch (error) {
+      _showError(error);
+    } finally {
+      if (mounted) setState(() => _submittingRating = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final status = compact(_item['status']).toLowerCase();
+    final canClose = widget.isComplaint && status != 'closed';
+    final canRate =
+        !widget.isComplaint && status == 'completed' && _item['rating'] == null;
+
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: EdgeInsets.only(
+          left: AppSpacing.lg,
+          right: AppSpacing.lg,
+          top: AppSpacing.lg,
+          bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpacing.lg,
+        ),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1034,43 +1180,137 @@ class _TicketDetail extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      compact(isComplaint ? item['title'] : item['category']),
+                      compact(
+                        widget.isComplaint
+                            ? _item['title']
+                            : _item['category'],
+                      ),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w900,
                       ),
                     ),
                   ),
-                  StatusBadge(item['status']),
+                  StatusBadge(_item['status']),
                 ],
               ),
               const SizedBox(height: AppSpacing.lg),
               InfoRows(
                 items: {
-                  'Kategori': item['category'],
-                  'Prioritas': item['priority'] ?? item['urgency'],
-                  'Dibuat': dateTime(item['created_at']),
+                  'Kategori': _item['category'],
+                  'Prioritas': _item['priority'] ?? _item['urgency'],
+                  'Dibuat': dateTime(_item['created_at']),
                   'Jadwal': dateTime(
-                    item['scheduled_at'] ?? item['preferred_schedule'],
+                    _item['scheduled_at'] ?? _item['preferred_schedule'],
                   ),
-                  'Catatan Petugas': item['technician_notes'],
-                  'Rating': item['rating'],
+                  'Catatan Petugas': _item['technician_notes'],
+                  'Rating': _item['rating'] == null
+                      ? null
+                      : '${_item['rating']} / 5',
                 },
               ),
               const SizedBox(height: AppSpacing.lg),
-              Text(compact(item['description'])),
-              if (isComplaint && asList(item['comments']).isNotEmpty) ...[
+              Text(compact(_item['description'])),
+              if (widget.isComplaint) ...[
                 const SizedBox(height: AppSpacing.lg),
                 const SectionHeader(title: 'Riwayat Respons'),
                 const SizedBox(height: AppSpacing.md),
-                for (final comment in asList(item['comments']))
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: AppSpacing.sm,
+                if (asList(_item['comments']).isEmpty)
+                  Text(
+                    'Belum ada respons.',
+                    style: TextStyle(color: colors.onSurfaceVariant),
+                  )
+                else
+                  for (final comment in asList(_item['comments']))
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.sm,
+                      ),
+                      child: Text(
+                        '${compact(asMap(asMap(comment)['user'])['name'])}: ${compact(asMap(comment)['body'])}',
+                      ),
                     ),
-                    child: Text(
-                      '${compact(asMap(asMap(comment)['user'])['name'])}: ${compact(asMap(comment)['body'])}',
+                if (status != 'closed') ...[
+                  const SizedBox(height: AppSpacing.md),
+                  TextField(
+                    controller: _commentController,
+                    minLines: 2,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      labelText: 'Tulis balasan...',
+                      border: OutlineInputBorder(),
                     ),
                   ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: FilledButton.icon(
+                      onPressed: _submittingComment ? null : _submitComment,
+                      icon: const Icon(Icons.send_rounded, size: 18),
+                      label: Text(
+                        _submittingComment ? 'Mengirim...' : 'Kirim Balasan',
+                      ),
+                    ),
+                  ),
+                ],
+                if (canClose) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  OutlinedButton.icon(
+                    onPressed: _closing ? null : _closeComplaint,
+                    icon: Icon(Icons.check_circle_outline, color: colors.error),
+                    label: Text(
+                      _closing ? 'Menutup...' : 'Tutup Komplain',
+                      style: TextStyle(color: colors.error),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(
+                        color: colors.error.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+              if (canRate) ...[
+                const SizedBox(height: AppSpacing.lg),
+                const SectionHeader(title: 'Beri Rating'),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  children: [
+                    for (var i = 1; i <= 5; i++)
+                      IconButton(
+                        onPressed: () => setState(() => _ratingValue = i),
+                        icon: Icon(
+                          i <= _ratingValue
+                              ? Icons.star_rounded
+                              : Icons.star_outline_rounded,
+                          color: i <= _ratingValue
+                              ? Colors.amber
+                              : colors.onSurfaceVariant,
+                          size: 32,
+                        ),
+                      ),
+                  ],
+                ),
+                TextField(
+                  controller: _ratingNotesController,
+                  minLines: 2,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Catatan (opsional)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: FilledButton(
+                    onPressed: (_ratingValue < 1 || _submittingRating)
+                        ? null
+                        : _submitRating,
+                    child: Text(
+                      _submittingRating ? 'Mengirim...' : 'Kirim Rating',
+                    ),
+                  ),
+                ),
               ],
             ],
           ),
