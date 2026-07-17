@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Button, Card, Form, Radio, Segmented, Tooltip, Typography, Upload, message, theme } from 'antd';
 import { CloudUploadOutlined, MenuFoldOutlined, MenuUnfoldOutlined, PlusOutlined } from '@ant-design/icons';
 import PageHeader from '../../components/common/PageHeader.jsx';
@@ -103,6 +103,7 @@ export default function ClusterMapPage() {
   const { can } = useAuth();
   const canEdit = can('cluster-maps.edit');
   const { token } = theme.useToken();
+  const queryClient = useQueryClient();
 
   const mapQuery = useQuery({
     queryKey: ['cluster-map', clusterId],
@@ -184,6 +185,29 @@ export default function ClusterMapPage() {
     const timer = setTimeout(() => handleSave(true), AUTOSAVE_DELAY_MS);
     return () => clearTimeout(timer);
   }, [dirty, mode, canEdit, handleSave]);
+
+  const growCanvasMutation = useMutation({
+    mutationFn: (payload) => api.clusterMaps.updateSettings(map.id, payload),
+    onSuccess: (response) => {
+      queryClient.setQueryData(['cluster-map', clusterId], (old) => (old ? {
+        ...old,
+        data: { ...old.data, map: { ...old.data.map, ...response.data } },
+      } : old));
+    },
+  });
+
+  function handleCanvasGrow(width, height) {
+    if (!map) return;
+    const payload = {};
+    if (width && width > map.canvas_width) payload.canvas_width = width;
+    if (height && height > map.canvas_height) payload.canvas_height = height;
+    if (!Object.keys(payload).length) return;
+    queryClient.setQueryData(['cluster-map', clusterId], (old) => (old ? {
+      ...old,
+      data: { ...old.data, map: { ...old.data.map, ...payload } },
+    } : old));
+    growCanvasMutation.mutate(payload);
+  }
 
   const restoreMutation = useMutation({
     mutationFn: (versionId) => api.clusterMaps.versions.restore(versionId),
@@ -489,6 +513,7 @@ export default function ClusterMapPage() {
                 hiddenIds={hiddenIds}
                 onSelectionChange={setSelectedIds}
                 onObjectsChange={commitObjects}
+                onCanvasGrow={handleCanvasGrow}
               />
               <div style={{ position: 'absolute', bottom: 12, left: 12 }}>
                 <ClusterMapLegend />

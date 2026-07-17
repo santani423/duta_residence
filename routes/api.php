@@ -277,4 +277,8 @@ Route::middleware(['auth:sanctum', 'audit', 'role:customer'])->prefix('resident'
     Route::get('activity', [ResidentPortalController::class, 'activity']);
     Route::get('settings', [ResidentPortalController::class, 'settings']);
     Route::put('settings', [ResidentPortalController::class, 'updateSettings']);
+    Route::get('tenant', [ResidentPortalController::class, 'tenantInfo']);
+    Route::post('tenant', [ResidentPortalController::class, 'storeTenant']);
+    Route::put('tenant/billing-payer', [ResidentPortalController::class, 'updateBillingPayer']);
+    Route::delete('tenant', [ResidentPortalController::class, 'removeTenant']);
 });

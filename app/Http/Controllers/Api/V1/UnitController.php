@@ -6,9 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\Billing;
 use App\Models\Unit;
-use App\Models\User;
 use App\Services\AuditService;
 use App\Services\PenaltyService;
+use App\Services\UnitOwnershipSyncService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -29,51 +29,15 @@ class UnitController extends Controller
         return $this->paginated($query->orderBy('cluster_id')->orderBy('block')->paginate($request->integer('per_page', 15)));
     }
 
-    public function store(Request $request, AuditService $auditService)
+    public function store(Request $request, AuditService $auditService, UnitOwnershipSyncService $ownershipSync)
     {
         $data = $this->validateUnit($request);
         $data['created_by'] = $request->user()->id;
         $unit = Unit::query()->create($data);
         $auditService->log('unit_created', 'units', 'CREATE', $unit, [], $unit->toArray());
-        $this->syncUnitOwnership($unit, $auditService);
+        $ownershipSync->sync($unit, $auditService);
 
         return $this->success($unit->load(['cluster', 'status', 'resident']), 'Unit berhasil dibuat.', 201);
-    }
-
-    /**
-     * Jaga agar akun login customer (users.unit_id) selalu mencerminkan kepemilikan
-     * Unit yang sebenarnya (units.resident_id) setiap kali Unit dibuat/pemiliknya diubah:
-     *   1) Lepaskan akun customer mana pun yang unit_id-nya masih menunjuk ke Unit ini
-     *      padahal penghuninya sudah bukan pemilik lagi (dipindah ke unit lain milik
-     *      mereka sendiri jika masih ada, atau dikosongkan jika tidak ada).
-     *   2) Tautkan/perbarui akun customer milik pemilik baru ke Unit ini, supaya penghuni
-     *      langsung bisa melihat data unitnya di portal tanpa langkah manual tambahan.
-     * Tanpa ini, halaman Admin (yang selalu query langsung dari units.resident_id) dan
-     * halaman Customer (yang bergantung pada users.unit_id) bisa jadi tidak sinkron.
-     */
-    private function syncUnitOwnership(Unit $unit, AuditService $auditService): void
-    {
-        User::query()
-            ->role('customer')
-            ->where('unit_id', $unit->id)
-            ->where(fn ($q) => $q->whereNull('resident_id')->orWhere('resident_id', '!=', $unit->resident_id))
-            ->get()
-            ->each(function (User $stale) use ($auditService) {
-                $old = $stale->toArray();
-                $replacementUnitId = $stale->resident_id
-                    ? Unit::query()->where('resident_id', $stale->resident_id)->value('id')
-                    : null;
-                $stale->forceFill(['unit_id' => $replacementUnitId])->save();
-                $auditService->log('user_unlinked_from_unit', 'users', 'UPDATE', $stale, $old, $stale->toArray());
-            });
-
-        $owner = User::query()->role('customer')->where('resident_id', $unit->resident_id)->first();
-
-        if ($owner && $owner->unit_id !== $unit->id) {
-            $old = $owner->toArray();
-            $owner->forceFill(['unit_id' => $unit->id])->save();
-            $auditService->log('user_linked_to_unit', 'users', 'UPDATE', $owner, $old, $owner->toArray());
-        }
     }
 
     public function show(Unit $unit, PenaltyService $penaltyService)
@@ -87,14 +51,14 @@ class UnitController extends Controller
         return $this->success($unit);
     }
 
-    public function update(Request $request, Unit $unit, AuditService $auditService)
+    public function update(Request $request, Unit $unit, AuditService $auditService, UnitOwnershipSyncService $ownershipSync)
     {
         $data = $this->validateUnit($request, $unit);
         $data['updated_by'] = $request->user()->id;
         $old = $unit->toArray();
         $unit->update($data);
         $auditService->log('unit_updated', 'units', 'UPDATE', $unit, $old, $unit->toArray());
-        $this->syncUnitOwnership($unit, $auditService);
+        $ownershipSync->sync($unit, $auditService);
 
         return $this->success($unit->refresh()->load(['cluster', 'status', 'resident']), 'Unit berhasil diperbarui.');
     }

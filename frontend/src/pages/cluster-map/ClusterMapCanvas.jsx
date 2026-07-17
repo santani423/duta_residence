@@ -20,22 +20,30 @@ function useBackgroundImage(path) {
   return path ? image : null;
 }
 
-function clampToCanvas(shape, map) {
-  const width = map.canvas_width;
-  const height = map.canvas_height;
+function clampToCanvas(shape) {
+  // Only keep shapes from crossing the top/left edge (x/y = 0). Crossing the
+  // right/bottom edge is allowed and handled by growing the canvas instead.
   let { x, y } = shape;
 
   if (shape.shape_type === 'circle') {
     const r = (shape.width || 40) / 2;
-    x = Math.min(Math.max(x, r), Math.max(r, width - r));
-    y = Math.min(Math.max(y, r), Math.max(r, height - r));
+    x = Math.max(x, r);
+    y = Math.max(y, r);
   } else {
-    const w = shape.width || 0;
-    const h = shape.height || 0;
-    x = Math.min(Math.max(x, 0), Math.max(0, width - w));
-    y = Math.min(Math.max(y, 0), Math.max(0, height - h));
+    x = Math.max(x, 0);
+    y = Math.max(y, 0);
   }
   return { x, y };
+}
+
+function requiredCanvasSize(shape, map) {
+  const margin = map.grid_size || 20;
+  const right = shape.shape_type === 'circle' ? shape.x + (shape.width || 40) / 2 : shape.x + (shape.width || 0);
+  const bottom = shape.shape_type === 'circle' ? shape.y + (shape.width || 40) / 2 : shape.y + (shape.height || 0);
+
+  const width = right + margin > map.canvas_width ? Math.ceil((right + margin) / margin) * margin : null;
+  const height = bottom + margin > map.canvas_height ? Math.ceil((bottom + margin) / margin) * margin : null;
+  return { width, height };
 }
 
 function snap(value, gridSize, enabled) {
@@ -139,7 +147,7 @@ function UnitLabel({ object, isDimmed }) {
 }
 
 const ClusterMapCanvas = forwardRef(function ClusterMapCanvas(
-  { map, objects, selectedIds, editable, highlightedId, dimmedIds = [], hiddenIds = [], onSelectionChange, onObjectsChange },
+  { map, objects, selectedIds, editable, highlightedId, dimmedIds = [], hiddenIds = [], onSelectionChange, onObjectsChange, onCanvasGrow },
   ref,
 ) {
   const containerRef = useRef(null);
@@ -215,12 +223,18 @@ const ClusterMapCanvas = forwardRef(function ClusterMapCanvas(
     onObjectsChange((prev) => prev.map((o) => (o.id === id ? { ...o, ...patch } : o)));
   }
 
+  function growCanvasIfNeeded(shape) {
+    const grow = requiredCanvasSize(shape, map);
+    if (grow.width || grow.height) onCanvasGrow?.(grow.width, grow.height);
+  }
+
   function handleDragEnd(id, pos) {
     const target = objects.find((o) => o.id === id);
     if (!target) return;
     const snapped = { x: snap(pos.x, map.grid_size, map.snap_enabled), y: snap(pos.y, map.grid_size, map.snap_enabled) };
-    const clamped = clampToCanvas({ ...target, ...snapped }, map);
+    const clamped = clampToCanvas({ ...target, ...snapped });
     updateOne(id, clamped);
+    growCanvasIfNeeded({ ...target, ...clamped });
   }
 
   function handleTransformEnd(id, node) {
@@ -236,7 +250,9 @@ const ClusterMapCanvas = forwardRef(function ClusterMapCanvas(
       width: Math.max(5, (target.width || node.width()) * scaleX),
       height: Math.max(5, (target.height || node.height()) * scaleY),
     };
-    updateOne(id, clampToCanvas({ ...target, ...patch }, map));
+    const clamped = clampToCanvas({ ...target, ...patch });
+    updateOne(id, clamped);
+    growCanvasIfNeeded({ ...target, ...patch, ...clamped });
   }
 
   function handleAddVertex(objectId, konvaEvent) {

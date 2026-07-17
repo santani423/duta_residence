@@ -14,10 +14,13 @@ use App\Models\NotificationQueue;
 use App\Models\PaymentGatewaySetting;
 use App\Models\PaymentTransaction;
 use App\Models\Receipt;
+use App\Models\Resident;
 use App\Models\Unit;
 use App\Services\AuditService;
 use App\Services\PenaltyService;
 use App\Services\Payments\PaymentGatewayFactory;
+use App\Services\ResidentAccountService;
+use App\Services\UnitOwnershipSyncService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -225,6 +228,7 @@ class ResidentPortalController extends Controller
     public function createPayment(Request $request, Billing $billing, PaymentGatewayFactory $factory)
     {
         $billing = $this->ownedBilling($request, $billing);
+        $this->assertIsDesignatedPayer($request, $billing->unit);
         $setting = PaymentGatewaySetting::current();
         $data = $request->validate([
             'provider' => ['nullable', Rule::in(['manual', 'xendit', 'midtrans'])],
@@ -314,6 +318,7 @@ class ResidentPortalController extends Controller
     public function uploadManualProof(Request $request, PaymentTransaction $payment, AuditService $auditService)
     {
         $payment = $this->ownedPayment($request, $payment);
+        $this->assertIsDesignatedPayer($request, $payment->unit);
         $setting = PaymentGatewaySetting::current();
         $extensions = implode(',', $setting->proof_allowed_extensions ?: ['jpg', 'jpeg', 'png', 'pdf']);
         $data = $request->validate([
@@ -643,6 +648,119 @@ class ResidentPortalController extends Controller
         return $this->success($this->settings($request)->getData(true)['data'], 'Pengaturan berhasil disimpan.');
     }
 
+    public function tenantInfo(Request $request)
+    {
+        $unit = $this->unit($request);
+        $unit->loadMissing('tenantResident');
+        $isOwner = $this->isOwner($request, $unit);
+
+        return $this->success([
+            'billing_payer' => $unit->billing_payer,
+            'is_owner' => $isOwner,
+            'viewer_role' => $isOwner ? 'pemilik' : 'penyewa',
+            'has_tenant' => (bool) $unit->tenant_resident_id,
+            'tenant' => $unit->tenantResident ? [
+                'id' => $unit->tenantResident->id,
+                'name' => $unit->tenantResident->name,
+                'email' => $unit->tenantResident->email,
+                'phone' => $unit->tenantResident->phone,
+            ] : null,
+        ]);
+    }
+
+    public function storeTenant(Request $request, AuditService $auditService, ResidentAccountService $accounts, UnitOwnershipSyncService $ownershipSync)
+    {
+        $unit = $this->unit($request);
+
+        if (! $this->isOwner($request, $unit)) {
+            throw ValidationException::withMessages(['tenant' => ['Hanya pemilik unit yang dapat menambahkan penyewa.']]);
+        }
+
+        if ($unit->tenant_resident_id) {
+            throw ValidationException::withMessages(['tenant' => ['Unit ini sudah memiliki penyewa. Hapus penyewa saat ini terlebih dahulu.']]);
+        }
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'email' => ['nullable', 'email', 'max:100', Rule::unique('residents', 'email')],
+            'phone' => ['nullable', 'string', 'max:20', Rule::unique('residents', 'phone')],
+            'username' => ['nullable', 'string', 'min:4', 'max:50', 'regex:/^[a-zA-Z0-9._-]+$/', Rule::unique('users', 'username')],
+        ]);
+        $username = $data['username'] ?? null;
+        unset($data['username']);
+
+        $tenantResident = DB::transaction(function () use ($data, $accounts, $request, $auditService) {
+            $data['id'] = $accounts->generateResidentId();
+            $data['created_by'] = $request->user()->id;
+            $resident = Resident::query()->create($data);
+            $auditService->log('tenant_resident_created', 'residents', 'CREATE', $resident, [], $resident->toArray());
+
+            return $resident;
+        });
+
+        $loginAccount = $accounts->createCustomerAccount($tenantResident, $auditService, $username);
+
+        $old = $unit->toArray();
+        $unit->update(['tenant_resident_id' => $tenantResident->id]);
+        $auditService->log('unit_tenant_linked', 'units', 'UPDATE', $unit, $old, $unit->toArray());
+
+        $ownershipSync->sync($unit->refresh(), $auditService);
+
+        return $this->success([
+            'tenant' => $tenantResident,
+            'login_account' => $loginAccount,
+        ], 'Penyewa berhasil ditambahkan.', 201);
+    }
+
+    public function updateBillingPayer(Request $request, AuditService $auditService)
+    {
+        $unit = $this->unit($request);
+
+        if (! $this->isOwner($request, $unit)) {
+            throw ValidationException::withMessages(['billing_payer' => ['Hanya pemilik unit yang dapat mengubah pengaturan penanggung jawab tagihan.']]);
+        }
+
+        $data = $request->validate([
+            'billing_payer' => ['required', Rule::in(['pemilik', 'penyewa'])],
+        ]);
+
+        if ($data['billing_payer'] === 'penyewa' && ! $unit->tenant_resident_id) {
+            throw ValidationException::withMessages(['billing_payer' => ['Tidak dapat menetapkan penyewa sebagai penanggung jawab karena unit ini belum memiliki penyewa.']]);
+        }
+
+        $old = $unit->toArray();
+        $unit->update(['billing_payer' => $data['billing_payer']]);
+        $auditService->log('unit_billing_payer_updated', 'units', 'UPDATE', $unit, $old, $unit->toArray());
+
+        return $this->success(['billing_payer' => $unit->billing_payer], 'Pengaturan penanggung jawab tagihan berhasil disimpan.');
+    }
+
+    public function removeTenant(Request $request, AuditService $auditService, UnitOwnershipSyncService $ownershipSync)
+    {
+        $unit = $this->unit($request);
+
+        if (! $this->isOwner($request, $unit)) {
+            throw ValidationException::withMessages(['tenant' => ['Hanya pemilik unit yang dapat menghapus penyewa.']]);
+        }
+
+        if (! $unit->tenant_resident_id) {
+            throw ValidationException::withMessages(['tenant' => ['Unit ini tidak memiliki penyewa.']]);
+        }
+
+        $old = $unit->toArray();
+        $unit->update(['tenant_resident_id' => null, 'billing_payer' => 'pemilik']);
+        $auditService->log('unit_tenant_removed', 'units', 'UPDATE', $unit, $old, $unit->toArray());
+
+        $ownershipSync->sync($unit->refresh(), $auditService);
+
+        return $this->success(null, 'Penyewa berhasil dihapus dari unit.');
+    }
+
+    private function isOwner(Request $request, Unit $unit): bool
+    {
+        return (string) $request->user()->resident_id === (string) $unit->resident_id;
+    }
+
     private function unit(Request $request): Unit
     {
         $unit = $request->user()
@@ -697,6 +815,19 @@ class ResidentPortalController extends Controller
         return $payment->load(['unit.cluster', 'billings']);
     }
 
+    private function assertIsDesignatedPayer(Request $request, Unit $unit): void
+    {
+        $isOwner = $this->isOwner($request, $unit);
+        $payerIsOwner = $unit->billing_payer !== 'penyewa';
+
+        if ($isOwner !== $payerIsOwner) {
+            $expected = $payerIsOwner ? 'pemilik' : 'penyewa';
+            throw ValidationException::withMessages([
+                'billing_payer' => ["Pembayaran untuk unit ini hanya dapat dilakukan oleh {$expected} sesuai pengaturan penanggung jawab tagihan."],
+            ]);
+        }
+    }
+
     private function ownedComplaint(Request $request, ResidentComplaint $complaint): ResidentComplaint
     {
         $unit = $this->unit($request);
@@ -715,7 +846,7 @@ class ResidentPortalController extends Controller
 
     private function unitProfile(Unit $unit, $user): array
     {
-        $resident = $unit->resident;
+        $resident = $user->resident ?: $unit->resident;
 
         return [
             'id' => $unit->id,

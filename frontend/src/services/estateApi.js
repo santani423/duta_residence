@@ -189,6 +189,10 @@ export const api = {
     activity: (params) => http.get('/resident/activity', { params }),
     settings: () => http.get('/resident/settings'),
     updateSettings: (payload) => http.put('/resident/settings', payload),
+    tenantInfo: () => http.get('/resident/tenant'),
+    createTenant: (payload) => http.post('/resident/tenant', payload),
+    updateBillingPayer: (payload) => http.put('/resident/tenant/billing-payer', payload),
+    removeTenant: () => http.delete('/resident/tenant'),
   },
   adminPaymentGateway: {
     show: () => http.get('/admin/settings/payment-gateway'),

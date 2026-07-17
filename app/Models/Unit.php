@@ -13,7 +13,7 @@ class Unit extends Model
     use HasFactory, HasStringPrimaryKey, SoftDeletes;
 
     protected $fillable = [
-        'id', 'resident_id', 'cluster_id', 'block', 'lot_number', 'property_type_id',
+        'id', 'resident_id', 'tenant_resident_id', 'billing_payer', 'cluster_id', 'block', 'lot_number', 'property_type_id',
         'building_area', 'land_area', 'handover_date', 'occupancy_id', 'status_id',
         'occupancy_role', 'tenancy_start_date', 'tenancy_end_date',
         'is_penalty_eligible', 'is_discount_eligible', 'discount_rule_id', 'notes', 'created_by', 'updated_by',
@@ -32,6 +32,11 @@ class Unit extends Model
     public function resident()
     {
         return $this->belongsTo(Resident::class);
+    }
+
+    public function tenantResident()
+    {
+        return $this->belongsTo(Resident::class, 'tenant_resident_id');
     }
 
     public function cluster()

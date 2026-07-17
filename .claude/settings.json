@@ -96,7 +96,20 @@
       "Bash(php -l app/Models/ClusterMapVersion.php)",
       "Bash(php -l app/Http/Controllers/Api/V1/ClusterMapComponentTypeController.php)",
       "Bash(php -l database/seeders/ClusterMapComponentTypeSeeder.php)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(php -l app/Services/ResidentAccountService.php)",
+      "Bash(php -l app/Services/UnitOwnershipSyncService.php)",
+      "Bash(git checkout *)",
+      "Bash(git clean *)",
+      "Bash(python3 -)",
+      "Bash(node verify_tenant.js)",
+      "Bash(node verify_tenant3.js)",
+      "Bash(curl -sS -X POST http://localhost:8000/api/v1/resident/invoices/1/payments -H 'Authorization: Bearer 23|a6aLDthMHHKg4zNtZAulju2tFUX8EasIcc1Fcf7Tec5d6a67' -H 'Accept: application/json' -H 'Content-Type: application/json' -d '{\"provider\":\"manual\"}' -w '\\\\nHTTP_STATUS:%{http_code}\\\\n')",
+      "Bash(curl -sS -X POST http://localhost:8000/api/v1/resident/invoices/1/payments -H 'Authorization: Bearer 24|onfpYytSz3yXawlW9HC1K8aBAJ515FZH8ty54bfXcc0213d1' -H 'Accept: application/json' -H 'Content-Type: application/json' -d '{\"provider\":\"manual\"}' -w '\\\\nHTTP_STATUS:%{http_code}\\\\n')",
+      "Bash(curl -sS -X PUT http://localhost:8000/api/v1/resident/tenant/billing-payer -H 'Authorization: Bearer 23|a6aLDthMHHKg4zNtZAulju2tFUX8EasIcc1Fcf7Tec5d6a67' -H 'Accept: application/json' -H 'Content-Type: application/json' -d '{\"billing_payer\":\"pemilik\"}' -w '\\\\nHTTP_STATUS:%{http_code}\\\\n')",
+      "Bash(curl -sS -X PUT http://localhost:8000/api/v1/resident/tenant/billing-payer -H 'Authorization: Bearer 24|onfpYytSz3yXawlW9HC1K8aBAJ515FZH8ty54bfXcc0213d1' -H 'Accept: application/json' -H 'Content-Type: application/json' -d '{\"billing_payer\":\"penyewa\"}' -w '\\\\nHTTP_STATUS:%{http_code}\\\\n')",
+      "Bash(curl -sS -X DELETE http://localhost:8000/api/v1/resident/tenant -H 'Authorization: Bearer 24|onfpYytSz3yXawlW9HC1K8aBAJ515FZH8ty54bfXcc0213d1' -H 'Accept: application/json' -w '\\\\nHTTP_STATUS:%{http_code}\\\\n')",
+      "Bash(curl -sS -X DELETE http://localhost:8000/api/v1/resident/tenant -H 'Authorization: Bearer 23|a6aLDthMHHKg4zNtZAulju2tFUX8EasIcc1Fcf7Tec5d6a67' -H 'Accept: application/json' -w '\\\\nHTTP_STATUS:%{http_code}\\\\n')"
     ],
     "additionalDirectories": [
       "/tmp/pw-verify",

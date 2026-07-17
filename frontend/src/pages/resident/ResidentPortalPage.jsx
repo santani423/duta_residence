@@ -4,16 +4,19 @@ import {
   Card,
   DatePicker,
   Descriptions,
+  Divider,
   Drawer,
   Form,
   Grid,
   Input,
   Modal,
+  Popconfirm,
   Select,
   Space,
   Statistic,
   Tabs,
   Timeline,
+  Tooltip,
   Typography,
   Upload,
   message,
@@ -312,6 +315,7 @@ function ResidentAccount({ mode = 'account' }) {
           { key: 'account', label: 'Informasi Akun', children: <Card><InfoList data={{ Nama: data.account?.name, Email: data.account?.email, Telepon: data.account?.phone, 'Nomor Penghuni': data.account?.resident_number, Status: data.account?.status, Estate: data.account?.estate, Unit: data.account?.unit, Bergabung: formatDate(data.account?.joined_at), 'Login Terakhir': formatDateTime(data.account?.last_login_at) }} /></Card> },
           { key: 'profile', label: 'Profil Penghuni', children: <Card><ProfileForm initial={data.account} /></Card> },
           { key: 'property', label: 'Properti atau Unit', children: <Card><InfoList data={{ Estate: data.property?.estate, Cluster: data.property?.cluster, Unit: data.property?.unit_label, Blok: data.property?.block, Kavling: data.property?.lot_number, 'Tipe Properti': data.property?.property_type, Hunian: data.property?.occupancy, 'Luas Bangunan': data.property?.building_area, 'Luas Tanah': data.property?.land_area }} /></Card> },
+          { key: 'tenant', label: 'Penyewa & Tagihan', children: <TenantSettingsCard /> },
           { key: 'bills', label: 'Tagihan', children: <InvoiceTable data={data.billings} /> },
           { key: 'payments', label: 'Riwayat Pembayaran', children: <PaymentTable data={data.payments} /> },
           { key: 'methods', label: 'Metode Pembayaran', children: <PaymentConfigCard config={data.payment_methods} /> },
@@ -346,7 +350,7 @@ function ResidentProperty() {
   );
 }
 
-function InvoiceTable({ query, data, onChange, onPay }) {
+function InvoiceTable({ query, data, onChange, onPay, payDisabledReason }) {
   const navigate = useNavigate();
   return (
     <Card>
@@ -373,7 +377,16 @@ function InvoiceTable({ query, data, onChange, onPay }) {
             render: (_, row) => (
               <Space>
                 <Button size="small" icon={<EyeOutlined />} onClick={() => navigate(`/resident/invoices/${row.id}`)}>Detail</Button>
-                <Button size="small" type="primary" disabled={!['unpaid', 'overdue'].includes(row.status)} onClick={() => onPay?.(row)}>Bayar</Button>
+                <Tooltip title={payDisabledReason}>
+                  <Button
+                    size="small"
+                    type="primary"
+                    disabled={!['unpaid', 'overdue'].includes(row.status) || Boolean(payDisabledReason)}
+                    onClick={() => onPay?.(row)}
+                  >
+                    Bayar
+                  </Button>
+                </Tooltip>
                 <Button size="small" icon={<DownloadOutlined />} onClick={async () => downloadBlob(await api.resident.downloadInvoice(row.id), `${row.invoice_number}.pdf`)}>PDF</Button>
               </Space>
             ),
@@ -388,9 +401,15 @@ function ResidentBills() {
   const table = useTableState();
   const query = useQuery({ queryKey: ['resident-bills', table.params], queryFn: () => api.resident.bills(table.params) });
   const config = useQuery({ queryKey: ['resident-payment-config'], queryFn: api.resident.paymentConfig });
+  const tenantQuery = useQuery({ queryKey: ['resident-tenant'], queryFn: api.resident.tenantInfo, ...OWNERSHIP_SENSITIVE_QUERY_OPTIONS });
   const createPayment = useResidentPaymentActions();
   const [paying, setPaying] = useState(null);
   const configData = unwrapQuery(config);
+  const tenantData = unwrapQuery(tenantQuery) || {};
+  const canPay = tenantData.has_tenant
+    ? (tenantData.is_owner ? tenantData.billing_payer !== 'penyewa' : tenantData.billing_payer === 'penyewa')
+    : true;
+  const payDisabledReason = canPay ? undefined : `Pembayaran unit ini hanya dapat dilakukan oleh ${tenantData.billing_payer === 'penyewa' ? 'penyewa' : 'pemilik'} sesuai pengaturan penanggung jawab tagihan.`;
 
   function pay(provider) {
     createPayment.mutate({ invoiceId: paying.id, provider });
@@ -406,7 +425,7 @@ function ResidentBills() {
         <Input placeholder="Periode YYYY-MM" value={table.filters.period} onChange={(event) => table.setFilters({ ...table.filters, period: event.target.value || undefined })} className="filter-input" />
         <Select allowClear placeholder="Sorting" value={table.filters.sort} onChange={(value) => table.setFilters({ ...table.filters, sort: value })} options={[{ value: 'due_date', label: 'Jatuh Tempo' }]} className="filter-input" />
       </FilterBar>
-      <InvoiceTable query={query} onChange={table.handleTableChange} onPay={setPaying} />
+      <InvoiceTable query={query} onChange={table.handleTableChange} onPay={setPaying} payDisabledReason={payDisabledReason} />
       <Modal title="Pilih Metode Pembayaran" open={Boolean(paying)} onCancel={() => setPaying(null)} footer={null}>
         <PaymentConfigCard config={configData} total={paying?.total} invoiceNumber={paying?.invoice_number} onProvider={pay} />
       </Modal>
@@ -418,9 +437,15 @@ function ResidentInvoiceDetail() {
   const { invoiceId } = useParams();
   const query = useQuery({ queryKey: ['resident-invoice', invoiceId], queryFn: () => api.resident.invoice(invoiceId), enabled: Boolean(invoiceId) });
   const config = useQuery({ queryKey: ['resident-payment-config'], queryFn: api.resident.paymentConfig });
+  const tenantQuery = useQuery({ queryKey: ['resident-tenant'], queryFn: api.resident.tenantInfo, ...OWNERSHIP_SENSITIVE_QUERY_OPTIONS });
   const createPayment = useResidentPaymentActions();
   const data = unwrapQuery(query) || {};
   const configData = unwrapQuery(config);
+  const tenantData = unwrapQuery(tenantQuery) || {};
+  const canPay = tenantData.has_tenant
+    ? (tenantData.is_owner ? tenantData.billing_payer !== 'penyewa' : tenantData.billing_payer === 'penyewa')
+    : true;
+  const payDisabledReason = canPay ? undefined : `Pembayaran unit ini hanya dapat dilakukan oleh ${tenantData.billing_payer === 'penyewa' ? 'penyewa' : 'pemilik'} sesuai pengaturan penanggung jawab tagihan.`;
 
   return (
     <section>
@@ -431,7 +456,15 @@ function ResidentInvoiceDetail() {
             <InfoList data={{ Penghuni: data.resident?.name, Estate: data.estate?.name, Unit: data.unit?.unit_label, Periode: data.period, 'Jatuh Tempo': formatDate(data.due_date), Subtotal: formatCurrency(data.subtotal), Pajak: formatCurrency(data.tax), Admin: formatCurrency(data.admin_fee), Diskon: formatCurrency(data.discount), Total: formatCurrency(data.total), Dibayar: formatCurrency(data.total_paid), Status: data.status }} />
             <Space className="action-row" wrap>
               <Button icon={<DownloadOutlined />} onClick={async () => downloadBlob(await api.resident.downloadInvoice(data.id), `${data.invoice_number}.pdf`)}>Download Invoice</Button>
-              <Button type="primary" disabled={!['unpaid', 'overdue'].includes(data.status)} onClick={() => createPayment.mutate({ invoiceId: data.id, provider: configData?.active_gateway })}>Bayar Sekarang</Button>
+              <Tooltip title={payDisabledReason}>
+                <Button
+                  type="primary"
+                  disabled={!['unpaid', 'overdue'].includes(data.status) || Boolean(payDisabledReason)}
+                  onClick={() => createPayment.mutate({ invoiceId: data.id, provider: configData?.active_gateway })}
+                >
+                  Bayar Sekarang
+                </Button>
+              </Tooltip>
             </Space>
           </Card>
           <PaymentConfigCard config={configData} total={data.total} invoiceNumber={data.invoice_number} onProvider={(provider) => createPayment.mutate({ invoiceId: data.id, provider })} />
@@ -775,6 +808,102 @@ function ResidentActivity() {
       <PageHeader title="Aktivitas Penghuni" breadcrumbs={[{ label: 'Penghuni' }, { label: 'Aktivitas' }]} onRefresh={query.refetch} />
       {query.isLoading ? <LoadingState /> : <ActivityList query={query} />}
     </section>
+  );
+}
+
+function TenantSettingsCard() {
+  const queryClient = useQueryClient();
+  const query = useQuery({ queryKey: ['resident-tenant'], queryFn: api.resident.tenantInfo, ...OWNERSHIP_SENSITIVE_QUERY_OPTIONS });
+  const data = unwrapQuery(query) || {};
+  const [form] = Form.useForm();
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['resident-tenant'] });
+
+  const createTenant = useMutation({
+    mutationFn: api.resident.createTenant,
+    onSuccess: (response) => {
+      form.resetFields();
+      invalidate();
+      const account = response?.data?.login_account;
+      Modal.success({
+        title: 'Akun login penyewa dibuat',
+        width: 480,
+        content: (
+          <div>
+            <p>Akun customer otomatis dibuat untuk penyewa ini. Sampaikan detail berikut ke penyewa (password ini hanya ditampilkan sekali):</p>
+            <p><strong>Username:</strong> {account?.username}</p>
+            <p><strong>Password sementara:</strong> {account?.temporary_password}</p>
+          </div>
+        ),
+      });
+    },
+    onError: (error) => {
+      form.setFields(mapValidationErrors(error));
+      message.error(getApiErrorMessage(error));
+    },
+  });
+
+  const updatePayer = useMutation({
+    mutationFn: api.resident.updateBillingPayer,
+    onSuccess: () => { message.success('Pengaturan penanggung jawab tagihan disimpan.'); invalidate(); },
+    onError: (error) => message.error(getApiErrorMessage(error)),
+  });
+
+  const removeTenant = useMutation({
+    mutationFn: api.resident.removeTenant,
+    onSuccess: () => { message.success('Penyewa berhasil dihapus dari unit.'); invalidate(); },
+    onError: (error) => message.error(getApiErrorMessage(error)),
+  });
+
+  if (query.isLoading) return <Card><LoadingState /></Card>;
+  if (query.isError) return <Card><ErrorState error={query.error} onRetry={query.refetch} /></Card>;
+
+  return (
+    <Card title="Penyewa & Penanggung Jawab Tagihan">
+      <InfoList data={{
+        'Status Anda': data.is_owner ? 'Pemilik' : 'Penyewa',
+        'Penanggung jawab tagihan saat ini': data.billing_payer === 'penyewa' ? 'Penyewa' : 'Pemilik',
+        'Penyewa terdaftar': data.tenant ? `${data.tenant.name} (${data.tenant.email || data.tenant.phone || '-'})` : 'Belum ada',
+      }}
+      />
+
+      {!data.is_owner ? (
+        <Typography.Text type="secondary">
+          Hanya pemilik unit yang dapat mengubah pengaturan penyewa dan penanggung jawab tagihan.
+        </Typography.Text>
+      ) : (
+        <>
+          <Divider />
+          <Space direction="vertical">
+            <Typography.Text strong>Siapa yang membayar tagihan unit ini?</Typography.Text>
+            <Select
+              value={data.billing_payer}
+              disabled={!data.has_tenant}
+              style={{ width: 220 }}
+              options={[
+                { value: 'pemilik', label: 'Pemilik yang membayar' },
+                { value: 'penyewa', label: 'Penyewa yang membayar' },
+              ]}
+              onChange={(value) => updatePayer.mutate({ billing_payer: value })}
+            />
+          </Space>
+          <Divider />
+          {data.has_tenant ? (
+            <Popconfirm title="Hapus penyewa dari unit ini?" onConfirm={() => removeTenant.mutate()}>
+              <Button danger loading={removeTenant.isPending}>Hapus Penyewa</Button>
+            </Popconfirm>
+          ) : (
+            <Form form={form} layout="vertical" className="responsive-form" onFinish={createTenant.mutate}>
+              <Form.Item label="Nama Penyewa" name="name" rules={[{ required: true, message: 'Nama wajib diisi' }]}><Input /></Form.Item>
+              <Form.Item label="Email" name="email"><Input /></Form.Item>
+              <Form.Item label="Telepon" name="phone"><Input /></Form.Item>
+              <Form.Item label="Username (opsional)" name="username"><Input /></Form.Item>
+              <Form.Item className="full-span"><Button type="primary" htmlType="submit" loading={createTenant.isPending}>Tambah Penyewa</Button></Form.Item>
+            </Form>
+          )}
+        </>
+      )}
+    </Card>
   );
 }
 
