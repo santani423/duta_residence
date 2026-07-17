@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Button, Empty, Tooltip, Typography } from 'antd';
-import { PlusOutlined, SettingOutlined } from '@ant-design/icons';
+import { Button, Empty, Space, Tooltip, Typography } from 'antd';
+import { MenuFoldOutlined, MenuUnfoldOutlined, PlusOutlined, SettingOutlined } from '@ant-design/icons';
 import Can from '../../components/common/Can.jsx';
 import ClusterMapComponentTypeManager from './ClusterMapComponentTypeManager.jsx';
 
 export default function ClusterMapComponentPalette({ componentTypes, onPlace, onComponentTypesChange, getContainer }) {
   const [managerOpen, setManagerOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   const grouped = useMemo(() => {
     const active = componentTypes.filter((type) => type.is_active);
@@ -18,15 +19,30 @@ export default function ClusterMapComponentPalette({ componentTypes, onPlace, on
     return byCategory;
   }, [componentTypes]);
 
+  if (collapsed) {
+    return (
+      <div style={{ flexShrink: 0, width: 36, borderRight: '1px solid #f0f0f0', display: 'flex', justifyContent: 'center', paddingTop: 12 }}>
+        <Tooltip title="Tampilkan panel komponen" placement="right">
+          <Button size="small" type="text" icon={<MenuUnfoldOutlined />} onClick={() => setCollapsed(false)} />
+        </Tooltip>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ width: 220, borderRight: '1px solid #f0f0f0', padding: 12, overflowY: 'auto' }}>
+    <div style={{ flexShrink: 0, width: 220, borderRight: '1px solid #f0f0f0', padding: 12, overflowY: 'auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <Typography.Text strong>Komponen</Typography.Text>
-        <Can permission="cluster-map-components.manage">
-          <Tooltip title="Kelola Komponen">
-            <Button size="small" type="text" icon={<SettingOutlined />} onClick={() => setManagerOpen(true)} />
+        <Space size={0}>
+          <Can permission="cluster-map-components.manage">
+            <Tooltip title="Kelola Komponen">
+              <Button size="small" type="text" icon={<SettingOutlined />} onClick={() => setManagerOpen(true)} />
+            </Tooltip>
+          </Can>
+          <Tooltip title="Sembunyikan panel">
+            <Button size="small" type="text" icon={<MenuFoldOutlined />} onClick={() => setCollapsed(true)} />
           </Tooltip>
-        </Can>
+        </Space>
       </div>
 
       {Object.keys(grouped).length === 0 && <Empty description="Belum ada komponen" image={Empty.PRESENTED_IMAGE_SIMPLE} />}
@@ -39,15 +55,15 @@ export default function ClusterMapComponentPalette({ componentTypes, onPlace, on
               <Button
                 key={type.id}
                 size="small"
-                style={{ textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8 }}
+                style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8 }}
                 onClick={() => onPlace(type)}
               >
                 <span style={{
-                  display: 'inline-block', width: 12, height: 12, borderRadius: 2,
+                  flexShrink: 0, display: 'inline-block', width: 12, height: 12, borderRadius: 2,
                   background: type.fill_color, border: `1px solid ${type.stroke_color}`,
                 }}
                 />
-                {type.name}
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{type.name}</span>
               </Button>
             ))}
           </div>

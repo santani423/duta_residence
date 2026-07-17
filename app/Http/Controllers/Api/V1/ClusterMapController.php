@@ -13,7 +13,9 @@ use App\Services\AuditService;
 use App\Services\PenaltyService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -53,15 +55,41 @@ class ClusterMapController extends Controller
         }
 
         $data = $request->validate([
-            'canvas_type' => ['required', 'in:blank,image'],
+            'canvas_type' => ['required', 'in:blank,image,geo'],
             'canvas_width' => ['sometimes', 'integer', 'min:200', 'max:10000'],
             'canvas_height' => ['sometimes', 'integer', 'min:200', 'max:10000'],
             'scale_meters_per_pixel' => ['nullable', 'numeric', 'min:0'],
+            'latitude' => ['required_if:canvas_type,geo', 'numeric', 'between:-90,90'],
+            'longitude' => ['required_if:canvas_type,geo', 'numeric', 'between:-180,180'],
+            'zoom' => ['nullable', 'integer', 'min:3', 'max:19'],
         ]);
 
+        $canvasWidth = $data['canvas_width'] ?? 1600;
+        $canvasHeight = $data['canvas_height'] ?? 1000;
+        $canvasType = $data['canvas_type'];
+        $backgroundPath = null;
+        $backgroundWidth = null;
+        $backgroundHeight = null;
+
+        if ($canvasType === 'geo') {
+            $backgroundWidth = min($canvasWidth, 2000);
+            $backgroundHeight = min($canvasHeight, 1400);
+            $backgroundPath = $this->fetchGeoBackground(
+                $data['latitude'], $data['longitude'], $data['zoom'] ?? 17,
+                $backgroundWidth, $backgroundHeight
+            );
+            $canvasType = 'image';
+        }
+
         $map = ClusterMap::query()->create([
-            ...$data,
             'cluster_id' => $cluster->id,
+            'canvas_type' => $canvasType,
+            'background_image_path' => $backgroundPath,
+            'background_width' => $backgroundWidth,
+            'background_height' => $backgroundHeight,
+            'canvas_width' => $canvasWidth,
+            'canvas_height' => $canvasHeight,
+            'scale_meters_per_pixel' => $data['scale_meters_per_pixel'] ?? null,
             'created_by' => $request->user()->id,
             'updated_by' => $request->user()->id,
         ]);
@@ -241,6 +269,79 @@ class ClusterMapController extends Controller
         $auditService->log('cluster_map_version_restored', 'cluster-maps', 'UPDATE', $map, [], ['version_id' => $clusterMapVersion->id]);
 
         return $this->success($this->serializeMap($map->fresh(), $penaltyService), 'Versi peta berhasil dipulihkan.');
+    }
+
+    /**
+     * Compose a background image from OpenStreetMap tiles centered at the given
+     * coordinates, so a real-world location can be used as the map canvas background
+     * the same way an uploaded floor plan image is used.
+     */
+    private function fetchGeoBackground(float $lat, float $lon, int $zoom, int $width, int $height): string
+    {
+        $tileSize = 256;
+        $tilesPerSide = 2 ** $zoom;
+        $worldSize = $tileSize * $tilesPerSide;
+
+        $centerX = ($lon + 180) / 360 * $worldSize;
+        $sinLat = sin(deg2rad($lat));
+        $centerY = (0.5 - log((1 + $sinLat) / (1 - $sinLat)) / (4 * M_PI)) * $worldSize;
+
+        $originX = $centerX - $width / 2;
+        $originY = $centerY - $height / 2;
+
+        $firstTileX = (int) floor($originX / $tileSize);
+        $firstTileY = (int) floor($originY / $tileSize);
+        $lastTileX = (int) floor(($originX + $width - 1) / $tileSize);
+        $lastTileY = (int) floor(($originY + $height - 1) / $tileSize);
+
+        $canvas = imagecreatetruecolor($width, $height);
+        imagefill($canvas, 0, 0, imagecolorallocate($canvas, 240, 240, 240));
+
+        $successCount = 0;
+        for ($tx = $firstTileX; $tx <= $lastTileX; $tx++) {
+            $wrappedX = (($tx % $tilesPerSide) + $tilesPerSide) % $tilesPerSide;
+            for ($ty = $firstTileY; $ty <= $lastTileY; $ty++) {
+                if ($ty < 0 || $ty >= $tilesPerSide) {
+                    continue;
+                }
+
+                $response = Http::withHeaders(['User-Agent' => 'DutaResidenceEstate/1.0 (cluster-map background)'])
+                    ->timeout(10)
+                    ->get("https://tile.openstreetmap.org/{$zoom}/{$wrappedX}/{$ty}.png");
+
+                if (! $response->successful()) {
+                    continue;
+                }
+
+                $tileImage = @imagecreatefromstring($response->body());
+                if (! $tileImage) {
+                    continue;
+                }
+
+                $destX = (int) round($tx * $tileSize - $originX);
+                $destY = (int) round($ty * $tileSize - $originY);
+                imagecopy($canvas, $tileImage, $destX, $destY, 0, 0, $tileSize, $tileSize);
+                imagedestroy($tileImage);
+                $successCount++;
+            }
+        }
+
+        if ($successCount === 0) {
+            imagedestroy($canvas);
+            throw ValidationException::withMessages([
+                'latitude' => 'Gagal mengambil citra peta lokasi. Periksa koneksi internet server dan coba lagi.',
+            ]);
+        }
+
+        ob_start();
+        imagepng($canvas);
+        $contents = ob_get_clean();
+        imagedestroy($canvas);
+
+        $path = 'cluster-maps/' . Str::random(40) . '.png';
+        Storage::disk('public')->put($path, $contents);
+
+        return $path;
     }
 
     private function assertObjectsValid(array $objects, ClusterMap $clusterMap): void

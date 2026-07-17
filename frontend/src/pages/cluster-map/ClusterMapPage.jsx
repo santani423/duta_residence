@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Alert, Button, Card, Form, Radio, Segmented, Typography, Upload, message } from 'antd';
-import { CloudUploadOutlined, PlusOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Form, Radio, Segmented, Tooltip, Typography, Upload, message } from 'antd';
+import { CloudUploadOutlined, MenuFoldOutlined, MenuUnfoldOutlined, PlusOutlined } from '@ant-design/icons';
 import PageHeader from '../../components/common/PageHeader.jsx';
 import { ErrorState, LoadingState } from '../../components/common/ApiState.jsx';
 import Can from '../../components/common/Can.jsx';
@@ -18,6 +18,7 @@ import ClusterMapLayerPanel from './ClusterMapLayerPanel.jsx';
 import ClusterMapLegend from './ClusterMapLegend.jsx';
 import ClusterMapVersionDrawer from './ClusterMapVersionDrawer.jsx';
 import ClusterMapSearchBar from './ClusterMapSearchBar.jsx';
+import ClusterMapLocationPicker from './ClusterMapLocationPicker.jsx';
 import { useClusterMapHistory } from './useClusterMapHistory.js';
 import { cleanObjectForSave, createUuid, defaultPointsFor, unitSizeFromArea } from './mapConstants.js';
 
@@ -25,11 +26,18 @@ const AUTOSAVE_DELAY_MS = 15000;
 
 function MapSetupCard({ clusterId, onCreated }) {
   const [canvasType, setCanvasType] = useState('blank');
+  const [location, setLocation] = useState(null);
   const [form] = Form.useForm();
 
   const create = useMutation({
     mutationFn: async (values) => {
-      const created = await api.clusterMaps.create(clusterId, { canvas_type: canvasType });
+      const payload = { canvas_type: canvasType };
+      if (canvasType === 'geo') {
+        payload.latitude = location.lat;
+        payload.longitude = location.lng;
+        payload.zoom = location.zoom;
+      }
+      const created = await api.clusterMaps.create(clusterId, payload);
       const mapId = created.data.id;
       if (canvasType === 'image' && values.image?.[0]?.originFileObj) {
         const formData = new FormData();
@@ -53,7 +61,14 @@ function MapSetupCard({ clusterId, onCreated }) {
       <Radio.Group value={canvasType} onChange={(e) => setCanvasType(e.target.value)} style={{ marginBottom: 16 }}>
         <Radio.Button value="blank">Canvas Kosong</Radio.Button>
         <Radio.Button value="image">Gambar Denah</Radio.Button>
+        <Radio.Button value="geo">Peta Lokasi</Radio.Button>
       </Radio.Group>
+      {canvasType === 'geo' && (
+        <div style={{ marginBottom: 16 }}>
+          <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>Lokasi Cluster</Typography.Text>
+          <ClusterMapLocationPicker onChange={setLocation} />
+        </div>
+      )}
       <Form form={form} layout="vertical" onFinish={(values) => create.mutate(values)}>
         {canvasType === 'image' && (
           <Form.Item
@@ -69,7 +84,13 @@ function MapSetupCard({ clusterId, onCreated }) {
             </Upload.Dragger>
           </Form.Item>
         )}
-        <Button type="primary" htmlType="submit" icon={<PlusOutlined />} loading={create.isPending}>
+        <Button
+          type="primary"
+          htmlType="submit"
+          icon={<PlusOutlined />}
+          loading={create.isPending}
+          disabled={canvasType === 'geo' && !location}
+        >
           Buat Peta
         </Button>
       </Form>
@@ -103,6 +124,7 @@ export default function ClusterMapPage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [clipboard, setClipboard] = useState([]);
+  const [layerPanelCollapsed, setLayerPanelCollapsed] = useState(false);
 
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -413,7 +435,7 @@ export default function ClusterMapPage() {
             />
           )}
 
-          <div style={{ display: 'flex', height: 640 }}>
+          <div style={{ display: 'flex', height: 640, overflowX: 'auto' }}>
             {mode === 'editor' && (
               <>
                 <ClusterMapComponentPalette
@@ -422,25 +444,39 @@ export default function ClusterMapPage() {
                   onComponentTypesChange={() => componentTypesQuery.refetch()}
                   getContainer={() => containerRef.current}
                 />
-                <div style={{ width: 160, borderRight: '1px solid #f0f0f0', overflowY: 'auto' }}>
-                  <Button block size="small" icon={<PlusOutlined />} style={{ margin: 8, width: 'calc(100% - 16px)' }} onClick={() => setAddUnitOpen(true)}>
-                    Tambah Unit
-                  </Button>
-                  <ClusterMapLayerPanel
-                    objects={objects}
-                    selectedIds={selectedIds}
-                    hiddenIds={hiddenIds}
-                    onSelect={setSelectedIds}
-                    onToggleHidden={handleToggleHidden}
-                    onToggleLock={(id) => commitObjects((prev) => prev.map((o) => (o.id === id ? { ...o, is_locked: !o.is_locked } : o)))}
-                    onMoveLayer={handleMoveLayer}
-                    editable
-                  />
-                </div>
+                {layerPanelCollapsed ? (
+                  <div style={{ flexShrink: 0, width: 36, borderRight: '1px solid #f0f0f0', display: 'flex', justifyContent: 'center', paddingTop: 12 }}>
+                    <Tooltip title="Tampilkan panel layer" placement="right">
+                      <Button size="small" type="text" icon={<MenuUnfoldOutlined />} onClick={() => setLayerPanelCollapsed(false)} />
+                    </Tooltip>
+                  </div>
+                ) : (
+                  <div style={{ flexShrink: 0, width: 160, borderRight: '1px solid #f0f0f0', overflowY: 'auto' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 8px 0' }}>
+                      <Typography.Text strong style={{ fontSize: 12 }}>Layer</Typography.Text>
+                      <Tooltip title="Sembunyikan panel">
+                        <Button size="small" type="text" icon={<MenuFoldOutlined />} onClick={() => setLayerPanelCollapsed(true)} />
+                      </Tooltip>
+                    </div>
+                    <Button block size="small" icon={<PlusOutlined />} style={{ margin: 8, width: 'calc(100% - 16px)' }} onClick={() => setAddUnitOpen(true)}>
+                      Tambah Unit
+                    </Button>
+                    <ClusterMapLayerPanel
+                      objects={objects}
+                      selectedIds={selectedIds}
+                      hiddenIds={hiddenIds}
+                      onSelect={setSelectedIds}
+                      onToggleHidden={handleToggleHidden}
+                      onToggleLock={(id) => commitObjects((prev) => prev.map((o) => (o.id === id ? { ...o, is_locked: !o.is_locked } : o)))}
+                      onMoveLayer={handleMoveLayer}
+                      editable
+                    />
+                  </div>
+                )}
               </>
             )}
 
-            <div style={{ flex: 1, position: 'relative' }}>
+            <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
               <ClusterMapCanvas
                 ref={canvasRef}
                 map={map}
