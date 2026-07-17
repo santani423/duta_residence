@@ -5,6 +5,8 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BackPaymentController;
 use App\Http\Controllers\Api\V1\BillingController;
 use App\Http\Controllers\Api\V1\ClusterController;
+use App\Http\Controllers\Api\V1\ClusterMapComponentTypeController;
+use App\Http\Controllers\Api\V1\ClusterMapController;
 use App\Http\Controllers\Api\V1\ClusterRateScheduleController;
 use App\Http\Controllers\Api\V1\CollectorVisitController;
 use App\Http\Controllers\Api\V1\DiscountRuleController;
@@ -54,6 +56,19 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::post('clusters/{cluster}/rate-schedules', [ClusterRateScheduleController::class, 'store'])->middleware('permission:clusters.update-rate');
     Route::put('rate-schedules/{schedule}', [ClusterRateScheduleController::class, 'update'])->middleware('permission:clusters.update-rate');
     Route::delete('rate-schedules/{schedule}', [ClusterRateScheduleController::class, 'destroy'])->middleware('permission:clusters.update-rate');
+
+    Route::get('clusters/{cluster}/map', [ClusterMapController::class, 'show'])->middleware('permission:cluster-maps.view');
+    Route::post('clusters/{cluster}/map', [ClusterMapController::class, 'store'])->middleware('permission:cluster-maps.edit');
+    Route::post('cluster-maps/{clusterMap}/background', [ClusterMapController::class, 'uploadBackground'])->middleware('permission:cluster-maps.edit');
+    Route::put('cluster-maps/{clusterMap}', [ClusterMapController::class, 'updateSettings'])->middleware('permission:cluster-maps.edit');
+    Route::put('cluster-maps/{clusterMap}/objects', [ClusterMapController::class, 'saveObjects'])->middleware('permission:cluster-maps.edit');
+    Route::get('cluster-maps/{clusterMap}/versions', [ClusterMapController::class, 'versions'])->middleware('permission:cluster-maps.edit');
+    Route::post('cluster-map-versions/{clusterMapVersion}/restore', [ClusterMapController::class, 'restoreVersion'])->middleware('permission:cluster-maps.edit');
+
+    Route::get('cluster-map-component-types', [ClusterMapComponentTypeController::class, 'index'])->middleware('permission:cluster-maps.view');
+    Route::post('cluster-map-component-types', [ClusterMapComponentTypeController::class, 'store'])->middleware('permission:cluster-map-components.manage');
+    Route::put('cluster-map-component-types/{clusterMapComponentType}', [ClusterMapComponentTypeController::class, 'update'])->middleware('permission:cluster-map-components.manage');
+    Route::delete('cluster-map-component-types/{clusterMapComponentType}', [ClusterMapComponentTypeController::class, 'destroy'])->middleware('permission:cluster-map-components.manage');
 
     Route::get('residents', [ResidentController::class, 'index'])->middleware('permission:residents.view');
     Route::post('residents', [ResidentController::class, 'store'])->middleware('permission:residents.create');

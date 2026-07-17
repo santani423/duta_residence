@@ -1,25 +1,34 @@
-import { Button, Card, Col, DatePicker, Descriptions, Drawer, Dropdown, Form, Input, InputNumber, Modal, Row, Space, Statistic, Switch, Tag, message } from 'antd';
-import { DeleteOutlined, EditOutlined, MoreOutlined, PlusOutlined } from '@ant-design/icons';
+import { Button, Card, Col, DatePicker, Descriptions, Drawer, Dropdown, Form, Input, InputNumber, Modal, Row, Select, Space, Statistic, Switch, Tag, message } from 'antd';
+import { DeleteOutlined, EditOutlined, EnvironmentOutlined, MoreOutlined, PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import PageHeader from '../components/common/PageHeader.jsx';
 import Can from '../components/common/Can.jsx';
+import FilterBar from '../components/common/FilterBar.jsx';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import { ErrorState, LoadingState } from '../components/common/ApiState.jsx';
 import { api } from '../services/estateApi.js';
+import { useTableState } from '../hooks/useTableState.js';
 import { formatCurrency, formatDate, formatDateTime } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
+import { residentStatusOptions, occupancyOptions } from '../components/forms/UnitForm.jsx';
 
 export default function ClusterDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [drawer, setDrawer] = useState({ mode: null, record: null });
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
+  const unitsTable = useTableState();
 
   const detail = useQuery({ queryKey: ['clusters', id], queryFn: () => api.clusters.detail(id) });
   const schedules = useQuery({ queryKey: ['clusters', id, 'rate-schedules'], queryFn: () => api.clusters.rateSchedules(id) });
+  const units = useQuery({
+    queryKey: ['clusters', id, 'units', unitsTable.params],
+    queryFn: () => api.units.list({ ...unitsTable.params, cluster_id: id, per_page: unitsTable.params.per_page || 20 }),
+  });
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['clusters', id] });
@@ -88,7 +97,16 @@ export default function ClusterDetailPage() {
         breadcrumbs={[{ label: 'Cluster', to: '/clusters' }, { label: cluster.name }]}
         onRefresh={() => { detail.refetch(); schedules.refetch(); }}
         loading={detail.isFetching || schedules.isFetching}
-        extra={<Can permission="clusters.update-rate"><Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Tambah Jadwal Tarif</Button></Can>}
+        extra={(
+          <Space>
+            <Can permission="cluster-maps.view">
+              <Button icon={<EnvironmentOutlined />} onClick={() => navigate(`/clusters/${id}/map`)}>Peta Cluster</Button>
+            </Can>
+            <Can permission="clusters.update-rate">
+              <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Tambah Jadwal Tarif</Button>
+            </Can>
+          </Space>
+        )}
       />
 
       <Card>
@@ -163,6 +181,33 @@ export default function ClusterDetailPage() {
                 );
               },
             },
+          ]}
+        />
+      </Card>
+
+      <Card className="section-row" title={`Unit & Penghuni (${units.data?.meta?.total ?? cluster.units_count ?? 0})`}>
+        <FilterBar>
+          <Input allowClear placeholder="Cari ID unit, blok, nama pemilik" value={unitsTable.search} onChange={(event) => unitsTable.setSearch(event.target.value)} className="filter-input" />
+          <Select allowClear placeholder="Status" options={residentStatusOptions} value={unitsTable.filters.status_id} onChange={(value) => unitsTable.setFilters({ ...unitsTable.filters, status_id: value })} className="filter-input" />
+          <Select allowClear placeholder="Okupansi" options={occupancyOptions} value={unitsTable.filters.occupancy_id} onChange={(value) => unitsTable.setFilters({ ...unitsTable.filters, occupancy_id: value })} className="filter-input" />
+        </FilterBar>
+        <ResponsiveTable
+          query={units}
+          onChange={unitsTable.handleTableChange}
+          scrollX={1100}
+          columns={[
+            { title: 'Unit', dataIndex: 'id', fixed: 'left', width: 90 },
+            { title: 'Blok', dataIndex: 'block', width: 80 },
+            { title: 'Kavling', dataIndex: 'lot_number', width: 90 },
+            {
+              title: 'Penghuni',
+              width: 220,
+              render: (_, row) => (row.resident ? <Link to={`/residents/${row.resident.id}`}>{row.resident.name}</Link> : '-'),
+            },
+            { title: 'Telepon', render: (_, row) => row.resident?.phone || '-', width: 140 },
+            { title: 'Tipe', render: (_, row) => row.property_type?.name || row.propertyType?.name || row.property_type_id, width: 150 },
+            { title: 'Okupansi', render: (_, row) => row.occupancy?.name || '-', width: 110 },
+            { title: 'Status', render: (_, row) => <Tag color={row.status_id === 'AK' ? 'green' : 'default'}>{row.status?.name || row.status_id}</Tag>, width: 130 },
           ]}
         />
       </Card>

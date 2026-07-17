@@ -14,6 +14,7 @@ import NotFoundPage from '../pages/errors/NotFoundPage.jsx';
 const DashboardPage = lazy(() => import('../pages/DashboardPage.jsx'));
 const ClustersPage = lazy(() => import('../pages/ClustersPage.jsx'));
 const ClusterDetailPage = lazy(() => import('../pages/ClusterDetailPage.jsx'));
+const ClusterMapPage = lazy(() => import('../pages/cluster-map/ClusterMapPage.jsx'));
 const ResidentsPage = lazy(() => import('../pages/ResidentsPage.jsx'));
 const ResidentDetailPage = lazy(() => import('../pages/ResidentDetailPage.jsx'));
 const UnitsPage = lazy(() => import('../pages/UnitsPage.jsx'));
@@ -81,6 +82,7 @@ export default function AppRoutes() {
         <Route index element={hasRole('customer') ? <Navigate to="/resident/dashboard" replace /> : <LazyPage><DashboardPage /></LazyPage>} />
         <Route path="clusters" element={<Protected permissions={['clusters.view']}><LazyPage><ClustersPage /></LazyPage></Protected>} />
         <Route path="clusters/:id" element={<Protected permissions={['clusters.view']}><LazyPage><ClusterDetailPage /></LazyPage></Protected>} />
+        <Route path="clusters/:id/map" element={<Protected permissions={['cluster-maps.view']}><LazyPage><ClusterMapPage /></LazyPage></Protected>} />
         <Route path="residents" element={<Protected permissions={['residents.view']}><LazyPage><ResidentsPage /></LazyPage></Protected>} />
         <Route path="residents/:id" element={<Protected permissions={['residents.view']}><LazyPage><ResidentDetailPage /></LazyPage></Protected>} />
         <Route path="units" element={<Protected permissions={['units.view']}><LazyPage><UnitsPage /></LazyPage></Protected>} />

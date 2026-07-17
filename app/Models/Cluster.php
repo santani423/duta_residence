@@ -22,6 +22,11 @@ class Cluster extends Model
         return $this->hasMany(Unit::class);
     }
 
+    public function map()
+    {
+        return $this->hasOne(ClusterMap::class);
+    }
+
     public function rateSchedules()
     {
         return $this->hasMany(ClusterRateSchedule::class)->orderByDesc('effective_date');

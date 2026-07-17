@@ -25,6 +25,25 @@ export const api = {
     updateRateSchedule: (id, payload) => http.put(`/rate-schedules/${id}`, payload),
     removeRateSchedule: (id) => http.delete(`/rate-schedules/${id}`),
   },
+  clusterMaps: {
+    get: (clusterId) => http.get(`/clusters/${clusterId}/map`),
+    create: (clusterId, payload) => http.post(`/clusters/${clusterId}/map`, payload),
+    uploadBackground: (mapId, formData) => http.post(`/cluster-maps/${mapId}/background`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+    updateSettings: (mapId, payload) => http.put(`/cluster-maps/${mapId}`, payload),
+    saveObjects: (mapId, payload) => http.put(`/cluster-maps/${mapId}/objects`, payload),
+    versions: {
+      list: (mapId) => http.get(`/cluster-maps/${mapId}/versions`),
+      restore: (versionId) => http.post(`/cluster-map-versions/${versionId}/restore`),
+    },
+  },
+  clusterMapComponentTypes: {
+    list: () => http.get('/cluster-map-component-types'),
+    create: (payload) => http.post('/cluster-map-component-types', payload),
+    update: (id, payload) => http.put(`/cluster-map-component-types/${id}`, payload),
+    remove: (id) => http.delete(`/cluster-map-component-types/${id}`),
+  },
   residents: {
     list: (params) => http.get('/residents', { params }),
     detail: (id) => http.get(`/residents/${id}`),

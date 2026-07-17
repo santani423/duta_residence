@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
                 AdminUserSeeder::class,
                 PenaltyRuleSeeder::class,
                 DiscountRuleSeeder::class,
+                ClusterMapComponentTypeSeeder::class,
                 PaymentSettingSeeder::class,
                 ResidentSeeder::class,
                 UnitSeeder::class,

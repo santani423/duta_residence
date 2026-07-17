@@ -1,0 +1,337 @@
+<?php
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Controllers\Controller;
+use App\Http\Responses\ApiResponse;
+use App\Models\Cluster;
+use App\Models\ClusterMap;
+use App\Models\ClusterMapComponentType;
+use App\Models\ClusterMapObject;
+use App\Models\ClusterMapVersion;
+use App\Services\AuditService;
+use App\Services\PenaltyService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+
+class ClusterMapController extends Controller
+{
+    use ApiResponse;
+
+    private const SHAPE_TYPES = ['rect', 'circle', 'triangle', 'trapezoid', 'polygon', 'line', 'text'];
+    private const MAX_VERSIONS_KEPT = 30;
+
+    public function show(Cluster $cluster, PenaltyService $penaltyService)
+    {
+        $map = $cluster->map()->first();
+
+        $placedUnitIds = $map
+            ? ClusterMapObject::query()->where('cluster_map_id', $map->id)->whereNotNull('unit_id')->pluck('unit_id')
+            : collect();
+
+        $availableUnits = $cluster->units()
+            ->whereNotIn('id', $placedUnitIds)
+            ->orderBy('block')->orderBy('lot_number')
+            ->get(['id', 'block', 'lot_number', 'land_area', 'building_area']);
+
+        return $this->success([
+            'map' => $map ? $this->serializeMap($map, $penaltyService) : null,
+            'cluster' => ['id' => $cluster->id, 'name' => $cluster->name],
+            'component_types' => ClusterMapComponentType::query()->active()->orderBy('category')->orderBy('name')->get(),
+            'available_units' => $availableUnits,
+        ]);
+    }
+
+    public function store(Request $request, Cluster $cluster, AuditService $auditService)
+    {
+        $existing = $cluster->map()->first();
+        if ($existing) {
+            return $this->success(['id' => $existing->id], 'Peta cluster sudah tersedia.', 200);
+        }
+
+        $data = $request->validate([
+            'canvas_type' => ['required', 'in:blank,image'],
+            'canvas_width' => ['sometimes', 'integer', 'min:200', 'max:10000'],
+            'canvas_height' => ['sometimes', 'integer', 'min:200', 'max:10000'],
+            'scale_meters_per_pixel' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $map = ClusterMap::query()->create([
+            ...$data,
+            'cluster_id' => $cluster->id,
+            'created_by' => $request->user()->id,
+            'updated_by' => $request->user()->id,
+        ]);
+
+        $auditService->log('cluster_map_created', 'cluster-maps', 'CREATE', $map, [], $map->toArray());
+
+        return $this->success(['id' => $map->id], 'Peta cluster berhasil dibuat.', 201);
+    }
+
+    public function uploadBackground(Request $request, ClusterMap $clusterMap, AuditService $auditService)
+    {
+        $data = $request->validate([
+            'image' => ['required', 'image', 'max:5120'],
+            'background_width' => ['nullable', 'numeric', 'min:1'],
+            'background_height' => ['nullable', 'numeric', 'min:1'],
+        ]);
+
+        $oldPath = $clusterMap->background_image_path;
+        $stored = $data['image']->store('cluster-maps', 'public');
+
+        $clusterMap->update([
+            'canvas_type' => 'image',
+            'background_image_path' => $stored,
+            'background_width' => $data['background_width'] ?? $clusterMap->background_width,
+            'background_height' => $data['background_height'] ?? $clusterMap->background_height,
+            'updated_by' => $request->user()->id,
+        ]);
+
+        if ($oldPath) {
+            Storage::disk('public')->delete($oldPath);
+        }
+
+        $auditService->log('cluster_map_background_uploaded', 'cluster-maps', 'UPDATE', $clusterMap, [], ['background_image_path' => $stored]);
+
+        return $this->success($clusterMap->refresh(), 'Gambar latar peta berhasil diunggah.');
+    }
+
+    public function updateSettings(Request $request, ClusterMap $clusterMap, AuditService $auditService)
+    {
+        $data = $request->validate([
+            'canvas_width' => ['sometimes', 'integer', 'min:200', 'max:10000'],
+            'canvas_height' => ['sometimes', 'integer', 'min:200', 'max:10000'],
+            'grid_enabled' => ['sometimes', 'boolean'],
+            'grid_size' => ['sometimes', 'integer', 'min:5', 'max:500'],
+            'grid_visible' => ['sometimes', 'boolean'],
+            'snap_enabled' => ['sometimes', 'boolean'],
+            'scale_meters_per_pixel' => ['nullable', 'numeric', 'min:0'],
+            'background_x' => ['sometimes', 'numeric'],
+            'background_y' => ['sometimes', 'numeric'],
+            'background_width' => ['nullable', 'numeric', 'min:1'],
+            'background_height' => ['nullable', 'numeric', 'min:1'],
+            'background_scale' => ['sometimes', 'numeric', 'min:0.05', 'max:20'],
+            'background_opacity' => ['sometimes', 'numeric', 'min:0', 'max:1'],
+        ]);
+
+        $old = $clusterMap->toArray();
+        $clusterMap->update([...$data, 'updated_by' => $request->user()->id]);
+        $auditService->log('cluster_map_settings_updated', 'cluster-maps', 'UPDATE', $clusterMap, $old, $clusterMap->toArray());
+
+        return $this->success($clusterMap->refresh(), 'Pengaturan peta berhasil disimpan.');
+    }
+
+    public function saveObjects(Request $request, ClusterMap $clusterMap, AuditService $auditService, PenaltyService $penaltyService)
+    {
+        $data = $request->validate([
+            'objects' => ['present', 'array'],
+            'objects.*.id' => ['required', 'string'],
+            'objects.*.object_category' => ['required', Rule::in(['unit', 'component', 'label'])],
+            'objects.*.shape_type' => ['required', Rule::in(self::SHAPE_TYPES)],
+            'objects.*.unit_id' => ['nullable', 'string', 'exists:units,id'],
+            'objects.*.component_type_id' => ['nullable', 'integer', 'exists:cluster_map_component_types,id'],
+            'objects.*.x' => ['required', 'numeric'],
+            'objects.*.y' => ['required', 'numeric'],
+            'objects.*.width' => ['nullable', 'numeric', 'min:0'],
+            'objects.*.height' => ['nullable', 'numeric', 'min:0'],
+            'objects.*.rotation' => ['nullable', 'numeric'],
+            'objects.*.points' => ['nullable', 'array'],
+            'objects.*.fill_color' => ['nullable', 'string', 'max:20'],
+            'objects.*.stroke_color' => ['nullable', 'string', 'max:20'],
+            'objects.*.stroke_width' => ['nullable', 'numeric', 'min:0'],
+            'objects.*.opacity' => ['nullable', 'numeric', 'min:0', 'max:1'],
+            'objects.*.layer_order' => ['nullable', 'integer'],
+            'objects.*.is_locked' => ['nullable', 'boolean'],
+            'objects.*.is_color_auto' => ['nullable', 'boolean'],
+            'objects.*.label_text' => ['nullable', 'string'],
+            'objects.*.group_id' => ['nullable', 'string', 'max:40'],
+            'objects.*.metadata' => ['nullable', 'array'],
+            'version_label' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $objects = $data['objects'];
+        $this->assertObjectsValid($objects, $clusterMap);
+
+        DB::transaction(function () use ($objects, $clusterMap, $request) {
+            $incomingIds = collect($objects)->pluck('id');
+            ClusterMapObject::query()->where('cluster_map_id', $clusterMap->id)
+                ->whereNotIn('id', $incomingIds)->delete();
+
+            foreach ($objects as $object) {
+                ClusterMapObject::query()->updateOrCreate(
+                    ['id' => $object['id']],
+                    [
+                        'cluster_map_id' => $clusterMap->id,
+                        'object_category' => $object['object_category'],
+                        'unit_id' => $object['unit_id'] ?? null,
+                        'component_type_id' => $object['component_type_id'] ?? null,
+                        'shape_type' => $object['shape_type'],
+                        'x' => $object['x'],
+                        'y' => $object['y'],
+                        'width' => $object['width'] ?? null,
+                        'height' => $object['height'] ?? null,
+                        'rotation' => $object['rotation'] ?? 0,
+                        'points' => $object['points'] ?? null,
+                        'fill_color' => $object['fill_color'] ?? null,
+                        'stroke_color' => $object['stroke_color'] ?? null,
+                        'stroke_width' => $object['stroke_width'] ?? 1,
+                        'opacity' => $object['opacity'] ?? 1,
+                        'layer_order' => $object['layer_order'] ?? 0,
+                        'is_locked' => $object['is_locked'] ?? false,
+                        'is_color_auto' => $object['is_color_auto'] ?? true,
+                        'label_text' => $object['label_text'] ?? null,
+                        'group_id' => $object['group_id'] ?? null,
+                        'metadata' => $object['metadata'] ?? null,
+                        'created_by' => $request->user()->id,
+                        'updated_by' => $request->user()->id,
+                    ]
+                );
+            }
+
+            $this->recordVersion($clusterMap, $request->user()->id, $request->input('version_label'));
+        });
+
+        $auditService->log('cluster_map_saved', 'cluster-maps', 'UPDATE', $clusterMap, [], ['object_count' => count($objects)]);
+
+        return $this->success($this->serializeMap($clusterMap->fresh(), $penaltyService), 'Peta cluster berhasil disimpan.');
+    }
+
+    public function versions(ClusterMap $clusterMap)
+    {
+        $versions = $clusterMap->versions()->with('creator:id,name')->get(['id', 'cluster_map_id', 'label', 'created_by', 'created_at']);
+
+        return $this->success($versions);
+    }
+
+    public function restoreVersion(Request $request, ClusterMapVersion $clusterMapVersion, AuditService $auditService, PenaltyService $penaltyService)
+    {
+        $map = $clusterMapVersion->clusterMap;
+        $snapshot = $clusterMapVersion->snapshot;
+
+        DB::transaction(function () use ($map, $snapshot, $request, $clusterMapVersion) {
+            $map->update(array_merge(
+                collect($snapshot['map'] ?? [])->only([
+                    'canvas_type', 'background_image_path', 'background_x', 'background_y',
+                    'background_width', 'background_height', 'background_scale', 'background_opacity',
+                    'canvas_width', 'canvas_height', 'grid_enabled', 'grid_size', 'grid_visible',
+                    'snap_enabled', 'scale_meters_per_pixel',
+                ])->all(),
+                ['updated_by' => $request->user()->id]
+            ));
+
+            ClusterMapObject::query()->where('cluster_map_id', $map->id)->delete();
+            foreach ($snapshot['objects'] ?? [] as $object) {
+                ClusterMapObject::query()->create(array_merge(
+                    collect($object)->only([
+                        'id', 'object_category', 'unit_id', 'component_type_id', 'shape_type',
+                        'x', 'y', 'width', 'height', 'rotation', 'points', 'fill_color', 'stroke_color',
+                        'stroke_width', 'opacity', 'layer_order', 'is_locked', 'is_color_auto',
+                        'label_text', 'group_id', 'metadata',
+                    ])->all(),
+                    ['cluster_map_id' => $map->id, 'updated_by' => $request->user()->id]
+                ));
+            }
+
+            $this->recordVersion($map, $request->user()->id, "Dipulihkan dari versi #{$clusterMapVersion->id}");
+        });
+
+        $auditService->log('cluster_map_version_restored', 'cluster-maps', 'UPDATE', $map, [], ['version_id' => $clusterMapVersion->id]);
+
+        return $this->success($this->serializeMap($map->fresh(), $penaltyService), 'Versi peta berhasil dipulihkan.');
+    }
+
+    private function assertObjectsValid(array $objects, ClusterMap $clusterMap): void
+    {
+        $errors = [];
+        $seenUnitIds = [];
+
+        foreach ($objects as $index => $object) {
+            if (in_array($object['shape_type'], ['polygon', 'line'], true) && empty($object['points'])) {
+                $errors["objects.$index.points"] = 'Titik poligon/garis wajib diisi untuk bentuk ini.';
+            }
+
+            if ($object['object_category'] === 'unit') {
+                $unitId = $object['unit_id'] ?? null;
+                if (! $unitId) {
+                    $errors["objects.$index.unit_id"] = 'Objek unit wajib memiliki unit_id.';
+                    continue;
+                }
+
+                if (isset($seenUnitIds[$unitId])) {
+                    $errors["objects.$index.unit_id"] = "Unit {$unitId} ditempatkan lebih dari sekali pada peta ini.";
+                }
+                $seenUnitIds[$unitId] = true;
+
+                $belongsToCluster = DB::table('units')->where('id', $unitId)->where('cluster_id', $clusterMap->cluster_id)->exists();
+                if (! $belongsToCluster) {
+                    $errors["objects.$index.unit_id"] = "Unit {$unitId} bukan bagian dari cluster ini.";
+                }
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    private function recordVersion(ClusterMap $map, int $userId, ?string $label): void
+    {
+        $snapshot = [
+            'map' => $map->fresh()->toArray(),
+            'objects' => $map->objects()->get()->toArray(),
+        ];
+
+        ClusterMapVersion::query()->create([
+            'cluster_map_id' => $map->id,
+            'label' => $label,
+            'snapshot' => $snapshot,
+            'created_by' => $userId,
+            'created_at' => now(),
+        ]);
+
+        $staleIds = $map->versions()->orderByDesc('created_at')->pluck('id')->slice(self::MAX_VERSIONS_KEPT);
+        if ($staleIds->isNotEmpty()) {
+            ClusterMapVersion::query()->whereIn('id', $staleIds)->delete();
+        }
+    }
+
+    private function serializeMap(ClusterMap $map, PenaltyService $penaltyService): array
+    {
+        $objects = $map->objects()->with(['unit.resident:id,name,phone', 'unit.occupancy', 'unit.status', 'componentType'])->get();
+
+        $objects = $objects->map(function (ClusterMapObject $object) use ($penaltyService) {
+            $payload = $object->toArray();
+
+            if ($object->object_category === ClusterMapObject::CATEGORY_UNIT && $object->unit) {
+                $unit = $object->unit;
+                $outstanding = $penaltyService->calculateUnitOutstanding($unit->id);
+
+                $payload['unit_detail'] = [
+                    'id' => $unit->id,
+                    'block' => $unit->block,
+                    'lot_number' => $unit->lot_number,
+                    'land_area' => $unit->land_area,
+                    'building_area' => $unit->building_area,
+                    'resident_name' => $unit->resident?->name,
+                    'resident_phone' => $unit->resident?->phone,
+                    'occupancy_id' => $unit->occupancy_id,
+                    'occupancy_name' => $unit->occupancy?->name,
+                    'status_id' => $unit->status_id,
+                    'status_name' => $unit->status?->name,
+                    'has_arrears' => $outstanding['total_outstanding'] > 0,
+                    'total_outstanding' => $outstanding['total_outstanding'],
+                ];
+            }
+
+            return $payload;
+        });
+
+        return [
+            ...$map->toArray(),
+            'objects' => $objects,
+        ];
+    }
+}

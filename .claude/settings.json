@@ -88,7 +88,15 @@
       "Bash(curl -s -H 'Authorization: Bearer 2|zDQGQrM5e3H7ybvztN6xv3mJOQfvb2Z4GFR21IRpfcb10382' -H 'Accept: application/json' http://127.0.0.1:8000/api/v1/receivables?per_page=3)",
       "Bash(curl -s -H 'Authorization: Bearer 3|rkTWVKH3PZMmf8d6ZuYNiEWNeLTMXcX2L9EoN0Zqef33e3ee' -H 'Accept: application/json' http://127.0.0.1:8000/api/v1/manual-book/sections?module=receivables)",
       "Bash(composer show *)",
-      "Bash(curl -s -H 'Authorization: Bearer 4|ijzJf19NxUA7csgm6l4kunuRNP89o0r4am1eSIE0eb073e85' -H 'Accept: application/json' http://127.0.0.1:8000/api/v1/receivables/aging)"
+      "Bash(curl -s -H 'Authorization: Bearer 4|ijzJf19NxUA7csgm6l4kunuRNP89o0r4am1eSIE0eb073e85' -H 'Accept: application/json' http://127.0.0.1:8000/api/v1/receivables/aging)",
+      "Bash(php -l app/Http/Controllers/Api/V1/ClusterMapController.php)",
+      "Bash(php -l app/Models/ClusterMap.php)",
+      "Bash(php -l app/Models/ClusterMapObject.php)",
+      "Bash(php -l app/Models/ClusterMapComponentType.php)",
+      "Bash(php -l app/Models/ClusterMapVersion.php)",
+      "Bash(php -l app/Http/Controllers/Api/V1/ClusterMapComponentTypeController.php)",
+      "Bash(php -l database/seeders/ClusterMapComponentTypeSeeder.php)",
+      "Bash(node -e ' *)"
     ],
     "additionalDirectories": [
       "/tmp/pw-verify",
