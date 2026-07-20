@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -25,11 +27,19 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordFocusNode = FocusNode();
   bool _obscurePassword = true;
   bool _loading = false;
+  bool _biometricAvailable = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _focusUsername());
+    _checkBiometricAvailability();
+  }
+
+  Future<void> _checkBiometricAvailability() async {
+    final available = await widget.sessionController
+        .hasBiometricLoginAvailable();
+    if (mounted) setState(() => _biometricAvailable = available);
   }
 
   @override
@@ -60,6 +70,32 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(error.message)));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _loginWithBiometrics() async {
+    if (_loading) return;
+    setState(() => _loading = true);
+    try {
+      final ok = await widget.sessionController.loginWithBiometrics();
+      if (!ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Verifikasi biometrik gagal atau dibatalkan.'),
+          ),
+        );
+      }
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+      // The saved credentials may have just been cleared (e.g. rejected by
+      // the server) - re-check so the icon disappears instead of offering a
+      // biometric login that will keep failing.
+      unawaited(_checkBiometricAvailability());
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -117,13 +153,32 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Text(
-                              'Masuk ke akun penghuni',
-                              style: Theme.of(context).textTheme.headlineSmall
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: -0.4,
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'Masuk ke akun penghuni',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineSmall
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: -0.4,
+                                        ),
                                   ),
+                                ),
+                                if (_biometricAvailable)
+                                  IconButton.filledTonal(
+                                    tooltip: 'Login dengan biometrik',
+                                    onPressed: _loading
+                                        ? null
+                                        : _loginWithBiometrics,
+                                    icon: const Icon(
+                                      Icons.fingerprint_rounded,
+                                    ),
+                                  ),
+                              ],
                             ),
                             const SizedBox(height: AppSpacing.sm),
                             Text(

@@ -4,6 +4,7 @@ import '../api/api_client.dart';
 import '../api/api_exception.dart';
 import '../models/user_session.dart';
 import '../services/biometric_auth_service.dart';
+import '../storage/credential_store.dart';
 import '../storage/preferences_store.dart';
 import '../storage/token_store.dart';
 
@@ -19,12 +20,14 @@ class SessionController extends ChangeNotifier {
     required this._tokenStore,
     required this._preferencesStore,
     required this._biometricAuth,
+    required this._credentialStore,
   });
 
   final ApiClient _apiClient;
   final TokenStore _tokenStore;
   final PreferencesStore _preferencesStore;
   final BiometricAuthService _biometricAuth;
+  final CredentialStore _credentialStore;
   SessionStatus _status = SessionStatus.booting;
   UserSession? _user;
   String? _message;
@@ -58,10 +61,55 @@ class SessionController extends ChangeNotifier {
   Future<void> setBiometricEnabled(bool enabled) async {
     await _preferencesStore.saveBiometricEnabled(enabled);
     _biometricEnabled = enabled;
+    if (!enabled) {
+      // Turning the setting off must remove the fast biometric re-login path
+      // too, not just the app-open lock gate.
+      await _credentialStore.clear();
+    }
     notifyListeners();
   }
 
+  /// Whether the login screen should offer a biometric-login icon: only
+  /// once the toggle is on AND a manual login has actually captured
+  /// credentials to replay (right after enabling the toggle there's nothing
+  /// saved yet, since only a real login submits the plaintext password).
+  Future<bool> hasBiometricLoginAvailable() async {
+    if (!_biometricEnabled) return false;
+    return await _credentialStore.read() != null;
+  }
+
+  /// Prompts the OS biometric UI, then replays the last saved credentials
+  /// through a real network login - this is not a bypass, the server still
+  /// issues a fresh token. Returns false on a cancelled/failed biometric
+  /// check (no saved credentials counts as unavailable, not a failure).
+  Future<bool> loginWithBiometrics() async {
+    final creds = await _credentialStore.read();
+    if (creds == null) return false;
+    final verified = await _biometricAuth.authenticate(
+      reason: 'Verifikasi identitas Anda untuk login.',
+    );
+    if (!verified) return false;
+    try {
+      await login(creds.username, creds.password);
+      return true;
+    } on ApiException catch (error) {
+      if (error.statusCode != null) {
+        // The server explicitly rejected these credentials (password
+        // changed elsewhere, account disabled, etc.) - stop offering a
+        // biometric login that would just fail again.
+        await _credentialStore.clear();
+      }
+      rethrow;
+    }
+  }
+
   Future<void> bootstrap() async {
+    // Loaded unconditionally (not just on the authenticated path below) so
+    // the login screen can already answer `hasBiometricLoginAvailable()`
+    // correctly even when bootstrap lands on `unauthenticated` - e.g. right
+    // after the saved API token expired.
+    _biometricEnabled = await _preferencesStore.readBiometricEnabled();
+
     final token = await _tokenStore.read();
     if (token == null || token.isEmpty) {
       _setUnauthenticated();
@@ -83,7 +131,6 @@ class SessionController extends ChangeNotifier {
       _user = user;
       _status = SessionStatus.authenticated;
       _message = null;
-      _biometricEnabled = await _preferencesStore.readBiometricEnabled();
       _biometricUnlocked = false;
     } on ApiException catch (error) {
       if (error.statusCode == null) {
@@ -131,6 +178,12 @@ class SessionController extends ChangeNotifier {
     // check right away, only on the next cold start of the app.
     _biometricEnabled = await _preferencesStore.readBiometricEnabled();
     _biometricUnlocked = true;
+    if (_biometricEnabled) {
+      // Captures the credentials that just proved valid so a future
+      // biometric prompt (e.g. after the token expires) can replay them
+      // instead of forcing the user to retype their password.
+      await _credentialStore.save(username, password);
+    }
     notifyListeners();
   }
 
@@ -145,12 +198,19 @@ class SessionController extends ChangeNotifier {
 
   Future<void> logout() async {
     await _forceLogout();
+    // A manual logout must be a real logout - the biometric quick re-login
+    // path is not allowed to survive it, even if the toggle is still on.
+    await _credentialStore.clear();
     _setUnauthenticated();
     notifyListeners();
   }
 
   Future<void> expireSession() async {
     await _tokenStore.clear();
+    // Deliberately keeps any saved biometric credentials - this is exactly
+    // the case the login-screen fingerprint icon exists for, so the user
+    // isn't forced to retype their password every time the 8-hour API
+    // token expires.
     _setUnauthenticated('Sesi Anda berakhir. Silakan login kembali.');
     notifyListeners();
   }

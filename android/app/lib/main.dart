@@ -8,6 +8,7 @@ import 'src/app/duta_residence_app.dart';
 import 'src/services/biometric_auth_service.dart';
 import 'src/state/session_controller.dart';
 import 'src/state/theme_controller.dart';
+import 'src/storage/credential_store.dart';
 import 'src/storage/preferences_store.dart';
 import 'src/storage/token_store.dart';
 
@@ -26,6 +27,7 @@ Future<void> main() async {
     tokenStore: tokenStore,
     preferencesStore: preferencesStore,
     biometricAuth: BiometricAuthService(),
+    credentialStore: CredentialStore(),
   );
   apiClient.onUnauthorized = sessionController.expireSession;
 
