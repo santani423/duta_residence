@@ -18,7 +18,10 @@ class ResidentController extends Controller
     public function index(Request $request)
     {
         $query = Resident::query()
-            ->search($request->query('search'));
+            ->search($request->query('search'))
+            ->address($request->query('address'))
+            ->cluster($request->query('cluster_id'))
+            ->block($request->query('block'));
 
         return $this->paginated($query->orderBy('name')->paginate($request->integer('per_page', 15)));
     }

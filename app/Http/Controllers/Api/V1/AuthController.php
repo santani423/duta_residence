@@ -33,8 +33,9 @@ class AuthController extends Controller
         }
 
         $permissions = $user->getAllPermissions()->pluck('name')->values()->all();
-        $token = $user->createToken('api-token', $permissions, now()->addHours(8))->plainTextToken;
-        $user->forceFill(['last_login_at' => now(), 'last_login_ip' => $request->ip()])->save();
+        $newToken = $user->createToken('api-token', $permissions, now()->addHours(8));
+        $token = $newToken->plainTextToken;
+        $user->forceFill(['last_login_at' => now(), 'last_login_ip' => $request->ip(), 'active_token_id' => $newToken->accessToken->id])->save();
 
         $auditService->log('login_success', 'auth', 'LOGIN', $user);
 

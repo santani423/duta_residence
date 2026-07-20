@@ -1,4 +1,4 @@
-import { Button, Card, Drawer, Dropdown, Form, Input, Modal, Space, message } from 'antd';
+import { Button, Card, Drawer, Dropdown, Form, Input, Modal, Select, Space, message } from 'antd';
 import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -23,6 +23,7 @@ export default function ResidentsPage() {
 
   const residents = useQuery({ queryKey: ['residents', table.params], queryFn: () => api.residents.list(table.params) });
   const districts = useQuery({ queryKey: ['lookup-districts'], queryFn: () => api.lookup.districts() });
+  const clusters = useQuery({ queryKey: ['lookup-clusters'], queryFn: () => api.clusters.list({ per_page: 100 }) });
 
   const save = useMutation({
     mutationFn: (values) => drawer.type === 'edit' ? api.residents.update(drawer.record.id, values) : api.residents.create(values),
@@ -86,6 +87,18 @@ export default function ResidentsPage() {
 
       <FilterBar>
         <Input allowClear placeholder="Cari nama, ID, telepon" value={table.search} onChange={(event) => table.setSearch(event.target.value)} className="filter-input" />
+        <Input allowClear placeholder="Alamat" value={table.filters.address} onChange={(event) => table.setFilters({ ...table.filters, address: event.target.value || undefined })} className="filter-input" />
+        <Select
+          allowClear
+          showSearch
+          placeholder="Cluster"
+          optionFilterProp="label"
+          value={table.filters.cluster_id}
+          onChange={(value) => table.setFilters({ ...table.filters, cluster_id: value })}
+          options={(clusters.data?.data || []).map((item) => ({ value: item.id, label: `${item.id} - ${item.name}` }))}
+          className="filter-input"
+        />
+        <Input allowClear placeholder="Blok" value={table.filters.block} onChange={(event) => table.setFilters({ ...table.filters, block: event.target.value || undefined })} className="filter-input" />
       </FilterBar>
 
       <Card>

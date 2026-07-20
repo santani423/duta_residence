@@ -17,13 +17,14 @@ trait ApiResponse
         ], $status);
     }
 
-    protected function paginated(LengthAwarePaginator $paginator, string $message = 'Data berhasil ditemukan.'): JsonResponse
+    protected function paginated(LengthAwarePaginator $paginator, string $message = 'Data berhasil ditemukan.', array $extraMeta = []): JsonResponse
     {
         return $this->success($paginator->items(), $message, 200, [
             'current_page' => $paginator->currentPage(),
             'per_page' => $paginator->perPage(),
             'total' => $paginator->total(),
             'last_page' => $paginator->lastPage(),
+            ...$extraMeta,
         ]);
     }
 

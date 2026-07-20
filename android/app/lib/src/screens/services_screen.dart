@@ -15,7 +15,7 @@ import '../widgets/info_row.dart';
 import '../widgets/state_views.dart';
 import '../widgets/status_badge.dart';
 
-enum ServiceTab { bills, payments, complaints, maintenance, documents }
+enum ServiceTab { bills, payments, complaints, documents }
 
 class ServicesScreen extends StatefulWidget {
   const ServicesScreen({required this.apiClient, super.key});
@@ -41,11 +41,6 @@ const _serviceTabs = [
     ServiceTab.complaints,
     Icons.report_problem_outlined,
     'Komplain',
-  ),
-  _ServiceTabItem(
-    ServiceTab.maintenance,
-    Icons.handyman_outlined,
-    'Maintenance',
   ),
   _ServiceTabItem(ServiceTab.documents, Icons.folder_outlined, 'Dokumen'),
 ];
@@ -106,10 +101,6 @@ class _ServicesScreenState extends State<ServicesScreen> {
             ServiceTab.complaints => _TicketSection(
               apiClient: widget.apiClient,
               kind: _TicketKind.complaint,
-            ),
-            ServiceTab.maintenance => _TicketSection(
-              apiClient: widget.apiClient,
-              kind: _TicketKind.maintenance,
             ),
             ServiceTab.documents => _DocumentsSection(
               apiClient: widget.apiClient,
@@ -182,7 +173,7 @@ class _BillsSection extends StatefulWidget {
 }
 
 class _BillsSectionState extends State<_BillsSection> {
-  late Future<List<dynamic>> _future;
+  late Future<Map<String, dynamic>> _future;
 
   @override
   void initState() {
@@ -190,12 +181,12 @@ class _BillsSectionState extends State<_BillsSection> {
     _future = _load();
   }
 
-  Future<List<dynamic>> _load() async {
+  Future<Map<String, dynamic>> _load() async {
     final result = await widget.apiClient.get(
       'resident/bills',
       query: {'per_page': 30},
     );
-    return asList(result.data);
+    return {'items': asList(result.data), 'meta': asMap(result.meta)};
   }
 
   Future<void> _refresh() async {
@@ -249,7 +240,7 @@ class _BillsSectionState extends State<_BillsSection> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<dynamic>>(
+    return FutureBuilder<Map<String, dynamic>>(
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -261,7 +252,8 @@ class _BillsSectionState extends State<_BillsSection> {
               : snapshot.error.toString();
           return ErrorView(message: message, onRetry: () => _refresh());
         }
-        final items = snapshot.data ?? [];
+        final items = asList(snapshot.data?['items']);
+        final meta = asMap(snapshot.data?['meta']);
         if (items.isEmpty) {
           return const EmptyView(message: 'Tidak ada tagihan.');
         }
@@ -269,10 +261,45 @@ class _BillsSectionState extends State<_BillsSection> {
           onRefresh: _refresh,
           child: ListView.separated(
             padding: const EdgeInsets.all(AppSpacing.lg),
-            itemCount: items.length,
+            itemCount: items.length + 1,
             separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
             itemBuilder: (context, index) {
-              final invoice = asMap(items[index]);
+              if (index == 0) {
+                return DutaCard(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Total Tagihan',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
+                            money(meta['total_outstanding']),
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w900),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        '${compact(meta['unpaid_count'])} invoice',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              final invoice = asMap(items[index - 1]);
               final canPay = ['unpaid', 'overdue'].contains(invoice['status']);
               return FadeSlideIn(
                 index: index,

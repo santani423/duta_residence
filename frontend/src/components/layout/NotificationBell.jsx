@@ -3,7 +3,7 @@ import { BellOutlined, CheckOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api } from '../../services/estateApi.js';
-import { formatDateTime } from '../../utils/format.js';
+import { formatDateTime, formatNotificationType } from '../../utils/format.js';
 import { getApiErrorMessage } from '../../utils/apiError.js';
 
 export default function NotificationBell() {
@@ -36,7 +36,7 @@ export default function NotificationBell() {
         renderItem={(item) => (
           <List.Item>
             <List.Item.Meta
-              title={<Space><Typography.Text strong={item.read_status === 'unread'}>{item.type}</Typography.Text></Space>}
+              title={<Space><Typography.Text strong={item.read_status === 'unread'}>{formatNotificationType(item.type)}</Typography.Text></Space>}
               description={<><div>{item.message}</div><Typography.Text type="secondary">{formatDateTime(item.created_at)}</Typography.Text></>}
             />
           </List.Item>

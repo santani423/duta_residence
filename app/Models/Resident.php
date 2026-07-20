@@ -53,4 +53,19 @@ class Resident extends Model
                 ->orWhere('email', 'like', "%{$search}%");
         }));
     }
+
+    public function scopeAddress(Builder $query, ?string $address): Builder
+    {
+        return $query->when($address, fn (Builder $q) => $q->where('id_card_address', 'like', "%{$address}%"));
+    }
+
+    public function scopeCluster(Builder $query, ?string $clusterId): Builder
+    {
+        return $query->when($clusterId, fn (Builder $q) => $q->whereHas('units', fn (Builder $inner) => $inner->where('cluster_id', $clusterId)));
+    }
+
+    public function scopeBlock(Builder $query, ?string $block): Builder
+    {
+        return $query->when($block, fn (Builder $q) => $q->whereHas('units', fn (Builder $inner) => $inner->where('block', 'like', "%{$block}%")));
+    }
 }

@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'audit' => \App\Http\Middleware\AuditLogger::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'single-session' => \App\Http\Middleware\EnsureSingleSession::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -79,7 +79,7 @@ export default function AppRoutes() {
           </Protected>
         }
       >
-        <Route index element={hasRole('customer') ? <Navigate to="/resident/dashboard" replace /> : <LazyPage><DashboardPage /></LazyPage>} />
+        <Route index element={hasRole('customer') ? <Navigate to="/resident/dashboard" replace /> : <Protected permissions={['reports.view', 'residents.view', 'billings.view']}><LazyPage><DashboardPage /></LazyPage></Protected>} />
         <Route path="clusters" element={<Protected permissions={['clusters.view']}><LazyPage><ClustersPage /></LazyPage></Protected>} />
         <Route path="clusters/:id" element={<Protected permissions={['clusters.view']}><LazyPage><ClusterDetailPage /></LazyPage></Protected>} />
         <Route path="clusters/:id/map" element={<Protected permissions={['cluster-maps.view']}><LazyPage><ClusterMapPage /></LazyPage></Protected>} />
@@ -117,7 +117,6 @@ export default function AppRoutes() {
         <Route path="resident/payments/:paymentId" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="payment-detail" /></LazyPage></Protected>} />
         <Route path="resident/payment-methods" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="payment-methods" /></LazyPage></Protected>} />
         <Route path="resident/complaints" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="complaints" /></LazyPage></Protected>} />
-        <Route path="resident/maintenance-requests" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="maintenance" /></LazyPage></Protected>} />
         <Route path="resident/documents" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="documents" /></LazyPage></Protected>} />
         <Route path="resident/notifications" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="notifications" /></LazyPage></Protected>} />
         <Route path="resident/activity" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="activity" /></LazyPage></Protected>} />

@@ -5,11 +5,13 @@ export const propertyTypeOptions = [
   { value: 'B', label: 'Bangunan' },
   { value: 'K', label: 'Kavling Developer' },
   { value: 'P', label: 'Kavling Penghuni' },
+  { value: 'R', label: 'Ruko' },
 ];
 
 export const occupancyOptions = [
   { value: '1', label: 'Dihuni' },
   { value: '2', label: 'Kosong' },
+  { value: '3', label: 'Siswa' },
 ];
 
 export const residentStatusOptions = [

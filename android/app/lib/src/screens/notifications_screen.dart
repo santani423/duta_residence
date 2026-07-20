@@ -148,7 +148,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               compact(
                                 item['title'] ??
                                     item['subject'] ??
-                                    item['type'],
+                                    titleCaseStatus(item['type']),
                               ),
                               style: Theme.of(context).textTheme.titleMedium
                                   ?.copyWith(fontWeight: FontWeight.w900),

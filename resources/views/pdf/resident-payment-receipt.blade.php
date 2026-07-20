@@ -17,7 +17,6 @@
     <h2>Rincian Biaya</h2>
     <table>
         <tr><th class="right">Subtotal</th><td class="right">Rp {{ number_format($payment->subtotal, 0, ',', '.') }}</td></tr>
-        <tr><th class="right">Pajak</th><td class="right">Rp {{ number_format($payment->tax, 0, ',', '.') }}</td></tr>
         <tr><th class="right">Biaya Administrasi</th><td class="right">Rp {{ number_format($payment->admin_fee, 0, ',', '.') }}</td></tr>
         <tr><th class="right">Total</th><td class="right">Rp {{ number_format($payment->total, 0, ',', '.') }}</td></tr>
     </table>

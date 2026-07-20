@@ -42,7 +42,7 @@ import StatusBadge from '../../components/common/StatusBadge.jsx';
 import ResponsiveTable from '../../components/tables/ResponsiveTable.jsx';
 import { api } from '../../services/estateApi.js';
 import { useTableState } from '../../hooks/useTableState.js';
-import { compactText, formatCurrency, formatDate, formatDateTime } from '../../utils/format.js';
+import { compactText, formatCurrency, formatDate, formatDateTime, formatNotificationType } from '../../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../../utils/apiError.js';
 import { downloadBlob } from '../../utils/download.js';
 import { useThemeMode } from '../../state/ThemeContext.jsx';
@@ -220,7 +220,6 @@ function ResidentDashboard() {
         <StatCard title="Sedang Diproses" value={payment.processing_count} suffix="transaksi" />
         <StatCard title="Menunggu Verifikasi" value={payment.manual_waiting_count} suffix="manual" />
         <StatCard title="Komplain Aktif" value={services.active_complaints} />
-        <StatCard title="Maintenance Aktif" value={services.active_maintenance_requests} />
       </div>
       <div className="resident-grid resident-grid-2 section-row">
         <Card title="Informasi Penghuni"><InfoList data={{ Nama: data.resident?.name, Email: data.resident?.email, Telepon: data.resident?.phone, 'Nomor Penghuni': data.resident?.resident_number, Status: data.resident?.status }} /></Card>
@@ -230,7 +229,6 @@ function ResidentDashboard() {
         <Space wrap>
           <Button type="primary" onClick={() => navigate('/resident/bills')}>Pembayaran Cepat</Button>
           <Button onClick={() => navigate('/resident/complaints')} icon={<PlusOutlined />}>Buat Komplain</Button>
-          <Button onClick={() => navigate('/resident/maintenance-requests')} icon={<PlusOutlined />}>Buat Maintenance</Button>
           <Button onClick={() => navigate('/resident/bills')}>Lihat Tagihan</Button>
           <Button onClick={() => navigate('/resident/payments')}>Riwayat Pembayaran</Button>
         </Space>
@@ -240,7 +238,7 @@ function ResidentDashboard() {
         <Card title="Pembayaran Terbaru">{asList(payment.latest).map((item) => <p key={item.id}><Button type="link" onClick={() => navigate(`/resident/payments/${item.id}`)}>{item.transaction_number}</Button> {formatCurrency(item.total)} <StatusBadge type="transaction" value={item.status} /></p>)}</Card>
         <Card title="Penggunaan Layanan">{asList(services.usage).map((item) => <p key={item.label}>{item.label}: <strong>{item.value}</strong></p>)}</Card>
         <Card title="Dokumen Terbaru">{asList(data.latest_documents).map((item) => <p key={item.id}>{item.name}<br /><Typography.Text type="secondary">{formatDate(item.created_at)}</Typography.Text></p>)}</Card>
-        <Card title="Notifikasi Terbaru">{asList(data.latest_notifications).map((item) => <p key={item.id}>{item.title || item.subject || item.type}<br /><Typography.Text type="secondary">{formatDateTime(item.created_at)}</Typography.Text></p>)}</Card>
+        <Card title="Notifikasi Terbaru">{asList(data.latest_notifications).map((item) => <p key={item.id}>{item.title || item.subject || formatNotificationType(item.type)}<br /><Typography.Text type="secondary">{formatDateTime(item.created_at)}</Typography.Text></p>)}</Card>
         <Card title="Aktivitas Terbaru">{asList(data.latest_activity).map((item) => <p key={item.id}>{item.action || item.event}<br /><Typography.Text type="secondary">{formatDateTime(item.created_at)}</Typography.Text></p>)}</Card>
       </div>
     </section>
@@ -366,7 +364,6 @@ function InvoiceTable({ query, data, onChange, onPay, payDisabledReason }) {
           { title: 'Terbit', dataIndex: 'issued_at', render: formatDate, width: 130 },
           { title: 'Jatuh Tempo', dataIndex: 'due_date', render: formatDate, width: 130 },
           { title: 'Subtotal', dataIndex: 'subtotal', render: formatCurrency, width: 130 },
-          { title: 'Pajak', dataIndex: 'tax', render: formatCurrency, width: 120 },
           { title: 'Admin', dataIndex: 'admin_fee', render: formatCurrency, width: 120 },
           { title: 'Total', dataIndex: 'total', render: formatCurrency, width: 140 },
           { title: 'Status', dataIndex: 'status', render: (value) => <StatusBadge type="transaction" value={value} />, width: 150 },
@@ -419,6 +416,10 @@ function ResidentBills() {
   return (
     <section>
       <PageHeader title="Tagihan Penghuni" subtitle="Cari, filter, sortir, dan bayar invoice milik Anda." breadcrumbs={[{ label: 'Penghuni' }, { label: 'Tagihan' }]} onRefresh={query.refetch} />
+      <div className="resident-grid resident-grid-2 section-row">
+        <StatCard title="Total Tagihan" value={formatCurrency(query.data?.meta?.total_outstanding)} loading={query.isFetching} />
+        <StatCard title="Invoice Belum Lunas" value={query.data?.meta?.unpaid_count ?? 0} suffix="invoice" loading={query.isFetching} />
+      </div>
       <FilterBar>
         <Input allowClear placeholder="Cari invoice atau jenis" value={table.search} onChange={(event) => table.setSearch(event.target.value)} className="filter-input" />
         <Select allowClear placeholder="Status" value={table.filters.status} onChange={(value) => table.setFilters({ ...table.filters, status: value })} options={invoiceStatuses.map((value) => ({ value, label: value }))} className="filter-input" />
@@ -453,7 +454,7 @@ function ResidentInvoiceDetail() {
       {query.isLoading ? <LoadingState rows={8} /> : query.isError ? <ErrorState error={query.error} onRetry={query.refetch} /> : (
         <div className="resident-grid resident-grid-2">
           <Card title={data.invoice_number}>
-            <InfoList data={{ Penghuni: data.resident?.name, Estate: data.estate?.name, Unit: data.unit?.unit_label, Periode: data.period, 'Jatuh Tempo': formatDate(data.due_date), Subtotal: formatCurrency(data.subtotal), Pajak: formatCurrency(data.tax), Admin: formatCurrency(data.admin_fee), Diskon: formatCurrency(data.discount), Total: formatCurrency(data.total), Dibayar: formatCurrency(data.total_paid), Status: data.status }} />
+            <InfoList data={{ Penghuni: data.resident?.name, Estate: data.estate?.name, Unit: data.unit?.unit_label, Periode: data.period, 'Jatuh Tempo': formatDate(data.due_date), Subtotal: formatCurrency(data.subtotal), Admin: formatCurrency(data.admin_fee), Diskon: formatCurrency(data.discount), Total: formatCurrency(data.total), Dibayar: formatCurrency(data.total_paid), Status: data.status }} />
             <Space className="action-row" wrap>
               <Button icon={<DownloadOutlined />} onClick={async () => downloadBlob(await api.resident.downloadInvoice(data.id), `${data.invoice_number}.pdf`)}>Download Invoice</Button>
               <Tooltip title={payDisabledReason}>
@@ -544,7 +545,7 @@ function ResidentPaymentDetail() {
       {query.isLoading ? <LoadingState rows={8} /> : query.isError ? <ErrorState error={query.error} onRetry={query.refetch} /> : (
         <div className="resident-grid resident-grid-2">
           <Card title={data.transaction_number}>
-            <InfoList data={{ Invoice: data.invoice_number, Penghuni: data.resident?.name, Gateway: data.payment_gateway, Metode: data.payment_method, Subtotal: formatCurrency(data.fee_breakdown?.subtotal), Pajak: formatCurrency(data.fee_breakdown?.tax), Admin: formatCurrency(data.fee_breakdown?.admin_fee), Total: formatCurrency(data.fee_breakdown?.total), Status: data.status, 'Waktu transaksi': formatDateTime(data.created_at), 'Waktu pembayaran': formatDateTime(data.paid_at), 'Kedaluwarsa': formatDateTime(data.expired_at), 'Bukti manual': data.manual_proof_path, 'Catatan verifikator': data.verification_notes }} />
+            <InfoList data={{ Invoice: data.invoice_number, Penghuni: data.resident?.name, Gateway: data.payment_gateway, Metode: data.payment_method, Subtotal: formatCurrency(data.fee_breakdown?.subtotal), Admin: formatCurrency(data.fee_breakdown?.admin_fee), Total: formatCurrency(data.fee_breakdown?.total), Status: data.status, 'Waktu transaksi': formatDateTime(data.created_at), 'Waktu pembayaran': formatDateTime(data.paid_at), 'Kedaluwarsa': formatDateTime(data.expired_at), 'Bukti manual': data.manual_proof_path, 'Catatan verifikator': data.verification_notes }} />
             <Space className="action-row" wrap>
               {data.status === 'paid' ? <Button icon={<DownloadOutlined />} onClick={async () => downloadBlob(await api.resident.downloadPaymentReceipt(data.id), `${data.transaction_number}.pdf`)}>Download Receipt</Button> : null}
               {data.payment_url && data.status === 'pending' ? <Button icon={<LinkOutlined />} href={data.payment_url} target="_blank">Lanjutkan Pembayaran</Button> : null}
@@ -759,7 +760,7 @@ function NotificationList({ data, query, onRead }) {
       {items.length ? items.map((item) => (
         <div className="resident-list-item" key={item.id}>
           <div>
-            <Typography.Text strong>{item.title || item.subject || item.type}</Typography.Text>
+            <Typography.Text strong>{item.title || item.subject || formatNotificationType(item.type)}</Typography.Text>
             <div>{item.message || item.body || item.description}</div>
             <Typography.Text type="secondary">{formatDateTime(item.created_at)}</Typography.Text>
           </div>

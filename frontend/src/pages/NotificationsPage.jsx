@@ -6,7 +6,7 @@ import FilterBar from '../components/common/FilterBar.jsx';
 import StatusBadge from '../components/common/StatusBadge.jsx';
 import { api } from '../services/estateApi.js';
 import { useTableState } from '../hooks/useTableState.js';
-import { formatDateTime } from '../utils/format.js';
+import { formatDateTime, formatNotificationType } from '../utils/format.js';
 import { getApiErrorMessage } from '../utils/apiError.js';
 
 export default function NotificationsPage() {
@@ -50,7 +50,7 @@ export default function NotificationsPage() {
               ]}
             >
               <List.Item.Meta
-                title={<Space><Typography.Text strong={item.read_status === 'unread'}>{item.type}</Typography.Text><StatusBadge type="read" value={item.read_status} /></Space>}
+                title={<Space><Typography.Text strong={item.read_status === 'unread'}>{formatNotificationType(item.type)}</Typography.Text><StatusBadge type="read" value={item.read_status} /></Space>}
                 description={<><div>{item.message}</div><Typography.Text type="secondary">{formatDateTime(item.created_at)}</Typography.Text></>}
               />
             </List.Item>

@@ -173,6 +173,12 @@ class ResidentPortalController extends Controller
     public function bills(Request $request)
     {
         $unit = $this->unit($request);
+        $outstandingBillings = $this->billingBaseQuery($unit)->get()->filter(fn (Billing $billing) => $billing->isOutstanding());
+        $billingSummary = [
+            'total_outstanding' => $outstandingBillings->sum(fn (Billing $billing) => $this->penaltyService->calculateInvoiceTotal($billing)['total_outstanding']),
+            'unpaid_count' => $outstandingBillings->count(),
+        ];
+
         $query = $this->billingBaseQuery($unit)
             ->when($request->query('search'), fn (Builder $q, $value) => $q->where(fn (Builder $inner) => $inner
                 ->where('id', $value)
@@ -185,7 +191,7 @@ class ResidentPortalController extends Controller
         if ($status = $request->query('status')) {
             $query = $query->latest()->get()->filter(fn (Billing $billing) => $this->penaltyService->invoiceStatus($billing) === $status)->values();
 
-            return $this->success($query->map(fn (Billing $billing) => $this->invoicePayload($billing))->values());
+            return $this->success($query->map(fn (Billing $billing) => $this->invoicePayload($billing))->values(), 'Data berhasil ditemukan.', 200, $billingSummary);
         }
 
         $paginator = $query
@@ -195,7 +201,7 @@ class ResidentPortalController extends Controller
 
         $paginator->setCollection($paginator->getCollection()->map(fn (Billing $billing) => $this->invoicePayload($billing)));
 
-        return $this->paginated($paginator);
+        return $this->paginated($paginator, 'Data berhasil ditemukan.', $billingSummary);
     }
 
     public function invoice(Request $request, Billing $billing)

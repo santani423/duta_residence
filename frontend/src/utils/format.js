@@ -29,3 +29,13 @@ export function compactText(value, fallback = '-') {
   if (value === null || value === undefined || value === '') return fallback;
   return value;
 }
+
+const NOTIFICATION_TYPE_LABELS = {
+  emergency_alert: 'Emergency Alert',
+};
+
+export function formatNotificationType(value, fallback = '-') {
+  if (!value) return fallback;
+  if (NOTIFICATION_TYPE_LABELS[value]) return NOTIFICATION_TYPE_LABELS[value];
+  return String(value).replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+}

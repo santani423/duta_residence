@@ -39,9 +39,10 @@ class EstateSeeder extends Seeder
             ['id' => 'B', 'name' => 'Bangunan', 'description' => 'Unit bangunan siap huni'],
             ['id' => 'K', 'name' => 'Kavling Developer', 'description' => 'Kavling milik developer'],
             ['id' => 'P', 'name' => 'Kavling Penghuni', 'description' => 'Kavling milik penghuni'],
+            ['id' => 'R', 'name' => 'Ruko', 'description' => 'Rumah toko'],
         ])->each(fn ($row) => PropertyType::updateOrCreate(['id' => $row['id']], $row));
 
-        collect([['id' => '1', 'name' => 'Dihuni'], ['id' => '2', 'name' => 'Kosong']])
+        collect([['id' => '1', 'name' => 'Dihuni'], ['id' => '2', 'name' => 'Kosong'], ['id' => '3', 'name' => 'Siswa']])
             ->each(fn ($row) => OccupancyStatus::updateOrCreate(['id' => $row['id']], $row));
 
         collect([

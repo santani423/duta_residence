@@ -205,13 +205,17 @@ class SessionController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> expireSession() async {
+  Future<void> expireSession([String? code]) async {
     await _tokenStore.clear();
     // Deliberately keeps any saved biometric credentials - this is exactly
     // the case the login-screen fingerprint icon exists for, so the user
     // isn't forced to retype their password every time the 8-hour API
     // token expires.
-    _setUnauthenticated('Sesi Anda berakhir. Silakan login kembali.');
+    _setUnauthenticated(
+      code == 'SESSION_REVOKED'
+          ? 'Akun Anda digunakan di perangkat lain. Silakan login kembali.'
+          : 'Sesi Anda berakhir. Silakan login kembali.',
+    );
     notifyListeners();
   }
 

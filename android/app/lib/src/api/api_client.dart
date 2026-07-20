@@ -10,7 +10,7 @@ import '../models/api_result.dart';
 import '../storage/token_store.dart';
 import 'api_exception.dart';
 
-typedef UnauthorizedCallback = Future<void> Function();
+typedef UnauthorizedCallback = Future<void> Function(String? code);
 
 class ApiClient {
   ApiClient({
@@ -145,7 +145,8 @@ class ApiClient {
   Future<ApiResult> _handle(http.Response response) async {
     final decoded = _decode(response.body);
     if (response.statusCode == 401) {
-      await onUnauthorized?.call();
+      final code = decoded is Map ? decoded['code']?.toString() : null;
+      await onUnauthorized?.call(code);
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {

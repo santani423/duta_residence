@@ -244,11 +244,6 @@ class _StatGrid extends StatelessWidget {
         compact(services['active_complaints']),
         Icons.report_problem_outlined,
       ),
-      _StatItem(
-        'Maintenance',
-        compact(services['active_maintenance_requests']),
-        Icons.handyman_outlined,
-      ),
     ];
 
     return LayoutBuilder(
@@ -345,7 +340,6 @@ class _QuickActions extends StatelessWidget {
     final actions = [
       _ActionItem('Bayar IPL', Icons.credit_card_rounded, onOpenServices),
       _ActionItem('Buat Komplain', Icons.add_comment_outlined, onOpenServices),
-      _ActionItem('Maintenance', Icons.handyman_outlined, onOpenServices),
       _ActionItem(
         'Notifikasi',
         Icons.notifications_outlined,
@@ -544,7 +538,7 @@ class _LatestSections extends StatelessWidget {
             title: compact(
               asMap(item)['title'] ??
                   asMap(item)['subject'] ??
-                  asMap(item)['type'],
+                  titleCaseStatus(asMap(item)['type']),
             ),
             subtitle: dateTime(asMap(item)['created_at']),
           ),

@@ -16,7 +16,6 @@ import {
   TeamOutlined,
   UserOutlined,
   WalletOutlined,
-  ToolOutlined,
   SafetyCertificateOutlined,
   ReadOutlined,
 } from '@ant-design/icons';
@@ -51,7 +50,6 @@ export const menuItems = [
   { key: '/resident/payments', label: 'Pembayaran', icon: CreditCardOutlined, permissions: [], roles: ['customer'] },
   { key: '/resident/payment-methods', label: 'Metode Bayar', icon: WalletOutlined, permissions: [], roles: ['customer'] },
   { key: '/resident/complaints', label: 'Komplain', icon: BellOutlined, permissions: [], roles: ['customer'] },
-  { key: '/resident/maintenance-requests', label: 'Maintenance', icon: ToolOutlined, permissions: [], roles: ['customer'] },
   { key: '/resident/documents', label: 'Dokumen', icon: FolderOpenOutlined, permissions: [], roles: ['customer'] },
   { key: '/resident/notifications', label: 'Notifikasi', icon: BellOutlined, permissions: [], roles: ['customer'] },
   { key: '/resident/activity', label: 'Aktivitas', icon: AuditOutlined, permissions: [], roles: ['customer'] },

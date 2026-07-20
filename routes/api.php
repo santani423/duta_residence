@@ -244,7 +244,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::delete('admin/guided-tours/{tour}', [GuidedTourController::class, 'destroy'])->middleware('permission:guided-tours.manage');
 });
 
-Route::middleware(['auth:sanctum', 'audit', 'role:customer'])->prefix('resident')->group(function () {
+Route::middleware(['auth:sanctum', 'audit', 'role:customer', 'single-session'])->prefix('resident')->group(function () {
     Route::get('dashboard', [ResidentPortalController::class, 'dashboard']);
     Route::get('account', [ResidentPortalController::class, 'account']);
     Route::get('profile', [ResidentPortalController::class, 'profile']);
