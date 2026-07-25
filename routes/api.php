@@ -282,6 +282,8 @@ Route::middleware(['auth:sanctum', 'audit', 'role:customer', 'single-session'])-
     Route::get('settings', [ResidentPortalController::class, 'settings']);
     Route::put('settings', [ResidentPortalController::class, 'updateSettings']);
     Route::post('emergency', [ResidentPortalController::class, 'emergency']);
+    Route::get('emergency/{emergencyAlert}', [ResidentPortalController::class, 'emergencyStatus']);
+    Route::post('emergency/{emergencyAlert}/cancel', [ResidentPortalController::class, 'cancelEmergency']);
     Route::get('tenant', [ResidentPortalController::class, 'tenantInfo']);
     Route::post('tenant', [ResidentPortalController::class, 'storeTenant']);
     Route::put('tenant/billing-payer', [ResidentPortalController::class, 'updateBillingPayer']);

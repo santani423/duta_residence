@@ -18,9 +18,14 @@ import '../widgets/status_badge.dart';
 enum ServiceTab { bills, payments, complaints, documents }
 
 class ServicesScreen extends StatefulWidget {
-  const ServicesScreen({required this.apiClient, super.key});
+  const ServicesScreen({
+    required this.apiClient,
+    this.initialTab = ServiceTab.bills,
+    super.key,
+  });
 
   final ApiClient apiClient;
+  final ServiceTab initialTab;
 
   @override
   State<ServicesScreen> createState() => _ServicesScreenState();
@@ -46,7 +51,15 @@ const _serviceTabs = [
 ];
 
 class _ServicesScreenState extends State<ServicesScreen> {
-  ServiceTab _tab = ServiceTab.bills;
+  late ServiceTab _tab = widget.initialTab;
+
+  @override
+  void didUpdateWidget(covariant ServicesScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialTab != oldWidget.initialTab) {
+      setState(() => _tab = widget.initialTab);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -190,7 +203,7 @@ class _BillsSectionState extends State<_BillsSection> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _future = _load());
+    setState(() { _future = _load(); });
     await _future;
   }
 
@@ -464,7 +477,7 @@ class _PaymentsSectionState extends State<_PaymentsSection> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _future = _load());
+    setState(() { _future = _load(); });
     await _future;
   }
 
@@ -759,7 +772,7 @@ class _TicketSectionState extends State<_TicketSection> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _future = _load());
+    setState(() { _future = _load(); });
     await _future;
   }
 
@@ -1371,7 +1384,7 @@ class _DocumentsSectionState extends State<_DocumentsSection> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _future = _load());
+    setState(() { _future = _load(); });
     await _future;
   }
 

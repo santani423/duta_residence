@@ -11,11 +11,18 @@ class EmergencyAlert extends Model
 
     protected $fillable = [
         'unit_id', 'resident_id', 'note', 'status',
-        'acknowledged_by', 'acknowledged_at', 'created_by',
+        'latitude', 'longitude', 'accuracy_meters', 'location_captured_at',
+        'acknowledged_by', 'acknowledged_at',
+        'cancelled_by', 'cancelled_at', 'created_by',
     ];
 
     protected $casts = [
+        'latitude' => 'float',
+        'longitude' => 'float',
+        'accuracy_meters' => 'float',
+        'location_captured_at' => 'datetime',
         'acknowledged_at' => 'datetime',
+        'cancelled_at' => 'datetime',
     ];
 
     public function unit()
@@ -31,5 +38,10 @@ class EmergencyAlert extends Model
     public function acknowledger()
     {
         return $this->belongsTo(User::class, 'acknowledged_by');
+    }
+
+    public function canceller()
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
     }
 }

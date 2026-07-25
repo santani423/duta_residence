@@ -661,12 +661,20 @@ class ResidentPortalController extends Controller
         $user = $request->user();
         $data = $request->validate([
             'note' => ['nullable', 'string', 'max:500'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'accuracy_meters' => ['nullable', 'numeric', 'min:0'],
+            'location_captured_at' => ['nullable', 'date'],
         ]);
 
         $alert = EmergencyAlert::query()->create([
             'unit_id' => $unit->id,
             'resident_id' => $user->resident_id ?: $unit->resident_id,
             'note' => $data['note'] ?? null,
+            'latitude' => $data['latitude'] ?? null,
+            'longitude' => $data['longitude'] ?? null,
+            'accuracy_meters' => $data['accuracy_meters'] ?? null,
+            'location_captured_at' => $data['location_captured_at'] ?? null,
             'status' => 'active',
             'created_by' => $user->id,
         ]);
@@ -689,6 +697,42 @@ class ResidentPortalController extends Controller
         $auditService->log('emergency_alert_triggered', 'emergency-alerts', 'CREATE', $alert, [], $alert->toArray());
 
         return $this->success($alert, 'Sinyal darurat berhasil dikirim ke admin.', 201);
+    }
+
+    /**
+     * Dipoll berkala oleh aplikasi Android selagi layar "menunggu admin" aktif,
+     * supaya status acknowledge/cancel admin muncul near-real-time tanpa websocket.
+     */
+    public function emergencyStatus(Request $request, EmergencyAlert $emergencyAlert)
+    {
+        return $this->success($this->ownedEmergencyAlert($request, $emergencyAlert)->load('acknowledger'));
+    }
+
+    public function cancelEmergency(Request $request, EmergencyAlert $emergencyAlert, AuditService $auditService)
+    {
+        $alert = $this->ownedEmergencyAlert($request, $emergencyAlert);
+
+        if ($alert->status !== 'active') {
+            return $this->success($alert->load('acknowledger'), 'Sinyal darurat ini sudah tidak aktif.');
+        }
+
+        $old = $alert->toArray();
+        $alert->update([
+            'status' => 'cancelled',
+            'cancelled_by' => $request->user()->id,
+            'cancelled_at' => now(),
+        ]);
+        $auditService->log('emergency_alert_cancelled', 'emergency-alerts', 'CANCEL', $alert, $old, $alert->refresh()->toArray());
+
+        return $this->success($alert, 'Sinyal darurat dibatalkan.');
+    }
+
+    private function ownedEmergencyAlert(Request $request, EmergencyAlert $emergencyAlert): EmergencyAlert
+    {
+        $unit = $this->unit($request);
+        abort_if($emergencyAlert->unit_id !== $unit->id, 404);
+
+        return $emergencyAlert;
     }
 
     public function tenantInfo(Request $request)

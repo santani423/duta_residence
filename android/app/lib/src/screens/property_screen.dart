@@ -30,11 +30,12 @@ class _PropertyScreenState extends State<PropertyScreen> {
 
   Future<Map<String, dynamic>> _load() async {
     final result = await widget.apiClient.get('resident/property');
-    return asMap(result.data);
+    final units = asList(result.data);
+    return units.isEmpty ? {} : asMap(units.first);
   }
 
   Future<void> _refresh() async {
-    setState(() => _future = _load());
+    setState(() { _future = _load(); });
     await _future;
   }
 
@@ -157,7 +158,7 @@ class _TenantSectionState extends State<_TenantSection> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _future = _load());
+    setState(() { _future = _load(); });
     await _future;
   }
 

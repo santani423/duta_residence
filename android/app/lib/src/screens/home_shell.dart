@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
-import '../api/api_exception.dart';
 import '../constants/app_spacing.dart';
 import '../screens/dashboard_screen.dart';
+import '../screens/emergency_screen.dart';
 import '../screens/notifications_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/property_screen.dart';
-import '../screens/services_screen.dart';
+import '../screens/services_screen.dart' show ServicesScreen, ServiceTab;
 import '../state/session_controller.dart';
 import '../state/theme_controller.dart';
 import '../widgets/app_logo.dart';
@@ -50,68 +50,15 @@ const _navItems = [
 
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
+  ServiceTab _serviceTab = ServiceTab.bills;
 
-  Future<void> _triggerEmergency() async {
-    final noteController = TextEditingController();
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Kirim sinyal darurat ke admin?'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Admin akan segera menerima peringatan darurat untuk unit Anda.',
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextField(
-              controller: noteController,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Catatan (opsional)',
-                hintText: 'Contoh: kebakaran di dapur, ada pencuri, dll.',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Kirim Sekarang'),
-          ),
-        ],
+  void _triggerEmergency() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => EmergencyScreen(apiClient: widget.apiClient),
       ),
     );
-    if (confirmed != true) return;
-
-    try {
-      final note = noteController.text.trim();
-      await widget.apiClient.postJson('resident/emergency', {
-        if (note.isNotEmpty) 'note': note,
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Sinyal darurat berhasil dikirim ke admin.'),
-          ),
-        );
-      }
-    } on ApiException catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
-      }
-    }
   }
 
   @override
@@ -122,11 +69,16 @@ class _HomeShellState extends State<HomeShell> {
       DashboardScreen(
         apiClient: widget.apiClient,
         userName: widget.sessionController.user?.name,
-        onOpenServices: () => setState(() => _index = 2),
+        onOpenServices: (tab) => setState(() {
+          _serviceTab = tab;
+          _index = 2;
+        }),
         onOpenNotifications: () => setState(() => _index = 3),
+        onOpenProperty: () => setState(() => _index = 1),
+        onOpenProfile: () => setState(() => _index = 4),
       ),
       PropertyScreen(apiClient: widget.apiClient),
-      ServicesScreen(apiClient: widget.apiClient),
+      ServicesScreen(apiClient: widget.apiClient, initialTab: _serviceTab),
       NotificationsScreen(apiClient: widget.apiClient),
       ProfileScreen(
         apiClient: widget.apiClient,
