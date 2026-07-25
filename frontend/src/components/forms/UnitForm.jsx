@@ -11,7 +11,7 @@ export const propertyTypeOptions = [
 export const occupancyOptions = [
   { value: '1', label: 'Dihuni' },
   { value: '2', label: 'Kosong' },
-  { value: '3', label: 'Siswa' },
+  { value: '3', label: 'Sewa' },
 ];
 
 export const residentStatusOptions = [
@@ -41,6 +41,14 @@ export default function UnitForm({ form, clusters = [], residents = [], disabled
     >
       <Form.Item label="ID Unit" name="id" rules={[{ required: true }, { len: 5 }]} getValueFromEvent={(event) => event.target.value.toUpperCase()}>
         <Input placeholder="GA099" disabled={disabledId} />
+      </Form.Item>
+      <Form.Item
+        label="Nomor Virtual Account (VA)"
+        name="va_number"
+        rules={[{ max: 32, message: 'Maksimal 32 karakter' }]}
+        tooltip="Digunakan sebagai identitas pembayaran tagihan bulanan unit ini. Kosongkan jika belum tersedia; jika diisi harus unik untuk setiap unit."
+      >
+        <Input placeholder="8801000123" />
       </Form.Item>
       <Form.Item label="Pemilik" name="resident_id" rules={[{ required: true }]}>
         <Select showSearch optionFilterProp="label" options={residents.map((item) => ({ value: item.id, label: `${item.id} - ${item.name}` }))} />

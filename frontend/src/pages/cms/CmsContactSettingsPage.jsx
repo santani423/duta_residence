@@ -1,0 +1,30 @@
+import CmsSettingsPage from './CmsSettingsPage.jsx';
+import { api } from '../../services/estateApi.js';
+
+const config = {
+  title: 'Pengaturan Kontak',
+  subtitle: 'Informasi kontak, peta lokasi, dan jam operasional pada landing page.',
+  resource: api.cms.settings.contact,
+  queryKey: 'cms-settings-contact',
+  fields: [
+    { name: 'address', label: 'Alamat', type: 'textarea' },
+    { name: 'phone', label: 'Telepon', type: 'text' },
+    { name: 'whatsapp', label: 'WhatsApp', type: 'text' },
+    { name: 'email', label: 'Email', type: 'text', rules: [{ type: 'email', message: 'Format email tidak valid' }] },
+    { name: 'maps_embed_url', label: 'URL Embed Google Maps', type: 'text', span: 'full' },
+    { name: 'maps_lat', label: 'Latitude (opsional)', type: 'number' },
+    { name: 'maps_lng', label: 'Longitude (opsional)', type: 'number' },
+    {
+      name: 'business_hours',
+      label: 'Jam Operasional',
+      type: 'keyvalue-list',
+      span: 'full',
+      labelPlaceholder: 'mis. Senin - Sabtu',
+      valuePlaceholder: 'mis. 08.00 - 17.00 WIB',
+    },
+  ],
+};
+
+export default function CmsContactSettingsPage() {
+  return <CmsSettingsPage config={config} />;
+}

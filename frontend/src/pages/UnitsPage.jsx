@@ -106,6 +106,7 @@ export default function UnitsPage() {
           scrollX={1180}
           columns={[
             { title: 'ID', dataIndex: 'id', fixed: 'left', width: 90 },
+            { title: 'Nomor VA', dataIndex: 'va_number', width: 140, render: (value) => value || <Tag color="default">Belum ada</Tag> },
             { title: 'Pemilik', dataIndex: ['resident', 'name'], width: 220 },
             { title: 'Cluster', dataIndex: ['cluster', 'name'], width: 160 },
             { title: 'Blok', dataIndex: 'block', width: 80 },
@@ -168,6 +169,7 @@ export default function UnitsPage() {
               children: (
                 <Descriptions bordered column={{ xs: 1, md: 2 }}>
                   <Descriptions.Item label="ID">{detailData?.id}</Descriptions.Item>
+                  <Descriptions.Item label="Nomor VA">{detailData?.va_number || <Tag color="default">Belum ada</Tag>}</Descriptions.Item>
                   <Descriptions.Item label="Pemilik">{detailData?.resident?.name}</Descriptions.Item>
                   <Descriptions.Item label="Cluster">{detailData?.cluster?.name}</Descriptions.Item>
                   <Descriptions.Item label="Unit">{detailData?.block}-{detailData?.lot_number}</Descriptions.Item>

@@ -5,6 +5,7 @@ import '../api/api_exception.dart';
 import '../constants/app_config.dart';
 import '../constants/app_spacing.dart';
 import '../utils/formatters.dart';
+import '../widgets/copyable_value_row.dart';
 import '../widgets/duta_card.dart';
 import '../widgets/info_row.dart';
 import '../widgets/state_views.dart';
@@ -99,6 +100,21 @@ class _PropertyScreenState extends State<PropertyScreen> {
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     StatusBadge(property['status']),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              DutaCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SectionHeader(title: 'Pembayaran'),
+                    const SizedBox(height: AppSpacing.lg),
+                    CopyableValueRow(
+                      label: 'Nomor Virtual Account (VA)',
+                      value: property['va_number'] as String?,
+                      copiedMessage: 'Nomor VA disalin.',
+                    ),
                   ],
                 ),
               ),

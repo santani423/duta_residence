@@ -24,6 +24,34 @@ components:
           nullable: true
         meta:
           nullable: true
+    UnitInput:
+      type: object
+      required: [id, resident_id, cluster_id, block, lot_number, property_type_id, occupancy_id, status_id]
+      properties:
+        id:
+          type: string
+          maxLength: 5
+        va_number:
+          type: string
+          maxLength: 32
+          nullable: true
+          description: >-
+            Nomor Virtual Account unik untuk menerima pembayaran tagihan bulanan unit ini.
+            Opsional agar unit lama tanpa VA tetap valid; jika diisi harus unik di seluruh unit.
+        resident_id:
+          type: string
+        cluster_id:
+          type: string
+        block:
+          type: string
+        lot_number:
+          type: string
+        property_type_id:
+          type: string
+        occupancy_id:
+          type: string
+        status_id:
+          type: string
 paths:
   /auth/login:
     post:
@@ -74,6 +102,59 @@ paths:
       responses:
         "200":
           description: Klaster diperbarui
+  /units:
+    get:
+      summary: Daftar unit dengan search/filter/pagination
+      description: >-
+        `search` juga mencocokkan nomor Virtual Account (va_number), selain ID unit, blok, dan nomor kavling.
+      responses:
+        "200":
+          description: Daftar unit
+    post:
+      summary: Tambah unit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UnitInput"
+      responses:
+        "201":
+          description: Unit dibuat
+        "422":
+          description: >-
+            Validasi gagal, termasuk saat va_number sudah dipakai unit lain (unique constraint).
+  /units/{id}:
+    get:
+      summary: Detail unit beserta tagihan dan akun portal terkait
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Detail unit
+    put:
+      summary: Perbarui unit
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UnitInput"
+      responses:
+        "200":
+          description: Unit diperbarui
+        "422":
+          description: Validasi gagal, termasuk va_number duplikat
   /customers:
     get:
       summary: Daftar pelanggan dengan search/filter/pagination

@@ -3,7 +3,10 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import AppShell from '../components/AppShell.jsx';
 import { LoadingState } from '../components/common/ApiState.jsx';
 import { useAuth } from '../state/AuthContext.jsx';
+import LandingPage from '../pages/LandingPage.jsx';
 import LoginPage from '../pages/LoginPage.jsx';
+import PrivacyPolicyPage from '../pages/PrivacyPolicyPage.jsx';
+import TermsPage from '../pages/TermsPage.jsx';
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage.jsx';
 import ResetPasswordPage from '../pages/auth/ResetPasswordPage.jsx';
 import UnauthorizedPage from '../pages/errors/UnauthorizedPage.jsx';
@@ -36,6 +39,26 @@ const ResidentPortalPage = lazy(() => import('../pages/resident/ResidentPortalPa
 const ManualBookPage = lazy(() => import('../pages/ManualBookPage.jsx'));
 const AdminManualBookPage = lazy(() => import('../pages/AdminManualBookPage.jsx'));
 const AdminHelpSettingsPage = lazy(() => import('../pages/AdminHelpSettingsPage.jsx'));
+const CmsHeroSlidesPage = lazy(() => import('../pages/cms/CmsHeroSlidesPage.jsx'));
+const CmsServicesPage = lazy(() => import('../pages/cms/CmsServicesPage.jsx'));
+const CmsFeaturesPage = lazy(() => import('../pages/cms/CmsFeaturesPage.jsx'));
+const CmsStatisticsPage = lazy(() => import('../pages/cms/CmsStatisticsPage.jsx'));
+const CmsEventsPage = lazy(() => import('../pages/cms/CmsEventsPage.jsx'));
+const CmsArticlesPage = lazy(() => import('../pages/cms/CmsArticlesPage.jsx'));
+const CmsTestimonialsPage = lazy(() => import('../pages/cms/CmsTestimonialsPage.jsx'));
+const CmsPartnersPage = lazy(() => import('../pages/cms/CmsPartnersPage.jsx'));
+const CmsGalleryAlbumsPage = lazy(() => import('../pages/cms/CmsGalleryAlbumsPage.jsx'));
+const CmsFaqsPage = lazy(() => import('../pages/cms/CmsFaqsPage.jsx'));
+const CmsCategoriesPage = lazy(() => import('../pages/cms/CmsCategoriesPage.jsx'));
+const CmsNavMenuItemsPage = lazy(() => import('../pages/cms/CmsNavMenuItemsPage.jsx'));
+const CmsSocialLinksPage = lazy(() => import('../pages/cms/CmsSocialLinksPage.jsx'));
+const CmsMediaLibraryPage = lazy(() => import('../pages/cms/CmsMediaLibraryPage.jsx'));
+const CmsHeaderSettingsPage = lazy(() => import('../pages/cms/CmsHeaderSettingsPage.jsx'));
+const CmsAboutSettingsPage = lazy(() => import('../pages/cms/CmsAboutSettingsPage.jsx'));
+const CmsContactSettingsPage = lazy(() => import('../pages/cms/CmsContactSettingsPage.jsx'));
+const CmsFooterSettingsPage = lazy(() => import('../pages/cms/CmsFooterSettingsPage.jsx'));
+const CmsSeoSettingsPage = lazy(() => import('../pages/cms/CmsSeoSettingsPage.jsx'));
+const CmsGeneralSettingsPage = lazy(() => import('../pages/cms/CmsGeneralSettingsPage.jsx'));
 
 function Protected({ children, permissions = [], roles = [] }) {
   const { token, canAny, hasRole } = useAuth();
@@ -60,6 +83,24 @@ function LazyPage({ children }) {
   return <Suspense fallback={<LoadingState rows={8} />}>{children}</Suspense>;
 }
 
+// Renders the public landing page for guests visiting the bare root URL,
+// while preserving the existing login-redirect behaviour (with resume
+// state) for every other in-app path so authenticated navigation is
+// untouched.
+function RootGate() {
+  const { token } = useAuth();
+  const location = useLocation();
+
+  if (!token) {
+    if (location.pathname === '/') {
+      return <LandingPage />;
+    }
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  return <AppShell />;
+}
+
 export default function AppRoutes() {
   const { hasRole } = useAuth();
 
@@ -68,17 +109,12 @@ export default function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+      <Route path="/terms" element={<TermsPage />} />
       <Route path="/401" element={<UnauthorizedPage />} />
       <Route path="/403" element={<ForbiddenPage />} />
       <Route path="/419" element={<SessionExpiredPage />} />
-      <Route
-        path="/"
-        element={
-          <Protected>
-            <AppShell />
-          </Protected>
-        }
-      >
+      <Route path="/" element={<RootGate />}>
         <Route index element={hasRole('customer') ? <Navigate to="/resident/dashboard" replace /> : <Protected permissions={['reports.view', 'residents.view', 'billings.view']}><LazyPage><DashboardPage /></LazyPage></Protected>} />
         <Route path="clusters" element={<Protected permissions={['clusters.view']}><LazyPage><ClustersPage /></LazyPage></Protected>} />
         <Route path="clusters/:id" element={<Protected permissions={['clusters.view']}><LazyPage><ClusterDetailPage /></LazyPage></Protected>} />
@@ -105,6 +141,26 @@ export default function AppRoutes() {
         <Route path="manual-book/:module/:section" element={<LazyPage><ManualBookPage /></LazyPage>} />
         <Route path="admin/manual-book" element={<Protected permissions={['manual-book.manage']}><LazyPage><AdminManualBookPage /></LazyPage></Protected>} />
         <Route path="admin/help-settings" element={<Protected permissions={['help-settings.manage']}><LazyPage><AdminHelpSettingsPage /></LazyPage></Protected>} />
+        <Route path="admin/cms/hero-slides" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsHeroSlidesPage /></LazyPage></Protected>} />
+        <Route path="admin/cms/services" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsServicesPage /></LazyPage></Protected>} />
+        <Route path="admin/cms/features" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsFeaturesPage /></LazyPage></Protected>} />
+        <Route path="admin/cms/statistics" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsStatisticsPage /></LazyPage></Protected>} />
+        <Route path="admin/cms/events" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsEventsPage /></LazyPage></Protected>} />
+        <Route path="admin/cms/articles" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsArticlesPage /></LazyPage></Protected>} />
+        <Route path="admin/cms/testimonials" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsTestimonialsPage /></LazyPage></Protected>} />
+        <Route path="admin/cms/partners" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsPartnersPage /></LazyPage></Protected>} />
+        <Route path="admin/cms/gallery-albums" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsGalleryAlbumsPage /></LazyPage></Protected>} />
+        <Route path="admin/cms/faqs" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsFaqsPage /></LazyPage></Protected>} />
+        <Route path="admin/cms/categories" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsCategoriesPage /></LazyPage></Protected>} />
+        <Route path="admin/cms/nav-menu-items" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsNavMenuItemsPage /></LazyPage></Protected>} />
+        <Route path="admin/cms/social-links" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsSocialLinksPage /></LazyPage></Protected>} />
+        <Route path="admin/cms/media" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsMediaLibraryPage /></LazyPage></Protected>} />
+        <Route path="admin/cms/settings/header" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsHeaderSettingsPage /></LazyPage></Protected>} />
+        <Route path="admin/cms/settings/about" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsAboutSettingsPage /></LazyPage></Protected>} />
+        <Route path="admin/cms/settings/contact" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsContactSettingsPage /></LazyPage></Protected>} />
+        <Route path="admin/cms/settings/footer" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsFooterSettingsPage /></LazyPage></Protected>} />
+        <Route path="admin/cms/settings/seo" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsSeoSettingsPage /></LazyPage></Protected>} />
+        <Route path="admin/cms/settings/general" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsGeneralSettingsPage /></LazyPage></Protected>} />
         <Route path="resident/dashboard" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="dashboard" /></LazyPage></Protected>} />
         <Route path="resident/account" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="account" /></LazyPage></Protected>} />
         <Route path="resident/profile" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="profile" /></LazyPage></Protected>} />

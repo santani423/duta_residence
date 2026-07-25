@@ -68,6 +68,10 @@ class UnitSeeder extends Seeder
                 }
 
                 $unit = Unit::updateOrCreate(['id' => $id], [
+                    // Deterministic per-unit VA: (clusterIndex, i) is already
+                    // unique within this seeder's loop, same as the phone
+                    // number generation above.
+                    'va_number' => '8801'.str_pad((string) (100000 + $clusterIndex * 1000 + $i), 6, '0', STR_PAD_LEFT),
                     'resident_id' => $resident->id,
                     'cluster_id' => $cluster['id'],
                     'block' => chr(65 + (($i - 1) % 6)),

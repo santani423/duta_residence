@@ -1,0 +1,36 @@
+import CmsSettingsPage from './CmsSettingsPage.jsx';
+import { api } from '../../services/estateApi.js';
+
+const config = {
+  title: 'Pengaturan Umum',
+  subtitle: 'Identitas situs, tema default, mode pemeliharaan, serta script analytics/pixel dan CSS/JS kustom untuk landing page.',
+  resource: api.cms.settings.general,
+  queryKey: 'cms-settings-general',
+  fields: [
+    { name: 'site_name', label: 'Nama Situs', type: 'text', rules: [{ required: true, message: 'Nama situs wajib diisi' }] },
+    { name: 'logo_media_id', label: 'Logo', type: 'image', relation: 'logo' },
+    {
+      name: 'default_theme',
+      label: 'Tema Default',
+      type: 'select',
+      options: [
+        { value: 'system', label: 'Mengikuti Sistem' },
+        { value: 'light', label: 'Light Mode' },
+        { value: 'dark', label: 'Dark Mode' },
+      ],
+    },
+    { name: 'default_language', label: 'Bahasa Default', type: 'text' },
+    { name: 'primary_color', label: 'Warna Primer', type: 'text', tooltip: 'Kode hex, contoh: #0f766e' },
+    { name: 'secondary_color', label: 'Warna Sekunder', type: 'text', tooltip: 'Kode hex, contoh: #f59e0b' },
+    { name: 'maintenance_mode', label: 'Mode Pemeliharaan Landing Page', type: 'switch', tooltip: 'Hanya menonaktifkan tampilan landing page publik — halaman login dan aplikasi tetap dapat diakses.' },
+    { name: 'maintenance_message', label: 'Pesan Mode Pemeliharaan', type: 'textarea', span: 'full' },
+    { name: 'analytics_script', label: 'Script Analytics (mis. Google Analytics)', type: 'textarea', span: 'full', rows: 4 },
+    { name: 'pixel_script', label: 'Script Pixel (mis. Meta Pixel)', type: 'textarea', span: 'full', rows: 4 },
+    { name: 'custom_css', label: 'Custom CSS', type: 'textarea', span: 'full', rows: 6 },
+    { name: 'custom_js', label: 'Custom JavaScript', type: 'textarea', span: 'full', rows: 6 },
+  ],
+};
+
+export default function CmsGeneralSettingsPage() {
+  return <CmsSettingsPage config={config} />;
+}

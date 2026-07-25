@@ -2,6 +2,19 @@ import { http } from '../api/http.js';
 
 export const storageUrl = (path) => (path ? `${http.defaults.baseURL.replace(/\/api\/v1\/?$/, '')}/storage/${path}` : null);
 
+// Every "collection" CMS module (hero slides, services, testimonials, ...) exposes
+// the same list/create/update/remove/reorder shape, so build it once per base path
+// instead of repeating it ~13 times below.
+function makeCollectionApi(basePath) {
+  return {
+    list: (params) => http.get(basePath, { params }),
+    create: (payload) => http.post(basePath, payload),
+    update: (id, payload) => http.put(`${basePath}/${id}`, payload),
+    remove: (id) => http.delete(`${basePath}/${id}`),
+    reorder: (id, direction) => http.post(`${basePath}/${id}/reorder`, { direction }),
+  };
+}
+
 export const api = {
   auth: {
     login: (payload) => http.post('/auth/login', payload),
@@ -276,5 +289,47 @@ export const api = {
     create: (payload) => http.post('/admin/guided-tours', payload),
     update: (id, payload) => http.put(`/admin/guided-tours/${id}`, payload),
     remove: (id) => http.delete(`/admin/guided-tours/${id}`),
+  },
+  landing: {
+    content: () => http.get('/landing/content'),
+    article: (slug) => http.get(`/landing/articles/${slug}`),
+    event: (slug) => http.get(`/landing/events/${slug}`),
+  },
+  cms: {
+    media: {
+      list: (params) => http.get('/cms/media', { params }),
+      upload: (formData) => http.post('/cms/media', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+      remove: (id) => http.delete(`/cms/media/${id}`),
+    },
+    heroSlides: makeCollectionApi('/cms/hero-slides'),
+    services: makeCollectionApi('/cms/services'),
+    features: makeCollectionApi('/cms/features'),
+    statistics: makeCollectionApi('/cms/statistics'),
+    testimonials: makeCollectionApi('/cms/testimonials'),
+    partners: makeCollectionApi('/cms/partners'),
+    faqs: makeCollectionApi('/cms/faqs'),
+    categories: makeCollectionApi('/cms/categories'),
+    navMenuItems: makeCollectionApi('/cms/nav-menu-items'),
+    socialLinks: makeCollectionApi('/cms/social-links'),
+    events: makeCollectionApi('/cms/events'),
+    articles: makeCollectionApi('/cms/articles'),
+    galleryAlbums: {
+      ...makeCollectionApi('/cms/gallery-albums'),
+      items: {
+        list: (albumId) => http.get(`/cms/gallery-albums/${albumId}/items`),
+        create: (albumId, payload) => http.post(`/cms/gallery-albums/${albumId}/items`, payload),
+        update: (id, payload) => http.put(`/cms/gallery-items/${id}`, payload),
+        remove: (id) => http.delete(`/cms/gallery-items/${id}`),
+        reorder: (id, direction) => http.post(`/cms/gallery-items/${id}/reorder`, { direction }),
+      },
+    },
+    settings: {
+      header: { show: () => http.get('/cms/settings/header'), update: (payload) => http.put('/cms/settings/header', payload) },
+      about: { show: () => http.get('/cms/settings/about'), update: (payload) => http.put('/cms/settings/about', payload) },
+      contact: { show: () => http.get('/cms/settings/contact'), update: (payload) => http.put('/cms/settings/contact', payload) },
+      footer: { show: () => http.get('/cms/settings/footer'), update: (payload) => http.put('/cms/settings/footer', payload) },
+      seo: { show: () => http.get('/cms/settings/seo'), update: (payload) => http.put('/cms/settings/seo', payload) },
+      general: { show: () => http.get('/cms/settings/general'), update: (payload) => http.put('/cms/settings/general', payload) },
+    },
   },
 };

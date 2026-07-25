@@ -21,15 +21,31 @@ import HelpCenter from './help/HelpCenter.jsx';
 
 const { Header, Sider, Content } = Layout;
 
+function passesGate(entry, canAny, hasRole) {
+  return (!entry.roles?.length || entry.roles.some((role) => hasRole(role)))
+    && (entry.permissions.length === 0 || canAny(entry.permissions));
+}
+
 function buildMenuItems(canAny, hasRole) {
   return menuItems
-    .filter((item) => !item.roles?.length || item.roles.some((role) => hasRole(role)))
-    .filter((item) => item.permissions.length === 0 || canAny(item.permissions))
-    .map((item) => ({
-      key: item.key,
-      label: item.label,
-      icon: item.icon ? createElement(item.icon) : null,
-    }));
+    .filter((item) => passesGate(item, canAny, hasRole))
+    .map((item) => {
+      if (!item.children) {
+        return { key: item.key, label: item.label, icon: item.icon ? createElement(item.icon) : null };
+      }
+
+      const children = item.children
+        .filter((child) => passesGate(child, canAny, hasRole))
+        .map((child) => ({ key: child.key, label: child.label, icon: child.icon ? createElement(child.icon) : null }));
+
+      // A submenu with every child filtered out has nothing useful to show.
+      return children.length ? { key: item.key, label: item.label, icon: item.icon ? createElement(item.icon) : null, children } : null;
+    })
+    .filter(Boolean);
+}
+
+function flattenKeys(items) {
+  return items.flatMap((item) => (item.children ? item.children.map((child) => child.key) : [item.key]));
 }
 
 export default function AppShell() {
@@ -43,7 +59,25 @@ export default function AppShell() {
   const navigate = useNavigate();
   const location = useLocation();
   const items = useMemo(() => buildMenuItems(canAny, hasRole), [canAny, hasRole]);
-  const selectedKey = items.find((item) => item.key !== '/' && location.pathname.startsWith(item.key))?.key || '/';
+  const flatKeys = useMemo(() => flattenKeys(items), [items]);
+  const selectedKey = flatKeys
+    .filter((key) => key !== '/' && location.pathname.startsWith(key))
+    .sort((a, b) => b.length - a.length)[0] || '/';
+
+  const activeParentKey = items.find((item) => item.children?.some((child) => child.key === selectedKey))?.key;
+  const [openKeys, setOpenKeys] = useState(activeParentKey ? [activeParentKey] : []);
+  const [trackedParentKey, setTrackedParentKey] = useState(activeParentKey);
+
+  // Auto-expand the submenu containing the active route, e.g. after a direct
+  // URL navigation. Adjusting state during render (React's documented
+  // pattern for "state derived from a changed prop") instead of an effect,
+  // so this doesn't cause an extra commit.
+  if (activeParentKey !== trackedParentKey) {
+    setTrackedParentKey(activeParentKey);
+    if (activeParentKey) {
+      setOpenKeys((current) => (current.includes(activeParentKey) ? current : [...current, activeParentKey]));
+    }
+  }
 
   const profileItems = [
     { key: hasRole('customer') ? '/resident/profile' : '/profile', icon: <UserOutlined />, label: 'Profil' },
@@ -72,7 +106,15 @@ export default function AppShell() {
         <span className="brand-mark">GD</span>
         {!collapsed || isMobile ? <span>Grand Duta</span> : null}
       </div>
-      <Menu mode="inline" selectedKeys={[selectedKey]} items={items} onClick={onMenuClick} data-tour-id="sidebar-menu" />
+      <Menu
+        mode="inline"
+        selectedKeys={[selectedKey]}
+        openKeys={openKeys}
+        onOpenChange={setOpenKeys}
+        items={items}
+        onClick={onMenuClick}
+        data-tour-id="sidebar-menu"
+      />
     </>
   );
 

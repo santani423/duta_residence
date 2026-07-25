@@ -76,6 +76,19 @@ function StatCard({ title, value, suffix, loading }) {
   );
 }
 
+// Nomor VA dipakai sebagai identitas pembayaran tagihan bulanan unit, jadi
+// selalu ditampilkan dengan tombol salin di setiap tempat ia muncul.
+function vaNumberValue(vaNumber) {
+  if (!vaNumber) return <Typography.Text type="secondary">Belum tersedia</Typography.Text>;
+
+  return (
+    <Space>
+      <Typography.Text copyable strong>{vaNumber}</Typography.Text>
+      <Button size="small" icon={<CopyOutlined />} onClick={() => navigator.clipboard?.writeText(vaNumber)}>Salin</Button>
+    </Space>
+  );
+}
+
 function InfoList({ data = {} }) {
   return (
     <Descriptions bordered column={{ xs: 1, md: 2 }} size="small">
@@ -86,7 +99,7 @@ function InfoList({ data = {} }) {
   );
 }
 
-function PaymentConfigCard({ config, total, invoiceNumber, onProvider }) {
+function PaymentConfigCard({ config, total, invoiceNumber, onProvider, vaNumber }) {
   const available = config?.available_methods || config?.enabled_gateways || [config?.active_gateway].filter(Boolean);
   const manual = config?.manual_payment;
 
@@ -99,6 +112,11 @@ function PaymentConfigCard({ config, total, invoiceNumber, onProvider }) {
           message={`Gateway aktif: ${config?.active_gateway || '-'}`}
           description="Pilihan pembayaran mengikuti konfigurasi Admin dan diambil dari API."
         />
+        {vaNumber !== undefined ? (
+          <Descriptions bordered column={1} size="small">
+            <Descriptions.Item label="Nomor Virtual Account (VA)">{vaNumberValue(vaNumber)}</Descriptions.Item>
+          </Descriptions>
+        ) : null}
         {manual ? (
           <Descriptions bordered column={1} size="small">
             <Descriptions.Item label="Bank">{manual.bank_name}</Descriptions.Item>
@@ -340,7 +358,22 @@ function ResidentProperty() {
       <Space direction="vertical" size="middle" style={{ width: '100%' }}>
         {properties.map((data) => (
           <Card key={data.unit_id} title={data.unit_label}>
-            <InfoList data={{ Estate: data.estate, Cluster: data.cluster, Unit: data.unit_label, Blok: data.block, Kavling: data.lot_number, 'Tipe Properti': data.property_type, Hunian: data.occupancy, 'Luas Bangunan': data.building_area, 'Luas Tanah': data.land_area, 'Serah Terima': formatDate(data.handover_date), Status: data.status }} />
+            <InfoList
+              data={{
+                Estate: data.estate,
+                Cluster: data.cluster,
+                Unit: data.unit_label,
+                Blok: data.block,
+                Kavling: data.lot_number,
+                'Nomor Virtual Account (VA)': vaNumberValue(data.va_number),
+                'Tipe Properti': data.property_type,
+                Hunian: data.occupancy,
+                'Luas Bangunan': data.building_area,
+                'Luas Tanah': data.land_area,
+                'Serah Terima': formatDate(data.handover_date),
+                Status: data.status,
+              }}
+            />
           </Card>
         ))}
       </Space>
@@ -454,7 +487,22 @@ function ResidentInvoiceDetail() {
       {query.isLoading ? <LoadingState rows={8} /> : query.isError ? <ErrorState error={query.error} onRetry={query.refetch} /> : (
         <div className="resident-grid resident-grid-2">
           <Card title={data.invoice_number}>
-            <InfoList data={{ Penghuni: data.resident?.name, Estate: data.estate?.name, Unit: data.unit?.unit_label, Periode: data.period, 'Jatuh Tempo': formatDate(data.due_date), Subtotal: formatCurrency(data.subtotal), Admin: formatCurrency(data.admin_fee), Diskon: formatCurrency(data.discount), Total: formatCurrency(data.total), Dibayar: formatCurrency(data.total_paid), Status: data.status }} />
+            <InfoList
+              data={{
+                Penghuni: data.resident?.name,
+                Estate: data.estate?.name,
+                Unit: data.unit?.unit_label,
+                'Nomor Virtual Account (VA)': vaNumberValue(data.unit?.va_number),
+                Periode: data.period,
+                'Jatuh Tempo': formatDate(data.due_date),
+                Subtotal: formatCurrency(data.subtotal),
+                Admin: formatCurrency(data.admin_fee),
+                Diskon: formatCurrency(data.discount),
+                Total: formatCurrency(data.total),
+                Dibayar: formatCurrency(data.total_paid),
+                Status: data.status,
+              }}
+            />
             <Space className="action-row" wrap>
               <Button icon={<DownloadOutlined />} onClick={async () => downloadBlob(await api.resident.downloadInvoice(data.id), `${data.invoice_number}.pdf`)}>Download Invoice</Button>
               <Tooltip title={payDisabledReason}>
@@ -468,7 +516,7 @@ function ResidentInvoiceDetail() {
               </Tooltip>
             </Space>
           </Card>
-          <PaymentConfigCard config={configData} total={data.total} invoiceNumber={data.invoice_number} onProvider={(provider) => createPayment.mutate({ invoiceId: data.id, provider })} />
+          <PaymentConfigCard config={configData} total={data.total} invoiceNumber={data.invoice_number} vaNumber={data.unit?.va_number} onProvider={(provider) => createPayment.mutate({ invoiceId: data.id, provider })} />
           <Card title="Riwayat Pembayaran" className="resident-wide"><PaymentTable data={data.payment_history} /></Card>
         </div>
       )}

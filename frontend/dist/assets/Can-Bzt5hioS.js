@@ -1,1 +1,0 @@
-import{u as h}from"./index-BM9s90uW.js";function A({permission:t,any:r,all:u,fallback:n=null,children:e}){const{can:o,canAny:c,canAll:f}=h();return t&&!o(t)||r?.length&&!c(r)||u?.length&&!f(u)?n:e}export{A as C};

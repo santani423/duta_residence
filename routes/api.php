@@ -12,11 +12,33 @@ use App\Http\Controllers\Api\V1\CollectorVisitController;
 use App\Http\Controllers\Api\V1\DiscountRuleController;
 use App\Http\Controllers\Api\V1\DocumentController;
 use App\Http\Controllers\Api\V1\EmergencyAlertController;
+use App\Http\Controllers\Api\V1\Cms\HeroSlideController;
+use App\Http\Controllers\Api\V1\Cms\LandingAboutSettingController;
+use App\Http\Controllers\Api\V1\Cms\LandingArticleController;
+use App\Http\Controllers\Api\V1\Cms\LandingContactSettingController;
+use App\Http\Controllers\Api\V1\Cms\LandingContentCategoryController;
+use App\Http\Controllers\Api\V1\Cms\LandingEventController;
+use App\Http\Controllers\Api\V1\Cms\LandingFaqController;
+use App\Http\Controllers\Api\V1\Cms\LandingFeatureController;
+use App\Http\Controllers\Api\V1\Cms\LandingFooterSettingController;
+use App\Http\Controllers\Api\V1\Cms\LandingGalleryAlbumController;
+use App\Http\Controllers\Api\V1\Cms\LandingGalleryItemController;
+use App\Http\Controllers\Api\V1\Cms\LandingHeaderSettingController;
+use App\Http\Controllers\Api\V1\Cms\LandingPartnerController;
+use App\Http\Controllers\Api\V1\Cms\LandingSeoSettingController;
+use App\Http\Controllers\Api\V1\Cms\LandingServiceController;
+use App\Http\Controllers\Api\V1\Cms\LandingSocialLinkController;
+use App\Http\Controllers\Api\V1\Cms\LandingStatisticController;
+use App\Http\Controllers\Api\V1\Cms\LandingTestimonialController;
+use App\Http\Controllers\Api\V1\Cms\NavMenuItemController;
+use App\Http\Controllers\Api\V1\Cms\SiteSettingController;
 use App\Http\Controllers\Api\V1\GuidedTourController;
 use App\Http\Controllers\Api\V1\HelpSettingController;
 use App\Http\Controllers\Api\V1\InstallmentController;
+use App\Http\Controllers\Api\V1\LandingController;
 use App\Http\Controllers\Api\V1\LookupController;
 use App\Http\Controllers\Api\V1\ManualBookController;
+use App\Http\Controllers\Api\V1\MediaController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PaymentGatewayController;
@@ -41,6 +63,12 @@ Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttl
 
 Route::post('payments/webhooks/xendit', [PaymentGatewayController::class, 'xenditWebhook']);
 Route::post('payments/webhooks/midtrans', [PaymentGatewayController::class, 'midtransWebhook']);
+
+// Public landing page content - no auth, cached aggregate + slug-detail lookups.
+Route::get('landing/content', [LandingController::class, 'content']);
+Route::get('landing/articles/{slug}', [LandingController::class, 'article']);
+Route::get('landing/events/{slug}', [LandingController::class, 'event']);
+Route::get('landing/gallery-albums/{slug}', [LandingController::class, 'galleryAlbum']);
 
 Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::post('auth/logout', [AuthController::class, 'logout']);
@@ -242,6 +270,58 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::post('admin/guided-tours', [GuidedTourController::class, 'store'])->middleware('permission:guided-tours.manage');
     Route::put('admin/guided-tours/{tour}', [GuidedTourController::class, 'update'])->middleware('permission:guided-tours.manage');
     Route::delete('admin/guided-tours/{tour}', [GuidedTourController::class, 'destroy'])->middleware('permission:guided-tours.manage');
+
+    // Landing Page CMS - every route below is gated on the single catch-all
+    // `landing-cms.manage` permission, matching the manual-book/help-settings/
+    // guided-tours ".manage" idiom already used elsewhere in this file.
+    Route::middleware('permission:landing-cms.manage')->prefix('cms')->group(function () {
+        Route::get('media', [MediaController::class, 'index']);
+        Route::post('media', [MediaController::class, 'store']);
+        Route::delete('media/{media}', [MediaController::class, 'destroy']);
+
+        Route::get('settings/header', [LandingHeaderSettingController::class, 'show']);
+        Route::put('settings/header', [LandingHeaderSettingController::class, 'update']);
+        Route::get('settings/about', [LandingAboutSettingController::class, 'show']);
+        Route::put('settings/about', [LandingAboutSettingController::class, 'update']);
+        Route::get('settings/contact', [LandingContactSettingController::class, 'show']);
+        Route::put('settings/contact', [LandingContactSettingController::class, 'update']);
+        Route::get('settings/footer', [LandingFooterSettingController::class, 'show']);
+        Route::put('settings/footer', [LandingFooterSettingController::class, 'update']);
+        Route::get('settings/seo', [LandingSeoSettingController::class, 'show']);
+        Route::put('settings/seo', [LandingSeoSettingController::class, 'update']);
+        Route::get('settings/general', [SiteSettingController::class, 'show']);
+        Route::put('settings/general', [SiteSettingController::class, 'update']);
+
+        $collections = [
+            'hero-slides' => [HeroSlideController::class, 'heroSlide'],
+            'services' => [LandingServiceController::class, 'landingService'],
+            'features' => [LandingFeatureController::class, 'landingFeature'],
+            'statistics' => [LandingStatisticController::class, 'landingStatistic'],
+            'testimonials' => [LandingTestimonialController::class, 'landingTestimonial'],
+            'partners' => [LandingPartnerController::class, 'landingPartner'],
+            'faqs' => [LandingFaqController::class, 'landingFaq'],
+            'categories' => [LandingContentCategoryController::class, 'landingContentCategory'],
+            'nav-menu-items' => [NavMenuItemController::class, 'navMenuItem'],
+            'social-links' => [LandingSocialLinkController::class, 'landingSocialLink'],
+            'events' => [LandingEventController::class, 'landingEvent'],
+            'articles' => [LandingArticleController::class, 'landingArticle'],
+            'gallery-albums' => [LandingGalleryAlbumController::class, 'landingGalleryAlbum'],
+        ];
+
+        foreach ($collections as $path => [$controller, $param]) {
+            Route::get($path, [$controller, 'index']);
+            Route::post($path, [$controller, 'store']);
+            Route::put("{$path}/{{$param}}", [$controller, 'update']);
+            Route::delete("{$path}/{{$param}}", [$controller, 'destroy']);
+            Route::post("{$path}/{{$param}}/reorder", [$controller, 'reorder']);
+        }
+
+        Route::get('gallery-albums/{album}/items', [LandingGalleryItemController::class, 'index']);
+        Route::post('gallery-albums/{album}/items', [LandingGalleryItemController::class, 'store']);
+        Route::put('gallery-items/{item}', [LandingGalleryItemController::class, 'update']);
+        Route::delete('gallery-items/{item}', [LandingGalleryItemController::class, 'destroy']);
+        Route::post('gallery-items/{item}/reorder', [LandingGalleryItemController::class, 'reorder']);
+    });
 });
 
 Route::middleware(['auth:sanctum', 'audit', 'role:customer', 'single-session'])->prefix('resident')->group(function () {

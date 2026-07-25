@@ -28,6 +28,7 @@ class DatabaseSeeder extends Seeder
                 DocumentSeeder::class,
                 AuditLogSeeder::class,
                 HelpCenterSeeder::class,
+                LandingCmsSeeder::class,
             ]);
         });
     }

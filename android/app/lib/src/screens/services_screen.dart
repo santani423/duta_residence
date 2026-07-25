@@ -9,6 +9,7 @@ import '../api/api_client.dart';
 import '../api/api_exception.dart';
 import '../constants/app_spacing.dart';
 import '../utils/formatters.dart';
+import '../widgets/copyable_value_row.dart';
 import '../widgets/duta_card.dart';
 import '../widgets/fade_in.dart';
 import '../widgets/info_row.dart';
@@ -333,6 +334,12 @@ class _BillsSectionState extends State<_BillsSection> {
                         ],
                       ),
                       const SizedBox(height: AppSpacing.md),
+                      CopyableValueRow(
+                        label: 'Nomor VA',
+                        value: invoice['va_number'] as String?,
+                        copiedMessage: 'Nomor VA disalin.',
+                      ),
+                      const SizedBox(height: AppSpacing.md),
                       InfoRows(
                         items: {
                           'Jenis': invoice['billing_type'],
@@ -408,6 +415,12 @@ class _PaymentMethodSheet extends StatelessWidget {
               const SizedBox(height: AppSpacing.sm),
               Text(
                 '${compact(invoice['invoice_number'])} - ${money(invoice['total'])}',
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              CopyableValueRow(
+                label: 'Nomor Virtual Account (VA)',
+                value: invoice['va_number'] as String?,
+                copiedMessage: 'Nomor VA disalin.',
               ),
               const SizedBox(height: AppSpacing.lg),
               for (final provider in available) ...[

@@ -46,7 +46,7 @@ Item kecil, isolated, low-risk. Cocok dikerjakan paralel oleh beberapa developer
 - **Aktifkan kembali card "Akses Layanan"** di `android/app/lib/src/screens/dashboard_screen.dart`.
 - **Pencarian Penghuni** berdasarkan Alamat/Cluster/Blok — extend filter pada endpoint & halaman daftar penghuni existing.
 - **Tambah tipe properti "Ruko"** — `database/seeders/EstateSeeder.php` (`propertyTypeOptions`, saat ini hanya B/K/P).
-- **Tambah status Occupancy "Siswa"** — tabel `occupancy_statuses` (saat ini hanya Dihuni/Kosong).
+- **Tambah status Occupancy "Sewa"** — tabel `occupancy_statuses` (saat ini hanya Dihuni/Kosong).
 - **Total Tagihan** di halaman tagihan penghuni — agregasi tampilan, `ResidentDetailPage.jsx`/`BillingsPage.jsx`.
 - **Hapus komponen Pajak** dari tampilan penagihan — field `tax` di `PaymentTransaction` sudah selalu 0, hanya perlu hapus dari tampilan (`ResidentPortalPage.jsx`, dsb).
 - **Access Denied untuk direct-URL Dashboard Customer** tanpa hak akses — verifikasi/perbaiki wrapper `<Protected>` di `frontend/src/routes/AppRoutes.jsx`.

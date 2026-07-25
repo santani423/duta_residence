@@ -36,6 +36,7 @@ class RolePermissionSeeder extends Seeder
             'occupants.view', 'occupants.create', 'occupants.update', 'occupants.delete',
             'manual-book.manage', 'help-settings.manage', 'guided-tours.manage',
             'emergency-alerts.view', 'emergency-alerts.acknowledge',
+            'landing-cms.manage',
         ];
 
         foreach ($permissions as $permission) {
@@ -64,6 +65,7 @@ class RolePermissionSeeder extends Seeder
                 'occupants.view', 'occupants.create', 'occupants.update', 'occupants.delete',
                 'manual-book.manage',
                 'emergency-alerts.view', 'emergency-alerts.acknowledge',
+                'landing-cms.manage',
             ],
             'back_office' => [
                 'residents.view', 'residents.create', 'residents.update',

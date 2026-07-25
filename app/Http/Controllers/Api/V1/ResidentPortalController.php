@@ -957,6 +957,7 @@ class ResidentPortalController extends Controller
     {
         return [
             'unit_id' => $unit->id,
+            'va_number' => $unit->va_number,
             'estate' => 'Grand Duta Residence',
             'cluster' => $unit->cluster?->name,
             'block' => $unit->block,
@@ -978,6 +979,7 @@ class ResidentPortalController extends Controller
         return [
             'id' => $billing->id,
             'invoice_number' => 'BIL-'.$billing->id,
+            'va_number' => $billing->unit?->va_number,
             'billing_type' => $billing->billing_type,
             'period' => $calc['period'],
             'year' => $billing->year,
