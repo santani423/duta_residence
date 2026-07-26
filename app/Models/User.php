@@ -77,4 +77,29 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Resident::class);
     }
+
+    public function collectorAssignments()
+    {
+        return $this->hasMany(CollectorAssignment::class, 'collector_id');
+    }
+
+    public function collectorVisits()
+    {
+        return $this->hasMany(CollectorVisit::class, 'collector_id');
+    }
+
+    public function collectorLocations()
+    {
+        return $this->hasMany(CollectorLocation::class, 'collector_id');
+    }
+
+    public function collectorTargets()
+    {
+        return $this->hasMany(CollectorTarget::class, 'collector_id');
+    }
+
+    public function collectorProfile()
+    {
+        return $this->hasOne(CollectorProfile::class);
+    }
 }

@@ -59,6 +59,15 @@ const CmsContactSettingsPage = lazy(() => import('../pages/cms/CmsContactSetting
 const CmsFooterSettingsPage = lazy(() => import('../pages/cms/CmsFooterSettingsPage.jsx'));
 const CmsSeoSettingsPage = lazy(() => import('../pages/cms/CmsSeoSettingsPage.jsx'));
 const CmsGeneralSettingsPage = lazy(() => import('../pages/cms/CmsGeneralSettingsPage.jsx'));
+const CollectorsPage = lazy(() => import('../pages/CollectorsPage.jsx'));
+const CollectorDetailPage = lazy(() => import('../pages/CollectorDetailPage.jsx'));
+const CollectorAssignmentsPage = lazy(() => import('../pages/CollectorAssignmentsPage.jsx'));
+const CollectorTargetsPage = lazy(() => import('../pages/CollectorTargetsPage.jsx'));
+const CollectorPerformancePage = lazy(() => import('../pages/CollectorPerformancePage.jsx'));
+const CollectorLiveMapPage = lazy(() => import('../pages/CollectorLiveMapPage.jsx'));
+const CollectionLettersPage = lazy(() => import('../pages/CollectionLettersPage.jsx'));
+const CollectorRouteMapPage = lazy(() => import('../pages/collector/CollectorRouteMapPage.jsx'));
+const CollectorRemindersPage = lazy(() => import('../pages/collector/CollectorRemindersPage.jsx'));
 
 function Protected({ children, permissions = [], roles = [] }) {
   const { token, canAny, hasRole } = useAuth();
@@ -161,6 +170,17 @@ export default function AppRoutes() {
         <Route path="admin/cms/settings/footer" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsFooterSettingsPage /></LazyPage></Protected>} />
         <Route path="admin/cms/settings/seo" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsSeoSettingsPage /></LazyPage></Protected>} />
         <Route path="admin/cms/settings/general" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsGeneralSettingsPage /></LazyPage></Protected>} />
+        <Route path="admin/collectors/list" element={<Protected permissions={['collector.read']}><LazyPage><CollectorsPage /></LazyPage></Protected>} />
+        <Route path="admin/collectors/list/:id" element={<Protected permissions={['collector.detail']}><LazyPage><CollectorDetailPage /></LazyPage></Protected>} />
+        <Route path="admin/collectors/assignments" element={<Protected permissions={['collector-assignments.view']}><LazyPage><CollectorAssignmentsPage /></LazyPage></Protected>} />
+        <Route path="admin/collectors/targets" element={<Protected permissions={['collector-targets.view']}><LazyPage><CollectorTargetsPage /></LazyPage></Protected>} />
+        <Route path="admin/collectors/performance" element={<Protected permissions={['collector-performance.view']}><LazyPage><CollectorPerformancePage /></LazyPage></Protected>} />
+        <Route path="admin/collectors/live-map" element={<Protected permissions={['collector-locations.view']}><LazyPage><CollectorLiveMapPage /></LazyPage></Protected>} />
+        <Route path="admin/collectors/letters" element={<Protected permissions={['collection-letters.view']}><LazyPage><CollectionLettersPage /></LazyPage></Protected>} />
+        <Route path="collector/performance" element={<Protected roles={['collector']}><LazyPage><CollectorPerformancePage /></LazyPage></Protected>} />
+        <Route path="collector/route" element={<Protected roles={['collector']}><LazyPage><CollectorRouteMapPage /></LazyPage></Protected>} />
+        <Route path="collector/reminders" element={<Protected roles={['collector']}><LazyPage><CollectorRemindersPage /></LazyPage></Protected>} />
+        <Route path="collector/letters" element={<Protected roles={['collector']}><LazyPage><CollectionLettersPage /></LazyPage></Protected>} />
         <Route path="resident/dashboard" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="dashboard" /></LazyPage></Protected>} />
         <Route path="resident/account" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="account" /></LazyPage></Protected>} />
         <Route path="resident/profile" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="profile" /></LazyPage></Protected>} />

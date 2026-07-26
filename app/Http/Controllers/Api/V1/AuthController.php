@@ -21,7 +21,15 @@ class AuthController extends Controller
             'password' => ['required', 'string', 'min:6'],
         ]);
 
-        $user = User::query()->where('username', $credentials['username'])->first();
+        // The login screen has always advertised "username, email, atau telepon" as
+        // acceptable identifiers (see android login_screen.dart); the backend only ever
+        // matched `username` until now. Email is safe to match here because it's already
+        // validated unique across the whole `users` table (UserController/CollectorController),
+        // so this can never resolve to more than one account.
+        $user = User::query()
+            ->where('username', $credentials['username'])
+            ->orWhere('email', $credentials['username'])
+            ->first();
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             $auditService->log('login_failed', 'auth', 'LOGIN', null, [], ['username' => $credentials['username']], 'failed');
@@ -97,6 +105,28 @@ class AuthController extends Controller
             'language_preference' => $user->language_preference,
             'notification_preferences' => $user->notification_preferences,
             'last_login_at' => $user->last_login_at,
+            'collector_profile' => $user->hasRole('collector') ? $this->collectorProfilePayload($user) : null,
+        ];
+    }
+
+    /**
+     * Reuses the app's existing auth/me bootstrap call (session_controller.dart already
+     * fetches this on every cold start) instead of adding a dedicated endpoint/network
+     * call to the Android app just to show the collector's own code/photo.
+     */
+    private function collectorProfilePayload(User $user): ?array
+    {
+        $profile = $user->collectorProfile()->with('photos')->first();
+        if (! $profile) {
+            return null;
+        }
+
+        return [
+            'collector_code' => $profile->collector_code,
+            'whatsapp_number' => $profile->whatsapp_number,
+            'employment_status' => $profile->employment_status,
+            'account_status' => $profile->account_status,
+            'photo_path' => $profile->photos->first()?->path,
         ];
     }
 }

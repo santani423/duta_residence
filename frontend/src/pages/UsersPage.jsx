@@ -116,8 +116,20 @@ export default function UsersPage() {
             {
               title: 'Aksi',
               fixed: 'right',
-              width: 90,
+              width: 160,
               render: (_, record) => {
+                const isCollector = record.roles?.some((role) => role.name === 'collector');
+                // Collector accounts are managed exclusively through "Manajemen Kolektor"
+                // (profile, assignments, targets all live there) - route there instead of
+                // exposing a generic edit/delete/reset that would bypass that module.
+                if (isCollector) {
+                  return (
+                    <Button size="small" onClick={() => navigate(`/admin/collectors/list/${record.id}`)}>
+                      Kelola di Manajemen Kolektor
+                    </Button>
+                  );
+                }
+
                 const items = [
                   { key: 'detail', label: 'Detail', icon: <EyeOutlined /> },
                   can('users.update') ? { key: 'edit', label: 'Edit', icon: <EditOutlined /> } : null,

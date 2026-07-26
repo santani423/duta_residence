@@ -57,6 +57,11 @@ class ApiClient {
     Map<String, String> fields = const {},
     PlatformFile? file,
     String fileField = 'attachment',
+    // Alternative to `file` for callers that already have a real on-disk
+    // path (image_picker's XFile, or bytes written out via path_provider,
+    // e.g. a signature capture) instead of file_picker's PlatformFile.
+    String? filePath,
+    String? fileName,
   }) async {
     return _send(() async {
       final request = http.MultipartRequest('POST', _uri(path));
@@ -68,6 +73,14 @@ class ApiClient {
             fileField,
             file!.path!,
             filename: file.name,
+          ),
+        );
+      } else if (filePath != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            fileField,
+            filePath,
+            filename: fileName,
           ),
         );
       }

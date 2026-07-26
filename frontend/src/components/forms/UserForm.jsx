@@ -34,8 +34,13 @@ export default function UserForm({ form, onFinish, editing = false, loading = fa
           <Input.Password autoComplete="new-password" />
         </Form.Item>
       ) : null}
-      <Form.Item label="Role" name="role" rules={[{ required: true }]}>
-        <Select options={roles.map((role) => ({ value: role, label: role }))} />
+      <Form.Item
+        label="Role"
+        name="role"
+        rules={[{ required: true }]}
+        tooltip="Akun kolektor dikelola khusus lewat menu Manajemen Kolektor agar profil, penugasan, dan target-nya selalu lengkap."
+      >
+        <Select options={roles.filter((role) => role !== 'collector').map((role) => ({ value: role, label: role }))} />
       </Form.Item>
       <Form.Item noStyle shouldUpdate={(prev, next) => prev.role !== next.role}>
         {({ getFieldValue }) => {

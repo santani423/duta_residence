@@ -29,6 +29,18 @@ const maps = {
     read: ['Dibaca', 'default'],
     unread: ['Belum Dibaca', 'blue'],
   },
+  collectorAccount: {
+    active: ['Aktif', 'green'],
+    inactive: ['Nonaktif', 'default'],
+    leave: ['Cuti', 'gold'],
+    suspended: ['Suspend', 'red'],
+  },
+  assignmentStatus: {
+    active: ['Aktif', 'green'],
+    completed: ['Selesai', 'default'],
+    cancelled: ['Dibatalkan', 'red'],
+    transferred: ['Dipindahkan', 'blue'],
+  },
 };
 
 export default function StatusBadge({ type, value, children }) {

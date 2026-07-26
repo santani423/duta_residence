@@ -8,7 +8,15 @@ use App\Http\Controllers\Api\V1\ClusterController;
 use App\Http\Controllers\Api\V1\ClusterMapComponentTypeController;
 use App\Http\Controllers\Api\V1\ClusterMapController;
 use App\Http\Controllers\Api\V1\ClusterRateScheduleController;
+use App\Http\Controllers\Api\V1\CollectionLetterController;
+use App\Http\Controllers\Api\V1\CollectorAssignmentController;
+use App\Http\Controllers\Api\V1\CollectorController;
+use App\Http\Controllers\Api\V1\CollectorLocationController;
+use App\Http\Controllers\Api\V1\CollectorPerformanceController;
+use App\Http\Controllers\Api\V1\CollectorReminderController;
+use App\Http\Controllers\Api\V1\CollectorTargetController;
 use App\Http\Controllers\Api\V1\CollectorVisitController;
+use App\Http\Controllers\Api\V1\CollectorVisitEvidenceController;
 use App\Http\Controllers\Api\V1\DiscountRuleController;
 use App\Http\Controllers\Api\V1\DocumentController;
 use App\Http\Controllers\Api\V1\EmergencyAlertController;
@@ -127,6 +135,43 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::post('units/{unit}/payment-promises', [PaymentPromiseController::class, 'store'])->middleware('permission:payment-promises.create');
     Route::put('payment-promises/{promise}', [PaymentPromiseController::class, 'update'])->middleware('permission:payment-promises.update');
 
+    Route::get('visits/{visit}/evidence', [CollectorVisitEvidenceController::class, 'index'])->middleware('permission:collector-evidence.view');
+    Route::post('visits/{visit}/evidence', [CollectorVisitEvidenceController::class, 'store'])->middleware('permission:collector-evidence.upload');
+    Route::delete('visit-evidence/{evidence}', [CollectorVisitEvidenceController::class, 'destroy'])->middleware('permission:collector-evidence.delete');
+
+    Route::get('collectors', [CollectorController::class, 'index'])->middleware('permission:collector.read');
+    Route::post('collectors', [CollectorController::class, 'store'])->middleware('permission:collector.create');
+    Route::get('collectors/{collector}', [CollectorController::class, 'show'])->middleware('permission:collector.detail');
+    Route::put('collectors/{collector}', [CollectorController::class, 'update'])->middleware('permission:collector.update');
+    Route::delete('collectors/{collector}', [CollectorController::class, 'destroy'])->middleware('permission:collector.delete');
+    Route::patch('collectors/{collector}/status', [CollectorController::class, 'updateStatus'])->middleware('permission:collector.activate');
+    Route::get('collectors/{collector}/assignment-history', [CollectorController::class, 'assignmentHistory'])->middleware('permission:collector.assignment_history|collector.detail');
+    Route::post('collectors/{collector}/photo', [CollectorController::class, 'uploadPhoto'])->middleware('permission:collector.update');
+
+    Route::get('collector-assignments', [CollectorAssignmentController::class, 'index'])->middleware('permission:collector-assignments.view');
+    Route::post('collector-assignments', [CollectorAssignmentController::class, 'store'])->middleware('permission:collector-assignments.assign|collector.assign');
+    Route::put('collector-assignments/{collectorAssignment}', [CollectorAssignmentController::class, 'update'])->middleware('permission:collector-assignments.update');
+    Route::delete('collector-assignments/{collectorAssignment}', [CollectorAssignmentController::class, 'destroy'])->middleware('permission:collector-assignments.delete');
+    Route::post('collector-assignments/{collectorAssignment}/reassign', [CollectorAssignmentController::class, 'reassign'])->middleware('permission:collector.reassign');
+
+    Route::post('collector-locations', [CollectorLocationController::class, 'store'])->middleware('role:collector');
+    Route::get('collector-locations', [CollectorLocationController::class, 'index'])->middleware('permission:collector-locations.view|collector.location_view');
+    Route::get('collector-locations/latest', [CollectorLocationController::class, 'latest'])->middleware('permission:collector-locations.view|collector.location_view');
+
+    Route::get('collector-targets', [CollectorTargetController::class, 'index'])->middleware('permission:collector-targets.view|collector.target_manage');
+    Route::post('collector-targets', [CollectorTargetController::class, 'store'])->middleware('permission:collector-targets.create|collector.target_manage');
+    Route::put('collector-targets/{collectorTarget}', [CollectorTargetController::class, 'update'])->middleware('permission:collector-targets.update|collector.target_manage');
+    Route::delete('collector-targets/{collectorTarget}', [CollectorTargetController::class, 'destroy'])->middleware('permission:collector-targets.delete|collector.target_manage');
+    Route::get('collector-performance', [CollectorPerformanceController::class, 'index'])->middleware('permission:collector-performance.view');
+    Route::get('collector-performance/me', [CollectorPerformanceController::class, 'mine'])->middleware('role:collector');
+
+    Route::get('collection-letters', [CollectionLetterController::class, 'index'])->middleware('permission:collection-letters.view');
+    Route::post('collection-letters', [CollectionLetterController::class, 'store'])->middleware('permission:collection-letters.create');
+    Route::get('collection-letters/{collectionLetter}/download', [CollectionLetterController::class, 'download'])->middleware('permission:collection-letters.download');
+
+    Route::get('collector-reminders', [CollectorReminderController::class, 'index'])->middleware('permission:reports.view');
+    Route::post('collector-reminders', [CollectorReminderController::class, 'store'])->middleware('role:collector');
+
     Route::get('residents/{resident}/resident-documents', [ResidentDocumentController::class, 'indexForResident'])->middleware('permission:resident-documents.view');
     Route::get('units/{unit}/resident-documents', [ResidentDocumentController::class, 'indexForUnit'])->middleware('permission:resident-documents.view');
     Route::post('residents/{resident}/resident-documents', [ResidentDocumentController::class, 'storeForResident'])->middleware('permission:resident-documents.create');
@@ -242,6 +287,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::post('notifications/read-all', [NotificationController::class, 'readAll']);
 
     Route::get('emergency-alerts', [EmergencyAlertController::class, 'index'])->middleware('permission:emergency-alerts.view');
+    Route::post('emergency-alerts', [EmergencyAlertController::class, 'store'])->middleware('permission:emergency-alerts.create');
     Route::post('emergency-alerts/{emergencyAlert}/acknowledge', [EmergencyAlertController::class, 'acknowledge'])->middleware('permission:emergency-alerts.acknowledge');
 
     // Manual Book & panduan interaktif - baca terbuka untuk semua role yang login,

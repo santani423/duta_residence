@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\AuditLog;
 use App\Models\Billing;
+use App\Models\CollectorVisit;
 use App\Models\EmergencyAlert;
 use App\Models\ResidentComplaint;
 use App\Models\ResidentComplaintComment;
@@ -402,12 +403,22 @@ class ResidentPortalController extends Controller
             'priority' => ['required', Rule::in(['low', 'normal', 'high', 'urgent'])],
             'description' => ['required', 'string'],
             'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'related_visit_id' => ['nullable', 'integer', 'exists:collector_visits,id'],
         ]);
+
+        // A resident may only tie a complaint to one of their own collector visits;
+        // collector_id is always derived from that visit, never trusted from the client.
+        $relatedVisit = isset($data['related_visit_id'])
+            ? CollectorVisit::query()->where('id', $data['related_visit_id'])->where('unit_id', $unit->id)->first()
+            : null;
+        abort_if(isset($data['related_visit_id']) && ! $relatedVisit, 404, 'Kunjungan kolektor tidak ditemukan untuk unit ini.');
 
         $attachment = $request->hasFile('attachment') ? $request->file('attachment')->store('complaints', 'public') : null;
         $complaint = $unit->complaints()->create([
-            ...collect($data)->except('attachment')->all(),
+            ...collect($data)->except(['attachment', 'related_visit_id'])->all(),
             'attachment_path' => $attachment,
+            'related_visit_id' => $relatedVisit?->id,
+            'collector_id' => $relatedVisit?->collector_id,
             'user_id' => $request->user()->id,
             'created_by' => $request->user()->id,
         ]);

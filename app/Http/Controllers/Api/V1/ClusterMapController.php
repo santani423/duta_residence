@@ -9,7 +9,9 @@ use App\Models\ClusterMap;
 use App\Models\ClusterMapComponentType;
 use App\Models\ClusterMapObject;
 use App\Models\ClusterMapVersion;
+use App\Models\Unit;
 use App\Services\AuditService;
+use App\Services\CollectorAssignmentService;
 use App\Services\PenaltyService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -26,8 +28,13 @@ class ClusterMapController extends Controller
     private const SHAPE_TYPES = ['rect', 'circle', 'triangle', 'trapezoid', 'polygon', 'line', 'text'];
     private const MAX_VERSIONS_KEPT = 30;
 
-    public function show(Cluster $cluster, PenaltyService $penaltyService)
+    public function show(Request $request, Cluster $cluster, PenaltyService $penaltyService, CollectorAssignmentService $assignmentService)
     {
+        if ($request->user()->hasRole('collector')) {
+            $clusterIds = Unit::query()->whereIn('id', $assignmentService->unitIdsFor($request->user()))->pluck('cluster_id')->unique();
+            abort_unless($clusterIds->contains($cluster->id), 403, 'Peta cluster ini tidak ditugaskan kepada Anda.');
+        }
+
         $map = $cluster->map()->first();
 
         $placedUnitIds = $map

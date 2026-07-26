@@ -21,6 +21,29 @@ class EmergencyAlertController extends Controller
         return $this->paginated($query->latest()->paginate($request->integer('per_page', 15)));
     }
 
+    /** Staff/collector-initiated SOS — e.g. a collector in distress in the field with no specific unit context. */
+    public function store(Request $request, AuditService $auditService)
+    {
+        $data = $request->validate([
+            'unit_id' => ['nullable', 'exists:units,id'],
+            'note' => ['nullable', 'string'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'accuracy_meters' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $alert = EmergencyAlert::query()->create([
+            ...$data,
+            'status' => 'active',
+            'location_captured_at' => isset($data['latitude']) ? now() : null,
+            'created_by' => $request->user()->id,
+        ]);
+
+        $auditService->log('emergency_alert_created', 'emergency-alerts', 'CREATE', $alert, [], $alert->toArray());
+
+        return $this->success($alert->load(['unit.cluster', 'resident']), 'Sinyal darurat berhasil dikirim.', 201);
+    }
+
     public function acknowledge(Request $request, EmergencyAlert $emergencyAlert, AuditService $auditService)
     {
         if ($emergencyAlert->status === 'acknowledged') {

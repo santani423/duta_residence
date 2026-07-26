@@ -44,6 +44,16 @@ class Resident extends Model
         return $this->morphMany(ManagedFile::class, 'entity')->latest();
     }
 
+    public function collectorAssignments()
+    {
+        return $this->hasMany(CollectorAssignment::class);
+    }
+
+    public function collectionLetters()
+    {
+        return $this->hasMany(CollectionLetter::class);
+    }
+
     public function scopeSearch(Builder $query, ?string $search): Builder
     {
         return $query->when($search, fn (Builder $q) => $q->where(function (Builder $inner) use ($search) {

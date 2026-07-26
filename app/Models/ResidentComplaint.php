@@ -13,7 +13,7 @@ class ResidentComplaint extends Model
     protected $fillable = [
         'unit_id', 'user_id', 'title', 'category', 'priority', 'description',
         'status', 'attachment_path', 'closed_at', 'assigned_to', 'division',
-        'target_date', 'created_by', 'updated_by',
+        'target_date', 'created_by', 'updated_by', 'collector_id', 'related_visit_id',
     ];
 
     protected $casts = [
@@ -39,5 +39,15 @@ class ResidentComplaint extends Model
     public function comments()
     {
         return $this->hasMany(ResidentComplaintComment::class);
+    }
+
+    public function collector()
+    {
+        return $this->belongsTo(User::class, 'collector_id');
+    }
+
+    public function relatedVisit()
+    {
+        return $this->belongsTo(CollectorVisit::class, 'related_visit_id');
     }
 }

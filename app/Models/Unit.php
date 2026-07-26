@@ -15,13 +15,15 @@ class Unit extends Model
     protected $fillable = [
         'id', 'va_number', 'resident_id', 'tenant_resident_id', 'billing_payer', 'cluster_id', 'block', 'lot_number', 'property_type_id',
         'building_area', 'land_area', 'handover_date', 'occupancy_id', 'status_id',
-        'occupancy_role', 'tenancy_start_date', 'tenancy_end_date',
+        'occupancy_role', 'tenancy_start_date', 'tenancy_end_date', 'latitude', 'longitude',
         'is_penalty_eligible', 'is_discount_eligible', 'discount_rule_id', 'notes', 'created_by', 'updated_by',
     ];
 
     protected $casts = [
         'building_area' => 'decimal:2',
         'land_area' => 'decimal:2',
+        'latitude' => 'decimal:7',
+        'longitude' => 'decimal:7',
         'handover_date' => 'date',
         'tenancy_start_date' => 'date',
         'tenancy_end_date' => 'date',
@@ -122,6 +124,16 @@ class Unit extends Model
     public function occupants()
     {
         return $this->hasMany(UnitOccupant::class);
+    }
+
+    public function collectorAssignments()
+    {
+        return $this->hasMany(CollectorAssignment::class);
+    }
+
+    public function collectionLetters()
+    {
+        return $this->hasMany(CollectionLetter::class);
     }
 
     public function scopeSearch(Builder $query, ?string $search): Builder

@@ -10,9 +10,9 @@ import '../storage/token_store.dart';
 
 enum SessionStatus { booting, authenticated, unauthenticated, connectionError }
 
-const _allowedRole = 'customer';
+const _allowedRoles = {'customer', 'collector'};
 const _roleMismatchMessage =
-    'Akun ini bukan akun penghuni. Silakan gunakan portal staf untuk masuk.';
+    'Akun ini tidak didukung di aplikasi ini. Silakan gunakan portal staf untuk masuk.';
 
 class SessionController extends ChangeNotifier {
   SessionController({
@@ -122,7 +122,7 @@ class SessionController extends ChangeNotifier {
       final user = UserSession.fromJson(
         Map<String, dynamic>.from(result.data as Map),
       );
-      if (user.role != _allowedRole) {
+      if (!_allowedRoles.contains(user.role)) {
         await _forceLogout();
         _setUnauthenticated(_roleMismatchMessage);
         notifyListeners();
@@ -164,7 +164,7 @@ class SessionController extends ChangeNotifier {
     );
     await _tokenStore.save(data['token'].toString());
 
-    if (user.role != _allowedRole) {
+    if (!_allowedRoles.contains(user.role)) {
       await _forceLogout();
       _setUnauthenticated(_roleMismatchMessage);
       notifyListeners();

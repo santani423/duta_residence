@@ -7,6 +7,7 @@ use App\Http\Responses\ApiResponse;
 use App\Models\Resident;
 use App\Models\User;
 use App\Services\AuditService;
+use App\Services\CollectorAssignmentService;
 use App\Services\ResidentAccountService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -15,13 +16,17 @@ class ResidentController extends Controller
 {
     use ApiResponse;
 
-    public function index(Request $request)
+    public function index(Request $request, CollectorAssignmentService $assignmentService)
     {
         $query = Resident::query()
             ->search($request->query('search'))
             ->address($request->query('address'))
             ->cluster($request->query('cluster_id'))
             ->block($request->query('block'));
+
+        if ($request->user()->hasRole('collector')) {
+            $query->whereIn('id', $assignmentService->residentIdsFor($request->user()));
+        }
 
         return $this->paginated($query->orderBy('name')->paginate($request->integer('per_page', 15)));
     }
@@ -72,8 +77,12 @@ class ResidentController extends Controller
         ], 'Penghuni berhasil dibuat.', 201);
     }
 
-    public function show(Resident $resident)
+    public function show(Request $request, Resident $resident, CollectorAssignmentService $assignmentService)
     {
+        if ($request->user()->hasRole('collector')) {
+            abort_unless(in_array($resident->id, $assignmentService->residentIdsFor($request->user()), true), 403, 'Penghuni ini tidak ditugaskan kepada Anda.');
+        }
+
         return $this->success($resident->load([
             'district.regency',
             'units.cluster',

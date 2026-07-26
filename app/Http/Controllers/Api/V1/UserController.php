@@ -106,6 +106,29 @@ class UserController extends Controller
         return $data;
     }
 
+    /**
+     * `collector` is deliberately excluded from the assignable roles here. Collector
+     * accounts always need a matching `collector_profiles` row (code, employment/account
+     * status, assignments, ...), which only CollectorController's store()/update() create
+     * atomically alongside the User. Allowing `collector` through this generic form would
+     * let an admin create/promote a User with the role but no profile - an orphaned
+     * "collector" that can log in but has no profile, no assignments, and breaks every
+     * `collector_profile`-dependent screen. Collector accounts are managed exclusively
+     * through the "Manajemen Kolektor" module.
+     */
+    private function assignableRoles(?User $user = null): array
+    {
+        $roles = Role::query()->pluck('name')->reject(fn ($name) => $name === 'collector');
+
+        // An existing collector account edited here (e.g. to fix a typo in the name)
+        // must be allowed to keep its current role, just not to newly acquire it.
+        if ($user?->hasRole('collector')) {
+            $roles->push('collector');
+        }
+
+        return $roles->values()->all();
+    }
+
     private function validateUser(Request $request, ?User $user = null): array
     {
         return $request->validate([
@@ -114,7 +137,10 @@ class UserController extends Controller
             'email' => ['nullable', 'email', 'max:100', Rule::unique('users')->ignore($user?->id)],
             'phone' => ['nullable', 'string', 'max:20'],
             'password' => [$user ? 'nullable' : 'required', 'string', 'min:8'],
-            'role' => ['required', Rule::in(Role::query()->pluck('name')->all())],
+            'role' => [
+                'required',
+                Rule::in($this->assignableRoles($user)),
+            ],
             'unit_id' => [
                 Rule::requiredIf(fn () => $request->input('role') === 'customer'),
                 'nullable', 'string', Rule::exists('units', 'id'),

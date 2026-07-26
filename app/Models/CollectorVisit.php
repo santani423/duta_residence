@@ -37,4 +37,9 @@ class CollectorVisit extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+
+    public function evidence()
+    {
+        return $this->hasMany(CollectorVisitEvidence::class, 'visit_id');
+    }
 }

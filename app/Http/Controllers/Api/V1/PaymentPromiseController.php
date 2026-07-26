@@ -8,6 +8,7 @@ use App\Models\PaymentPromise;
 use App\Models\Resident;
 use App\Models\Unit;
 use App\Services\AuditService;
+use App\Services\CollectorAssignmentService;
 use App\Services\ResidentDetailService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -16,9 +17,13 @@ class PaymentPromiseController extends Controller
 {
     use ApiResponse;
 
-    public function index(Request $request, Resident $resident, ResidentDetailService $service)
+    public function index(Request $request, Resident $resident, ResidentDetailService $service, CollectorAssignmentService $assignmentService)
     {
         $unitIds = $service->unitIds($resident, $request->query('unit_id'));
+
+        if ($request->user()->hasRole('collector')) {
+            $unitIds = array_values(array_intersect($unitIds, $assignmentService->unitIdsFor($request->user())));
+        }
 
         $query = PaymentPromise::query()
             ->with(['unit.cluster', 'billing', 'creator'])
@@ -28,8 +33,12 @@ class PaymentPromiseController extends Controller
         return $this->paginated($query->latest('promised_date')->paginate($request->integer('per_page', 15)));
     }
 
-    public function store(Request $request, Unit $unit, AuditService $auditService)
+    public function store(Request $request, Unit $unit, AuditService $auditService, CollectorAssignmentService $assignmentService)
     {
+        if ($request->user()->hasRole('collector')) {
+            $assignmentService->assertUnitAssigned($request->user(), $unit->id);
+        }
+
         $data = $this->validatePromise($request);
         $data['unit_id'] = $unit->id;
         $data['created_by'] = $request->user()->id;
@@ -40,8 +49,12 @@ class PaymentPromiseController extends Controller
         return $this->success($promise->load(['unit.cluster', 'billing', 'creator']), 'Janji pembayaran berhasil dicatat.', 201);
     }
 
-    public function update(Request $request, PaymentPromise $promise, AuditService $auditService)
+    public function update(Request $request, PaymentPromise $promise, AuditService $auditService, CollectorAssignmentService $assignmentService)
     {
+        if ($request->user()->hasRole('collector')) {
+            $assignmentService->assertUnitAssigned($request->user(), $promise->unit_id);
+        }
+
         $data = $this->validatePromise($request);
         $old = $promise->toArray();
         $promise->update($data);

@@ -7,6 +7,7 @@ use App\Http\Responses\ApiResponse;
 use App\Models\Billing;
 use App\Models\Unit;
 use App\Services\AuditService;
+use App\Services\CollectorAssignmentService;
 use App\Services\PenaltyService;
 use App\Services\UnitOwnershipSyncService;
 use Illuminate\Http\Request;
@@ -16,7 +17,7 @@ class UnitController extends Controller
 {
     use ApiResponse;
 
-    public function index(Request $request)
+    public function index(Request $request, CollectorAssignmentService $assignmentService)
     {
         $query = Unit::query()
             ->with(['cluster', 'propertyType', 'status', 'occupancy', 'resident'])
@@ -25,6 +26,10 @@ class UnitController extends Controller
             ->when($request->query('status_id'), fn ($q, $value) => $q->where('status_id', $value))
             ->when($request->query('property_type_id'), fn ($q, $value) => $q->where('property_type_id', $value))
             ->when($request->query('resident_id'), fn ($q, $value) => $q->where('resident_id', $value));
+
+        if ($request->user()->hasRole('collector')) {
+            $query->whereIn('id', $assignmentService->unitIdsFor($request->user()));
+        }
 
         return $this->paginated($query->orderBy('cluster_id')->orderBy('block')->paginate($request->integer('per_page', 15)));
     }
@@ -40,8 +45,12 @@ class UnitController extends Controller
         return $this->success($unit->load(['cluster', 'status', 'resident']), 'Unit berhasil dibuat.', 201);
     }
 
-    public function show(Unit $unit, PenaltyService $penaltyService)
+    public function show(Request $request, Unit $unit, PenaltyService $penaltyService, CollectorAssignmentService $assignmentService)
     {
+        if ($request->user()->hasRole('collector')) {
+            $assignmentService->assertUnitAssigned($request->user(), $unit->id);
+        }
+
         $unit->load(['cluster', 'propertyType', 'occupancy', 'status', 'resident', 'discountRule', 'billings.status', 'users.roles']);
         $unit->setRelation('billings', $unit->billings->map(fn (Billing $billing) => [
             ...$billing->toArray(),

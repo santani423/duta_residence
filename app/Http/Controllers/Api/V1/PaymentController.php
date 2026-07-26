@@ -7,6 +7,7 @@ use App\Http\Responses\ApiResponse;
 use App\Models\Billing;
 use App\Models\Receipt;
 use App\Models\Unit;
+use App\Services\CollectorAssignmentService;
 use App\Services\PaymentService;
 use App\Services\PenaltyService;
 use Illuminate\Http\Request;
@@ -15,9 +16,14 @@ class PaymentController extends Controller
 {
     use ApiResponse;
 
-    public function search(Request $request, PenaltyService $penaltyService)
+    public function search(Request $request, PenaltyService $penaltyService, CollectorAssignmentService $assignmentService)
     {
         $data = $request->validate(['unit_id' => ['required', 'exists:units,id']]);
+
+        if ($request->user()->hasRole('collector')) {
+            $assignmentService->assertUnitAssigned($request->user(), $data['unit_id']);
+        }
+
         $unit = Unit::query()
             ->with(['cluster', 'resident', 'billings' => fn ($q) => $q->outstanding()->approved()->orderBy('year')->orderBy('month')])
             ->findOrFail($data['unit_id']);
@@ -34,7 +40,7 @@ class PaymentController extends Controller
         return $this->success($unit);
     }
 
-    public function preview(Request $request, PaymentService $service)
+    public function preview(Request $request, PaymentService $service, CollectorAssignmentService $assignmentService)
     {
         $data = $request->validate([
             'unit_id' => ['required', 'exists:units,id'],
@@ -42,10 +48,14 @@ class PaymentController extends Controller
             'billing_ids.*' => ['integer', 'exists:billings,id'],
         ]);
 
+        if ($request->user()->hasRole('collector')) {
+            $assignmentService->assertUnitAssigned($request->user(), $data['unit_id']);
+        }
+
         return $this->success($service->preview(Unit::findOrFail($data['unit_id']), $data['billing_ids']));
     }
 
-    public function process(Request $request, PaymentService $service)
+    public function process(Request $request, PaymentService $service, CollectorAssignmentService $assignmentService)
     {
         $data = $request->validate([
             'unit_id' => ['required', 'exists:units,id'],
@@ -58,6 +68,10 @@ class PaymentController extends Controller
             'cashier_name' => ['nullable', 'string', 'max:50'],
             'notes' => ['nullable', 'string'],
         ]);
+
+        if ($request->user()->hasRole('collector')) {
+            $assignmentService->assertUnitAssigned($request->user(), $data['unit_id']);
+        }
 
         $receipt = $service->process(Unit::findOrFail($data['unit_id']), $data['billing_ids'], $data, $request->user()->id);
 

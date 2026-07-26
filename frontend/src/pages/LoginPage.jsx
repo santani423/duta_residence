@@ -31,7 +31,7 @@ export default function LoginPage() {
         <Typography.Paragraph type="secondary">Estate Management</Typography.Paragraph>
         {error ? <Alert type="error" message={error} showIcon /> : null}
         <Form layout="vertical" onFinish={submit}>
-          <Form.Item label="Username" name="username" rules={[{ required: true, message: 'Username wajib diisi' }]}>
+          <Form.Item label="Username atau Email" name="username" rules={[{ required: true, message: 'Username atau email wajib diisi' }]}>
             <Input prefix={<UserOutlined />} autoComplete="username" />
           </Form.Item>
           <Form.Item label="Password" name="password" rules={[{ required: true, message: 'Password wajib diisi' }]}>

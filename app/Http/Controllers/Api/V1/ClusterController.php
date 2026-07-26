@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\Cluster;
 use App\Models\ClusterRateSchedule;
+use App\Models\Unit;
 use App\Services\AuditService;
+use App\Services\CollectorAssignmentService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -14,9 +16,16 @@ class ClusterController extends Controller
 {
     use ApiResponse;
 
-    public function index()
+    public function index(Request $request, CollectorAssignmentService $assignmentService)
     {
-        return $this->success(Cluster::query()->orderBy('name')->get());
+        $query = Cluster::query()->orderBy('name');
+
+        if ($request->user()->hasRole('collector')) {
+            $clusterIds = Unit::query()->whereIn('id', $assignmentService->unitIdsFor($request->user()))->pluck('cluster_id')->unique();
+            $query->whereIn('id', $clusterIds);
+        }
+
+        return $this->success($query->get());
     }
 
     public function store(Request $request, AuditService $auditService)
@@ -44,8 +53,13 @@ class ClusterController extends Controller
         return $this->success($cluster, 'Cluster berhasil dibuat.', 201);
     }
 
-    public function show(Cluster $cluster)
+    public function show(Request $request, Cluster $cluster, CollectorAssignmentService $assignmentService)
     {
+        if ($request->user()->hasRole('collector')) {
+            $clusterIds = Unit::query()->whereIn('id', $assignmentService->unitIdsFor($request->user()))->pluck('cluster_id')->unique();
+            abort_unless($clusterIds->contains($cluster->id), 403, 'Cluster ini tidak ditugaskan kepada Anda.');
+        }
+
         $cluster->loadCount('units');
 
         return $this->success([

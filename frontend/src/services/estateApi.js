@@ -257,6 +257,7 @@ export const api = {
   },
   emergencyAlerts: {
     list: (params) => http.get('/emergency-alerts', { params }),
+    create: (payload) => http.post('/emergency-alerts', payload),
     acknowledge: (id) => http.post(`/emergency-alerts/${id}/acknowledge`),
   },
   lookup: {
@@ -331,5 +332,51 @@ export const api = {
       seo: { show: () => http.get('/cms/settings/seo'), update: (payload) => http.put('/cms/settings/seo', payload) },
       general: { show: () => http.get('/cms/settings/general'), update: (payload) => http.put('/cms/settings/general', payload) },
     },
+  },
+  collectors: {
+    list: (params) => http.get('/collectors', { params }),
+    create: (payload) => http.post('/collectors', payload),
+    update: (id, payload) => http.put(`/collectors/${id}`, payload),
+    remove: (id) => http.delete(`/collectors/${id}`),
+    detail: (id) => http.get(`/collectors/${id}`),
+    updateStatus: (id, payload) => http.patch(`/collectors/${id}/status`, payload),
+    assignmentHistory: (id, params) => http.get(`/collectors/${id}/assignment-history`, { params }),
+    uploadPhoto: (id, formData) => http.post(`/collectors/${id}/photo`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  },
+  collectorAssignments: {
+    list: (params) => http.get('/collector-assignments', { params }),
+    create: (payload) => http.post('/collector-assignments', payload),
+    update: (id, payload) => http.put(`/collector-assignments/${id}`, payload),
+    remove: (id) => http.delete(`/collector-assignments/${id}`),
+    reassign: (id, payload) => http.post(`/collector-assignments/${id}/reassign`, payload),
+  },
+  collectorTargets: {
+    list: (params) => http.get('/collector-targets', { params }),
+    create: (payload) => http.post('/collector-targets', payload),
+    update: (id, payload) => http.put(`/collector-targets/${id}`, payload),
+    remove: (id) => http.delete(`/collector-targets/${id}`),
+  },
+  collectorPerformance: {
+    forCollector: (params) => http.get('/collector-performance', { params }),
+    mine: (params) => http.get('/collector-performance/me', { params }),
+  },
+  collectorLocations: {
+    send: (payload) => http.post('/collector-locations', payload),
+    list: (params) => http.get('/collector-locations', { params }),
+    latest: () => http.get('/collector-locations/latest'),
+  },
+  visitEvidence: {
+    list: (visitId) => http.get(`/visits/${visitId}/evidence`),
+    upload: (visitId, formData) => http.post(`/visits/${visitId}/evidence`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+    remove: (id) => http.delete(`/visit-evidence/${id}`),
+  },
+  collectionLetters: {
+    list: (params) => http.get('/collection-letters', { params }),
+    create: (payload) => http.post('/collection-letters', payload),
+    download: (id) => http.get(`/collection-letters/${id}/download`, { responseType: 'blob' }),
+  },
+  collectorReminders: {
+    list: (params) => http.get('/collector-reminders', { params }),
+    create: (payload) => http.post('/collector-reminders', payload),
   },
 };
