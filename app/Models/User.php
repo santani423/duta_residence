@@ -102,4 +102,14 @@ class User extends Authenticatable
     {
         return $this->hasOne(CollectorProfile::class);
     }
+
+    public function supervisorProfile()
+    {
+        return $this->hasOne(SupervisorProfile::class);
+    }
+
+    public function supervisorAssignments()
+    {
+        return $this->hasMany(SupervisorAssignment::class, 'supervisor_id');
+    }
 }

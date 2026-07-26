@@ -118,12 +118,17 @@ class UserController extends Controller
      */
     private function assignableRoles(?User $user = null): array
     {
-        $roles = Role::query()->pluck('name')->reject(fn ($name) => $name === 'collector');
+        $roles = Role::query()->pluck('name')->reject(fn ($name) => in_array($name, ['collector', 'supervisor'], true));
 
-        // An existing collector account edited here (e.g. to fix a typo in the name)
-        // must be allowed to keep its current role, just not to newly acquire it.
-        if ($user?->hasRole('collector')) {
-            $roles->push('collector');
+        // An existing collector/supervisor account edited here (e.g. to fix a typo in the
+        // name) must be allowed to keep its current role, just not to newly acquire it -
+        // same reasoning as the collector exclusion above: supervisor accounts always need
+        // a matching `supervisor_profiles` row, which only SupervisorController creates
+        // atomically alongside the User.
+        foreach (['collector', 'supervisor'] as $exclusiveRole) {
+            if ($user?->hasRole($exclusiveRole)) {
+                $roles->push($exclusiveRole);
+            }
         }
 
         return $roles->values()->all();

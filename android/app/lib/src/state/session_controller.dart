@@ -10,7 +10,7 @@ import '../storage/token_store.dart';
 
 enum SessionStatus { booting, authenticated, unauthenticated, connectionError }
 
-const _allowedRoles = {'customer', 'collector'};
+const _allowedRoles = {'customer', 'collector', 'supervisor'};
 const _roleMismatchMessage =
     'Akun ini tidak didukung di aplikasi ini. Silakan gunakan portal staf untuk masuk.';
 

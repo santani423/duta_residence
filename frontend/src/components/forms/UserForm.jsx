@@ -38,9 +38,9 @@ export default function UserForm({ form, onFinish, editing = false, loading = fa
         label="Role"
         name="role"
         rules={[{ required: true }]}
-        tooltip="Akun kolektor dikelola khusus lewat menu Manajemen Kolektor agar profil, penugasan, dan target-nya selalu lengkap."
+        tooltip="Akun kolektor dan supervisor dikelola khusus lewat menu masing-masing agar profil dan penugasannya selalu lengkap."
       >
-        <Select options={roles.filter((role) => role !== 'collector').map((role) => ({ value: role, label: role }))} />
+        <Select options={roles.filter((role) => role !== 'collector' && role !== 'supervisor').map((role) => ({ value: role, label: role }))} />
       </Form.Item>
       <Form.Item noStyle shouldUpdate={(prev, next) => prev.role !== next.role}>
         {({ getFieldValue }) => {

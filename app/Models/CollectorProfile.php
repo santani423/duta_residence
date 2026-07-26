@@ -26,7 +26,7 @@ class CollectorProfile extends Model
     protected $fillable = [
         'user_id', 'collector_code', 'whatsapp_number', 'address', 'joined_at',
         'employment_status', 'account_status', 'working_area_notes', 'admin_notes',
-        'created_by', 'updated_by',
+        'duty_start_time', 'duty_end_time', 'created_by', 'updated_by',
     ];
 
     protected $casts = [

@@ -6,6 +6,7 @@ import '../screens/collector/collector_home_shell.dart';
 import '../screens/home_shell.dart';
 import '../screens/login_screen.dart';
 import '../screens/splash_screen.dart';
+import '../screens/supervisor/supervisor_home_shell.dart';
 import '../state/session_controller.dart';
 import '../state/theme_controller.dart';
 import '../theme/app_theme.dart';
@@ -54,6 +55,12 @@ class DutaResidenceApp extends StatelessWidget {
                   ? BiometricLockScreen(sessionController: sessionController)
                   : sessionController.user?.role == 'collector'
                   ? CollectorHomeShell(
+                      apiClient: apiClient,
+                      sessionController: sessionController,
+                      themeController: themeController,
+                    )
+                  : sessionController.user?.role == 'supervisor'
+                  ? SupervisorHomeShell(
                       apiClient: apiClient,
                       sessionController: sessionController,
                       themeController: themeController,

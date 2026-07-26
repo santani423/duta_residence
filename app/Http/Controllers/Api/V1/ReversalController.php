@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
+use App\Models\ApprovalRequest;
 use App\Models\Reversal;
+use App\Services\ApprovalService;
 use App\Services\ReversalService;
 use Illuminate\Http\Request;
 
@@ -20,7 +22,7 @@ class ReversalController extends Controller
         return $this->paginated($query->latest()->paginate($request->integer('per_page', 15)));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, ApprovalService $approvalService)
     {
         $data = $request->validate([
             'receipt_number' => ['required', 'exists:receipts,number'],
@@ -33,7 +35,14 @@ class ReversalController extends Controller
             'submitted_at' => now(),
         ]);
 
-        return $this->success($reversal->load('receipt'), 'Pengajuan pembatalan berhasil dibuat.', 201);
+        $reversal->load('receipt');
+
+        $approvalService->openFor($reversal, ApprovalRequest::TYPE_REVERSAL, $request->user()->id, [
+            'reason' => $data['reason'],
+            'amount' => (float) ($reversal->receipt?->paymentTransaction?->total ?? 0),
+        ]);
+
+        return $this->success($reversal, 'Pengajuan pembatalan berhasil dibuat.', 201);
     }
 
     public function approve(Request $request, Reversal $reversal, ReversalService $service)

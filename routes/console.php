@@ -15,3 +15,7 @@ Schedule::command('clusters:activate-rate-schedules')
 Schedule::command('billings:notify-penalty-changes')
     ->dailyAt('07:00')
     ->withoutOverlapping();
+
+Schedule::command('supervisor:generate-notifications')
+    ->hourly()
+    ->withoutOverlapping();

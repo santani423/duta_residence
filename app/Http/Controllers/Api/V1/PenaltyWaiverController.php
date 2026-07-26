@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
+use App\Models\ApprovalRequest;
 use App\Models\Billing;
 use App\Models\PenaltyWaiver;
+use App\Services\ApprovalService;
 use App\Services\PenaltyWaiverService;
 use Illuminate\Http\Request;
 
@@ -23,7 +25,7 @@ class PenaltyWaiverController extends Controller
         return $this->paginated($query->latest()->paginate($request->integer('per_page', 15)));
     }
 
-    public function store(Request $request, PenaltyWaiverService $service)
+    public function store(Request $request, PenaltyWaiverService $service, ApprovalService $approvalService)
     {
         $data = $request->validate([
             'billing_id' => ['required', 'exists:billings,id'],
@@ -33,8 +35,15 @@ class PenaltyWaiverController extends Controller
 
         $billing = Billing::query()->with('unit')->findOrFail($data['billing_id']);
         $waiver = $service->submit($billing, (float) $data['waived_penalty_amount'], $data['reason'], $request->user()->id);
+        $waiver->load('billing');
 
-        return $this->success($waiver->load('billing'), 'Pengajuan keringanan denda berhasil dibuat.', 201);
+        $approvalService->openFor($waiver, ApprovalRequest::TYPE_PENALTY_WAIVER, $request->user()->id, [
+            'reason' => $data['reason'],
+            'amount' => (float) $data['waived_penalty_amount'],
+            'related_unit_id' => $billing->unit_id,
+        ]);
+
+        return $this->success($waiver, 'Pengajuan keringanan denda berhasil dibuat.', 201);
     }
 
     public function approve(Request $request, PenaltyWaiver $penaltyWaiver, PenaltyWaiverService $service)

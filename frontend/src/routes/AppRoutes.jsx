@@ -68,6 +68,18 @@ const CollectorLiveMapPage = lazy(() => import('../pages/CollectorLiveMapPage.js
 const CollectionLettersPage = lazy(() => import('../pages/CollectionLettersPage.jsx'));
 const CollectorRouteMapPage = lazy(() => import('../pages/collector/CollectorRouteMapPage.jsx'));
 const CollectorRemindersPage = lazy(() => import('../pages/collector/CollectorRemindersPage.jsx'));
+const SupervisorsPage = lazy(() => import('../pages/SupervisorsPage.jsx'));
+const SupervisorDetailPage = lazy(() => import('../pages/SupervisorDetailPage.jsx'));
+const SupervisorAssignmentsPage = lazy(() => import('../pages/SupervisorAssignmentsPage.jsx'));
+const SupervisorDashboardPage = lazy(() => import('../pages/supervisor/SupervisorDashboardPage.jsx'));
+const SupervisorCollectorsPage = lazy(() => import('../pages/supervisor/SupervisorCollectorsPage.jsx'));
+const SupervisorCollectorDetailPage = lazy(() => import('../pages/supervisor/SupervisorCollectorDetailPage.jsx'));
+const SupervisorApprovalsPage = lazy(() => import('../pages/supervisor/SupervisorApprovalsPage.jsx'));
+const SupervisorTunggakanPage = lazy(() => import('../pages/supervisor/SupervisorTunggakanPage.jsx'));
+const SupervisorMapPage = lazy(() => import('../pages/supervisor/SupervisorMapPage.jsx'));
+const SupervisorNotificationsPage = lazy(() => import('../pages/supervisor/SupervisorNotificationsPage.jsx'));
+const SupervisorBroadcastPage = lazy(() => import('../pages/supervisor/SupervisorBroadcastPage.jsx'));
+const SupervisorReportsPage = lazy(() => import('../pages/supervisor/SupervisorReportsPage.jsx'));
 
 function Protected({ children, permissions = [], roles = [] }) {
   const { token, canAny, hasRole } = useAuth();
@@ -177,6 +189,18 @@ export default function AppRoutes() {
         <Route path="admin/collectors/performance" element={<Protected permissions={['collector-performance.view']}><LazyPage><CollectorPerformancePage /></LazyPage></Protected>} />
         <Route path="admin/collectors/live-map" element={<Protected permissions={['collector-locations.view']}><LazyPage><CollectorLiveMapPage /></LazyPage></Protected>} />
         <Route path="admin/collectors/letters" element={<Protected permissions={['collection-letters.view']}><LazyPage><CollectionLettersPage /></LazyPage></Protected>} />
+        <Route path="admin/supervisors/list" element={<Protected permissions={['supervisor.view']}><LazyPage><SupervisorsPage /></LazyPage></Protected>} />
+        <Route path="admin/supervisors/list/:id" element={<Protected permissions={['supervisor.detail']}><LazyPage><SupervisorDetailPage /></LazyPage></Protected>} />
+        <Route path="admin/supervisors/assignments" element={<Protected permissions={['supervisor-assignments.view']}><LazyPage><SupervisorAssignmentsPage /></LazyPage></Protected>} />
+        <Route path="supervisor/dashboard" element={<Protected permissions={['collector-monitoring.view']}><LazyPage><SupervisorDashboardPage /></LazyPage></Protected>} />
+        <Route path="supervisor/collectors" element={<Protected permissions={['collector-monitoring.view']}><LazyPage><SupervisorCollectorsPage /></LazyPage></Protected>} />
+        <Route path="supervisor/collectors/:id" element={<Protected permissions={['collector-monitoring.view']}><LazyPage><SupervisorCollectorDetailPage /></LazyPage></Protected>} />
+        <Route path="supervisor/approvals" element={<Protected permissions={['approvals.view']}><LazyPage><SupervisorApprovalsPage /></LazyPage></Protected>} />
+        <Route path="supervisor/tunggakan" element={<Protected permissions={['tunggakan-analysis.view']}><LazyPage><SupervisorTunggakanPage /></LazyPage></Protected>} />
+        <Route path="supervisor/map" element={<Protected permissions={['collector-locations.view', 'collector-locations.track']}><LazyPage><SupervisorMapPage /></LazyPage></Protected>} />
+        <Route path="supervisor/notifications" element={<Protected permissions={['supervisor-notifications.view']}><LazyPage><SupervisorNotificationsPage /></LazyPage></Protected>} />
+        <Route path="supervisor/broadcast" element={<Protected permissions={['broadcasts.view', 'broadcasts.send']}><LazyPage><SupervisorBroadcastPage /></LazyPage></Protected>} />
+        <Route path="supervisor/reports" element={<Protected permissions={['reports.export']}><LazyPage><SupervisorReportsPage /></LazyPage></Protected>} />
         <Route path="collector/performance" element={<Protected roles={['collector']}><LazyPage><CollectorPerformancePage /></LazyPage></Protected>} />
         <Route path="collector/route" element={<Protected roles={['collector']}><LazyPage><CollectorRouteMapPage /></LazyPage></Protected>} />
         <Route path="collector/reminders" element={<Protected roles={['collector']}><LazyPage><CollectorRemindersPage /></LazyPage></Protected>} />

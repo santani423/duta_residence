@@ -119,13 +119,21 @@ export default function UsersPage() {
               width: 160,
               render: (_, record) => {
                 const isCollector = record.roles?.some((role) => role.name === 'collector');
-                // Collector accounts are managed exclusively through "Manajemen Kolektor"
-                // (profile, assignments, targets all live there) - route there instead of
-                // exposing a generic edit/delete/reset that would bypass that module.
+                const isSupervisor = record.roles?.some((role) => role.name === 'supervisor');
+                // Collector/Supervisor accounts are managed exclusively through their own
+                // dedicated modules (profile, assignments, targets all live there) - route
+                // there instead of exposing a generic edit/delete/reset that would bypass it.
                 if (isCollector) {
                   return (
                     <Button size="small" onClick={() => navigate(`/admin/collectors/list/${record.id}`)}>
                       Kelola di Manajemen Kolektor
+                    </Button>
+                  );
+                }
+                if (isSupervisor) {
+                  return (
+                    <Button size="small" onClick={() => navigate(`/admin/supervisors/list/${record.id}`)}>
+                      Kelola di Manajemen Supervisor
                     </Button>
                   );
                 }

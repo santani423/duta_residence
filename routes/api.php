@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\Api\V1\ApprovalRequestController;
 use App\Http\Controllers\Api\V1\AuditLogController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BackPaymentController;
 use App\Http\Controllers\Api\V1\BillingController;
+use App\Http\Controllers\Api\V1\BroadcastController;
 use App\Http\Controllers\Api\V1\ClusterController;
 use App\Http\Controllers\Api\V1\ClusterMapComponentTypeController;
 use App\Http\Controllers\Api\V1\ClusterMapController;
@@ -61,6 +63,15 @@ use App\Http\Controllers\Api\V1\ResidentDetailController;
 use App\Http\Controllers\Api\V1\ResidentDocumentController;
 use App\Http\Controllers\Api\V1\ResidentPortalController;
 use App\Http\Controllers\Api\V1\ReversalController;
+use App\Http\Controllers\Api\V1\SupervisorAssignmentController;
+use App\Http\Controllers\Api\V1\SupervisorCollectorController;
+use App\Http\Controllers\Api\V1\SupervisorController;
+use App\Http\Controllers\Api\V1\SupervisorDashboardController;
+use App\Http\Controllers\Api\V1\SupervisorMapController;
+use App\Http\Controllers\Api\V1\SupervisorMonitoringController;
+use App\Http\Controllers\Api\V1\SupervisorNotificationController;
+use App\Http\Controllers\Api\V1\SupervisorReportController;
+use App\Http\Controllers\Api\V1\SupervisorTunggakanController;
 use App\Http\Controllers\Api\V1\UnitController;
 use App\Http\Controllers\Api\V1\UnitOccupantController;
 use App\Http\Controllers\Api\V1\UnitVehicleController;
@@ -172,6 +183,45 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::get('collector-reminders', [CollectorReminderController::class, 'index'])->middleware('permission:reports.view');
     Route::post('collector-reminders', [CollectorReminderController::class, 'store'])->middleware('role:collector');
 
+    Route::get('supervisors', [SupervisorController::class, 'index'])->middleware('permission:supervisor.view');
+    Route::post('supervisors', [SupervisorController::class, 'store'])->middleware('permission:supervisor.create');
+    Route::get('supervisors/{supervisor}', [SupervisorController::class, 'show'])->middleware('permission:supervisor.detail');
+    Route::put('supervisors/{supervisor}', [SupervisorController::class, 'update'])->middleware('permission:supervisor.update');
+    Route::delete('supervisors/{supervisor}', [SupervisorController::class, 'destroy'])->middleware('permission:supervisor.delete');
+    Route::patch('supervisors/{supervisor}/status', [SupervisorController::class, 'updateStatus'])->middleware('permission:supervisor.activate');
+    Route::get('supervisors/{supervisor}/activity-history', [SupervisorController::class, 'activityHistory'])->middleware('permission:supervisor.detail');
+    Route::post('supervisors/{supervisor}/photo', [SupervisorController::class, 'uploadPhoto'])->middleware('permission:supervisor.update');
+
+    Route::get('supervisor-assignments', [SupervisorAssignmentController::class, 'index'])->middleware('permission:supervisor-assignments.view');
+    Route::post('supervisor-assignments', [SupervisorAssignmentController::class, 'store'])->middleware('permission:supervisor-assignments.assign');
+    Route::put('supervisor-assignments/{supervisorAssignment}', [SupervisorAssignmentController::class, 'update'])->middleware('permission:supervisor-assignments.assign');
+    Route::delete('supervisor-assignments/{supervisorAssignment}', [SupervisorAssignmentController::class, 'destroy'])->middleware('permission:supervisor-assignments.assign');
+    Route::post('supervisor-assignments/{supervisorAssignment}/reassign', [SupervisorAssignmentController::class, 'reassign'])->middleware('permission:supervisor-assignments.reassign');
+
+    Route::get('supervisor/dashboard', [SupervisorDashboardController::class, 'summary'])->middleware('permission:collector-monitoring.view');
+    Route::get('supervisor/collectors', [SupervisorCollectorController::class, 'index'])->middleware('permission:collector-monitoring.view');
+    Route::get('supervisor/collectors/{collector}', [SupervisorCollectorController::class, 'show'])->middleware('permission:collector-monitoring.view');
+    Route::get('supervisor/targets', [SupervisorMonitoringController::class, 'targets'])->middleware('permission:collector-monitoring.view');
+    Route::get('supervisor/payment-promises', [SupervisorMonitoringController::class, 'paymentPromises'])->middleware('permission:collector-monitoring.view');
+    Route::get('supervisor/payments', [SupervisorMonitoringController::class, 'payments'])->middleware('permission:collector-monitoring.view');
+    Route::get('supervisor/tunggakan', [SupervisorTunggakanController::class, 'index'])->middleware('permission:tunggakan-analysis.view');
+    Route::get('supervisor/tunggakan/{cluster}', [SupervisorTunggakanController::class, 'show'])->middleware('permission:tunggakan-analysis.view');
+    Route::get('supervisor/map', [SupervisorMapController::class, 'index'])->middleware('permission:collector-locations.view|collector-locations.track');
+
+    Route::get('supervisor-notifications', [SupervisorNotificationController::class, 'index'])->middleware('permission:supervisor-notifications.view');
+    Route::post('supervisor-notifications/{supervisorNotification}/read', [SupervisorNotificationController::class, 'markRead'])->middleware('permission:supervisor-notifications.view');
+    Route::post('supervisor-notifications/{supervisorNotification}/handled', [SupervisorNotificationController::class, 'markHandled'])->middleware('permission:supervisor-notifications.view');
+    Route::post('supervisor-notifications/{supervisorNotification}/escalate', [SupervisorNotificationController::class, 'escalate'])->middleware('permission:supervisor-notifications.escalate');
+
+    Route::get('broadcasts', [BroadcastController::class, 'index'])->middleware('permission:broadcasts.view');
+    Route::get('broadcasts/{broadcast}', [BroadcastController::class, 'show'])->middleware('permission:broadcasts.view');
+    Route::post('broadcasts', [BroadcastController::class, 'store'])->middleware('permission:broadcasts.send');
+
+    Route::get('report-exports', [SupervisorReportController::class, 'index'])->middleware('permission:reports.export');
+    Route::post('report-exports', [SupervisorReportController::class, 'store'])->middleware('permission:reports.export');
+    Route::get('report-exports/{reportExport}', [SupervisorReportController::class, 'show'])->middleware('permission:reports.export');
+    Route::get('report-exports/{reportExport}/download', [SupervisorReportController::class, 'download'])->middleware('permission:reports.export');
+
     Route::get('residents/{resident}/resident-documents', [ResidentDocumentController::class, 'indexForResident'])->middleware('permission:resident-documents.view');
     Route::get('units/{unit}/resident-documents', [ResidentDocumentController::class, 'indexForUnit'])->middleware('permission:resident-documents.view');
     Route::post('residents/{resident}/resident-documents', [ResidentDocumentController::class, 'storeForResident'])->middleware('permission:resident-documents.create');
@@ -246,6 +296,14 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::get('reversals', [ReversalController::class, 'index'])->middleware('permission:reversals.view');
     Route::post('reversals/{reversal}/approve', [ReversalController::class, 'approve'])->middleware('permission:reversals.approve');
     Route::post('reversals/{reversal}/reject', [ReversalController::class, 'reject'])->middleware('permission:reversals.approve');
+
+    Route::get('approval-requests', [ApprovalRequestController::class, 'index'])->middleware('permission:approvals.view');
+    Route::get('approval-requests/{approvalRequest}', [ApprovalRequestController::class, 'show'])->middleware('permission:approvals.view');
+    Route::post('approval-requests/installment-plans', [ApprovalRequestController::class, 'submitInstallmentPlan'])->middleware('permission:installment-plans.submit');
+    Route::post('approval-requests/billing-adjustments', [ApprovalRequestController::class, 'submitBillingAdjustment'])->middleware('permission:billing-adjustments.submit');
+    Route::post('approval-requests/{approvalRequest}/approve', [ApprovalRequestController::class, 'approve'])->middleware('permission:approvals.approve');
+    Route::post('approval-requests/{approvalRequest}/reject', [ApprovalRequestController::class, 'reject'])->middleware('permission:approvals.reject');
+    Route::post('approval-requests/{approvalRequest}/documents', [ApprovalRequestController::class, 'uploadDocument'])->middleware('permission:approvals.view');
 
     Route::get('receivables', [ReceivableController::class, 'index'])->middleware('permission:reports.view');
     Route::get('receivables/aging', [ReceivableController::class, 'aging'])->middleware('permission:reports.view');

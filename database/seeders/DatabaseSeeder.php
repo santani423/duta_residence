@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
                 PaymentSeeder::class,
                 ComplaintSeeder::class,
                 CollectorSeeder::class,
+                SupervisorSeeder::class,
                 MaintenanceSeeder::class,
                 NotificationSeeder::class,
                 DocumentSeeder::class,

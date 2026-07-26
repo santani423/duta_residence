@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\CollectorLocation;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class CollectorLocationController extends Controller
 {
@@ -19,6 +20,8 @@ class CollectorLocationController extends Controller
             'accuracy_meters' => ['nullable', 'numeric', 'min:0'],
         ]);
 
+        $this->assertWithinWorkingHours($request->user());
+
         $location = CollectorLocation::query()->create([
             ...$data,
             'collector_id' => $request->user()->id,
@@ -26,6 +29,34 @@ class CollectorLocationController extends Controller
         ]);
 
         return $this->success($location, 'Lokasi berhasil dikirim.', 201);
+    }
+
+    /**
+     * "Jangan melakukan pelacakan di luar jam kerja atau tanpa izin yang sesuai" - a per-collector
+     * duty window (collector_profiles.duty_start_time/duty_end_time) overrides the system-wide
+     * default (config('collector.default_working_hours')); either side left null means "no
+     * restriction" for that collector. This is enforced server-side (not just a UI convenience)
+     * so a ping sent while off-duty is rejected before it's ever persisted.
+     */
+    private function assertWithinWorkingHours($collector): void
+    {
+        $profile = $collector->collectorProfile;
+        $default = config('collector.default_working_hours');
+
+        $start = $profile?->duty_start_time ?? $default['start'];
+        $end = $profile?->duty_end_time ?? $default['end'];
+
+        if (! $start || ! $end) {
+            return;
+        }
+
+        $now = now()->format('H:i');
+
+        if ($now < substr($start, 0, 5) || $now > substr($end, 0, 5)) {
+            throw ValidationException::withMessages([
+                'recorded_at' => ["Pelacakan lokasi hanya diizinkan pada jam kerja ({$start} - {$end})."],
+            ]);
+        }
     }
 
     public function index(Request $request)
