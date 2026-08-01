@@ -103,8 +103,7 @@ export default function AppShell() {
   const navigation = (
     <>
       <div className="brand">
-        <span className="brand-mark">GD</span>
-        {!collapsed || isMobile ? <span>Grand Duta</span> : null}
+        <img src="/logo-app.png" alt="Grand Duta" className="brand-mark" />
       </div>
       <Menu
         mode="inline"

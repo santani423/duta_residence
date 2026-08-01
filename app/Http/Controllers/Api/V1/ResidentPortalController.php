@@ -53,7 +53,7 @@ class ResidentPortalController extends Controller
         return $this->success([
             'resident' => $this->unitProfile($unit, $request->user()),
             'estate' => [
-                'name' => 'Grand Duta Residence',
+                'name' => 'Duta Indah Residence',
                 'cluster' => $unit->cluster?->name,
             ],
             'property' => $this->propertyPayload($unit),
@@ -212,7 +212,7 @@ class ResidentPortalController extends Controller
         return $this->success([
             ...$this->invoicePayload($billing),
             'resident' => $this->unitProfile($billing->unit, $request->user()),
-            'estate' => ['name' => 'Grand Duta Residence'],
+            'estate' => ['name' => 'Duta Indah Residence'],
             'unit' => $this->propertyPayload($billing->unit),
             'payment_history' => $billing->paymentTransactions->map(fn (PaymentTransaction $transaction) => $this->paymentPayload($transaction)),
         ]);
@@ -953,7 +953,7 @@ class ResidentPortalController extends Controller
             'phone' => $resident?->phone ?: $user->phone,
             'resident_number' => $unit->id,
             'status' => $unit->status?->name,
-            'estate' => 'Grand Duta Residence',
+            'estate' => 'Duta Indah Residence',
             'unit' => "{$unit->cluster?->name} {$unit->block}/{$unit->lot_number}",
             'joined_at' => $unit->created_at,
             'last_login_at' => $user->last_login_at,
@@ -969,7 +969,7 @@ class ResidentPortalController extends Controller
         return [
             'unit_id' => $unit->id,
             'va_number' => $unit->va_number,
-            'estate' => 'Grand Duta Residence',
+            'estate' => 'Duta Indah Residence',
             'cluster' => $unit->cluster?->name,
             'block' => $unit->block,
             'lot_number' => $unit->lot_number,

@@ -482,7 +482,7 @@ function paymentGateway(x, y) {
     ['Mode', 'sandbox'], ['Mata uang', 'IDR'], ['Biaya administrasi', '5000'],
     ['Public key Xendit', 'xnd_public_***'], ['Client key Midtrans', 'MT_CLIENT_***'],
     ['Callback / webhook URL', 'https://grandduta.test/api/v1/payments/webhooks'],
-    ['Bank manual', 'BCA'], ['Nomor rekening', '1234567890'], ['Nama pemilik rekening', 'Grand Duta Residence'],
+    ['Bank manual', 'BCA'], ['Nomor rekening', '1234567890'], ['Nama pemilik rekening', 'Duta Indah Residence'],
   ];
   fields.forEach(([name, value], i) => {
     const col = i % 2;
@@ -526,7 +526,7 @@ function customerDashboard(x, y) {
   text(cx + 22, cy + 464, 'Nomor Customer: AL001', { size: 13, fill: C.muted });
   text(cx + 22, cy + 492, 'Status: active', { size: 13, fill: C.success });
   card(cx + 530, cy + 354, 500, 210, { title: 'Estate dan Unit', shadow: true });
-  text(cx + 552, cy + 408, 'Estate: Grand Duta Residence', { size: 13 });
+  text(cx + 552, cy + 408, 'Estate: Duta Indah Residence', { size: 13 });
   text(cx + 552, cy + 436, 'Cluster: Alamanda', { size: 13, fill: C.muted });
   text(cx + 552, cy + 464, 'Unit: A-12 / Tipe Properti: Rumah', { size: 13, fill: C.muted });
   card(cx, cy + 594, 1030, 86, { shadow: true });
@@ -563,7 +563,7 @@ function customerBills(x, y) {
   card(cx + 658, cy + 220, 374, 210, { title: 'Metode Pembayaran' });
   chip(cx + 680, cy + 274, 'Gateway aktif: manual', C.info, 170);
   text(cx + 680, cy + 322, 'Bank BCA - 1234567890', { size: 13 });
-  text(cx + 680, cy + 350, 'Grand Duta Residence', { size: 13, fill: C.muted });
+  text(cx + 680, cy + 350, 'Duta Indah Residence', { size: 13, fill: C.muted });
   button(cx + 680, cy + 384, 'Bayar via Manual Transfer', { type: 'primary', w: 210 });
   card(cx, cy + 568, 1030, 260, { title: 'Detail Invoice + Payment History', shadow: true });
   text(cx + 22, cy + 622, 'Subtotal: Rp 1.200.000  | Pajak: Rp 0  | Admin: Rp 40.000  | Total: Rp 1.240.000', { size: 13 });

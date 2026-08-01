@@ -74,8 +74,8 @@ class HelpCenterSeeder extends Seeder
             [
                 'module' => 'general', 'slug' => 'pengenalan-aplikasi', 'roles' => null,
                 'title' => 'Pengenalan Aplikasi',
-                'summary' => 'Apa itu Grand Duta Residence Estate Management dan siapa saja yang menggunakannya.',
-                'content' => "Grand Duta Residence Estate Management adalah aplikasi untuk mengelola operasional perumahan: data penghuni dan unit, tagihan iuran, pembayaran, komplain, permintaan maintenance, dokumen, hingga portal mandiri untuk penghuni.\n\nAplikasi ini dipakai oleh dua kelompok pengguna:\n- Tim internal estate (admin, finance, loket, customer service, collector, teknisi, security, dan lainnya) lewat dashboard admin.\n- Penghuni/pemilik unit lewat portal khusus penghuni untuk melihat tagihan, membayar, dan mengajukan komplain atau permintaan layanan.\n\nSetiap akun hanya melihat menu dan data yang sesuai dengan role dan hak aksesnya masing-masing.",
+                'summary' => 'Apa itu Duta Indah Residence Estate Management dan siapa saja yang menggunakannya.',
+                'content' => "Duta Indah Residence Estate Management adalah aplikasi untuk mengelola operasional perumahan: data penghuni dan unit, tagihan iuran, pembayaran, komplain, permintaan maintenance, dokumen, hingga portal mandiri untuk penghuni.\n\nAplikasi ini dipakai oleh dua kelompok pengguna:\n- Tim internal estate (admin, finance, loket, customer service, collector, teknisi, security, dan lainnya) lewat dashboard admin.\n- Penghuni/pemilik unit lewat portal khusus penghuni untuk melihat tagihan, membayar, dan mengajukan komplain atau permintaan layanan.\n\nSetiap akun hanya melihat menu dan data yang sesuai dengan role dan hak aksesnya masing-masing.",
                 'tips' => ['Manual Book ini otomatis menyesuaikan isinya dengan role akun Anda saat login.'],
                 'warnings' => [],
                 'faqs' => [

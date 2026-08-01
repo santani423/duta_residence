@@ -59,7 +59,7 @@ class UnitSeeder extends Seeder
                         'name' => fake()->name(),
                         'phone' => '08'.str_pad((string) (1200000000 + $clusterIndex * 10000 + $i), 10, '0', STR_PAD_LEFT),
                         'telephone' => '021'.str_pad((string) (7300000 + $clusterIndex * 100 + $i), 7, '0', STR_PAD_LEFT),
-                        'id_card_address' => 'Grand Duta Residence '.$cluster['name'].' Blok '.chr(65 + (($i - 1) % 6)).' No '.$i,
+                        'id_card_address' => 'Duta Indah Residence '.$cluster['name'].' Blok '.chr(65 + (($i - 1) % 6)).' No '.$i,
                         'district_id' => $districts[($i + $clusterIndex) % count($districts)],
                         'email' => strtolower($id).'@resident.example.com',
                         'created_by' => $creator?->id,

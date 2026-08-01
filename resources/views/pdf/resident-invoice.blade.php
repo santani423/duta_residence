@@ -7,7 +7,7 @@
     <h2>Informasi Penghuni</h2>
     <table>
         <tr><th>Nama</th><td>{{ $billing->unit->resident->name }}</td></tr>
-        <tr><th>Estate</th><td>Grand Duta Residence</td></tr>
+        <tr><th>Estate</th><td>Duta Indah Residence</td></tr>
         <tr><th>Unit</th><td>{{ $billing->unit->cluster->name ?? '-' }} {{ $billing->unit->block }}/{{ $billing->unit->lot_number }}</td></tr>
         <tr><th>Periode</th><td>{{ sprintf('%04d-%02d', $billing->year, $billing->month) }}</td></tr>
         <tr><th>Status</th><td>{{ $billing->status->name ?? '-' }}</td></tr>

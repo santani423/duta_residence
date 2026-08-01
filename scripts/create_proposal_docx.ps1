@@ -54,7 +54,7 @@ function TableXml([array]$Rows, [array]$Widths, [switch]$Header) {
 
 $title = "Proposal Pengajuan Pengembangan Aplikasi Estate Management"
 $subtitle = "Aplikasi Web, Android, Server, dan Implementasi Sistem"
-$client = "Grand Duta Residence"
+$client = "Duta Indah Residence"
 $provider = "Tim Pengembang Sistem"
 $date = "Juni 2026"
 
