@@ -63,7 +63,7 @@ class CollectorSeeder extends Seeder
         // --- Active assignments: cluster / block / unit / resident scopes ---
         $this->assign($budi, 'cluster', ['cluster_id' => 'AL'], $admin, 'high', 'Wilayah utama Cluster Alamanda.');
         $this->assign($siti, 'cluster', ['cluster_id' => 'BO'], $admin, 'normal', 'Wilayah utama Cluster Bougenville.');
-        foreach (['CE001', 'CE007', 'CE013'] as $unitId) {
+        foreach (['CE001', 'CE002', 'CE003'] as $unitId) {
             $this->assign($ahmad, 'unit', ['unit_id' => $unitId], $admin, 'normal', 'Unit prioritas tunggakan lama.');
         }
         $this->assign($dewi, 'block', ['cluster_id' => 'DA', 'block' => 'A'], $admin, 'low', 'Blok A Cluster Dahlia.');
@@ -110,7 +110,7 @@ class CollectorSeeder extends Seeder
         $this->loketPayment($budi, 'AL001', 3_200_000);
         $this->loketPayment($budi, 'AL007', 2_600_000);
         $this->loketPayment($siti, 'BO001', 5_000_000);
-        $this->loketPayment($siti, 'BO007', 4_100_000);
+        $this->loketPayment($siti, 'BO002', 4_100_000);
         $this->loketPayment($ahmad, 'CE001', 1_500_000); // well under target - "belum tercapai"
 
         // --- Field visits (with GPS-only evidence - no real files needed) ---
@@ -122,8 +122,8 @@ class CollectorSeeder extends Seeder
 
         // --- Promise to Pay ---
         $this->promise($budi, 'AL013', 1_800_000, 'pending');
-        $this->promise($ahmad, 'CE007', 2_400_000, 'broken');
-        $this->promise($dewi, 'DA007', 900_000, 'fulfilled');
+        $this->promise($ahmad, 'CE002', 2_400_000, 'broken');
+        $this->promise($dewi, 'DA002', 900_000, 'fulfilled');
 
         // --- Complaints about collection visits ---
         $this->complaint($budi, 'AL001', 'Kolektor datang di luar jam yang dijanjikan.', 'resolved');
