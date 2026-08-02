@@ -9,6 +9,7 @@ import '../state/theme_controller.dart';
 import '../utils/formatters.dart';
 import '../widgets/duta_card.dart';
 import '../widgets/info_row.dart';
+import '../widgets/site_identity_scope.dart';
 import '../widgets/state_views.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -42,7 +43,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _refresh() async {
-    setState(() { _future = _load(); });
+    setState(() {
+      _future = _load();
+    });
     await _future;
   }
 
@@ -290,7 +293,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: AppSpacing.md),
                     _AboutTile(
                       icon: Icons.info_outline_rounded,
-                      title: 'Duta Residence',
+                      title: SiteIdentityScope.of(context).appName,
                       subtitle: 'Aplikasi layanan penghuni',
                     ),
                     const SizedBox(height: AppSpacing.sm),
@@ -682,7 +685,9 @@ class _ChangePasswordFormState extends State<_ChangePasswordForm> {
               TextFormField(
                 controller: _current,
                 obscureText: _obscure,
-                decoration: const InputDecoration(labelText: 'Password Saat Ini'),
+                decoration: const InputDecoration(
+                  labelText: 'Password Saat Ini',
+                ),
                 validator: (value) =>
                     value == null || value.isEmpty ? 'Wajib diisi.' : null,
               ),
@@ -750,8 +755,7 @@ class _BiometricSettingTileState extends State<_BiometricSettingTile> {
     setState(() => _busy = true);
     try {
       if (value) {
-        final confirmed = await widget.sessionController
-            .unlockWithBiometrics();
+        final confirmed = await widget.sessionController.unlockWithBiometrics();
         if (!confirmed) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(

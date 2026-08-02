@@ -295,6 +295,7 @@ export const api = {
     content: () => http.get('/landing/content'),
     article: (slug) => http.get(`/landing/articles/${slug}`),
     event: (slug) => http.get(`/landing/events/${slug}`),
+    identity: () => http.get('/site-identity'),
   },
   cms: {
     media: {

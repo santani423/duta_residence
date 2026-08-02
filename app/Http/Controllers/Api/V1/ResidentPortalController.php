@@ -17,6 +17,7 @@ use App\Models\PaymentGatewaySetting;
 use App\Models\PaymentTransaction;
 use App\Models\Receipt;
 use App\Models\Resident;
+use App\Models\SiteSetting;
 use App\Models\Unit;
 use App\Services\AuditService;
 use App\Services\PenaltyService;
@@ -53,7 +54,7 @@ class ResidentPortalController extends Controller
         return $this->success([
             'resident' => $this->unitProfile($unit, $request->user()),
             'estate' => [
-                'name' => 'Duta Indah Residence',
+                'name' => $this->estateName(),
                 'cluster' => $unit->cluster?->name,
             ],
             'property' => $this->propertyPayload($unit),
@@ -212,7 +213,7 @@ class ResidentPortalController extends Controller
         return $this->success([
             ...$this->invoicePayload($billing),
             'resident' => $this->unitProfile($billing->unit, $request->user()),
-            'estate' => ['name' => 'Duta Indah Residence'],
+            'estate' => ['name' => $this->estateName()],
             'unit' => $this->propertyPayload($billing->unit),
             'payment_history' => $billing->paymentTransactions->map(fn (PaymentTransaction $transaction) => $this->paymentPayload($transaction)),
         ]);
@@ -223,8 +224,9 @@ class ResidentPortalController extends Controller
         $billing = $this->ownedBilling($request, $billing);
         $billing->load('status');
         $penaltyDetail = $this->penaltyService->calculateInvoiceTotal($billing);
+        $siteName = $this->estateName();
 
-        return Pdf::loadHTML(view('pdf.resident-invoice', compact('billing', 'penaltyDetail'))->render())
+        return Pdf::loadHTML(view('pdf.resident-invoice', compact('billing', 'penaltyDetail', 'siteName'))->render())
             ->download("Invoice-{$billing->id}.pdf");
     }
 
@@ -942,6 +944,11 @@ class ResidentPortalController extends Controller
         return $maintenance;
     }
 
+    private function estateName(): string
+    {
+        return SiteSetting::current()->site_name;
+    }
+
     private function unitProfile(Unit $unit, $user): array
     {
         $resident = $user->resident ?: $unit->resident;
@@ -953,7 +960,7 @@ class ResidentPortalController extends Controller
             'phone' => $resident?->phone ?: $user->phone,
             'resident_number' => $unit->id,
             'status' => $unit->status?->name,
-            'estate' => 'Duta Indah Residence',
+            'estate' => $this->estateName(),
             'unit' => "{$unit->cluster?->name} {$unit->block}/{$unit->lot_number}",
             'joined_at' => $unit->created_at,
             'last_login_at' => $user->last_login_at,
@@ -969,7 +976,7 @@ class ResidentPortalController extends Controller
         return [
             'unit_id' => $unit->id,
             'va_number' => $unit->va_number,
-            'estate' => 'Duta Indah Residence',
+            'estate' => $this->estateName(),
             'cluster' => $unit->cluster?->name,
             'block' => $unit->block,
             'lot_number' => $unit->lot_number,

@@ -88,6 +88,7 @@ Route::get('landing/content', [LandingController::class, 'content']);
 Route::get('landing/articles/{slug}', [LandingController::class, 'article']);
 Route::get('landing/events/{slug}', [LandingController::class, 'event']);
 Route::get('landing/gallery-albums/{slug}', [LandingController::class, 'galleryAlbum']);
+Route::get('site-identity', [LandingController::class, 'identity']);
 
 Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::post('auth/logout', [AuthController::class, 'logout']);

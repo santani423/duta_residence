@@ -10,6 +10,7 @@ import UnitForm, { residentStatusOptions, propertyTypeOptions } from '../compone
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import { api } from '../services/estateApi.js';
 import { useTableState } from '../hooks/useTableState.js';
+import { useSiteIdentity } from '../hooks/useSiteIdentity.js';
 import { compactText, formatCurrency, formatDate, formatDateTime, formatPeriod } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
 import { useAuth } from '../state/AuthContext.jsx';
@@ -21,6 +22,7 @@ export default function UnitsPage() {
   const [convertForm] = Form.useForm();
   const queryClient = useQueryClient();
   const { can } = useAuth();
+  const siteName = useSiteIdentity();
 
   const units = useQuery({ queryKey: ['units', table.params], queryFn: () => api.units.list(table.params) });
   const clusters = useQuery({ queryKey: ['clusters'], queryFn: () => api.clusters.list() });
@@ -85,7 +87,7 @@ export default function UnitsPage() {
     <section>
       <PageHeader
         title="Unit Rumah"
-        subtitle="Master data unit dan kepemilikan di Duta Indah."
+        subtitle={`Master data unit dan kepemilikan di ${siteName}.`}
         breadcrumbs={[{ label: 'Unit Rumah' }]}
         onRefresh={units.refetch}
         loading={units.isFetching}

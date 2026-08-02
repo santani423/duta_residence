@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
 import '../api/api_exception.dart';
-import '../constants/app_config.dart';
 import '../constants/app_spacing.dart';
 import '../utils/formatters.dart';
 import '../widgets/copyable_value_row.dart';
 import '../widgets/duta_card.dart';
 import '../widgets/info_row.dart';
+import '../widgets/site_identity_scope.dart';
 import '../widgets/state_views.dart';
 import '../widgets/status_badge.dart';
 
@@ -36,7 +36,9 @@ class _PropertyScreenState extends State<PropertyScreen> {
   }
 
   Future<void> _refresh() async {
-    setState(() { _future = _load(); });
+    setState(() {
+      _future = _load();
+    });
     await _future;
   }
 
@@ -87,7 +89,7 @@ class _PropertyScreenState extends State<PropertyScreen> {
                               ),
                               const SizedBox(height: AppSpacing.xs),
                               Text(
-                                AppConfig.estateName,
+                                SiteIdentityScope.of(context).appName,
                                 style: TextStyle(
                                   color: colors.onSurfaceVariant,
                                   fontWeight: FontWeight.w600,
@@ -174,7 +176,9 @@ class _TenantSectionState extends State<_TenantSection> {
   }
 
   Future<void> _refresh() async {
-    setState(() { _future = _load(); });
+    setState(() {
+      _future = _load();
+    });
     await _future;
   }
 
@@ -268,10 +272,7 @@ class _TenantSectionState extends State<_TenantSection> {
               children: [
                 Text(message),
                 const SizedBox(height: AppSpacing.sm),
-                TextButton(
-                  onPressed: _refresh,
-                  child: const Text('Coba lagi'),
-                ),
+                TextButton(onPressed: _refresh, child: const Text('Coba lagi')),
               ],
             ),
           );
@@ -392,8 +393,7 @@ class _AddTenantFormState extends State<_AddTenantForm> {
         'name': _name.text.trim(),
         if (_email.text.trim().isNotEmpty) 'email': _email.text.trim(),
         if (_phone.text.trim().isNotEmpty) 'phone': _phone.text.trim(),
-        if (_username.text.trim().isNotEmpty)
-          'username': _username.text.trim(),
+        if (_username.text.trim().isNotEmpty) 'username': _username.text.trim(),
       });
       if (!mounted) return;
       final account = asMap(asMap(result.data)['login_account']);

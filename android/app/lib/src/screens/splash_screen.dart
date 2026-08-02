@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../constants/app_config.dart';
 import '../constants/app_spacing.dart';
 import '../widgets/app_logo.dart';
+import '../widgets/site_identity_scope.dart';
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
@@ -10,6 +10,7 @@ class SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final appName = SiteIdentityScope.of(context).appName;
     return Scaffold(
       body: DecoratedBox(
         decoration: BoxDecoration(
@@ -49,7 +50,7 @@ class SplashScreen extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.lg),
               Text(
-                'Menyiapkan ${AppConfig.appName}',
+                'Menyiapkan $appName',
                 style: TextStyle(
                   color: colors.onPrimaryContainer,
                   fontWeight: FontWeight.w700,

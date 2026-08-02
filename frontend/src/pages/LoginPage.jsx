@@ -2,12 +2,14 @@ import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { Alert, Button, Card, Form, Input, Space, Typography } from 'antd';
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useSiteIdentity } from '../hooks/useSiteIdentity.js';
 import { useAuth } from '../state/AuthContext.jsx';
 
 export default function LoginPage() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const siteName = useSiteIdentity();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -27,7 +29,7 @@ export default function LoginPage() {
   return (
     <main className="login-page">
       <Card className="login-card">
-        <Typography.Title level={2}>Duta Indah</Typography.Title>
+        <Typography.Title level={2}>{siteName}</Typography.Title>
         <Typography.Paragraph type="secondary">Estate Management</Typography.Paragraph>
         {error ? <Alert type="error" message={error} showIcon /> : null}
         <Form layout="vertical" onFinish={submit}>

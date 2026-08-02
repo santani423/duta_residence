@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../constants/app_assets.dart';
-import '../constants/app_config.dart';
+import '../widgets/site_identity_scope.dart';
 
 class AppLogo extends StatelessWidget {
   const AppLogo({
@@ -15,6 +15,7 @@ class AppLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final appName = SiteIdentityScope.of(context).appName;
     return Align(
       alignment: alignment,
       child: Image.asset(
@@ -22,10 +23,10 @@ class AppLogo extends StatelessWidget {
         height: height,
         fit: BoxFit.contain,
         filterQuality: FilterQuality.high,
-        semanticLabel: AppConfig.appName,
+        semanticLabel: appName,
         errorBuilder: (context, error, stackTrace) {
           return Text(
-            AppConfig.appName,
+            appName,
             style: Theme.of(
               context,
             ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),

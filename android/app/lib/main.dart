@@ -7,6 +7,7 @@ import 'src/api/api_client.dart';
 import 'src/app/duta_residence_app.dart';
 import 'src/services/biometric_auth_service.dart';
 import 'src/state/session_controller.dart';
+import 'src/state/site_identity_controller.dart';
 import 'src/state/theme_controller.dart';
 import 'src/storage/credential_store.dart';
 import 'src/storage/preferences_store.dart';
@@ -30,6 +31,7 @@ Future<void> main() async {
     credentialStore: CredentialStore(),
   );
   apiClient.onUnauthorized = sessionController.expireSession;
+  final siteIdentityController = SiteIdentityController(apiClient: apiClient);
 
   // `runApp` must not be blocked behind the `auth/me` network call: on a
   // slow/flaky connection (common right after a fresh release-build
@@ -43,8 +45,10 @@ Future<void> main() async {
       apiClient: apiClient,
       sessionController: sessionController,
       themeController: themeController,
+      siteIdentityController: siteIdentityController,
     ),
   );
 
   unawaited(sessionController.bootstrap());
+  unawaited(siteIdentityController.bootstrap());
 }

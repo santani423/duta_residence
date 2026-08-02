@@ -112,6 +112,16 @@ class LandingController extends Controller
         return $this->success($album);
     }
 
+    /**
+     * Lightweight public identity lookup (name only) for surfaces that don't
+     * need the full landing aggregate above - the authenticated app shell,
+     * the login screen, and the mobile app.
+     */
+    public function identity()
+    {
+        return $this->success(['site_name' => SiteSetting::current()->site_name]);
+    }
+
     private function resolveStatisticValue(array $statistic): float
     {
         return match ($statistic['source'] ?? 'manual') {

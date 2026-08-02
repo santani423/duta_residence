@@ -12,6 +12,7 @@ import { Avatar, Button, Drawer, Dropdown, Grid, Layout, Menu, Select, Space, Ty
 import { createElement, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { menuItems } from '../constants/permissions.js';
+import { useSiteIdentity } from '../hooks/useSiteIdentity.js';
 import { useAuth } from '../state/AuthContext.jsx';
 import { useThemeMode } from '../state/ThemeContext.jsx';
 import { HelpCenterProvider } from '../state/HelpCenterContext.jsx';
@@ -56,6 +57,7 @@ export default function AppShell() {
   const isMobile = !screens.lg;
   const { user, canAny, hasRole, logout } = useAuth();
   const { mode, setMode } = useThemeMode();
+  const siteName = useSiteIdentity();
   const navigate = useNavigate();
   const location = useLocation();
   const items = useMemo(() => buildMenuItems(canAny, hasRole), [canAny, hasRole]);
@@ -103,7 +105,7 @@ export default function AppShell() {
   const navigation = (
     <>
       <div className="brand">
-        <img src="/logo-app.png" alt="Duta Indah" className="brand-mark" />
+        <img src="/logo-app.png" alt={siteName} className="brand-mark" />
       </div>
       <Menu
         mode="inline"

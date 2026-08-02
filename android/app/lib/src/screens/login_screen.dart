@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../api/api_exception.dart';
-import '../constants/app_config.dart';
 import '../constants/app_spacing.dart';
 import '../state/session_controller.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/duta_card.dart';
+import '../widgets/site_identity_scope.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({required this.sessionController, super.key});
@@ -174,15 +174,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                     onPressed: _loading
                                         ? null
                                         : _loginWithBiometrics,
-                                    icon: const Icon(
-                                      Icons.fingerprint_rounded,
-                                    ),
+                                    icon: const Icon(Icons.fingerprint_rounded),
                                   ),
                               ],
                             ),
                             const SizedBox(height: AppSpacing.sm),
                             Text(
-                              AppConfig.estateName,
+                              SiteIdentityScope.of(context).appName,
                               style: TextStyle(
                                 color: colors.onSurfaceVariant,
                                 fontWeight: FontWeight.w600,

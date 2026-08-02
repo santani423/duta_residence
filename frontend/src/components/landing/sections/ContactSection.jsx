@@ -26,6 +26,7 @@ export default function ContactSection() {
   const content = useLandingContent();
   const contact = content?.contact?.address ? content.contact : CONTACT_INFO;
   const businessHours = contact.business_hours?.length ? contact.business_hours : CONTACT_INFO.business_hours;
+  const siteName = content?.site?.site_name || 'Duta Indah Estate Management';
 
   async function handleFinish(values) {
     setSubmitting(true);
@@ -106,7 +107,7 @@ export default function ContactSection() {
             <div className="lp-map">
               <iframe
                 src={contact.maps_embed_url}
-                title="Peta lokasi kantor pengelola Duta Indah Estate Management"
+                title={`Peta lokasi kantor pengelola ${siteName}`}
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
               />

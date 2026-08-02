@@ -2,9 +2,13 @@ import { LoginOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
 import { Link } from 'react-router-dom';
 import { EMERGENCY_CONTACTS, EMERGENCY_STEPS } from '../../../constants/landingContent.js';
+import { useLandingContent } from '../../../state/LandingContentContext.jsx';
 import Reveal from '../Reveal.jsx';
 
 export default function EmergencySection() {
+  const content = useLandingContent();
+  const siteName = content?.site?.site_name || 'Duta Indah Estate Management';
+
   return (
     <section className="lp-section">
       <div className="lp-container">
@@ -13,7 +17,7 @@ export default function EmergencySection() {
           <h2>Bantuan Darurat Hanya Sekali Tekan</h2>
           <p>
             Fitur emergency / panic button tersedia setelah Anda login sebagai penghuni. Berikut alur bantuan
-            darurat pada aplikasi Duta Indah Estate Management.
+            darurat pada aplikasi {siteName}.
           </p>
 
           <div className="lp-emergency-grid">

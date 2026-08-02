@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
 import '../api/api_exception.dart';
-import '../constants/app_config.dart';
 import '../constants/app_spacing.dart';
 import '../theme/app_palette.dart';
 import '../utils/formatters.dart';
@@ -10,6 +9,7 @@ import '../widgets/app_logo.dart';
 import '../widgets/duta_card.dart';
 import '../widgets/fade_in.dart';
 import '../widgets/info_row.dart';
+import '../widgets/site_identity_scope.dart';
 import '../widgets/state_views.dart';
 import '../widgets/status_badge.dart';
 import 'services_screen.dart' show ServiceTab;
@@ -51,7 +51,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _refresh() async {
-    setState(() { _future = _load(); });
+    setState(() {
+      _future = _load();
+    });
     await _future;
   }
 
@@ -495,7 +497,7 @@ class _InfoCards extends StatelessWidget {
                 const SizedBox(height: AppSpacing.lg),
                 InfoRows(
                   items: {
-                    'Estate': AppConfig.estateName,
+                    'Estate': SiteIdentityScope.of(context).appName,
                     'Cluster': asMap(data['property'])['cluster'],
                     'Unit': asMap(data['property'])['unit_label'],
                     'Tipe Properti': asMap(data['property'])['property_type'],

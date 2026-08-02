@@ -10,6 +10,7 @@ import ResidentForm from '../components/forms/ResidentForm.jsx';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import { api } from '../services/estateApi.js';
 import { useTableState } from '../hooks/useTableState.js';
+import { useSiteIdentity } from '../hooks/useSiteIdentity.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
 import { useAuth } from '../state/AuthContext.jsx';
 
@@ -20,6 +21,7 @@ export default function ResidentsPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { can } = useAuth();
+  const siteName = useSiteIdentity();
 
   const residents = useQuery({ queryKey: ['residents', table.params], queryFn: () => api.residents.list(table.params) });
   const districts = useQuery({ queryKey: ['lookup-districts'], queryFn: () => api.lookup.districts() });
@@ -78,7 +80,7 @@ export default function ResidentsPage() {
     <section>
       <PageHeader
         title="Penghuni"
-        subtitle="Master data pemilik unit Duta Indah."
+        subtitle={`Master data pemilik unit ${siteName}.`}
         breadcrumbs={[{ label: 'Penghuni' }]}
         onRefresh={residents.refetch}
         loading={residents.isFetching}
