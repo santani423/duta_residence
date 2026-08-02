@@ -40,7 +40,7 @@ return [
 
         'public' => [
             'driver' => 'local',
-            'root' => storage_path('app/public'),
+            'root' => public_path('storage'),
             'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
             'throw' => false,
@@ -74,7 +74,9 @@ return [
     */
 
     'links' => [
-        public_path('storage') => storage_path('app/public'),
+        // Empty: the "public" disk root above already lives inside public/storage
+        // as a real directory, so no symlink is needed (and storage:link would
+        // fail since the target path already exists).
     ],
 
 ];
