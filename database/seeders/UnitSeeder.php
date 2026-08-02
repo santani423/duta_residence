@@ -26,7 +26,12 @@ class UnitSeeder extends Seeder
         ];
 
         foreach (EstateSeeder::CLUSTERS as $clusterIndex => $cluster) {
-            for ($i = 1; $i <= 30; $i++) {
+            // AL & GA menampung ResidentSeeder::SPECIAL (butuh unit s.d. index 12) dan
+            // skenario kosong/renovasi/nonaktif di index 27-30, jadi tetap 30 unit.
+            // Cluster lain dipangkas jadi 3 unit supaya total ~100 unit dan seeder enteng di server.
+            $unitCount = in_array($cluster['id'], ['AL', 'GA'], true) ? 30 : 3;
+
+            for ($i = 1; $i <= $unitCount; $i++) {
                 $id = $cluster['id'].str_pad((string) $i, 3, '0', STR_PAD_LEFT);
                 $profile = $unitProfiles[($i + $clusterIndex) % count($unitProfiles)];
                 $statusId = 'AK';
