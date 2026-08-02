@@ -9,7 +9,7 @@ const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1560518883-ce09059eeff
 export default function AboutSection() {
   const content = useLandingContent();
   const about = content?.about;
-  const siteName = content?.site?.site_name || 'Duta Indah Estate Management';
+  const siteName = content?.site?.site_name || 'Duta Indah Residences';
 
   const title = about?.title || 'Pengelola Kawasan yang Mengutamakan Kenyamanan Anda';
   const description = about?.description

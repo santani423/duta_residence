@@ -7,7 +7,7 @@ const config = {
   resource: api.cms.settings.general,
   queryKey: 'cms-settings-general',
   fields: [
-    { name: 'site_name', label: 'Nama Situs', type: 'text', rules: [{ required: true, message: 'Nama situs wajib diisi' }] },
+    { name: 'site_name', label: 'Nama Situs', type: 'text', tooltip: 'Digunakan di seluruh aplikasi (login, admin) serta header & footer landing page.', rules: [{ required: true, message: 'Nama situs wajib diisi' }] },
     { name: 'logo_media_id', label: 'Logo', type: 'image', relation: 'logo' },
     {
       name: 'default_theme',

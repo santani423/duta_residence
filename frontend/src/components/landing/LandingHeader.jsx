@@ -29,7 +29,7 @@ export default function LandingHeader() {
   const header = content?.header;
   const navLinks = navItemsFrom(header?.nav_items);
   const logo = cmsImageUrl(header?.logo) || '/logo-estate-management.png';
-  const siteName = header?.site_name || 'Duta Indah';
+  const siteName = header?.site_name || 'Duta Indah Residences';
   const showLoginButton = header?.show_login_button ?? true;
   const loginButtonText = header?.login_button_text || 'Login';
   const stickyEnabled = header?.sticky_enabled ?? true;

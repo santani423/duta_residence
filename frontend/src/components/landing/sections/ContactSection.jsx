@@ -26,7 +26,7 @@ export default function ContactSection() {
   const content = useLandingContent();
   const contact = content?.contact?.address ? content.contact : CONTACT_INFO;
   const businessHours = contact.business_hours?.length ? contact.business_hours : CONTACT_INFO.business_hours;
-  const siteName = content?.site?.site_name || 'Duta Indah Estate Management';
+  const siteName = content?.site?.site_name || 'Duta Indah Residences';
 
   async function handleFinish(values) {
     setSubmitting(true);

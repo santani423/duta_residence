@@ -66,7 +66,7 @@ class LandingCmsSeeder extends Seeder
     private function seedSiteAndHeader(): void
     {
         SiteSetting::query()->firstOrCreate([], [
-            'site_name' => 'Duta Indah Estate Management',
+            'site_name' => 'Duta Indah Residences',
             'default_theme' => 'system',
             'primary_color' => '#0f766e',
             'secondary_color' => '#f59e0b',
@@ -75,7 +75,7 @@ class LandingCmsSeeder extends Seeder
         ]);
 
         LandingHeaderSetting::query()->firstOrCreate([], [
-            'site_name' => 'Duta Indah',
+            'site_name' => 'Duta Indah Residences',
             'sticky_enabled' => true,
             'show_login_button' => true,
             'login_button_text' => 'Login',
@@ -87,7 +87,7 @@ class LandingCmsSeeder extends Seeder
     {
         LandingAboutSetting::query()->firstOrCreate([], [
             'title' => 'Pengelola Kawasan yang Mengutamakan Kenyamanan Anda',
-            'description' => 'Duta Indah Estate Management adalah sistem pengelolaan kawasan yang membantu pengelola properti — perumahan, apartemen, maupun cluster — dalam menjalankan operasional sehari-hari secara lebih rapi, cepat, dan transparan. Kami berkomitmen menghadirkan pengalaman tinggal yang aman dan nyaman bagi seluruh penghuni.',
+            'description' => 'Duta Indah Residences adalah sistem pengelolaan kawasan yang membantu pengelola properti — perumahan, apartemen, maupun cluster — dalam menjalankan operasional sehari-hari secara lebih rapi, cepat, dan transparan. Kami berkomitmen menghadirkan pengalaman tinggal yang aman dan nyaman bagi seluruh penghuni.',
             'image_media_id' => $this->image('https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=900&q=70', 'Tim pengelola kawasan'),
             'pillars' => [
                 ['icon' => 'SafetyCertificateOutlined', 'title' => 'Keamanan', 'description' => 'Pengawasan kawasan 24 jam, buku tamu digital, dan sinyal darurat yang terhubung langsung ke petugas.'],
@@ -110,15 +110,15 @@ class LandingCmsSeeder extends Seeder
 
         LandingFooterSetting::query()->firstOrCreate([], [
             'description' => 'Sistem pengelolaan kawasan modern untuk perumahan, apartemen, dan cluster — menghadirkan layanan yang aman, transparan, dan mudah diakses.',
-            'copyright_text' => 'Duta Indah Estate Management. Seluruh hak cipta dilindungi.',
+            'copyright_text' => 'Duta Indah Residences. Seluruh hak cipta dilindungi.',
             'show_social_links' => true,
             'show_quick_links' => true,
         ]);
 
         LandingSeoSetting::query()->firstOrCreate([], [
-            'meta_title' => 'Duta Indah Estate Management',
-            'meta_description' => 'Kelola kawasan Anda lebih modern, aman, dan terintegrasi bersama Duta Indah Estate Management.',
-            'og_title' => 'Duta Indah Estate Management',
+            'meta_title' => 'Duta Indah Residences - Sistem Pengelolaan Kawasan Modern',
+            'meta_description' => 'Kelola kawasan Anda lebih modern, aman, dan terintegrasi bersama Duta Indah Residences.',
+            'og_title' => 'Duta Indah Residences',
             'og_description' => 'Satu platform untuk pengelolaan pembayaran, keamanan, pengaduan, fasilitas, hingga informasi penghuni.',
             'twitter_card_type' => 'summary_large_image',
         ]);

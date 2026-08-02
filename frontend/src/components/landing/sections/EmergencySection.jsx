@@ -7,7 +7,7 @@ import Reveal from '../Reveal.jsx';
 
 export default function EmergencySection() {
   const content = useLandingContent();
-  const siteName = content?.site?.site_name || 'Duta Indah Estate Management';
+  const siteName = content?.site?.site_name || 'Duta Indah Residences';
 
   return (
     <section className="lp-section">

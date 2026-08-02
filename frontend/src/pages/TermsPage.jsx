@@ -8,7 +8,7 @@ import '../styles/landing.css';
 export default function TermsPage() {
   const query = useLandingContentQuery();
   const content = query.data?.data;
-  const siteName = content?.site?.site_name || 'Duta Indah Estate Management';
+  const siteName = content?.site?.site_name || 'Duta Indah Residences';
 
   return (
     <LandingContentProvider value={content}>

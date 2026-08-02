@@ -24,7 +24,7 @@ class LandingSeoSetting extends Model
     public static function current(): self
     {
         return static::query()->firstOrCreate([], [
-            'meta_title' => 'Duta Indah Estate Management',
+            'meta_title' => 'Duta Indah Residences - Sistem Pengelolaan Kawasan Modern',
             'meta_description' => 'Kelola kawasan Anda lebih modern, aman, dan terintegrasi.',
             'twitter_card_type' => 'summary_large_image',
         ]);

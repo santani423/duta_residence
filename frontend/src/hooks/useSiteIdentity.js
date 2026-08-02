@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../services/estateApi.js';
 
-const FALLBACK_SITE_NAME = 'Duta Indah Estate Management';
+const FALLBACK_SITE_NAME = 'Duta Indah Residences';
 
 // Used outside the landing page's LandingContentProvider tree (login screen,
 // authenticated app shell, admin page subtitles) - a small dedicated endpoint

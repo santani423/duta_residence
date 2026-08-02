@@ -22,7 +22,6 @@ class LandingHeaderSettingController extends Controller
     {
         $data = $request->validate([
             'logo_media_id' => ['nullable', 'exists:media_assets,id'],
-            'site_name' => ['required', 'string', 'max:150'],
             'sticky_enabled' => ['required', 'boolean'],
             'show_login_button' => ['required', 'boolean'],
             'login_button_text' => ['required', 'string', 'max:60'],

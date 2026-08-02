@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Cms;
 
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
+use App\Models\LandingHeaderSetting;
 use App\Models\SiteSetting;
 use App\Services\AuditService;
 use App\Support\LandingContentCache;
@@ -40,6 +41,12 @@ class SiteSettingController extends Controller
         $old = $setting->toArray();
         $setting->update($data);
         $auditService->log('site_settings_updated', 'landing-cms', 'UPDATE', $setting, $old, $setting->toArray());
+
+        // Landing page header keeps its own site_name column (independent of
+        // this general setting historically), but the admin now edits the
+        // name from a single panel - keep the header in sync here.
+        LandingHeaderSetting::current()->update(['site_name' => $data['site_name']]);
+
         LandingContentCache::forget();
 
         return $this->success($setting->refresh()->load('logo'), 'Pengaturan umum berhasil disimpan.');

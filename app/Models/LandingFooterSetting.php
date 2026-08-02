@@ -24,7 +24,7 @@ class LandingFooterSetting extends Model
     {
         return static::query()->firstOrCreate([], [
             'description' => 'Sistem pengelolaan kawasan modern untuk perumahan, apartemen, dan cluster.',
-            'copyright_text' => 'Duta Indah Estate Management. Seluruh hak cipta dilindungi.',
+            'copyright_text' => 'Duta Indah Residences. Seluruh hak cipta dilindungi.',
             'show_social_links' => true,
             'show_quick_links' => true,
         ]);

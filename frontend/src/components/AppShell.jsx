@@ -146,7 +146,7 @@ export default function AppShell() {
                 />
               )}
               <div>
-                <Typography.Text strong>Estate Management</Typography.Text>
+                <Typography.Text strong>{siteName}</Typography.Text>
               </div>
             </Space>
             <Space className="header-actions">
