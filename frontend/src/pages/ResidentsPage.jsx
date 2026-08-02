@@ -78,7 +78,7 @@ export default function ResidentsPage() {
     <section>
       <PageHeader
         title="Penghuni"
-        subtitle="Master data pemilik unit Grand Duta."
+        subtitle="Master data pemilik unit Duta Indah."
         breadcrumbs={[{ label: 'Penghuni' }]}
         onRefresh={residents.refetch}
         loading={residents.isFetching}

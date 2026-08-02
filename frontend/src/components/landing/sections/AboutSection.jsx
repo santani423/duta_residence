@@ -12,7 +12,7 @@ export default function AboutSection() {
 
   const title = about?.title || 'Pengelola Kawasan yang Mengutamakan Kenyamanan Anda';
   const description = about?.description
-    || 'Grand Duta Estate Management adalah sistem pengelolaan kawasan yang membantu pengelola properti — perumahan, apartemen, maupun cluster — dalam menjalankan operasional sehari-hari secara lebih rapi, cepat, dan transparan. Kami berkomitmen menghadirkan pengalaman tinggal yang aman dan nyaman bagi seluruh penghuni.';
+    || 'Duta Indah Estate Management adalah sistem pengelolaan kawasan yang membantu pengelola properti — perumahan, apartemen, maupun cluster — dalam menjalankan operasional sehari-hari secara lebih rapi, cepat, dan transparan. Kami berkomitmen menghadirkan pengalaman tinggal yang aman dan nyaman bagi seluruh penghuni.';
   const image = cmsImageUrl(about?.image) || FALLBACK_IMAGE;
   const pillars = about?.pillars?.length ? about.pillars : ABOUT_PILLARS;
 
@@ -20,7 +20,7 @@ export default function AboutSection() {
     <section id="tentang" className="lp-section">
       <div className="lp-container lp-about-grid">
         <Reveal className="lp-about-photo" as="div" direction="left">
-          <img src={image} alt="Tim pengelola kawasan Grand Duta Estate Management" loading="lazy" />
+          <img src={image} alt="Tim pengelola kawasan Duta Indah Estate Management" loading="lazy" />
         </Reveal>
 
         <Reveal delay={120} direction="right">

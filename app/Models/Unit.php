@@ -143,6 +143,7 @@ class Unit extends Model
                 ->orWhere('block', 'like', "%{$search}%")
                 ->orWhere('lot_number', 'like', "%{$search}%")
                 ->orWhere('va_number', 'like', "%{$search}%")
+                ->orWhereHas('cluster', fn (Builder $c) => $c->where('name', 'like', "%{$search}%"))
                 ->orWhereHas('resident', fn (Builder $c) => $c->where('name', 'like', "%{$search}%")
                     ->orWhere('phone', 'like', "%{$search}%"));
         }));

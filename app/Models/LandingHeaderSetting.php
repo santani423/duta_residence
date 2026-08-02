@@ -25,7 +25,7 @@ class LandingHeaderSetting extends Model
     public static function current(): self
     {
         return static::query()->firstOrCreate([], [
-            'site_name' => 'Grand Duta',
+            'site_name' => 'Duta Indah',
             'sticky_enabled' => true,
             'show_login_button' => true,
             'login_button_text' => 'Login',

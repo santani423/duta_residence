@@ -85,7 +85,7 @@ export default function UnitsPage() {
     <section>
       <PageHeader
         title="Unit Rumah"
-        subtitle="Master data unit dan kepemilikan di Grand Duta."
+        subtitle="Master data unit dan kepemilikan di Duta Indah."
         breadcrumbs={[{ label: 'Unit Rumah' }]}
         onRefresh={units.refetch}
         loading={units.isFetching}

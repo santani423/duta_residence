@@ -185,10 +185,10 @@ export const TESTIMONIALS = [
 ];
 
 export const CONTACT_INFO = {
-  address: 'Jl. Grand Duta Raya No. 1, Tangerang, Banten 15810',
+  address: 'Jl. Duta Indah Raya No. 1, Tangerang, Banten 15810',
   phone: '(021) 555-0100',
   whatsapp: '+62 812-3456-7890',
-  email: 'info@grandduta-estate.id',
+  email: 'info@dutaindah-estate.id',
   business_hours: [{ label: 'Senin - Sabtu', value: '08.00 - 17.00 WIB' }],
   maps_embed_url: 'https://www.google.com/maps?q=Tangerang%2C+Banten&output=embed',
 };

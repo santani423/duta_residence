@@ -35,7 +35,16 @@ class PaymentGatewayController extends Controller
                 ->where('transaction_number', 'like', "%{$value}%")
                 ->orWhere('invoice_number', 'like', "%{$value}%")
                 ->orWhere('provider_reference', 'like', "%{$value}%")
-                ->orWhere('unit_id', 'like', "%{$value}%")))
+                ->orWhere('unit_id', 'like', "%{$value}%")
+                ->orWhereHas('unit', fn ($u) => $u
+                    ->where('block', 'like', "%{$value}%")
+                    ->orWhere('lot_number', 'like', "%{$value}%")
+                    ->orWhereHas('cluster', fn ($c) => $c->where('name', 'like', "%{$value}%"))
+                    ->orWhereHas('resident', fn ($r) => $r->where('name', 'like', "%{$value}%")))))
+            ->when($request->query('address'), fn ($q, $value) => $q->whereHas('unit', fn ($u) => $u
+                ->where('block', 'like', "%{$value}%")
+                ->orWhere('lot_number', 'like', "%{$value}%")
+                ->orWhereHas('cluster', fn ($c) => $c->where('name', 'like', "%{$value}%"))))
             ->when($request->query('provider'), fn ($q, $value) => $q->where('payment_provider', $value))
             ->when($request->query('status'), fn ($q, $value) => $q->where('status', $value))
             ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value));

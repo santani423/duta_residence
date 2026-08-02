@@ -29,7 +29,7 @@ export default function LandingHeader() {
   const header = content?.header;
   const navLinks = navItemsFrom(header?.nav_items);
   const logo = cmsImageUrl(header?.logo) || '/logo-estate-management.png';
-  const siteName = header?.site_name || 'Grand Duta';
+  const siteName = header?.site_name || 'Duta Indah';
   const showLoginButton = header?.show_login_button ?? true;
   const loginButtonText = header?.login_button_text || 'Login';
   const stickyEnabled = header?.sticky_enabled ?? true;
@@ -82,10 +82,6 @@ export default function LandingHeader() {
       <div className="lp-header-inner">
         <Link to="/" className="lp-logo" aria-label={`${siteName} - Beranda`}>
           <img src={logo} alt={`Logo ${siteName}`} width="36" height="36" />
-          <span className="lp-logo-text">
-            {siteName}
-            <small>Estate Management</small>
-          </span>
         </Link>
 
         <nav className="lp-nav" aria-label="Navigasi utama">

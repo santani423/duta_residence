@@ -66,7 +66,7 @@ class LandingCmsSeeder extends Seeder
     private function seedSiteAndHeader(): void
     {
         SiteSetting::query()->firstOrCreate([], [
-            'site_name' => 'Grand Duta Estate Management',
+            'site_name' => 'Duta Indah Estate Management',
             'default_theme' => 'system',
             'primary_color' => '#0f766e',
             'secondary_color' => '#f59e0b',
@@ -75,7 +75,7 @@ class LandingCmsSeeder extends Seeder
         ]);
 
         LandingHeaderSetting::query()->firstOrCreate([], [
-            'site_name' => 'Grand Duta',
+            'site_name' => 'Duta Indah',
             'sticky_enabled' => true,
             'show_login_button' => true,
             'login_button_text' => 'Login',
@@ -87,7 +87,7 @@ class LandingCmsSeeder extends Seeder
     {
         LandingAboutSetting::query()->firstOrCreate([], [
             'title' => 'Pengelola Kawasan yang Mengutamakan Kenyamanan Anda',
-            'description' => 'Grand Duta Estate Management adalah sistem pengelolaan kawasan yang membantu pengelola properti — perumahan, apartemen, maupun cluster — dalam menjalankan operasional sehari-hari secara lebih rapi, cepat, dan transparan. Kami berkomitmen menghadirkan pengalaman tinggal yang aman dan nyaman bagi seluruh penghuni.',
+            'description' => 'Duta Indah Estate Management adalah sistem pengelolaan kawasan yang membantu pengelola properti — perumahan, apartemen, maupun cluster — dalam menjalankan operasional sehari-hari secara lebih rapi, cepat, dan transparan. Kami berkomitmen menghadirkan pengalaman tinggal yang aman dan nyaman bagi seluruh penghuni.',
             'image_media_id' => $this->image('https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=900&q=70', 'Tim pengelola kawasan'),
             'pillars' => [
                 ['icon' => 'SafetyCertificateOutlined', 'title' => 'Keamanan', 'description' => 'Pengawasan kawasan 24 jam, buku tamu digital, dan sinyal darurat yang terhubung langsung ke petugas.'],
@@ -100,25 +100,25 @@ class LandingCmsSeeder extends Seeder
     private function seedContactAndFooterAndSeo(): void
     {
         LandingContactSetting::query()->firstOrCreate([], [
-            'address' => 'Jl. Grand Duta Raya No. 1, Tangerang, Banten 15810',
+            'address' => 'Jl. Duta Indah Raya No. 1, Tangerang, Banten 15810',
             'phone' => '(021) 555-0100',
             'whatsapp' => '+62 812-3456-7890',
-            'email' => 'info@grandduta-estate.id',
+            'email' => 'info@dutaindah-estate.id',
             'maps_embed_url' => 'https://www.google.com/maps?q=Tangerang%2C+Banten&output=embed',
             'business_hours' => [['label' => 'Senin - Sabtu', 'value' => '08.00 - 17.00 WIB']],
         ]);
 
         LandingFooterSetting::query()->firstOrCreate([], [
             'description' => 'Sistem pengelolaan kawasan modern untuk perumahan, apartemen, dan cluster — menghadirkan layanan yang aman, transparan, dan mudah diakses.',
-            'copyright_text' => 'Grand Duta Estate Management. Seluruh hak cipta dilindungi.',
+            'copyright_text' => 'Duta Indah Estate Management. Seluruh hak cipta dilindungi.',
             'show_social_links' => true,
             'show_quick_links' => true,
         ]);
 
         LandingSeoSetting::query()->firstOrCreate([], [
-            'meta_title' => 'Grand Duta Estate Management',
-            'meta_description' => 'Kelola kawasan Anda lebih modern, aman, dan terintegrasi bersama Grand Duta Estate Management.',
-            'og_title' => 'Grand Duta Estate Management',
+            'meta_title' => 'Duta Indah Estate Management',
+            'meta_description' => 'Kelola kawasan Anda lebih modern, aman, dan terintegrasi bersama Duta Indah Estate Management.',
+            'og_title' => 'Duta Indah Estate Management',
             'og_description' => 'Satu platform untuk pengelolaan pembayaran, keamanan, pengaduan, fasilitas, hingga informasi penghuni.',
             'twitter_card_type' => 'summary_large_image',
         ]);
@@ -361,7 +361,7 @@ class LandingCmsSeeder extends Seeder
                 'img' => 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=700&q=60',
             ],
             [
-                'title' => 'Bazar UMKM Warga Grand Duta',
+                'title' => 'Bazar UMKM Warga Duta Indah',
                 'slug' => 'bazar-umkm-warga-grand-duta',
                 'description' => 'Bazar akhir pekan yang menampilkan produk UMKM milik warga kawasan, mulai dari kuliner hingga kerajinan tangan. Yuk dukung usaha sesama penghuni!',
                 'location' => 'Area Komersial Kawasan',

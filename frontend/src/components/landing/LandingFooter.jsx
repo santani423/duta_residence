@@ -28,10 +28,10 @@ export default function LandingFooter() {
   const showQuickLinks = footer?.show_quick_links ?? true;
   const services = content?.services?.length ? content.services : SERVICES;
   const logo = cmsImageUrl(footer?.logo) || cmsImageUrl(header?.logo) || '/logo-estate-management.png';
-  const siteName = header?.site_name || 'Grand Duta';
+  const siteName = header?.site_name || 'Duta Indah';
   const description = footer?.description
     || 'Sistem pengelolaan kawasan modern untuk perumahan, apartemen, dan cluster — menghadirkan layanan yang aman, transparan, dan mudah diakses.';
-  const copyrightText = footer?.copyright_text || 'Grand Duta Estate Management. Seluruh hak cipta dilindungi.';
+  const copyrightText = footer?.copyright_text || 'Duta Indah Estate Management. Seluruh hak cipta dilindungi.';
 
   return (
     <footer className="lp-footer">

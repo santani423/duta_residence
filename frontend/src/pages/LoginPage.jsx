@@ -27,7 +27,7 @@ export default function LoginPage() {
   return (
     <main className="login-page">
       <Card className="login-card">
-        <Typography.Title level={2}>Grand Duta</Typography.Title>
+        <Typography.Title level={2}>Duta Indah</Typography.Title>
         <Typography.Paragraph type="secondary">Estate Management</Typography.Paragraph>
         {error ? <Alert type="error" message={error} showIcon /> : null}
         <Form layout="vertical" onFinish={submit}>

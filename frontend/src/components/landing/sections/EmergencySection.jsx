@@ -13,7 +13,7 @@ export default function EmergencySection() {
           <h2>Bantuan Darurat Hanya Sekali Tekan</h2>
           <p>
             Fitur emergency / panic button tersedia setelah Anda login sebagai penghuni. Berikut alur bantuan
-            darurat pada aplikasi Grand Duta Estate Management.
+            darurat pada aplikasi Duta Indah Estate Management.
           </p>
 
           <div className="lp-emergency-grid">

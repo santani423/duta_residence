@@ -14,7 +14,7 @@ export default function TermsPage() {
 
           <Typography.Title level={4}>1. Penerimaan Ketentuan</Typography.Title>
           <Typography.Paragraph>
-            Dengan menggunakan aplikasi Grand Duta Estate Management, Anda dianggap telah membaca, memahami, dan
+            Dengan menggunakan aplikasi Duta Indah Estate Management, Anda dianggap telah membaca, memahami, dan
             menyetujui seluruh syarat dan ketentuan yang berlaku.
           </Typography.Paragraph>
 

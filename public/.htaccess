@@ -3,6 +3,12 @@
         Options -MultiViews -Indexes
     </IfModule>
 
+    # Allow the web server to follow the public/storage symlink created by
+    # `php artisan storage:link`. Without this, some shared hosts (LiteSpeed
+    # on Hostinger observed doing this) return 403 for every path under
+    # /storage/ instead of serving the linked file.
+    Options +FollowSymLinks
+
     RewriteEngine On
 
     # Handle Authorization Header

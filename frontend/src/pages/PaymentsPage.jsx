@@ -10,6 +10,7 @@ import StatusBadge from '../components/common/StatusBadge.jsx';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import { api } from '../services/estateApi.js';
 import { useTableState } from '../hooks/useTableState.js';
+import { useDebounce } from '../hooks/useDebounce.js';
 import { formatCurrency, formatDate, formatDateTime, formatPeriod } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
 
@@ -19,6 +20,7 @@ export default function PaymentsPage() {
   const [preview, setPreview] = useState(null);
   const [transaction, setTransaction] = useState(null);
   const [proofOpen, setProofOpen] = useState(null);
+  const [unitQuery, setUnitQuery] = useState('');
   const [searchForm] = Form.useForm();
   const [loketForm] = Form.useForm();
   const [gatewayForm] = Form.useForm();
@@ -27,10 +29,12 @@ export default function PaymentsPage() {
   const queryClient = useQueryClient();
   const transactionTable = useTableState();
   const receiptTable = useTableState();
+  const debouncedUnitQuery = useDebounce(unitQuery);
 
   const config = useQuery({ queryKey: ['payment-gateway-config'], queryFn: api.payments.gatewayConfig });
   const transactions = useQuery({ queryKey: ['payment-transactions', transactionTable.params], queryFn: () => api.payments.gatewayTransactions(transactionTable.params) });
   const receipts = useQuery({ queryKey: ['payment-receipts', receiptTable.params], queryFn: () => api.payments.receipts(receiptTable.params) });
+  const unitLookup = useQuery({ queryKey: ['units', 'payment-search', debouncedUnitQuery], queryFn: () => api.units.list({ search: debouncedUnitQuery || undefined, per_page: 20 }) });
 
   const search = useMutation({
     mutationFn: (values) => api.payments.search({ unit_id: values.unit_id }),
@@ -113,6 +117,7 @@ export default function PaymentsPage() {
     setSelected([]);
     setPreview(null);
     setTransaction(null);
+    setUnitQuery('');
     searchForm.resetFields();
     loketForm.resetFields();
     gatewayForm.resetFields();
@@ -121,6 +126,10 @@ export default function PaymentsPage() {
   const unpaidBillings = unit?.billings || [];
   const activeGateway = config.data?.data?.active_gateway || 'manual';
   const manualInfo = config.data?.data?.manual_payment || {};
+  const unitOptions = (unitLookup.data?.data || []).map((item) => ({
+    value: item.id,
+    label: `${item.id} — ${item.cluster?.name || ''} ${item.block || ''}/${item.lot_number || ''} — ${item.resident?.name || ''}`,
+  }));
 
   const billingColumns = [
     { title: 'Periode', render: (_, row) => formatPeriod(row.year, row.month) },
@@ -152,8 +161,17 @@ export default function PaymentsPage() {
               <div className="stack">
                 <Card>
                   <Form form={searchForm} layout="inline" onFinish={search.mutate}>
-                    <Form.Item label="ID Unit" name="unit_id" rules={[{ required: true }]}>
-                      <Input placeholder="GA001" />
+                    <Form.Item label="Unit" name="unit_id" rules={[{ required: true, message: 'Pilih unit' }]}>
+                      <Select
+                        showSearch
+                        filterOption={false}
+                        onSearch={setUnitQuery}
+                        options={unitOptions}
+                        loading={unitLookup.isFetching}
+                        notFoundContent={unitLookup.isFetching ? 'Mencari...' : 'Tidak ditemukan'}
+                        placeholder="Cari ID unit, alamat (cluster/blok/kavling), atau nama penghuni"
+                        style={{ width: 360 }}
+                      />
                     </Form.Item>
                     <Button htmlType="submit" icon={<SearchOutlined />} loading={search.isPending}>Cari Tagihan</Button>
                     <Button onClick={resetPaymentWorkspace}>Reset</Button>
@@ -246,6 +264,7 @@ export default function PaymentsPage() {
               <>
                 <FilterBar>
                   <Input allowClear placeholder="Cari invoice, transaksi, penghuni" value={transactionTable.search} onChange={(event) => transactionTable.setSearch(event.target.value)} className="filter-input" />
+                  <Input allowClear placeholder="Alamat unit (cluster/blok/kavling)" value={transactionTable.filters.address} onChange={(event) => transactionTable.setFilters({ ...transactionTable.filters, address: event.target.value || undefined })} className="filter-input" />
                   <Select allowClear placeholder="Provider" value={transactionTable.filters.provider} onChange={(value) => transactionTable.setFilters({ ...transactionTable.filters, provider: value })} className="filter-input" options={[{ value: 'manual', label: 'Manual' }, { value: 'xendit', label: 'Xendit' }, { value: 'midtrans', label: 'Midtrans' }]} />
                   <Select allowClear placeholder="Status" value={transactionTable.filters.status} onChange={(value) => transactionTable.setFilters({ ...transactionTable.filters, status: value })} className="filter-input" options={['pending', 'waiting_verification', 'paid', 'rejected', 'failed', 'expired'].map((value) => ({ value, label: value }))} />
                 </FilterBar>
@@ -257,6 +276,7 @@ export default function PaymentsPage() {
                     columns={[
                       { title: 'Invoice', dataIndex: 'invoice_number', width: 190, fixed: 'left' },
                       { title: 'Penghuni', dataIndex: ['unit', 'resident', 'name'], width: 200 },
+                      { title: 'Alamat Unit', render: (_, row) => `${row.unit?.cluster?.name || ''} ${row.unit?.block || ''}/${row.unit?.lot_number || ''}`, width: 180 },
                       { title: 'Provider', dataIndex: 'payment_provider', width: 110 },
                       { title: 'Total', dataIndex: 'total', render: formatCurrency, width: 140 },
                       { title: 'Status', dataIndex: 'status', render: (value) => <StatusBadge type="transaction" value={value} />, width: 170 },
@@ -295,18 +315,20 @@ export default function PaymentsPage() {
             children: (
               <>
                 <FilterBar>
-                  <Input allowClear placeholder="ID unit" value={receiptTable.filters.unit_id} onChange={(event) => receiptTable.setFilters({ ...receiptTable.filters, unit_id: event.target.value || undefined })} className="filter-input" />
+                  <Input allowClear placeholder="Cari nomor kuitansi, penghuni, ID unit" value={receiptTable.search} onChange={(event) => receiptTable.setSearch(event.target.value)} className="filter-input" />
+                  <Input allowClear placeholder="Alamat unit (cluster/blok/kavling)" value={receiptTable.filters.address} onChange={(event) => receiptTable.setFilters({ ...receiptTable.filters, address: event.target.value || undefined })} className="filter-input" />
                   <DatePicker placeholder="Tanggal" onChange={(value) => receiptTable.setFilters({ ...receiptTable.filters, date: value?.format('YYYY-MM-DD') })} className="filter-input" />
                 </FilterBar>
                 <Card>
                   <ResponsiveTable
                     query={receipts}
                     onChange={receiptTable.handleTableChange}
-                    scrollX={1060}
+                    scrollX={1240}
                     rowKey="number"
                     columns={[
                       { title: 'Nomor', dataIndex: 'number', width: 190, fixed: 'left' },
                       { title: 'Penghuni', dataIndex: 'resident_name', width: 220 },
+                      { title: 'Alamat Unit', render: (_, row) => `${row.cluster_name || ''} ${row.block || ''}/${row.lot_number || ''}`, width: 180 },
                       { title: 'Tanggal', dataIndex: 'transaction_date', render: formatDateTime, width: 170 },
                       { title: 'Periode', dataIndex: 'billing_periods' },
                       { title: 'Total', dataIndex: 'grand_total', render: formatCurrency, width: 150 },

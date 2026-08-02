@@ -82,6 +82,14 @@ class PaymentController extends Controller
     {
         $query = Receipt::query()
             ->with('unit.cluster')
+            ->when($request->query('search'), fn ($q, $value) => $q->where(fn ($inner) => $inner
+                ->where('number', 'like', "%{$value}%")
+                ->orWhere('unit_id', 'like', "%{$value}%")
+                ->orWhere('resident_name', 'like', "%{$value}%")))
+            ->when($request->query('address'), fn ($q, $value) => $q->where(fn ($inner) => $inner
+                ->where('cluster_name', 'like', "%{$value}%")
+                ->orWhere('block', 'like', "%{$value}%")
+                ->orWhere('lot_number', 'like', "%{$value}%")))
             ->when($request->query('date'), fn ($q, $value) => $q->whereDate('transaction_date', $value))
             ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value));
 

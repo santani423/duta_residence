@@ -106,7 +106,7 @@ export default function ContactSection() {
             <div className="lp-map">
               <iframe
                 src={contact.maps_embed_url}
-                title="Peta lokasi kantor pengelola Grand Duta Estate Management"
+                title="Peta lokasi kantor pengelola Duta Indah Estate Management"
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
               />

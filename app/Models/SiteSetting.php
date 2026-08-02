@@ -24,7 +24,7 @@ class SiteSetting extends Model
     public static function current(): self
     {
         return static::query()->firstOrCreate([], [
-            'site_name' => 'Grand Duta Estate Management',
+            'site_name' => 'Duta Indah Estate Management',
             'default_theme' => 'system',
             'primary_color' => '#0f766e',
             'secondary_color' => '#f59e0b',
