@@ -1,5 +1,5 @@
 import { Alert, Button, Card, DatePicker, Drawer, Form, Input, Modal, Select, Space, Tabs, Upload, message, Typography } from 'antd';
-import { CheckOutlined, CloudUploadOutlined, CloseOutlined, LinkOutlined, SearchOutlined } from '@ant-design/icons';
+import { CheckOutlined, CloudUploadOutlined, CloseOutlined, LinkOutlined, PrinterOutlined, SearchOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import dayjs from 'dayjs';
@@ -13,6 +13,7 @@ import { useTableState } from '../hooks/useTableState.js';
 import { useDebounce } from '../hooks/useDebounce.js';
 import { formatCurrency, formatDate, formatDateTime, formatPeriod } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
+import { openBlobInWindow } from '../utils/download.js';
 
 export default function PaymentsPage() {
   const [unit, setUnit] = useState(null);
@@ -111,6 +112,17 @@ export default function PaymentsPage() {
     },
     onError: (error) => message.error(getApiErrorMessage(error)),
   });
+
+  async function printReceipt(number) {
+    const printWindow = window.open('', '_blank');
+    try {
+      const blob = await api.documents.receiptPdf(number);
+      openBlobInWindow(printWindow, blob);
+    } catch (error) {
+      printWindow?.close();
+      message.error(getApiErrorMessage(error, 'Gagal memuat kuitansi'));
+    }
+  }
 
   function resetPaymentWorkspace() {
     setUnit(null);
@@ -323,17 +335,27 @@ export default function PaymentsPage() {
                   <ResponsiveTable
                     query={receipts}
                     onChange={receiptTable.handleTableChange}
-                    scrollX={1240}
+                    scrollX={1390}
                     rowKey="number"
                     columns={[
                       { title: 'Nomor', dataIndex: 'number', width: 190, fixed: 'left' },
                       { title: 'Penghuni', dataIndex: 'resident_name', width: 220 },
                       { title: 'Alamat Unit', render: (_, row) => `${row.cluster_name || ''} ${row.block || ''}/${row.lot_number || ''}`, width: 180 },
                       { title: 'Tanggal', dataIndex: 'transaction_date', render: formatDateTime, width: 170 },
-                      { title: 'Periode', dataIndex: 'billing_periods' },
+                      { title: 'Periode', dataIndex: 'billing_periods', width: 150 },
                       { title: 'Total', dataIndex: 'grand_total', render: formatCurrency, width: 150 },
                       { title: 'Status', dataIndex: 'status', render: (value) => <StatusBadge type="transaction" value={value} />, width: 120 },
                       { title: 'Kasir', dataIndex: 'cashier_name', width: 130 },
+                      {
+                        title: 'Aksi',
+                        fixed: 'right',
+                        width: 150,
+                        render: (_, row) => (
+                          <Can permission="documents.generate">
+                            <Button size="small" icon={<PrinterOutlined />} onClick={() => printReceipt(row.number)}>Cetak Kuitansi</Button>
+                          </Can>
+                        ),
+                      },
                     ]}
                   />
                 </Card>

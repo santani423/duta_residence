@@ -236,6 +236,7 @@ export const api = {
     url: (path) => `${http.defaults.baseURL}${path}`,
     billingRecapPdf: (params) => http.get('/documents/billing-recap', { params, responseType: 'blob' }),
     billingRecapExcel: (params) => http.get('/documents/billing-recap-excel', { params, responseType: 'blob' }),
+    receiptPdf: (number) => http.get(`/documents/spt/${number}`, { responseType: 'blob' }),
   },
   users: {
     list: (params) => http.get('/users', { params }),
