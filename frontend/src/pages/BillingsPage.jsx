@@ -119,7 +119,7 @@ export default function BillingsPage() {
   }
 
   const columns = [
-    { title: 'ID', dataIndex: 'id', width: 80, fixed: 'left' },
+    { title: 'ID Unit', dataIndex: ['unit', 'id'], width: 100, fixed: 'left' },
     { title: 'Penghuni', dataIndex: ['unit', 'resident', 'name'], width: 220 },
     { title: 'Cluster', dataIndex: ['unit', 'cluster', 'name'], width: 140 },
     { title: 'Periode', render: (_, row) => formatPeriod(row.year, row.month), width: 140 },

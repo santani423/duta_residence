@@ -24,8 +24,22 @@ class PaymentController extends Controller
             $assignmentService->assertUnitAssigned($request->user(), $data['unit_id']);
         }
 
+        $dateFrom = $request->query('date_from');
+        $dateTo = $request->query('date_to');
+
         $unit = Unit::query()
-            ->with(['cluster', 'resident', 'billings' => fn ($q) => $q->outstanding()->approved()->orderBy('year')->orderBy('month')])
+            ->with(['cluster', 'resident', 'billings' => function ($q) use ($dateFrom, $dateTo) {
+                $q->outstanding()->approved()
+                    ->when($dateFrom, function ($q, $value) {
+                        [$year, $month] = array_map('intval', explode('-', $value));
+                        $q->whereRaw('(year * 100 + month) >= ?', [$year * 100 + $month]);
+                    })
+                    ->when($dateTo, function ($q, $value) {
+                        [$year, $month] = array_map('intval', explode('-', $value));
+                        $q->whereRaw('(year * 100 + month) <= ?', [$year * 100 + $month]);
+                    })
+                    ->orderBy('year')->orderBy('month');
+            }])
             ->findOrFail($data['unit_id']);
 
         $unit->setRelation('billings', $unit->billings->map(function (Billing $billing) use ($unit, $penaltyService) {
@@ -90,7 +104,10 @@ class PaymentController extends Controller
                 ->where('cluster_name', 'like', "%{$value}%")
                 ->orWhere('block', 'like', "%{$value}%")
                 ->orWhere('lot_number', 'like', "%{$value}%")))
-            ->when($request->query('date'), fn ($q, $value) => $q->whereDate('transaction_date', $value))
+            ->when($request->query('cluster_id'), fn ($q, $value) => $q->whereHas('unit', fn ($u) => $u->where('cluster_id', $value)))
+            ->when($request->query('customer'), fn ($q, $value) => $q->where('resident_name', 'like', "%{$value}%"))
+            ->when($request->query('date_from'), fn ($q, $value) => $q->whereDate('transaction_date', '>=', $value))
+            ->when($request->query('date_to'), fn ($q, $value) => $q->whereDate('transaction_date', '<=', $value))
             ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value));
 
         return $this->paginated($query->latest('transaction_date')->paginate($request->integer('per_page', 15)));

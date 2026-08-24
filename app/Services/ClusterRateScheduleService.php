@@ -31,6 +31,33 @@ class ClusterRateScheduleService
         return (float) ($schedule->rate ?? $cluster->monthly_rate);
     }
 
+    /**
+     * Batch version of rateForPeriod - resolves effective rates for many clusters at once
+     * (single query) instead of one query per cluster, to avoid N+1 during monthly billing
+     * generation across all units.
+     *
+     * @param  Collection<int, Cluster>  $clusters
+     * @return array<string, float> cluster_id => rate
+     */
+    public function ratesForClusters(Collection $clusters, int $year, int $month): array
+    {
+        $periodStart = Carbon::create($year, $month, 1);
+
+        $schedulesByCluster = ClusterRateSchedule::query()
+            ->whereIn('cluster_id', $clusters->pluck('id'))
+            ->active()
+            ->whereDate('effective_date', '<=', $periodStart)
+            ->orderByDesc('effective_date')
+            ->get()
+            ->groupBy('cluster_id');
+
+        return $clusters->mapWithKeys(function (Cluster $cluster) use ($schedulesByCluster) {
+            $schedule = $schedulesByCluster->get($cluster->id)?->first();
+
+            return [$cluster->id => (float) ($schedule->rate ?? $cluster->monthly_rate)];
+        })->all();
+    }
+
     public function assertNoConflict(string $clusterId, string $effectiveDate, ?int $ignoreId = null): void
     {
         $exists = ClusterRateSchedule::query()

@@ -45,9 +45,13 @@ class PaymentGatewayController extends Controller
                 ->where('block', 'like', "%{$value}%")
                 ->orWhere('lot_number', 'like', "%{$value}%")
                 ->orWhereHas('cluster', fn ($c) => $c->where('name', 'like', "%{$value}%"))))
+            ->when($request->query('cluster_id'), fn ($q, $value) => $q->whereHas('unit', fn ($u) => $u->where('cluster_id', $value)))
+            ->when($request->query('customer'), fn ($q, $value) => $q->whereHas('unit.resident', fn ($r) => $r->where('name', 'like', "%{$value}%")))
             ->when($request->query('provider'), fn ($q, $value) => $q->where('payment_provider', $value))
             ->when($request->query('status'), fn ($q, $value) => $q->where('status', $value))
-            ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value));
+            ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value))
+            ->when($request->query('date_from'), fn ($q, $value) => $q->whereDate('created_at', '>=', $value))
+            ->when($request->query('date_to'), fn ($q, $value) => $q->whereDate('created_at', '<=', $value));
 
         return $this->paginated($query->latest()->paginate($request->integer('per_page', 15)));
     }

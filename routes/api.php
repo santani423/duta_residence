@@ -319,6 +319,10 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::get('documents/spk/{billing}', [DocumentController::class, 'spk'])->middleware('permission:documents.generate');
     Route::get('documents/billing-recap', [DocumentController::class, 'billingRecap'])->middleware('permission:documents.generate');
     Route::get('documents/billing-recap-excel', [DocumentController::class, 'billingRecapExcel'])->middleware('permission:documents.generate');
+    Route::get('documents/payment-transactions', [DocumentController::class, 'paymentTransactions'])->middleware('permission:documents.generate');
+    Route::get('documents/payment-transactions-excel', [DocumentController::class, 'paymentTransactionsExcel'])->middleware('permission:documents.generate');
+    Route::get('documents/payment-receipts', [DocumentController::class, 'paymentReceipts'])->middleware('permission:documents.generate');
+    Route::get('documents/payment-receipts-excel', [DocumentController::class, 'paymentReceiptsExcel'])->middleware('permission:documents.generate');
     Route::get('documents/resident-list', [DocumentController::class, 'residentList'])->middleware('permission:documents.generate');
     Route::get('documents/cluster-recap', [DocumentController::class, 'clusterRecap'])->middleware('permission:documents.generate');
 

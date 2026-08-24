@@ -1,5 +1,5 @@
 import { Alert, Button, Card, DatePicker, Drawer, Form, Input, Modal, Select, Space, Tabs, Upload, message, Typography } from 'antd';
-import { CheckOutlined, CloudUploadOutlined, CloseOutlined, LinkOutlined, PrinterOutlined, SearchOutlined } from '@ant-design/icons';
+import { CheckOutlined, CloudUploadOutlined, CloseOutlined, FileExcelOutlined, LinkOutlined, PrinterOutlined, SearchOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import dayjs from 'dayjs';
@@ -13,7 +13,7 @@ import { useTableState } from '../hooks/useTableState.js';
 import { useDebounce } from '../hooks/useDebounce.js';
 import { formatCurrency, formatDate, formatDateTime, formatPeriod } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
-import { openBlobInWindow } from '../utils/download.js';
+import { downloadBlob, openBlobInWindow } from '../utils/download.js';
 
 export default function PaymentsPage() {
   const [unit, setUnit] = useState(null);
@@ -22,6 +22,9 @@ export default function PaymentsPage() {
   const [transaction, setTransaction] = useState(null);
   const [proofOpen, setProofOpen] = useState(null);
   const [unitQuery, setUnitQuery] = useState('');
+  const [unitFilters, setUnitFilters] = useState({});
+  const [exportingTransactions, setExportingTransactions] = useState(null);
+  const [exportingReceipts, setExportingReceipts] = useState(null);
   const [searchForm] = Form.useForm();
   const [loketForm] = Form.useForm();
   const [gatewayForm] = Form.useForm();
@@ -33,12 +36,27 @@ export default function PaymentsPage() {
   const debouncedUnitQuery = useDebounce(unitQuery);
 
   const config = useQuery({ queryKey: ['payment-gateway-config'], queryFn: api.payments.gatewayConfig });
+  const clusters = useQuery({ queryKey: ['clusters'], queryFn: () => api.clusters.list() });
   const transactions = useQuery({ queryKey: ['payment-transactions', transactionTable.params], queryFn: () => api.payments.gatewayTransactions(transactionTable.params) });
   const receipts = useQuery({ queryKey: ['payment-receipts', receiptTable.params], queryFn: () => api.payments.receipts(receiptTable.params) });
-  const unitLookup = useQuery({ queryKey: ['units', 'payment-search', debouncedUnitQuery], queryFn: () => api.units.list({ search: debouncedUnitQuery || undefined, per_page: 20 }) });
+  const unitLookup = useQuery({
+    queryKey: ['units', 'payment-search', debouncedUnitQuery, unitFilters],
+    queryFn: () => api.units.list({
+      search: debouncedUnitQuery || undefined,
+      cluster_id: unitFilters.cluster_id,
+      customer: unitFilters.customer || undefined,
+      address: unitFilters.address || undefined,
+      per_page: 20,
+    }),
+  });
+  const clusterOptions = (clusters.data?.data || []).map((item) => ({ value: item.id, label: item.name }));
 
   const search = useMutation({
-    mutationFn: (values) => api.payments.search({ unit_id: values.unit_id }),
+    mutationFn: (values) => api.payments.search({
+      unit_id: values.unit_id,
+      date_from: values.billing_range?.[0]?.format('YYYY-MM-DD'),
+      date_to: values.billing_range?.[1]?.format('YYYY-MM-DD'),
+    }),
     onSuccess: (response) => {
       setUnit(response.data);
       setSelected([]);
@@ -124,12 +142,75 @@ export default function PaymentsPage() {
     }
   }
 
+  async function printTransactions() {
+    const printWindow = window.open('', '_blank');
+    const { page: _page, per_page: _perPage, ...filters } = transactionTable.params;
+    setExportingTransactions('pdf');
+    try {
+      const blob = await api.documents.paymentTransactionsPdf(filters);
+      openBlobInWindow(printWindow, blob);
+    } catch (error) {
+      printWindow?.close();
+      message.error(getApiErrorMessage(error, 'Gagal memuat PDF transaksi'));
+    } finally {
+      setExportingTransactions(null);
+    }
+  }
+
+  async function exportTransactionsExcel() {
+    setExportingTransactions('excel');
+    try {
+      const { page: _page, per_page: _perPage, ...filters } = transactionTable.params;
+      const blob = await api.documents.paymentTransactionsExcel(filters);
+      downloadBlob(blob, 'transaksi-gateway.csv');
+    } catch (error) {
+      message.error(getApiErrorMessage(error, 'Gagal mengunduh data transaksi'));
+    } finally {
+      setExportingTransactions(null);
+    }
+  }
+
+  async function printReceipts() {
+    const printWindow = window.open('', '_blank');
+    const { page: _page, per_page: _perPage, ...filters } = receiptTable.params;
+    setExportingReceipts('pdf');
+    try {
+      const blob = await api.documents.paymentReceiptsPdf(filters);
+      openBlobInWindow(printWindow, blob);
+    } catch (error) {
+      printWindow?.close();
+      message.error(getApiErrorMessage(error, 'Gagal memuat PDF kuitansi'));
+    } finally {
+      setExportingReceipts(null);
+    }
+  }
+
+  async function exportReceiptsExcel() {
+    setExportingReceipts('excel');
+    try {
+      const { page: _page, per_page: _perPage, ...filters } = receiptTable.params;
+      const blob = await api.documents.paymentReceiptsExcel(filters);
+      downloadBlob(blob, 'riwayat-kuitansi.csv');
+    } catch (error) {
+      message.error(getApiErrorMessage(error, 'Gagal mengunduh data kuitansi'));
+    } finally {
+      setExportingReceipts(null);
+    }
+  }
+
+  function updateUnitFilters(patch) {
+    setUnitFilters((previous) => ({ ...previous, ...patch }));
+    searchForm.setFieldValue('unit_id', undefined);
+    setUnitQuery('');
+  }
+
   function resetPaymentWorkspace() {
     setUnit(null);
     setSelected([]);
     setPreview(null);
     setTransaction(null);
     setUnitQuery('');
+    setUnitFilters({});
     searchForm.resetFields();
     loketForm.resetFields();
     gatewayForm.resetFields();
@@ -171,8 +252,14 @@ export default function PaymentsPage() {
             label: 'Proses Pembayaran',
             children: (
               <div className="stack">
+                <FilterBar>
+                  <Select allowClear showSearch placeholder="Cluster" value={unitFilters.cluster_id} onChange={(value) => updateUnitFilters({ cluster_id: value })} options={clusterOptions} optionFilterProp="label" loading={clusters.isFetching} className="filter-input" />
+                  <Input allowClear placeholder="Nama customer" value={unitFilters.customer} onChange={(event) => updateUnitFilters({ customer: event.target.value || undefined })} className="filter-input" />
+                  <Input allowClear placeholder="Alamat (blok/kavling)" value={unitFilters.address} onChange={(event) => updateUnitFilters({ address: event.target.value || undefined })} className="filter-input" />
+                </FilterBar>
+
                 <Card>
-                  <Form form={searchForm} layout="inline" onFinish={search.mutate}>
+                  <Form form={searchForm} layout="vertical" onFinish={search.mutate} className="responsive-form">
                     <Form.Item label="Unit" name="unit_id" rules={[{ required: true, message: 'Pilih unit' }]}>
                       <Select
                         showSearch
@@ -182,11 +269,17 @@ export default function PaymentsPage() {
                         loading={unitLookup.isFetching}
                         notFoundContent={unitLookup.isFetching ? 'Mencari...' : 'Tidak ditemukan'}
                         placeholder="Cari ID unit, alamat (cluster/blok/kavling), atau nama penghuni"
-                        style={{ width: 360 }}
                       />
                     </Form.Item>
-                    <Button htmlType="submit" icon={<SearchOutlined />} loading={search.isPending}>Cari Tagihan</Button>
-                    <Button onClick={resetPaymentWorkspace}>Reset</Button>
+                    <Form.Item label="Periode Tagihan" name="billing_range">
+                      <DatePicker.RangePicker picker="month" placeholder={['Tanggal awal', 'Tanggal akhir']} style={{ width: '100%' }} />
+                    </Form.Item>
+                    <Form.Item className="full-span">
+                      <Space>
+                        <Button type="primary" htmlType="submit" icon={<SearchOutlined />} loading={search.isPending}>Cari Tagihan</Button>
+                        <Button onClick={resetPaymentWorkspace}>Reset</Button>
+                      </Space>
+                    </Form.Item>
                   </Form>
                 </Card>
 
@@ -216,7 +309,7 @@ export default function PaymentsPage() {
                                   <Select options={[{ value: 'C', label: 'Cash' }, { value: 'D', label: 'Debit/Transfer' }]} />
                                 </Form.Item>
                                 <Form.Item label="Channel" name="payment_channel_id">
-                                  <Select allowClear options={[{ value: 'B', label: 'Bank Transfer' }, { value: 'Q', label: 'QRIS' }, { value: 'E', label: 'EDC' }]} />
+                                  <Select allowClear options={[{ value: 'L', label: 'Loket' }, { value: 'M', label: 'Bank Transfer' }, { value: 'Q', label: 'QRIS' }]} />
                                 </Form.Item>
                                 <Form.Item label="Kode Loket" name="loket_code"><Input /></Form.Item>
                                 <Form.Item label="Nama Kasir" name="cashier_name"><Input /></Form.Item>
@@ -274,11 +367,36 @@ export default function PaymentsPage() {
             label: 'Transaksi Gateway',
             children: (
               <>
-                <FilterBar>
+                <FilterBar
+                  extra={
+                    <Can permission="documents.generate">
+                      <Space wrap>
+                        <Button icon={<PrinterOutlined />} loading={exportingTransactions === 'pdf'} disabled={Boolean(exportingTransactions)} onClick={printTransactions}>Cetak PDF</Button>
+                        <Button icon={<FileExcelOutlined />} loading={exportingTransactions === 'excel'} disabled={Boolean(exportingTransactions)} onClick={exportTransactionsExcel}>Export Excel</Button>
+                      </Space>
+                    </Can>
+                  }
+                >
                   <Input allowClear placeholder="Cari invoice, transaksi, penghuni" value={transactionTable.search} onChange={(event) => transactionTable.setSearch(event.target.value)} className="filter-input" />
+                  <Select allowClear showSearch placeholder="Cluster" value={transactionTable.filters.cluster_id} onChange={(value) => transactionTable.setFilters({ ...transactionTable.filters, cluster_id: value })} className="filter-input" options={clusterOptions} optionFilterProp="label" loading={clusters.isFetching} />
+                  <Input allowClear placeholder="Nama penghuni/customer" value={transactionTable.filters.customer} onChange={(event) => transactionTable.setFilters({ ...transactionTable.filters, customer: event.target.value || undefined })} className="filter-input" />
                   <Input allowClear placeholder="Alamat unit (cluster/blok/kavling)" value={transactionTable.filters.address} onChange={(event) => transactionTable.setFilters({ ...transactionTable.filters, address: event.target.value || undefined })} className="filter-input" />
                   <Select allowClear placeholder="Provider" value={transactionTable.filters.provider} onChange={(value) => transactionTable.setFilters({ ...transactionTable.filters, provider: value })} className="filter-input" options={[{ value: 'manual', label: 'Manual' }, { value: 'xendit', label: 'Xendit' }, { value: 'midtrans', label: 'Midtrans' }]} />
                   <Select allowClear placeholder="Status" value={transactionTable.filters.status} onChange={(value) => transactionTable.setFilters({ ...transactionTable.filters, status: value })} className="filter-input" options={['pending', 'waiting_verification', 'paid', 'rejected', 'failed', 'expired'].map((value) => ({ value, label: value }))} />
+                  <DatePicker.RangePicker
+                    allowClear
+                    placeholder={['Tanggal awal', 'Tanggal akhir']}
+                    value={[
+                      transactionTable.filters.date_from ? dayjs(transactionTable.filters.date_from) : null,
+                      transactionTable.filters.date_to ? dayjs(transactionTable.filters.date_to) : null,
+                    ]}
+                    onChange={(dates) => transactionTable.setFilters({
+                      ...transactionTable.filters,
+                      date_from: dates?.[0]?.format('YYYY-MM-DD'),
+                      date_to: dates?.[1]?.format('YYYY-MM-DD'),
+                    })}
+                    className="filter-input"
+                  />
                 </FilterBar>
                 <Card>
                   <ResponsiveTable
@@ -326,10 +444,34 @@ export default function PaymentsPage() {
             label: 'Riwayat Kuitansi',
             children: (
               <>
-                <FilterBar>
+                <FilterBar
+                  extra={
+                    <Can permission="documents.generate">
+                      <Space wrap>
+                        <Button icon={<PrinterOutlined />} loading={exportingReceipts === 'pdf'} disabled={Boolean(exportingReceipts)} onClick={printReceipts}>Cetak PDF</Button>
+                        <Button icon={<FileExcelOutlined />} loading={exportingReceipts === 'excel'} disabled={Boolean(exportingReceipts)} onClick={exportReceiptsExcel}>Export Excel</Button>
+                      </Space>
+                    </Can>
+                  }
+                >
                   <Input allowClear placeholder="Cari nomor kuitansi, penghuni, ID unit" value={receiptTable.search} onChange={(event) => receiptTable.setSearch(event.target.value)} className="filter-input" />
+                  <Select allowClear showSearch placeholder="Cluster" value={receiptTable.filters.cluster_id} onChange={(value) => receiptTable.setFilters({ ...receiptTable.filters, cluster_id: value })} className="filter-input" options={clusterOptions} optionFilterProp="label" loading={clusters.isFetching} />
+                  <Input allowClear placeholder="Nama penghuni/customer" value={receiptTable.filters.customer} onChange={(event) => receiptTable.setFilters({ ...receiptTable.filters, customer: event.target.value || undefined })} className="filter-input" />
                   <Input allowClear placeholder="Alamat unit (cluster/blok/kavling)" value={receiptTable.filters.address} onChange={(event) => receiptTable.setFilters({ ...receiptTable.filters, address: event.target.value || undefined })} className="filter-input" />
-                  <DatePicker placeholder="Tanggal" onChange={(value) => receiptTable.setFilters({ ...receiptTable.filters, date: value?.format('YYYY-MM-DD') })} className="filter-input" />
+                  <DatePicker.RangePicker
+                    allowClear
+                    placeholder={['Tanggal awal', 'Tanggal akhir']}
+                    value={[
+                      receiptTable.filters.date_from ? dayjs(receiptTable.filters.date_from) : null,
+                      receiptTable.filters.date_to ? dayjs(receiptTable.filters.date_to) : null,
+                    ]}
+                    onChange={(dates) => receiptTable.setFilters({
+                      ...receiptTable.filters,
+                      date_from: dates?.[0]?.format('YYYY-MM-DD'),
+                      date_to: dates?.[1]?.format('YYYY-MM-DD'),
+                    })}
+                    className="filter-input"
+                  />
                 </FilterBar>
                 <Card>
                   <ResponsiveTable

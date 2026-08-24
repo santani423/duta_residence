@@ -25,7 +25,11 @@ class UnitController extends Controller
             ->when($request->query('cluster_id'), fn ($q, $value) => $q->where('cluster_id', $value))
             ->when($request->query('status_id'), fn ($q, $value) => $q->where('status_id', $value))
             ->when($request->query('property_type_id'), fn ($q, $value) => $q->where('property_type_id', $value))
-            ->when($request->query('resident_id'), fn ($q, $value) => $q->where('resident_id', $value));
+            ->when($request->query('resident_id'), fn ($q, $value) => $q->where('resident_id', $value))
+            ->when($request->query('customer'), fn ($q, $value) => $q->whereHas('resident', fn ($r) => $r->where('name', 'like', "%{$value}%")))
+            ->when($request->query('address'), fn ($q, $value) => $q->where(fn ($inner) => $inner
+                ->where('block', 'like', "%{$value}%")
+                ->orWhere('lot_number', 'like', "%{$value}%")));
 
         if ($request->user()->hasRole('collector')) {
             $query->whereIn('id', $assignmentService->unitIdsFor($request->user()));

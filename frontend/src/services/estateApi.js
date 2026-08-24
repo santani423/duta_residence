@@ -237,6 +237,10 @@ export const api = {
     billingRecapPdf: (params) => http.get('/documents/billing-recap', { params, responseType: 'blob' }),
     billingRecapExcel: (params) => http.get('/documents/billing-recap-excel', { params, responseType: 'blob' }),
     receiptPdf: (number) => http.get(`/documents/spt/${number}`, { responseType: 'blob' }),
+    paymentTransactionsPdf: (params) => http.get('/documents/payment-transactions', { params, responseType: 'blob' }),
+    paymentTransactionsExcel: (params) => http.get('/documents/payment-transactions-excel', { params, responseType: 'blob' }),
+    paymentReceiptsPdf: (params) => http.get('/documents/payment-receipts', { params, responseType: 'blob' }),
+    paymentReceiptsExcel: (params) => http.get('/documents/payment-receipts-excel', { params, responseType: 'blob' }),
   },
   users: {
     list: (params) => http.get('/users', { params }),
