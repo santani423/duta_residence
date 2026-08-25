@@ -223,6 +223,7 @@ function ResidentDashboard() {
   const billing = data.billing_summary || {};
   const payment = data.payment_summary || {};
   const services = data.service_summary || {};
+  const balance = data.balance || {};
 
   if (query.isLoading) return <LoadingState rows={10} />;
   if (query.isError) return <ErrorState error={query.error} onRetry={query.refetch} />;
@@ -230,6 +231,14 @@ function ResidentDashboard() {
   return (
     <section>
       <PageHeader title="Dashboard Penghuni" subtitle="Ringkasan akun, unit, tagihan, pembayaran, layanan, dan aktivitas Anda." breadcrumbs={[{ label: 'Penghuni' }, { label: 'Dashboard' }]} onRefresh={query.refetch} />
+      {balance.available > 0 ? (
+        <Card className="section-row">
+          <Space align="center" wrap style={{ justifyContent: 'space-between', width: '100%' }}>
+            <Statistic title="Saldo Anda" value={balance.available} formatter={(value) => formatCurrency(value)} valueStyle={{ color: '#1677ff' }} />
+            <Button type="primary" onClick={() => navigate('/resident/balance')}>Kelola Saldo</Button>
+          </Space>
+        </Card>
+      ) : null}
       <div className="resident-grid resident-grid-4">
         <StatCard title="Total Tagihan Aktif" value={billing.active_total} loading={query.isFetching} />
         <StatCard title="Belum Dibayar" value={billing.unpaid_count} suffix="invoice" />
@@ -249,6 +258,7 @@ function ResidentDashboard() {
           <Button onClick={() => navigate('/resident/complaints')} icon={<PlusOutlined />}>Buat Komplain</Button>
           <Button onClick={() => navigate('/resident/bills')}>Lihat Tagihan</Button>
           <Button onClick={() => navigate('/resident/payments')}>Riwayat Pembayaran</Button>
+          <Button onClick={() => navigate('/resident/balance')}>Saldo Saya</Button>
         </Space>
       </Card>
       <div className="resident-grid resident-grid-3 section-row">
@@ -462,6 +472,121 @@ function ResidentBills() {
       <InvoiceTable query={query} onChange={table.handleTableChange} onPay={setPaying} payDisabledReason={payDisabledReason} />
       <Modal title="Pilih Metode Pembayaran" open={Boolean(paying)} onCancel={() => setPaying(null)} footer={null}>
         <PaymentConfigCard config={configData} total={paying?.total} invoiceNumber={paying?.invoice_number} onProvider={pay} />
+      </Modal>
+    </section>
+  );
+}
+
+const BALANCE_TYPE_LABELS = {
+  overpayment: 'Kelebihan Pembayaran',
+  refund_credit: 'Kredit Refund',
+  manual_credit: 'Penyesuaian Kredit',
+  balance_usage: 'Penggunaan Saldo',
+  manual_debit: 'Penyesuaian Debit',
+  refund_debit: 'Debit Refund',
+  reversal: 'Reversal',
+};
+
+function formatBalanceType(value) {
+  return BALANCE_TYPE_LABELS[value] || value;
+}
+
+function ResidentBalance() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const table = useTableState();
+  const query = useQuery({ queryKey: ['resident-balance'], queryFn: api.resident.balance, ...OWNERSHIP_SENSITIVE_QUERY_OPTIONS });
+  const ledgerQuery = useQuery({ queryKey: ['resident-balance-ledger', table.params], queryFn: () => api.resident.balanceLedger(table.params) });
+  const data = unwrapQuery(query) || {};
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  const preview = useMutation({
+    mutationFn: () => api.resident.previewBalanceUsage(),
+    onSuccess: () => setPreviewOpen(true),
+    onError: (error) => message.error(getApiErrorMessage(error)),
+  });
+
+  const useBalance = useMutation({
+    mutationFn: () => api.resident.useBalance(),
+    onSuccess: () => {
+      message.success('Saldo berhasil digunakan untuk membayar tagihan.');
+      setPreviewOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['resident-balance'] });
+      queryClient.invalidateQueries({ queryKey: ['resident-balance-ledger'] });
+      queryClient.invalidateQueries({ queryKey: ['resident-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['resident-bills'] });
+      queryClient.invalidateQueries({ queryKey: ['resident-payments'] });
+    },
+    onError: (error) => message.error(getApiErrorMessage(error)),
+  });
+
+  const previewData = preview.data?.data;
+
+  if (query.isLoading) return <LoadingState rows={8} />;
+  if (query.isError) return <ErrorState error={query.error} onRetry={query.refetch} />;
+
+  return (
+    <section>
+      <PageHeader title="Saldo Saya" subtitle="Saldo kredit dari kelebihan pembayaran atau penyesuaian, dan riwayat penggunaannya." breadcrumbs={[{ label: 'Penghuni' }, { label: 'Saldo' }]} onRefresh={query.refetch} />
+      <Card className="section-row">
+        <Space align="center" wrap style={{ justifyContent: 'space-between', width: '100%' }}>
+          <Statistic title="Saldo Tersedia" value={data.available_balance || 0} formatter={(value) => formatCurrency(value)} valueStyle={{ color: '#1677ff', fontSize: 32 }} />
+          <Space wrap>
+            <Button onClick={() => navigate('/resident/bills')}>Lihat Tagihan</Button>
+            <Button type="primary" disabled={!data.available_balance} loading={preview.isPending} onClick={() => preview.mutate()}>
+              Gunakan Saldo untuk Bayar Tagihan
+            </Button>
+          </Space>
+        </Space>
+      </Card>
+      <Card title="Riwayat Saldo">
+        <ResponsiveTable
+          query={ledgerQuery}
+          onChange={table.handleTableChange}
+          scrollX={960}
+          columns={[
+            { title: 'Tanggal', dataIndex: 'created_at', render: formatDateTime, width: 170, fixed: 'left' },
+            { title: 'Jenis', dataIndex: 'type', render: formatBalanceType, width: 170 },
+            { title: 'Arah', dataIndex: 'direction', width: 100, render: (value) => <StatusBadge type="balanceDirection" value={value} /> },
+            { title: 'Nominal', dataIndex: 'amount', render: formatCurrency, width: 140 },
+            { title: 'Saldo Sesudah', dataIndex: 'balance_after', render: formatCurrency, width: 150 },
+            { title: 'Referensi', dataIndex: 'receipt_number', width: 150 },
+            { title: 'Catatan', dataIndex: 'notes' },
+          ]}
+        />
+      </Card>
+      <Modal
+        title="Gunakan Saldo untuk Bayar Tagihan"
+        open={previewOpen}
+        onCancel={() => setPreviewOpen(false)}
+        confirmLoading={useBalance.isPending}
+        onOk={() => useBalance.mutate()}
+        okText="Konfirmasi & Bayar"
+        cancelText="Batal"
+      >
+        {previewData ? (
+          <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            <InfoList
+              data={{
+                'Total Tagihan Aktif': formatCurrency(previewData.total_outstanding),
+                'Saldo Tersedia': formatCurrency(previewData.balance_available),
+                'Saldo yang Digunakan': formatCurrency(previewData.balance_used),
+                'Sisa Tagihan Setelah Saldo': formatCurrency(previewData.remaining_outstanding),
+                'Saldo Setelah Transaksi': formatCurrency(previewData.new_balance),
+              }}
+            />
+            {asList(previewData.allocations).length ? (
+              <div>
+                <Typography.Text strong>Tagihan yang akan dibayar:</Typography.Text>
+                {previewData.allocations.map((item) => (
+                  <p key={item.billing_id}>Periode {item.year}-{String(item.month).padStart(2, '0')}: {formatCurrency(item.total_amount)}</p>
+                ))}
+              </div>
+            ) : (
+              <Alert type="info" showIcon message="Tidak ada tagihan aktif yang dapat dibayar saat ini." />
+            )}
+          </Space>
+        ) : <LoadingState rows={4} />}
       </Modal>
     </section>
   );
@@ -1016,6 +1141,7 @@ export default function ResidentPortalPage({ page }) {
   if (current === 'profile') return <ResidentAccount mode="profile" />;
   if (current === 'property') return <ResidentProperty />;
   if (current === 'bills' || current === 'invoices') return <ResidentBills />;
+  if (current === 'balance') return <ResidentBalance />;
   if (current === 'invoice-detail') return <ResidentInvoiceDetail />;
   if (current === 'payments') return <ResidentPayments />;
   if (current === 'payment-detail') return <ResidentPaymentDetail />;

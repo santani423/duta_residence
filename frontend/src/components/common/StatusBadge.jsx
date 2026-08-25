@@ -41,6 +41,10 @@ const maps = {
     cancelled: ['Dibatalkan', 'red'],
     transferred: ['Dipindahkan', 'blue'],
   },
+  balanceDirection: {
+    credit: ['Masuk', 'green'],
+    debit: ['Keluar', 'red'],
+  },
 };
 
 export default function StatusBadge({ type, value, children }) {

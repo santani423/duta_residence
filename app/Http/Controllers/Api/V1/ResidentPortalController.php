@@ -19,10 +19,13 @@ use App\Models\Receipt;
 use App\Models\Resident;
 use App\Models\SiteSetting;
 use App\Models\Unit;
+use App\Models\UnitDeposit;
 use App\Services\AuditService;
+use App\Services\PaymentService;
 use App\Services\PenaltyService;
 use App\Services\Payments\PaymentGatewayFactory;
 use App\Services\ResidentAccountService;
+use App\Services\UnitBalanceLedgerService;
 use App\Services\UnitOwnershipSyncService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
@@ -58,6 +61,10 @@ class ResidentPortalController extends Controller
                 'cluster' => $unit->cluster?->name,
             ],
             'property' => $this->propertyPayload($unit),
+            'balance' => [
+                'available' => (float) $unit->balance,
+                'recent' => UnitDeposit::query()->where('unit_id', $unit->id)->latest('id')->limit(5)->get(),
+            ],
             'billing_summary' => [
                 'active_total' => $outstanding->sum(fn (array $row) => $row['calc']['total_outstanding']),
                 'unpaid_count' => $outstanding->count(),
@@ -233,6 +240,72 @@ class ResidentPortalController extends Controller
     public function paymentConfig()
     {
         return $this->success(PaymentGatewaySetting::current()->publicConfig(), 'Konfigurasi pembayaran berhasil ditemukan.');
+    }
+
+    public function balance(Request $request, UnitBalanceLedgerService $ledgerService)
+    {
+        $unit = $this->unit($request);
+
+        return $this->success([
+            'available_balance' => $ledgerService->currentBalance($unit),
+            'unit' => ['unit_label' => "{$unit->cluster?->name} {$unit->block}/{$unit->lot_number}", 'va_number' => $unit->va_number],
+            'recent_ledger' => UnitDeposit::query()->where('unit_id', $unit->id)->latest('id')->limit(10)->get(),
+        ]);
+    }
+
+    public function balanceLedger(Request $request)
+    {
+        $unit = $this->unit($request);
+        $query = UnitDeposit::query()->where('unit_id', $unit->id)->latest('id');
+
+        return $this->paginated($query->paginate($request->integer('per_page', 15)));
+    }
+
+    /**
+     * Dry-run of useBalance(): shows how much of the resident's saldo would be applied
+     * against their outstanding+approved invoices (FIFO, oldest period first) without
+     * touching any data, so the UI can show a confirmation before the resident commits.
+     */
+    public function previewBalanceUsage(Request $request, PaymentService $paymentService)
+    {
+        $unit = $this->unit($request);
+        $data = $request->validate([
+            'billing_ids' => ['nullable', 'array', 'min:1'],
+            'billing_ids.*' => ['integer', 'exists:billings,id'],
+        ]);
+
+        return $this->success($paymentService->preview($unit, 0, true, $data['billing_ids'] ?? null));
+    }
+
+    /**
+     * Self-service equivalent of the loket "pay with balance" flow: settles the resident's
+     * own outstanding+approved invoices using only their unit balance (no cash tendered), so
+     * it never creates an overpayment credit - it can only draw the balance down.
+     */
+    public function useBalance(Request $request, PaymentService $paymentService, UnitBalanceLedgerService $ledgerService, AuditService $auditService)
+    {
+        $unit = $this->unit($request);
+        $this->assertIsDesignatedPayer($request, $unit);
+        $data = $request->validate([
+            'billing_ids' => ['nullable', 'array', 'min:1'],
+            'billing_ids.*' => ['integer', 'exists:billings,id'],
+            'notes' => ['nullable', 'string', 'max:200'],
+        ]);
+
+        if ($ledgerService->currentBalance($unit) <= 0) {
+            throw ValidationException::withMessages(['balance' => ['Saldo Anda kosong, tidak ada yang dapat digunakan untuk pembayaran.']]);
+        }
+
+        $receipt = $paymentService->process($unit, $data['billing_ids'] ?? null, [
+            'amount' => 0,
+            'use_balance' => true,
+            'payment_method_id' => 'S',
+            'notes' => $data['notes'] ?? 'Pembayaran menggunakan saldo oleh penghuni.',
+        ], $request->user()->id);
+
+        $auditService->log('resident_balance_used', 'balances', 'USE', $receipt, [], $receipt->toArray());
+
+        return $this->success($receipt->load(['billings', 'unit.cluster']), 'Saldo berhasil digunakan untuk membayar tagihan.', 201);
     }
 
     public function createPayment(Request $request, Billing $billing, PaymentGatewayFactory $factory)
@@ -987,6 +1060,7 @@ class ResidentPortalController extends Controller
             'land_area' => $unit->land_area,
             'handover_date' => $unit->handover_date,
             'status' => $unit->status?->name,
+            'balance' => (float) $unit->balance,
         ];
     }
 

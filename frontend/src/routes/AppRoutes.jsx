@@ -213,6 +213,7 @@ export default function AppRoutes() {
         <Route path="resident/property" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="property" /></LazyPage></Protected>} />
         <Route path="resident/bills" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="bills" /></LazyPage></Protected>} />
         <Route path="resident/bills/:invoiceId" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="invoice-detail" /></LazyPage></Protected>} />
+        <Route path="resident/balance" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="balance" /></LazyPage></Protected>} />
         <Route path="resident/invoices" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="invoices" /></LazyPage></Protected>} />
         <Route path="resident/invoices/:invoiceId" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="invoice-detail" /></LazyPage></Protected>} />
         <Route path="resident/payments" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="payments" /></LazyPage></Protected>} />

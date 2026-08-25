@@ -54,7 +54,7 @@ class EstateSeeder extends Seeder
         collect([['id' => '01', 'name' => 'Belum Bayar'], ['id' => '02', 'name' => 'Lunas']])
             ->each(fn ($row) => BillingStatus::updateOrCreate(['id' => $row['id']], $row));
 
-        collect([['id' => 'C', 'name' => 'Cash'], ['id' => 'D', 'name' => 'Debit / Transfer']])
+        collect([['id' => 'C', 'name' => 'Cash'], ['id' => 'D', 'name' => 'Debit / Transfer'], ['id' => 'S', 'name' => 'Saldo']])
             ->each(fn ($row) => PaymentMethod::updateOrCreate(['id' => $row['id']], $row));
 
         collect([['id' => 'L', 'name' => 'Loket'], ['id' => 'M', 'name' => 'Manual Transfer'], ['id' => 'X', 'name' => 'Xendit'], ['id' => 'T', 'name' => 'Midtrans'], ['id' => 'Q', 'name' => 'QRIS']])
