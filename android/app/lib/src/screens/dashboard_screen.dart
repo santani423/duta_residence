@@ -12,6 +12,7 @@ import '../widgets/info_row.dart';
 import '../widgets/site_identity_scope.dart';
 import '../widgets/state_views.dart';
 import '../widgets/status_badge.dart';
+import 'balance_screen.dart';
 import 'services_screen.dart' show ServiceTab;
 
 class DashboardScreen extends StatefulWidget {
@@ -57,6 +58,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     await _future;
   }
 
+  void _openBalance() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BalanceScreen(apiClient: widget.apiClient),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<Map<String, dynamic>>(
@@ -72,6 +81,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           return ErrorView(message: message, onRetry: () => _refresh());
         }
         final data = snapshot.data ?? {};
+        final balanceAvailable =
+            (asMap(data['balance'])['available'] as num?)?.toDouble() ?? 0;
         return RefreshIndicator(
           onRefresh: _refresh,
           child: ListView(
@@ -84,12 +95,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 property: asMap(data['property']),
                 onOpenNotifications: widget.onOpenNotifications,
               ),
+              if (balanceAvailable > 0) ...[
+                const SizedBox(height: AppSpacing.lg),
+                _BalanceCard(
+                  available: balanceAvailable,
+                  onTap: _openBalance,
+                ),
+              ],
               const SizedBox(height: AppSpacing.lg),
               _StatGrid(data: data, onOpenServices: widget.onOpenServices),
               const SizedBox(height: AppSpacing.lg),
               _QuickActions(
                 onOpenServices: widget.onOpenServices,
                 onOpenNotifications: widget.onOpenNotifications,
+                onOpenBalance: _openBalance,
               ),
               const SizedBox(height: AppSpacing.lg),
               _InfoCards(
@@ -207,6 +226,56 @@ class _HeroSummary extends StatelessWidget {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BalanceCard extends StatelessWidget {
+  const _BalanceCard({required this.available, required this.onTap});
+
+  final double available;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return DutaCard(
+      onTap: onTap,
+      child: Row(
+        children: [
+          IconBadge(
+            icon: Icons.account_balance_wallet_rounded,
+            size: 48,
+            background: colors.primaryContainer,
+            foreground: colors.onPrimaryContainer,
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Saldo Anda',
+                  style: TextStyle(
+                    color: colors.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  money(available),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: colors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant),
         ],
       ),
     );
@@ -355,10 +424,12 @@ class _QuickActions extends StatelessWidget {
   const _QuickActions({
     required this.onOpenServices,
     required this.onOpenNotifications,
+    required this.onOpenBalance,
   });
 
   final ValueChanged<ServiceTab> onOpenServices;
   final VoidCallback onOpenNotifications;
+  final VoidCallback onOpenBalance;
 
   @override
   Widget build(BuildContext context) {
@@ -367,6 +438,11 @@ class _QuickActions extends StatelessWidget {
         'Bayar IPL',
         Icons.credit_card_rounded,
         () => onOpenServices(ServiceTab.payments),
+      ),
+      _ActionItem(
+        'Saldo Saya',
+        Icons.account_balance_wallet_rounded,
+        onOpenBalance,
       ),
       _ActionItem(
         'Buat Komplain',
