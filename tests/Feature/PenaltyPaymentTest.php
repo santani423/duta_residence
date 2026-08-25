@@ -64,11 +64,12 @@ class PenaltyPaymentTest extends TestCase
         $unit = $this->makeUnitWithArrears();
         $billingIds = Billing::where('unit_id', $unit->id)->pluck('id')->all();
 
-        $preview = app(PaymentService::class)->preview($unit, $billingIds);
+        $preview = app(PaymentService::class)->preview($unit, 3120000, true, $billingIds);
 
-        $this->assertSame(3000000.0, $preview['total_billing']);
-        $this->assertSame(120000.0, $preview['total_penalty']);
-        $this->assertSame(3120000.0, $preview['grand_total']);
+        $this->assertSame(3000000.0, round($preview['items']->sum('outstanding_principal'), 2));
+        $this->assertSame(120000.0, round($preview['items']->sum('outstanding_penalty'), 2));
+        $this->assertSame(3120000.0, $preview['total_outstanding']);
+        $this->assertSame(3120000.0, $preview['amount_allocated']);
     }
 
     public function test_full_payment_settles_all_invoices_with_correct_allocations(): void
@@ -106,14 +107,26 @@ class PenaltyPaymentTest extends TestCase
         $this->assertSame(1, $receipt->billing_count);
     }
 
-    public function test_payment_cannot_exceed_total_outstanding(): void
+    public function test_overpayment_settles_all_invoices_and_credits_unit_balance(): void
     {
         $unit = $this->makeUnitWithArrears();
         $loket = User::where('username', 'loket')->firstOrFail();
         $billingIds = Billing::where('unit_id', $unit->id)->pluck('id')->all();
 
-        $this->expectException(ValidationException::class);
-        app(PaymentService::class)->process($unit, $billingIds, ['payment_method_id' => 'C', 'amount' => 99999999], $loket->id);
+        // Total due is 3.120.000 (3.000.000 pokok + 120.000 denda); paying 3.200.000
+        // must settle every invoice and park the 80.000 excess as unit balance credit,
+        // never reject the payment or drop the excess.
+        $receipt = app(PaymentService::class)->process($unit, $billingIds, ['payment_method_id' => 'C', 'amount' => 3200000], $loket->id);
+
+        $this->assertSame(0, Billing::where('unit_id', $unit->id)->where('status_id', '!=', Billing::STATUS_PAID)->count());
+        $this->assertSame(80000.0, (float) $receipt->deposit_amount);
+        $this->assertSame(80000.0, (float) $unit->fresh()->balance);
+        $this->assertDatabaseHas('unit_deposits', [
+            'unit_id' => $unit->id,
+            'type' => \App\Models\UnitDeposit::TYPE_PAYMENT_OVERPAYMENT,
+            'direction' => 'credit',
+            'amount' => 80000,
+        ]);
     }
 
     public function test_penalty_rule_change_does_not_alter_historical_payment_snapshot(): void

@@ -4,11 +4,16 @@ namespace App\Services;
 
 use App\Models\Billing;
 use App\Models\Reversal;
+use App\Models\UnitDeposit;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class ReversalService
 {
+    public function __construct(
+        private readonly UnitBalanceLedgerService $ledgerService,
+    ) {}
+
     public function approve(Reversal $reversal, int $userId, ?string $notes = null): Reversal
     {
         if ($reversal->status !== 'pending') {
@@ -16,7 +21,7 @@ class ReversalService
         }
 
         return DB::transaction(function () use ($reversal, $userId, $notes) {
-            $receipt = $reversal->receipt()->with(['billings', 'paymentTransaction.allocations.billing'])->lockForUpdate()->firstOrFail();
+            $receipt = $reversal->receipt()->with(['unit', 'billings', 'paymentTransaction.allocations.billing'])->lockForUpdate()->firstOrFail();
             $allocations = $receipt->paymentTransaction?->allocations;
 
             // Prefer the transaction's own allocation rows - they are the authoritative,
@@ -43,6 +48,7 @@ class ReversalService
 
             if ($receipt->payment_transaction_id) {
                 $receipt->paymentTransaction()->update(['status' => 'reversed']);
+                $this->reverseLedgerEntries($receipt, $userId);
             }
             $receipt->forceFill(['status' => 'cancelled'])->save();
 
@@ -75,6 +81,44 @@ class ReversalService
         app(AuditService::class)->log('reversal_rejected', 'reversals', 'REJECT', $reversal, [], $reversal->toArray());
 
         return $reversal->refresh();
+    }
+
+    /**
+     * Post offsetting ledger entries for whatever this receipt's payment transaction did to
+     * the unit's balance (an overpayment credit and/or a balance-usage debit) - never edit or
+     * delete the original unit_deposits rows, so the transaction history stays intact. A
+     * reversed overpayment credit is allowed to push the balance negative if the customer
+     * has since spent it elsewhere; that's a real state the reconciliation view is meant to
+     * surface, not something to silently clamp.
+     */
+    private function reverseLedgerEntries($receipt, int $userId): void
+    {
+        $entries = UnitDeposit::query()
+            ->where('payment_transaction_id', $receipt->payment_transaction_id)
+            ->whereIn('type', [UnitDeposit::TYPE_PAYMENT_OVERPAYMENT, UnitDeposit::TYPE_BALANCE_USAGE])
+            ->get();
+
+        if ($entries->isEmpty()) {
+            return;
+        }
+
+        $unit = $receipt->unit;
+
+        foreach ($entries as $entry) {
+            $meta = [
+                'payment_transaction_id' => $receipt->payment_transaction_id,
+                'receipt_number' => $receipt->number,
+                'reversal_of_id' => $entry->id,
+                'notes' => 'Pembalikan atas kuitansi '.$receipt->number,
+                'created_by' => $userId,
+            ];
+
+            if ($entry->isCredit()) {
+                $this->ledgerService->debit($unit, UnitDeposit::TYPE_REVERSAL, (float) $entry->amount, $meta, allowNegative: true);
+            } else {
+                $this->ledgerService->credit($unit, UnitDeposit::TYPE_REVERSAL, (float) $entry->amount, $meta);
+            }
+        }
     }
 
     /**

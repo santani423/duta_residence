@@ -29,7 +29,10 @@ class Unit extends Model
         'tenancy_end_date' => 'date',
         'is_penalty_eligible' => 'boolean',
         'is_discount_eligible' => 'boolean',
+        'balance' => 'decimal:2',
     ];
+
+    protected $appends = ['deposit_balance'];
 
     public function resident()
     {
@@ -134,6 +137,16 @@ class Unit extends Model
     public function collectionLetters()
     {
         return $this->hasMany(CollectionLetter::class);
+    }
+
+    public function deposits()
+    {
+        return $this->hasMany(UnitDeposit::class);
+    }
+
+    public function getDepositBalanceAttribute(): float
+    {
+        return (float) $this->balance;
     }
 
     public function scopeSearch(Builder $query, ?string $search): Builder

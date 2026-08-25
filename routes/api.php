@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\ApprovalRequestController;
 use App\Http\Controllers\Api\V1\AuditLogController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BackPaymentController;
+use App\Http\Controllers\Api\V1\BalanceController;
 use App\Http\Controllers\Api\V1\BillingController;
 use App\Http\Controllers\Api\V1\BroadcastController;
 use App\Http\Controllers\Api\V1\ClusterController;
@@ -281,6 +282,11 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::post('payments/process', [PaymentController::class, 'process'])->middleware('permission:payments.process');
     Route::get('payments/receipts', [PaymentController::class, 'receipts'])->middleware('permission:payments.view');
     Route::get('payments/receipts/{receipt}', [PaymentController::class, 'showReceipt'])->middleware('permission:payments.view');
+
+    Route::get('balances/reconciliation', [BalanceController::class, 'reconciliation'])->middleware('permission:balances.view');
+    Route::get('units/{unit}/balance/ledger', [BalanceController::class, 'ledger'])->middleware('permission:balances.view');
+    Route::get('units/{unit}/balance/reconciliation', [BalanceController::class, 'unitReconciliation'])->middleware('permission:balances.view');
+    Route::post('units/{unit}/balance/adjustments', [BalanceController::class, 'adjust'])->middleware('permission:balances.adjust');
     Route::get('payments/gateway/config', [PaymentGatewayController::class, 'config'])->middleware('permission:payments.view');
     Route::get('payments/gateway/transactions', [PaymentGatewayController::class, 'index'])->middleware('permission:payments.view');
     Route::get('payments/gateway/transactions/{transaction}', [PaymentGatewayController::class, 'show'])->middleware('permission:payments.view');

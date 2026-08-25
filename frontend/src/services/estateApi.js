@@ -151,6 +151,12 @@ export const api = {
     verifyManual: (id, payload) => http.post(`/payments/${id}/verify`, payload),
     rejectManual: (id, payload) => http.post(`/payments/${id}/reject`, payload),
   },
+  balances: {
+    ledger: (unitId, params) => http.get(`/units/${unitId}/balance/ledger`, { params }),
+    adjust: (unitId, payload) => http.post(`/units/${unitId}/balance/adjustments`, payload),
+    reconciliation: (params) => http.get('/balances/reconciliation', { params }),
+    unitReconciliation: (unitId) => http.get(`/units/${unitId}/balance/reconciliation`),
+  },
   resident: {
     dashboard: () => http.get('/resident/dashboard'),
     account: () => http.get('/resident/account'),

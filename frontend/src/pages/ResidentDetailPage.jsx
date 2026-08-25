@@ -425,6 +425,130 @@ function TransactionsTab({ residentId, unitId, units }) {
 }
 
 // ---------- Komplain ----------
+// ---------- Saldo & Ledger ----------
+
+function BalanceTab({ unitId, units }) {
+  const table = useTableState();
+  const [adjustOpen, setAdjustOpen] = useState(false);
+  const [adjustForm] = Form.useForm();
+  const queryClient = useQueryClient();
+
+  const effectiveUnitId = unitId || (units.length === 1 ? units[0].id : null);
+  const activeUnit = units.find((item) => item.id === effectiveUnitId) || null;
+
+  const ledger = useQuery({
+    queryKey: ['units', effectiveUnitId, 'balance-ledger', table.params],
+    queryFn: () => api.balances.ledger(effectiveUnitId, table.params),
+    enabled: Boolean(effectiveUnitId),
+  });
+
+  const reconciliation = useQuery({
+    queryKey: ['units', effectiveUnitId, 'balance-reconciliation'],
+    queryFn: () => api.balances.unitReconciliation(effectiveUnitId),
+    enabled: Boolean(effectiveUnitId),
+  });
+  const recon = reconciliation.data?.data;
+
+  const adjust = useMutation({
+    mutationFn: (values) => api.balances.adjust(effectiveUnitId, values),
+    onSuccess: () => {
+      message.success('Penyesuaian saldo berhasil dicatat');
+      setAdjustOpen(false);
+      adjustForm.resetFields();
+      queryClient.invalidateQueries({ queryKey: ['units', effectiveUnitId, 'balance-ledger'] });
+      queryClient.invalidateQueries({ queryKey: ['residents'] });
+    },
+    onError: (error) => {
+      adjustForm.setFields(mapValidationErrors(error));
+      message.error(getApiErrorMessage(error));
+    },
+  });
+
+  if (!effectiveUnitId) {
+    return (
+      <section>
+        <Alert type="info" showIcon message="Pilih unit terlebih dahulu di tab Data Unit untuk melihat saldo & ledger unit tersebut." />
+        <Space size="large" wrap className="section-row">
+          {units.map((item) => (
+            <Statistic key={item.id} title={unitLabel(item)} value={formatCurrency(item.deposit_balance)} />
+          ))}
+        </Space>
+      </section>
+    );
+  }
+
+  return (
+    <section>
+      <UnitScopeNote unitId={unitId} units={units} />
+      <Card
+        title={`Saldo Unit ${effectiveUnitId}`}
+        extra={(
+          <Can permission="balances.adjust">
+            <Button icon={<PlusOutlined />} onClick={() => { adjustForm.resetFields(); setAdjustOpen(true); }}>Penyesuaian Saldo</Button>
+          </Can>
+        )}
+      >
+        <Space size="large" wrap>
+          <Statistic title="Current Balance" value={formatCurrency(recon?.stored_balance ?? activeUnit?.deposit_balance ?? 0)} />
+          <Statistic title="Calculated Balance" value={formatCurrency(recon?.calculated_balance ?? 0)} />
+          <Statistic title="Total Credit" value={formatCurrency(recon?.total_credits ?? 0)} valueStyle={{ color: '#3f8600' }} />
+          <Statistic title="Total Debit" value={formatCurrency(recon?.total_debits ?? 0)} valueStyle={{ color: '#cf1322' }} />
+          <Statistic title="Difference" value={formatCurrency(recon?.difference ?? 0)} valueStyle={recon && recon.difference !== 0 ? { color: '#cf1322' } : undefined} />
+        </Space>
+        {recon ? (
+          <Tag className="section-row" color={recon.status === 'balanced' ? 'green' : 'red'} style={{ fontSize: 13, padding: '4px 12px' }}>
+            {recon.status === 'balanced' ? 'Balanced' : 'Mismatch'}
+          </Tag>
+        ) : null}
+        {recon && recon.status !== 'balanced' ? (
+          <Alert
+            className="section-row"
+            type="warning"
+            showIcon
+            message={`Saldo tersimpan tidak cocok dengan hasil perhitungan ledger (selisih ${formatCurrency(recon.difference)}). Saldo tidak pernah dikoreksi otomatis - gunakan Penyesuaian Saldo di atas dengan alasan yang jelas bila diperlukan.`}
+          />
+        ) : null}
+      </Card>
+
+      <Card className="section-row" title="Riwayat Ledger Saldo">
+        <ResponsiveTable
+          query={ledger}
+          onChange={table.handleTableChange}
+          scrollX={1200}
+          columns={[
+            { title: 'Tanggal', dataIndex: 'created_at', render: formatDateTime, width: 170 },
+            { title: 'Tipe', dataIndex: 'type', width: 160 },
+            { title: 'Kredit', render: (_, row) => (row.direction === 'credit' ? formatCurrency(row.amount) : '-'), width: 130 },
+            { title: 'Debit', render: (_, row) => (row.direction === 'debit' ? formatCurrency(row.amount) : '-'), width: 130 },
+            { title: 'Saldo Sebelum', dataIndex: 'balance_before', render: formatCurrency, width: 140 },
+            { title: 'Saldo Sesudah', dataIndex: 'balance_after', render: formatCurrency, width: 140 },
+            { title: 'Referensi', render: (_, row) => row.receipt_number || row.reference_id || '-', width: 160 },
+            { title: 'Keterangan', dataIndex: 'notes', width: 220 },
+            { title: 'Dibuat Oleh', render: (_, row) => row.creator?.name || '-', width: 150 },
+          ]}
+        />
+      </Card>
+
+      <Modal title="Penyesuaian Saldo Unit" open={adjustOpen} onCancel={() => setAdjustOpen(false)} onOk={() => adjustForm.submit()} confirmLoading={adjust.isPending}>
+        <Form form={adjustForm} layout="vertical" onFinish={adjust.mutate} initialValues={{ type: 'credit' }}>
+          <Form.Item label="Jenis" name="type" rules={[{ required: true }]}>
+            <Select options={[{ value: 'credit', label: 'Tambah Saldo (Kredit)' }, { value: 'debit', label: 'Kurangi Saldo (Debit)' }]} />
+          </Form.Item>
+          <Form.Item label="Nominal" name="amount" rules={[{ required: true, type: 'number', min: 0.01, message: 'Nominal wajib diisi' }]}>
+            <InputNumber min={0} step={1000} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item label="Alasan" name="reason" rules={[{ required: true, message: 'Alasan wajib diisi' }, { max: 200 }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item label="Catatan Tambahan" name="notes">
+            <Input.TextArea rows={3} />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </section>
+  );
+}
+
 function ComplaintsTab({ residentId, unitId, units }) {
   const table = useTableState();
   const [open, setOpen] = useState(false);
@@ -1164,6 +1288,7 @@ export default function ResidentDetailPage() {
           { key: 'unit', label: 'Data Unit', children: <UnitInfoTab resident={resident} units={units} unitId={unitId} onSelectUnit={setUnitId} /> },
           { key: 'billings', label: 'Tagihan', children: <BillingsTab residentId={id} unitId={unitId} units={units} /> },
           { key: 'transactions', label: 'Transaksi', children: <TransactionsTab residentId={id} unitId={unitId} units={units} /> },
+          { key: 'balance', label: 'Saldo & Ledger', children: <BalanceTab unitId={unitId} units={units} /> },
           { key: 'complaints', label: 'Komplain', children: <ComplaintsTab residentId={id} unitId={unitId} units={units} /> },
           { key: 'services', label: 'Layanan', children: <ServiceRequestsTab residentId={id} unitId={unitId} units={units} /> },
           { key: 'visits', label: 'Kunjungan Collector', children: <VisitsTab residentId={id} unitId={unitId} units={units} /> },

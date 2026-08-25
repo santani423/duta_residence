@@ -38,6 +38,7 @@ import {
   WhatsAppOutlined,
   FileProtectOutlined,
   UserSwitchOutlined,
+  SwapOutlined,
 } from '@ant-design/icons';
 
 export const roles = ['root', 'back_office', 'loket', 'cs', 'customer', 'collector'];
@@ -50,6 +51,7 @@ export const menuItems = [
   { key: '/units', label: 'Unit Rumah', icon: ApartmentOutlined, permissions: ['units.view'] },
   { key: '/billings', label: 'Tagihan', icon: FileTextOutlined, permissions: ['billings.view'] },
   { key: '/payments', label: 'Pembayaran', icon: CreditCardOutlined, permissions: ['payments.view'] },
+  { key: '/admin/balance-reconciliation', label: 'Rekonsiliasi Saldo', icon: SwapOutlined, permissions: ['balances.view'] },
   { key: '/installments', label: 'Cicilan', icon: WalletOutlined, permissions: ['installments.view'] },
   { key: '/reversals', label: 'Reversal', icon: HistoryOutlined, permissions: ['reversals.view'] },
   { key: '/receivables', label: 'Piutang', icon: ReconciliationOutlined, permissions: ['reports.view'] },
@@ -186,6 +188,8 @@ export const permissionLabels = {
   'payments.process': 'Proses loket',
   'payments.create': 'Buat transaksi gateway',
   'payments.verify': 'Verifikasi manual',
+  'balances.view': 'Lihat saldo & rekonsiliasi',
+  'balances.adjust': 'Penyesuaian saldo unit',
   'users.view': 'Lihat user',
   'users.create': 'Tambah user',
   'users.update': 'Edit user',

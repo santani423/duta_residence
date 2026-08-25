@@ -42,23 +42,35 @@ class PaymentController extends Controller
             }])
             ->findOrFail($data['unit_id']);
 
-        $unit->setRelation('billings', $unit->billings->map(function (Billing $billing) use ($unit, $penaltyService) {
+        $now = now();
+        $billings = $unit->billings->map(function (Billing $billing) use ($unit, $penaltyService) {
             $billing->setRelation('unit', $unit);
 
             return [
                 ...$billing->toArray(),
                 'penalty_detail' => $penaltyService->calculateInvoiceTotal($billing),
             ];
-        }));
+        });
+        $unit->setRelation('billings', $billings);
 
-        return $this->success($unit);
+        $totalOutstanding = round($billings->sum(fn ($row) => $row['penalty_detail']['total_outstanding']), 2);
+        $totalUpcoming = round($billings->filter(fn ($row) => ($row['year'] * 100 + $row['month']) > ($now->year * 100 + $now->month))
+            ->sum(fn ($row) => $row['penalty_detail']['total_outstanding']), 2);
+
+        return $this->success([
+            ...$unit->toArray(),
+            'total_outstanding' => $totalOutstanding,
+            'total_upcoming' => $totalUpcoming,
+        ]);
     }
 
     public function preview(Request $request, PaymentService $service, CollectorAssignmentService $assignmentService)
     {
         $data = $request->validate([
             'unit_id' => ['required', 'exists:units,id'],
-            'billing_ids' => ['required', 'array', 'min:1'],
+            'amount' => ['nullable', 'numeric', 'min:0'],
+            'use_balance' => ['nullable', 'boolean'],
+            'billing_ids' => ['nullable', 'array', 'min:1'],
             'billing_ids.*' => ['integer', 'exists:billings,id'],
         ]);
 
@@ -66,16 +78,24 @@ class PaymentController extends Controller
             $assignmentService->assertUnitAssigned($request->user(), $data['unit_id']);
         }
 
-        return $this->success($service->preview(Unit::findOrFail($data['unit_id']), $data['billing_ids']));
+        $preview = $service->preview(
+            Unit::findOrFail($data['unit_id']),
+            (float) ($data['amount'] ?? 0),
+            (bool) ($data['use_balance'] ?? true),
+            $data['billing_ids'] ?? null,
+        );
+
+        return $this->success($preview);
     }
 
     public function process(Request $request, PaymentService $service, CollectorAssignmentService $assignmentService)
     {
         $data = $request->validate([
             'unit_id' => ['required', 'exists:units,id'],
-            'billing_ids' => ['required', 'array', 'min:1'],
+            'billing_ids' => ['nullable', 'array', 'min:1'],
             'billing_ids.*' => ['integer', 'exists:billings,id'],
-            'amount' => ['nullable', 'numeric', 'min:0.01'],
+            'amount' => ['nullable', 'numeric', 'min:0'],
+            'use_balance' => ['nullable', 'boolean'],
             'payment_method_id' => ['required', 'exists:payment_methods,id'],
             'payment_channel_id' => ['nullable', 'exists:payment_channels,id'],
             'loket_code' => ['nullable', 'string', 'max:20'],
@@ -87,7 +107,7 @@ class PaymentController extends Controller
             $assignmentService->assertUnitAssigned($request->user(), $data['unit_id']);
         }
 
-        $receipt = $service->process(Unit::findOrFail($data['unit_id']), $data['billing_ids'], $data, $request->user()->id);
+        $receipt = $service->process(Unit::findOrFail($data['unit_id']), $data['billing_ids'] ?? null, $data, $request->user()->id);
 
         return $this->success($receipt, 'Pembayaran berhasil diproses.', 201);
     }

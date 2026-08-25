@@ -13,7 +13,7 @@ class Receipt extends Model
 
     protected $fillable = [
         'number', 'payment_transaction_id', 'unit_id', 'transaction_date', 'resident_name', 'cluster_name',
-        'block', 'lot_number', 'total_billing', 'total_penalty', 'grand_total',
+        'block', 'lot_number', 'total_billing', 'total_penalty', 'grand_total', 'deposit_amount', 'balance_used',
         'billing_count', 'billing_periods', 'loket_code', 'cashier_name',
         'payment_method_id', 'payment_channel_id', 'status', 'notes', 'created_by',
     ];
@@ -23,6 +23,8 @@ class Receipt extends Model
         'total_billing' => 'decimal:2',
         'total_penalty' => 'decimal:2',
         'grand_total' => 'decimal:2',
+        'deposit_amount' => 'decimal:2',
+        'balance_used' => 'decimal:2',
     ];
 
     public function unit()

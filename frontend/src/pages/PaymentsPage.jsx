@@ -1,4 +1,4 @@
-import { Alert, Button, Card, DatePicker, Drawer, Form, Input, Modal, Select, Space, Tabs, Upload, message, Typography } from 'antd';
+import { Alert, Button, Card, Checkbox, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Select, Space, Statistic, Tabs, Upload, message, Typography } from 'antd';
 import { CheckOutlined, CloudUploadOutlined, CloseOutlined, FileExcelOutlined, LinkOutlined, PrinterOutlined, SearchOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -15,12 +15,14 @@ import { formatCurrency, formatDate, formatDateTime, formatPeriod } from '../uti
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
 import { downloadBlob, openBlobInWindow } from '../utils/download.js';
 
+const PAYMENT_METHOD_LABELS = { C: 'Cash', D: 'Debit/Transfer' };
+const PAYMENT_CHANNEL_LABELS = { L: 'Loket', M: 'Bank Transfer', Q: 'QRIS' };
+
 export default function PaymentsPage() {
   const [unit, setUnit] = useState(null);
-  const [selected, setSelected] = useState([]);
-  const [preview, setPreview] = useState(null);
   const [transaction, setTransaction] = useState(null);
   const [proofOpen, setProofOpen] = useState(null);
+  const [successReceipt, setSuccessReceipt] = useState(null);
   const [unitQuery, setUnitQuery] = useState('');
   const [unitFilters, setUnitFilters] = useState({});
   const [exportingTransactions, setExportingTransactions] = useState(null);
@@ -59,23 +61,44 @@ export default function PaymentsPage() {
     }),
     onSuccess: (response) => {
       setUnit(response.data);
-      setSelected([]);
-      setPreview(null);
       setTransaction(null);
+      loketForm.setFieldsValue({ amount: undefined, use_balance: true });
     },
     onError: (error) => message.error(getApiErrorMessage(error, 'Unit tidak ditemukan')),
   });
 
-  const previewMutation = useMutation({
-    mutationFn: () => api.payments.preview({ unit_id: unit.id, billing_ids: selected }),
-    onSuccess: (response) => setPreview(response.data),
-    onError: (error) => message.error(getApiErrorMessage(error)),
+  const watchedAmount = Form.useWatch('amount', loketForm);
+  const watchedUseBalance = Form.useWatch('use_balance', loketForm);
+  const debouncedAmount = useDebounce(watchedAmount, 400);
+
+  const previewQuery = useQuery({
+    queryKey: ['payment-preview', unit?.id, debouncedAmount, watchedUseBalance ?? true],
+    queryFn: () => api.payments.preview({
+      unit_id: unit.id,
+      amount: Number(debouncedAmount) || 0,
+      use_balance: watchedUseBalance ?? true,
+    }),
+    enabled: Boolean(unit),
   });
+  const preview = previewQuery.data?.data;
 
   const processLoket = useMutation({
-    mutationFn: (values) => api.payments.process({ ...values, unit_id: unit.id, billing_ids: selected }),
-    onSuccess: () => {
-      message.success('Pembayaran loket berhasil diproses');
+    mutationFn: (values) => api.payments.process({
+      unit_id: unit.id,
+      amount: Number(values.amount) || 0,
+      use_balance: values.use_balance ?? true,
+      payment_method_id: values.payment_method_id,
+      payment_channel_id: values.payment_channel_id,
+      loket_code: values.loket_code,
+      cashier_name: values.cashier_name,
+      notes: values.notes,
+    }),
+    onSuccess: (response) => {
+      const depositAmount = Number(response.data?.deposit_amount || 0);
+      message.success(depositAmount > 0
+        ? `Pembayaran loket berhasil diproses. Kelebihan ${formatCurrency(depositAmount)} dicatat sebagai saldo unit.`
+        : 'Pembayaran loket berhasil diproses');
+      setSuccessReceipt(response.data);
       resetPaymentWorkspace();
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['payment-receipts'] });
@@ -87,7 +110,11 @@ export default function PaymentsPage() {
   });
 
   const createGateway = useMutation({
-    mutationFn: (values) => api.payments.createGateway({ ...values, unit_id: unit.id, billing_ids: selected }),
+    mutationFn: (values) => api.payments.createGateway({
+      ...values,
+      unit_id: unit.id,
+      billing_ids: (unit?.billings || []).map((billing) => billing.id),
+    }),
     onSuccess: (response) => {
       message.success('Transaksi gateway berhasil dibuat');
       setTransaction(response.data);
@@ -206,8 +233,6 @@ export default function PaymentsPage() {
 
   function resetPaymentWorkspace() {
     setUnit(null);
-    setSelected([]);
-    setPreview(null);
     setTransaction(null);
     setUnitQuery('');
     setUnitFilters({});
@@ -226,10 +251,11 @@ export default function PaymentsPage() {
 
   const billingColumns = [
     { title: 'Periode', render: (_, row) => formatPeriod(row.year, row.month) },
+    { title: 'Jatuh Tempo', render: (_, row) => formatDate(row.penalty_detail?.due_date) },
     { title: 'Nominal', dataIndex: 'amount', render: formatCurrency },
-    { title: 'Umur Tunggakan', render: (_, row) => `${row.penalty_detail?.overdue_months ?? 0} bulan` },
-    { title: 'Denda', render: (_, row) => formatCurrency(row.penalty_detail?.penalty_amount ?? 0) },
+    { title: 'Terbayar', render: (_, row) => formatCurrency(row.penalty_detail?.total_paid ?? 0) },
     { title: 'Sisa Tagihan', render: (_, row) => formatCurrency(row.penalty_detail?.total_outstanding ?? 0) },
+    { title: 'Status', render: (_, row) => <StatusBadge type="billing" value={row.status_id} /> },
   ];
 
   return (
@@ -271,7 +297,7 @@ export default function PaymentsPage() {
                         placeholder="Cari ID unit, alamat (cluster/blok/kavling), atau nama penghuni"
                       />
                     </Form.Item>
-                    <Form.Item label="Periode Tagihan" name="billing_range">
+                    <Form.Item label="Periode Tagihan (opsional)" name="billing_range">
                       <DatePicker.RangePicker picker="month" placeholder={['Tanggal awal', 'Tanggal akhir']} style={{ width: '100%' }} />
                     </Form.Item>
                     <Form.Item className="full-span">
@@ -285,17 +311,18 @@ export default function PaymentsPage() {
 
                 {unit ? (
                   <Card title={`${unit.id} - ${unit.resident?.name}`} extra={unit.cluster?.name}>
+                    <Space size="large" wrap className="section-row">
+                      <Statistic title="Saldo Unit" value={formatCurrency(unit.deposit_balance)} />
+                      <Statistic title="Total Tunggakan" value={formatCurrency(unit.total_outstanding)} />
+                      <Statistic title="Tagihan Mendatang" value={formatCurrency(unit.total_upcoming)} />
+                    </Space>
+
                     <ResponsiveTable
                       data={unpaidBillings}
                       columns={billingColumns}
                       pagination={false}
-                      rowSelection={{ selectedRowKeys: selected, onChange: setSelected }}
                       scrollX={1000}
                     />
-                    <Space className="action-row" wrap>
-                      <Button disabled={!selected.length} onClick={() => previewMutation.mutate()} loading={previewMutation.isPending}>Preview Total</Button>
-                      {preview ? <Typography.Text strong>Total bayar: {formatCurrency(preview.grand_total)}</Typography.Text> : null}
-                    </Space>
 
                     <Tabs
                       items={[
@@ -304,7 +331,13 @@ export default function PaymentsPage() {
                           label: 'Loket',
                           children: (
                             <Can permission="payments.process" fallback={<Alert type="warning" showIcon message="Anda tidak memiliki akses proses loket." />}>
-                              <Form form={loketForm} layout="vertical" onFinish={processLoket.mutate} initialValues={{ payment_method_id: 'C', loket_code: 'L01' }} className="responsive-form">
+                              <Form form={loketForm} layout="vertical" onFinish={processLoket.mutate} initialValues={{ payment_method_id: 'C', loket_code: 'L01', use_balance: true }} className="responsive-form">
+                                <Form.Item label="Nominal Pembayaran (tunai)" name="amount" rules={[{ type: 'number', min: 0, message: 'Nominal tidak boleh negatif' }]}>
+                                  <InputNumber min={0} step={1000} style={{ width: '100%' }} placeholder="0" />
+                                </Form.Item>
+                                <Form.Item name="use_balance" valuePropName="checked" className="full-span">
+                                  <Checkbox disabled={!unit.deposit_balance}>Gunakan saldo unit ({formatCurrency(unit.deposit_balance)})</Checkbox>
+                                </Form.Item>
                                 <Form.Item label="Metode" name="payment_method_id" rules={[{ required: true }]}>
                                   <Select options={[{ value: 'C', label: 'Cash' }, { value: 'D', label: 'Debit/Transfer' }]} />
                                 </Form.Item>
@@ -314,8 +347,25 @@ export default function PaymentsPage() {
                                 <Form.Item label="Kode Loket" name="loket_code"><Input /></Form.Item>
                                 <Form.Item label="Nama Kasir" name="cashier_name"><Input /></Form.Item>
                                 <Form.Item label="Catatan" name="notes" className="full-span"><Input.TextArea rows={2} /></Form.Item>
+
+                                {preview ? (
+                                  <Card size="small" type="inner" title="Ringkasan Alokasi" className="full-span">
+                                    <Descriptions size="small" column={2} bordered>
+                                      <Descriptions.Item label="Total Tunggakan">{formatCurrency(preview.total_outstanding)}</Descriptions.Item>
+                                      <Descriptions.Item label="Nominal Pembayaran">{formatCurrency(preview.payment_amount)}</Descriptions.Item>
+                                      <Descriptions.Item label="Saldo Digunakan">{formatCurrency(preview.balance_used)}</Descriptions.Item>
+                                      <Descriptions.Item label="Teralokasi">{formatCurrency(preview.amount_allocated)}</Descriptions.Item>
+                                      <Descriptions.Item label="Sisa Tunggakan">{formatCurrency(preview.remaining_outstanding)}</Descriptions.Item>
+                                      <Descriptions.Item label="Saldo Baru">{formatCurrency(preview.new_balance)}</Descriptions.Item>
+                                    </Descriptions>
+                                    {preview.overpayment > 0 ? (
+                                      <Alert style={{ marginTop: 12 }} type="success" showIcon message={`Kelebihan pembayaran +${formatCurrency(preview.overpayment)} akan ditambahkan ke saldo unit.`} />
+                                    ) : null}
+                                  </Card>
+                                ) : null}
+
                                 <Form.Item className="full-span">
-                                  <Button type="primary" htmlType="submit" disabled={!preview} loading={processLoket.isPending}>Proses Bayar Loket</Button>
+                                  <Button type="primary" htmlType="submit" disabled={!preview?.amount_allocated} loading={processLoket.isPending}>Proses Bayar Loket</Button>
                                 </Form.Item>
                               </Form>
                             </Can>
@@ -330,7 +380,7 @@ export default function PaymentsPage() {
                                 type="info"
                                 showIcon
                                 message={`Gateway aktif: ${activeGateway}`}
-                                description={activeGateway === 'manual' ? `${manualInfo.bank_name || '-'} ${manualInfo.account_number || ''} a.n. ${manualInfo.account_name || '-'}` : 'Transaksi akan menghasilkan payment URL jika provider aktif.'}
+                                description={activeGateway === 'manual' ? `${manualInfo.bank_name || '-'} ${manualInfo.account_number || ''} a.n. ${manualInfo.account_name || '-'}` : 'Transaksi akan menghasilkan payment URL jika provider aktif. Transaksi gateway melunasi seluruh tunggakan unit ini.'}
                               />
                               <Form form={gatewayForm} layout="vertical" onFinish={createGateway.mutate} initialValues={{ provider: activeGateway }} className="section-row">
                                 <Form.Item label="Provider" name="provider" rules={[{ required: true }]}>
@@ -340,7 +390,7 @@ export default function PaymentsPage() {
                                     { value: 'midtrans', label: 'Midtrans' },
                                   ]} />
                                 </Form.Item>
-                                <Button type="primary" htmlType="submit" disabled={!selected.length} loading={createGateway.isPending}>Buat Transaksi</Button>
+                                <Button type="primary" htmlType="submit" disabled={!unpaidBillings.length} loading={createGateway.isPending}>Buat Transaksi</Button>
                               </Form>
                               {transaction ? (
                                 <Card className="section-row" title={transaction.invoice_number}>
@@ -531,6 +581,53 @@ export default function PaymentsPage() {
           </Form.Item>
         </Form>
       </Drawer>
+
+      <Modal
+        title="Pembayaran Berhasil"
+        open={Boolean(successReceipt)}
+        onCancel={() => setSuccessReceipt(null)}
+        width={520}
+        footer={[
+          <Button key="close" onClick={() => setSuccessReceipt(null)}>Tutup</Button>,
+          <Button key="print" type="primary" icon={<PrinterOutlined />} onClick={() => printReceipt(successReceipt.number)}>Cetak Kuitansi</Button>,
+        ]}
+        destroyOnHidden
+      >
+        {successReceipt ? (
+          <Space direction="vertical" size={10} style={{ width: '100%' }}>
+            <div>
+              <Typography.Title level={4} style={{ margin: 0 }}>{successReceipt.number}</Typography.Title>
+              <Typography.Text type="secondary">{formatDateTime(successReceipt.transaction_date)}</Typography.Text>
+            </div>
+            <div>
+              <Typography.Text strong>{successReceipt.resident_name}</Typography.Text><br />
+              <Typography.Text>{successReceipt.cluster_name} {successReceipt.block}/{successReceipt.lot_number}</Typography.Text>
+            </div>
+            <div>
+              <Typography.Text>Periode: {successReceipt.billing_periods}</Typography.Text><br />
+              <Typography.Text>Jumlah Tagihan: {successReceipt.billing_count}</Typography.Text>
+            </div>
+            <div>
+              <Typography.Text>Total Tagihan: {formatCurrency(successReceipt.total_billing)}</Typography.Text><br />
+              <Typography.Text>Total Denda: {formatCurrency(successReceipt.total_penalty)}</Typography.Text><br />
+              <Typography.Text strong>Grand Total: {formatCurrency(successReceipt.grand_total)}</Typography.Text>
+            </div>
+            {Number(successReceipt.balance_used) > 0 ? (
+              <Alert type="info" showIcon message={`Saldo unit digunakan: ${formatCurrency(successReceipt.balance_used)}`} />
+            ) : null}
+            {Number(successReceipt.deposit_amount) > 0 ? (
+              <Alert type="success" showIcon message={`Kelebihan pembayaran ${formatCurrency(successReceipt.deposit_amount)} dicatat sebagai saldo unit.`} />
+            ) : null}
+            <div>
+              <Typography.Text>Metode: {PAYMENT_METHOD_LABELS[successReceipt.payment_method_id] || successReceipt.payment_method_id}</Typography.Text><br />
+              {successReceipt.payment_channel_id ? <><Typography.Text>Channel: {PAYMENT_CHANNEL_LABELS[successReceipt.payment_channel_id] || successReceipt.payment_channel_id}</Typography.Text><br /></> : null}
+              {successReceipt.loket_code ? <><Typography.Text>Kode Loket: {successReceipt.loket_code}</Typography.Text><br /></> : null}
+              {successReceipt.cashier_name ? <Typography.Text>Kasir: {successReceipt.cashier_name}</Typography.Text> : null}
+            </div>
+            {successReceipt.notes ? <Typography.Text type="secondary">Catatan: {successReceipt.notes}</Typography.Text> : null}
+          </Space>
+        ) : null}
+      </Modal>
     </section>
   );
 }
