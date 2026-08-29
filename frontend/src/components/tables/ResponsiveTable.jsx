@@ -1,5 +1,5 @@
 import { Table } from 'antd';
-import { EmptyData } from '../common/ApiState.jsx';
+import { EmptyData, LogoSpinner } from '../common/ApiState.jsx';
 
 export default function ResponsiveTable({ query, data, meta, onChange, columns, rowKey = 'id', scrollX = 1100, ...props }) {
   const items = data || query?.data?.data || [];
@@ -8,7 +8,7 @@ export default function ResponsiveTable({ query, data, meta, onChange, columns, 
   return (
     <Table
       rowKey={rowKey}
-      loading={query?.isLoading || query?.isFetching}
+      loading={{ spinning: Boolean(query?.isLoading || query?.isFetching), indicator: <LogoSpinner size={40} /> }}
       dataSource={items}
       columns={columns}
       scroll={{ x: scrollX }}

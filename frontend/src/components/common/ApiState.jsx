@@ -1,7 +1,19 @@
-import { Alert, Button, Empty, Result, Skeleton } from 'antd';
+import { Alert, Button, Empty, Result } from 'antd';
 
-export function LoadingState({ rows = 4 }) {
-  return <Skeleton active paragraph={{ rows }} />;
+export function LogoSpinner({ size = 64 }) {
+  return (
+    <span className="logo-spinner" style={{ width: size, height: size }} role="status" aria-live="polite" aria-label="Memuat">
+      <img src="/logo-app.png" alt="" className="logo-spinner__img" />
+    </span>
+  );
+}
+
+export function LoadingState() {
+  return (
+    <div className="loading-state">
+      <LogoSpinner size={72} />
+    </div>
+  );
 }
 
 export function ErrorState({ error, onRetry }) {

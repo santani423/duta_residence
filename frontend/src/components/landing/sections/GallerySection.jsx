@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { Modal, Skeleton } from 'antd';
+import { Modal } from 'antd';
 import { useState } from 'react';
+import { LoadingState } from '../../common/ApiState.jsx';
 import { api } from '../../../services/estateApi.js';
 import { useLandingContent } from '../../../state/LandingContentContext.jsx';
 import { cmsImageUrl } from '../../../utils/cmsMedia.js';
@@ -32,7 +33,7 @@ function GalleryAlbumBody({ slug }) {
   });
 
   if (query.isLoading) {
-    return <Skeleton active paragraph={{ rows: 4 }} />;
+    return <LoadingState />;
   }
 
   const items = query.data?.data?.items || [];

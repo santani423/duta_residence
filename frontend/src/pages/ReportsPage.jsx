@@ -2,6 +2,7 @@ import { Card, Col, DatePicker, Form, Row, Statistic, Table } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import PageHeader from '../components/common/PageHeader.jsx';
+import { LogoSpinner } from '../components/common/ApiState.jsx';
 import { api } from '../services/estateApi.js';
 import { formatCurrency } from '../utils/format.js';
 
@@ -32,7 +33,7 @@ export default function ReportsPage() {
       <Row gutter={[16, 16]} className="section-row">
         <Col xs={24} xl={12}>
           <Card title="Rekap Bulanan per Cluster">
-            <Table rowKey="cluster_id" loading={monthly.isLoading} dataSource={monthly.data?.data || []} pagination={false} columns={[
+            <Table rowKey="cluster_id" loading={{ spinning: monthly.isLoading, indicator: <LogoSpinner size={40} /> }} dataSource={monthly.data?.data || []} pagination={false} columns={[
               { title: 'Cluster', dataIndex: 'cluster_id' },
               { title: 'Jumlah Tagihan', dataIndex: 'billing_count' },
               { title: 'Total', dataIndex: 'total_billing', render: formatCurrency },
@@ -46,7 +47,7 @@ export default function ReportsPage() {
             <Statistic title="Total" value={formatCurrency(daily.data?.data?.grand_total)} />
           </Card>
           <Card title="Collector" className="section-row">
-            <Table rowKey="cashier_name" loading={collector.isLoading} dataSource={collector.data?.data || []} pagination={false} columns={[
+            <Table rowKey="cashier_name" loading={{ spinning: collector.isLoading, indicator: <LogoSpinner size={40} /> }} dataSource={collector.data?.data || []} pagination={false} columns={[
               { title: 'Kasir', dataIndex: 'cashier_name' },
               { title: 'Transaksi', dataIndex: 'transaction_count' },
               { title: 'Total', dataIndex: 'grand_total', render: formatCurrency },
