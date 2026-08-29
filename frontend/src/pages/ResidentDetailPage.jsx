@@ -1220,6 +1220,7 @@ function ActivityTab({ residentId, unitId, units }) {
 export default function ResidentDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { hasRole } = useAuth();
   const [unitId, setUnitId] = useState(null);
   const [editOpen, setEditOpen] = useState(false);
   const [notifyOpen, setNotifyOpen] = useState(false);
@@ -1286,18 +1287,20 @@ export default function ResidentDetailPage() {
           { key: 'summary', label: 'Ringkasan', children: <SummaryTab residentId={id} unitId={unitId} units={units} /> },
           { key: 'resident', label: 'Data Penghuni', children: <ResidentInfoTab resident={resident} onEdit={() => { editForm.setFieldsValue(resident); setEditOpen(true); }} /> },
           { key: 'unit', label: 'Data Unit', children: <UnitInfoTab resident={resident} units={units} unitId={unitId} onSelectUnit={setUnitId} /> },
-          { key: 'billings', label: 'Tagihan', children: <BillingsTab residentId={id} unitId={unitId} units={units} /> },
+          // { key: 'billings', label: 'Tagihan', children: <BillingsTab residentId={id} unitId={unitId} units={units} /> },
           { key: 'transactions', label: 'Transaksi', children: <TransactionsTab residentId={id} unitId={unitId} units={units} /> },
-          { key: 'balance', label: 'Saldo & Ledger', children: <BalanceTab unitId={unitId} units={units} /> },
+          { key: 'balance', label: 'Saldo', children: <BalanceTab unitId={unitId} units={units} /> },
           { key: 'complaints', label: 'Komplain', children: <ComplaintsTab residentId={id} unitId={unitId} units={units} /> },
-          { key: 'services', label: 'Layanan', children: <ServiceRequestsTab residentId={id} unitId={unitId} units={units} /> },
+          // { key: 'services', label: 'Layanan', children: <ServiceRequestsTab residentId={id} unitId={unitId} units={units} /> },
           { key: 'visits', label: 'Kunjungan Collector', children: <VisitsTab residentId={id} unitId={unitId} units={units} /> },
-          { key: 'promises', label: 'Janji Pembayaran', children: <PaymentPromisesTab residentId={id} unitId={unitId} units={units} /> },
-          { key: 'documents', label: 'Dokumen', children: <DocumentsTab residentId={id} unitId={unitId} units={units} /> },
-          { key: 'vehicles', label: 'Kendaraan', children: <VehiclesTab residentId={id} unitId={unitId} units={units} /> },
-          { key: 'occupants', label: 'Penghuni Tambahan & Petugas', children: <OccupantsTab residentId={id} unitId={unitId} units={units} /> },
-          { key: 'notifications', label: 'Surat & Notifikasi', children: <NotificationsTab residentId={id} unitId={unitId} units={units} /> },
-          { key: 'activity', label: 'Riwayat Aktivitas', children: <ActivityTab residentId={id} unitId={unitId} units={units} /> },
+          // { key: 'promises', label: 'Janji Pembayaran', children: <PaymentPromisesTab residentId={id} unitId={unitId} units={units} /> },
+          // { key: 'documents', label: 'Dokumen', children: <DocumentsTab residentId={id} unitId={unitId} units={units} /> },
+          // { key: 'vehicles', label: 'Kendaraan', children: <VehiclesTab residentId={id} unitId={unitId} units={units} /> },
+          // { key: 'occupants', label: 'Penghuni Tambahan & Petugas', children: <OccupantsTab residentId={id} unitId={unitId} units={units} /> },
+          // { key: 'notifications', label: 'Surat & Notifikasi', children: <NotificationsTab residentId={id} unitId={unitId} units={units} /> },
+          ...(hasRole('admin') || hasRole('supervisor')
+            ? [{ key: 'activity', label: 'Riwayat Aktivitas', children: <ActivityTab residentId={id} unitId={unitId} units={units} /> }]
+            : []),
         ]}
       />
 

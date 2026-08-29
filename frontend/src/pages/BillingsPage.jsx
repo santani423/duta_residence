@@ -10,6 +10,7 @@ import StatusBadge from '../components/common/StatusBadge.jsx';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import { api } from '../services/estateApi.js';
 import { useTableState } from '../hooks/useTableState.js';
+import { useDebounce } from '../hooks/useDebounce.js';
 import { formatCurrency, formatDateTime, formatPeriod } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
 import { downloadBlob } from '../utils/download.js';
@@ -199,6 +200,7 @@ export default function BillingsPage() {
         }
       >
         <Input allowClear placeholder="ID unit" value={table.filters.unit_id} onChange={(event) => table.setFilters({ ...table.filters, unit_id: event.target.value || undefined })} className="filter-input" />
+        <ResidentFilter value={table.filters.resident_id} onChange={(value) => table.setFilters({ ...table.filters, resident_id: value })} />
         <Select allowClear placeholder="Cluster" options={(clusters.data?.data || []).map((item) => ({ value: item.id, label: item.name }))} value={table.filters.cluster_id} onChange={(value) => table.setFilters({ ...table.filters, cluster_id: value })} className="filter-input" />
         <InputNumber placeholder="Tahun" value={table.filters.year} onChange={(value) => table.setFilters({ ...table.filters, year: value })} className="filter-input" />
         <Select allowClear placeholder="Bulan" value={table.filters.month} onChange={(value) => table.setFilters({ ...table.filters, month: value })} className="filter-input" options={Array.from({ length: 12 }, (_, index) => ({ value: index + 1, label: dayjs().month(index).format('MMMM') }))} />
@@ -288,5 +290,28 @@ export default function BillingsPage() {
         </Form>
       </Modal>
     </section>
+  );
+}
+
+function ResidentFilter({ value, onChange }) {
+  const [search, setSearch] = useState('');
+  const debounced = useDebounce(search);
+  const residents = useQuery({ queryKey: ['residents', 'search', debounced], queryFn: () => api.residents.list({ search: debounced || undefined, per_page: 20 }) });
+  const options = (residents.data?.data || []).map((resident) => ({ value: resident.id, label: resident.name }));
+
+  return (
+    <Select
+      allowClear
+      showSearch
+      placeholder="Penghuni"
+      value={value}
+      onChange={onChange}
+      onSearch={setSearch}
+      filterOption={false}
+      options={options}
+      loading={residents.isFetching}
+      notFoundContent={residents.isFetching ? 'Mencari...' : 'Tidak ditemukan'}
+      className="filter-input"
+    />
   );
 }

@@ -1,9 +1,10 @@
-import { Button, Card, Col, DatePicker, Descriptions, Drawer, Dropdown, Form, Input, InputNumber, Modal, Row, Select, Space, Statistic, Switch, Tag, message } from 'antd';
-import { DeleteOutlined, EditOutlined, EnvironmentOutlined, MoreOutlined, PlusOutlined } from '@ant-design/icons';
+import { Button, Card, Col, DatePicker, Descriptions, Drawer, Dropdown, Empty, Form, Input, InputNumber, Modal, Row, Select, Space, Statistic, Switch, Tag, message } from 'antd';
+import { DeleteOutlined, EditOutlined, EnvironmentOutlined, MoreOutlined, PlusOutlined, PrinterOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
+import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import PageHeader from '../components/common/PageHeader.jsx';
 import Can from '../components/common/Can.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
@@ -15,19 +16,72 @@ import { formatCurrency, formatDate, formatDateTime } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
 import { residentStatusOptions, occupancyOptions } from '../components/forms/UnitForm.jsx';
 
+const DONUT_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100'];
+
+function DonutChart({ title, data, loading }) {
+  const total = data.reduce((sum, item) => sum + item.value, 0);
+  return (
+    <Card size="small" type="inner" title={`${title} (${total} unit)`} loading={loading}>
+      {total === 0 ? (
+        <Empty description="Belum ada data" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+      ) : (
+        <div className="chart-box">
+          <ResponsiveContainer>
+            <PieChart>
+              <Pie
+                data={data}
+                dataKey="value"
+                nameKey="name"
+                outerRadius={95}
+                paddingAngle={2}
+                cornerRadius={4}
+                label={({ percent, value }) => (value > 0 ? `${Math.round(percent * 100)}%` : '')}
+              >
+                {data.map((entry, index) => (
+                  <Cell key={entry.name} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(value, name) => [`${value} unit`, name]} />
+              <Legend verticalAlign="bottom" formatter={(value, entry) => `${value} (${entry.payload.value})`} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export default function ClusterDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [drawer, setDrawer] = useState({ mode: null, record: null });
+  const [isPrinting, setIsPrinting] = useState(false);
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
   const unitsTable = useTableState();
+
+  useEffect(() => {
+    function handleAfterPrint() {
+      setIsPrinting(false);
+    }
+    window.addEventListener('afterprint', handleAfterPrint);
+    return () => window.removeEventListener('afterprint', handleAfterPrint);
+  }, []);
+
+  function printUnitsSection() {
+    setIsPrinting(true);
+    setTimeout(() => window.print(), 50);
+  }
 
   const detail = useQuery({ queryKey: ['clusters', id], queryFn: () => api.clusters.detail(id) });
   const schedules = useQuery({ queryKey: ['clusters', id, 'rate-schedules'], queryFn: () => api.clusters.rateSchedules(id) });
   const units = useQuery({
     queryKey: ['clusters', id, 'units', unitsTable.params],
     queryFn: () => api.units.list({ ...unitsTable.params, cluster_id: id, per_page: unitsTable.params.per_page || 20 }),
+  });
+  const unitsAll = useQuery({
+    queryKey: ['clusters', id, 'units-all'],
+    queryFn: () => api.units.list({ cluster_id: id, per_page: 1000 }),
   });
 
   const invalidate = () => {
@@ -88,14 +142,23 @@ export default function ClusterDetailPage() {
   const current = cluster.current_rate_schedule;
   const next = cluster.next_rate_schedule;
   const rows = schedules.data?.data || [];
+  const allUnits = unitsAll.data?.data || [];
+  const occupancyData = occupancyOptions.map((option) => ({
+    name: option.label,
+    value: allUnits.filter((unit) => unit.occupancy_id === option.value).length,
+  }));
+  const statusData = residentStatusOptions.map((option) => ({
+    name: option.label,
+    value: allUnits.filter((unit) => unit.status_id === option.value).length,
+  }));
 
   return (
-    <section>
+    <section className={isPrinting ? 'cluster-detail-page printing' : 'cluster-detail-page'}>
       <PageHeader
         title={cluster.name || 'Detail Cluster'}
         subtitle="Detail cluster dan penjadwalan perubahan tarif."
         breadcrumbs={[{ label: 'Cluster', to: '/clusters' }, { label: cluster.name }]}
-        onRefresh={() => { detail.refetch(); schedules.refetch(); }}
+        onRefresh={() => { detail.refetch(); schedules.refetch(); unitsAll.refetch(); }}
         loading={detail.isFetching || schedules.isFetching}
         extra={(
           <Space>
@@ -140,7 +203,48 @@ export default function ClusterDetailPage() {
         </Col>
       </Row>
 
-      <Card className="section-row" title="Riwayat & Jadwal Tarif">
+   
+
+      <Card
+        className="section-row print-area"
+        title={`Unit & Penghuni (${units.data?.meta?.total ?? cluster.units_count ?? 0})`}
+        extra={<Button icon={<PrinterOutlined />} onClick={printUnitsSection}>Cetak</Button>}
+      >
+        <Row gutter={[16, 16]} className="section-row">
+          <Col xs={24} md={12}>
+            <DonutChart title="Okupansi Unit" data={occupancyData} loading={unitsAll.isLoading} />
+          </Col>
+          <Col xs={24} md={12}>
+            <DonutChart title="Status Penghuni" data={statusData} loading={unitsAll.isLoading} />
+          </Col>
+        </Row>
+        <FilterBar>
+          <Input allowClear placeholder="Cari ID unit, blok, nama pemilik" value={unitsTable.search} onChange={(event) => unitsTable.setSearch(event.target.value)} className="filter-input" />
+          <Select allowClear placeholder="Status" options={residentStatusOptions} value={unitsTable.filters.status_id} onChange={(value) => unitsTable.setFilters({ ...unitsTable.filters, status_id: value })} className="filter-input" />
+          <Select allowClear placeholder="Okupansi" options={occupancyOptions} value={unitsTable.filters.occupancy_id} onChange={(value) => unitsTable.setFilters({ ...unitsTable.filters, occupancy_id: value })} className="filter-input" />
+        </FilterBar>
+        <ResponsiveTable
+          query={units}
+          onChange={unitsTable.handleTableChange}
+          scrollX={1100}
+          columns={[
+            { title: 'Unit', dataIndex: 'id', fixed: 'left', width: 90 },
+            { title: 'Blok', dataIndex: 'block', width: 80 },
+            { title: 'Kavling', dataIndex: 'lot_number', width: 90 },
+            {
+              title: 'Penghuni',
+              width: 220,
+              render: (_, row) => (row.resident ? <Link to={`/residents/${row.resident.id}`}>{row.resident.name}</Link> : '-'),
+            },
+            { title: 'Telepon', render: (_, row) => row.resident?.phone || '-', width: 140 },
+            { title: 'Tipe', render: (_, row) => row.property_type?.name || row.propertyType?.name || row.property_type_id, width: 150 },
+            { title: 'Okupansi', render: (_, row) => row.occupancy?.name || '-', width: 110 },
+            { title: 'Status', render: (_, row) => <Tag color={row.status_id === 'AK' ? 'green' : 'default'}>{row.status?.name || row.status_id}</Tag>, width: 130 },
+          ]}
+        />
+      </Card>
+
+         <Card className="section-row" title="Riwayat & Jadwal Tarif">
         <ResponsiveTable
           data={rows}
           pagination={false}
@@ -181,33 +285,6 @@ export default function ClusterDetailPage() {
                 );
               },
             },
-          ]}
-        />
-      </Card>
-
-      <Card className="section-row" title={`Unit & Penghuni (${units.data?.meta?.total ?? cluster.units_count ?? 0})`}>
-        <FilterBar>
-          <Input allowClear placeholder="Cari ID unit, blok, nama pemilik" value={unitsTable.search} onChange={(event) => unitsTable.setSearch(event.target.value)} className="filter-input" />
-          <Select allowClear placeholder="Status" options={residentStatusOptions} value={unitsTable.filters.status_id} onChange={(value) => unitsTable.setFilters({ ...unitsTable.filters, status_id: value })} className="filter-input" />
-          <Select allowClear placeholder="Okupansi" options={occupancyOptions} value={unitsTable.filters.occupancy_id} onChange={(value) => unitsTable.setFilters({ ...unitsTable.filters, occupancy_id: value })} className="filter-input" />
-        </FilterBar>
-        <ResponsiveTable
-          query={units}
-          onChange={unitsTable.handleTableChange}
-          scrollX={1100}
-          columns={[
-            { title: 'Unit', dataIndex: 'id', fixed: 'left', width: 90 },
-            { title: 'Blok', dataIndex: 'block', width: 80 },
-            { title: 'Kavling', dataIndex: 'lot_number', width: 90 },
-            {
-              title: 'Penghuni',
-              width: 220,
-              render: (_, row) => (row.resident ? <Link to={`/residents/${row.resident.id}`}>{row.resident.name}</Link> : '-'),
-            },
-            { title: 'Telepon', render: (_, row) => row.resident?.phone || '-', width: 140 },
-            { title: 'Tipe', render: (_, row) => row.property_type?.name || row.propertyType?.name || row.property_type_id, width: 150 },
-            { title: 'Okupansi', render: (_, row) => row.occupancy?.name || '-', width: 110 },
-            { title: 'Status', render: (_, row) => <Tag color={row.status_id === 'AK' ? 'green' : 'default'}>{row.status?.name || row.status_id}</Tag>, width: 130 },
           ]}
         />
       </Card>

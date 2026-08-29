@@ -433,4 +433,17 @@ a {
     max-width: 100%;
     flex: 0 0 100%;
   }
+
+  .cluster-detail-page.printing > .page-header,
+  .cluster-detail-page.printing > .ant-card:not(.print-area),
+  .cluster-detail-page.printing > .ant-row {
+    display: none !important;
+  }
+
+  .cluster-detail-page.printing .print-area .filter-card,
+  .cluster-detail-page.printing .print-area .filter-mobile,
+  .cluster-detail-page.printing .print-area .ant-card-extra,
+  .cluster-detail-page.printing .print-area .ant-pagination {
+    display: none !important;
+  }
 }
