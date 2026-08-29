@@ -467,12 +467,16 @@ function BalanceTab({ unitId, units }) {
   if (!effectiveUnitId) {
     return (
       <section>
-        <Alert type="info" showIcon message="Pilih unit terlebih dahulu di tab Data Unit untuk melihat saldo & ledger unit tersebut." />
-        <Space size="large" wrap className="section-row">
+        <Alert type="info" showIcon message="Pilih unit terlebih dahulu di tab Data Unit untuk melihat saldo unit tersebut." />
+        <Row gutter={[16, 16]} className="section-row">
           {units.map((item) => (
-            <Statistic key={item.id} title={unitLabel(item)} value={formatCurrency(item.deposit_balance)} />
+            <Col key={item.id} xs={24} sm={12} md={8} lg={6}>
+              <Card size="small">
+                <Statistic title={unitLabel(item)} value={formatCurrency(item.deposit_balance)} />
+              </Card>
+            </Col>
           ))}
-        </Space>
+        </Row>
       </section>
     );
   }

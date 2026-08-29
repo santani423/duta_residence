@@ -85,7 +85,7 @@ export default function BalanceReconciliationPage() {
         className="section-row"
         type="info"
         showIcon
-        message="Stored Balance diambil dari kolom units.balance (cache). Calculated Balance dihitung ulang dari SUM(kredit) - SUM(debit) pada ledger unit_deposits. Mismatch tidak pernah dikoreksi otomatis - gunakan Penyesuaian Saldo pada tab Saldo & Ledger unit terkait bila diperlukan."
+        message="Stored Balance diambil dari kolom units.balance (cache). Calculated Balance dihitung ulang dari SUM(kredit) - SUM(debit) pada ledger unit_deposits. Mismatch tidak pernah dikoreksi otomatis - gunakan Penyesuaian Saldo pada tab Saldo  unit terkait bila diperlukan."
       />
 
       <FilterBar>

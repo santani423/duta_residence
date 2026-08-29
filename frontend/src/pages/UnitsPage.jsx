@@ -1,7 +1,8 @@
 import { Button, Card, Descriptions, Drawer, Dropdown, Form, Input, Modal, Select, Space, Tabs, Tag, message } from 'antd';
-import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, PlusOutlined, SwapOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, PlusOutlined, SwapOutlined, UserOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/common/PageHeader.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
 import StatusBadge from '../components/common/StatusBadge.jsx';
@@ -16,6 +17,7 @@ import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
 import { useAuth } from '../state/AuthContext.jsx';
 
 export default function UnitsPage() {
+  const navigate = useNavigate();
   const table = useTableState();
   const [drawer, setDrawer] = useState({ type: null, record: null });
   const [form] = Form.useForm();
@@ -122,6 +124,7 @@ export default function UnitsPage() {
               render: (_, record) => {
                 const items = [
                   { key: 'detail', label: 'Detail', icon: <EyeOutlined /> },
+                  { key: 'resident', label: 'Detail Penghuni', icon: <UserOutlined />, disabled: !record.resident?.id },
                   { key: 'edit', label: 'Edit', icon: <EditOutlined />, permission: 'units.update' },
                   { key: 'convert', label: 'Konversi Properti', icon: <SwapOutlined />, disabled: record.property_type_id !== 'K', permission: 'units.convert-property' },
                   { type: 'divider' },
@@ -130,6 +133,7 @@ export default function UnitsPage() {
                 return (
                   <Dropdown menu={{ items, onClick: ({ key }) => {
                     if (key === 'detail') setDrawer({ type: 'detail', record });
+                    if (key === 'resident') navigate(`/residents/${record.resident.id}`);
                     if (key === 'edit') openEdit(record);
                     if (key === 'convert') setDrawer({ type: 'convert', record });
                     if (key === 'delete') {
