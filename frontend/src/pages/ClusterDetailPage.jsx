@@ -12,11 +12,33 @@ import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import { ErrorState, LoadingState } from '../components/common/ApiState.jsx';
 import { api } from '../services/estateApi.js';
 import { useTableState } from '../hooks/useTableState.js';
-import { formatCurrency, formatDate, formatDateTime } from '../utils/format.js';
+import { formatCurrency, formatDate, formatDateTime, formatPeriod } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
 import { residentStatusOptions, occupancyOptions } from '../components/forms/UnitForm.jsx';
 
 const DONUT_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100'];
+const MONTHLY_RATE_MONTHS_PAST = 6;
+const MONTHLY_RATE_MONTHS_FUTURE = 6;
+
+// Mirrors ClusterRateScheduleService::rateForPeriod on the backend: the rate for a month
+// is whichever active schedule has the latest effective_date on/before that month.
+function buildMonthlyRateRows(schedules, fallbackRate) {
+  const activeSchedules = schedules
+    .filter((item) => item.is_active)
+    .map((item) => ({ ...item, effective_date: dayjs(item.effective_date) }))
+    .sort((a, b) => b.effective_date.valueOf() - a.effective_date.valueOf());
+
+  const startMonth = dayjs().startOf('month').subtract(MONTHLY_RATE_MONTHS_PAST, 'month');
+  const totalMonths = MONTHLY_RATE_MONTHS_PAST + MONTHLY_RATE_MONTHS_FUTURE + 1;
+
+  return Array.from({ length: totalMonths }, (_, index) => {
+    const month = startMonth.add(index, 'month');
+    const applicable = activeSchedules.find((item) => !item.effective_date.isAfter(month, 'month'));
+    const rate = applicable ? Number(applicable.rate) : Number(fallbackRate || 0);
+    const status = month.isSame(dayjs(), 'month') ? 'current' : month.isBefore(dayjs(), 'month') ? 'past' : 'future';
+    return { key: month.format('YYYY-MM'), year: month.year(), month: month.month() + 1, rate, status };
+  });
+}
 
 function DonutChart({ title, data, loading }) {
   const total = data.reduce((sum, item) => sum + item.value, 0);
@@ -142,6 +164,7 @@ export default function ClusterDetailPage() {
   const current = cluster.current_rate_schedule;
   const next = cluster.next_rate_schedule;
   const rows = schedules.data?.data || [];
+  const monthlyRateRows = buildMonthlyRateRows(rows, cluster.monthly_rate);
   const allUnits = unitsAll.data?.data || [];
   const occupancyData = occupancyOptions.map((option) => ({
     name: option.label,
@@ -203,7 +226,28 @@ export default function ClusterDetailPage() {
         </Col>
       </Row>
 
-   
+      <Card className="section-row" title="Riwayat Biaya IPL Bulanan">
+        <ResponsiveTable
+          data={monthlyRateRows}
+          rowKey="key"
+          pagination={false}
+          scrollX={520}
+          rowClassName={(row) => (row.status === 'current' ? 'ipl-current-month-row' : '')}
+          columns={[
+            { title: 'Bulan', render: (_, row) => formatPeriod(row.year, row.month), width: 200 },
+            { title: 'Biaya IPL', dataIndex: 'rate', render: formatCurrency, width: 180 },
+            {
+              title: 'Status',
+              width: 140,
+              render: (_, row) => {
+                if (row.status === 'current') return <Tag color="green">Bulan Ini</Tag>;
+                if (row.status === 'future') return <Tag color="blue">Akan Datang</Tag>;
+                return <Tag color="default">Riwayat</Tag>;
+              },
+            },
+          ]}
+        />
+      </Card>
 
       <Card
         className="section-row print-area"

@@ -252,7 +252,9 @@ export default function PaymentsPage() {
   const billingColumns = [
     { title: 'Periode', render: (_, row) => formatPeriod(row.year, row.month) },
     { title: 'Jatuh Tempo', render: (_, row) => formatDate(row.penalty_detail?.due_date) },
-    { title: 'Nominal', dataIndex: 'amount', render: formatCurrency },
+    { title: 'Nominal', render: (_, row) => formatCurrency(row.penalty_detail?.principal_amount ?? row.amount) },
+    { title: 'Denda', render: (_, row) => formatCurrency(row.penalty_detail?.penalty_amount ?? 0) },
+    { title: 'Tagihan', render: (_, row) => formatCurrency(row.penalty_detail?.total_amount ?? 0) },
     { title: 'Terbayar', render: (_, row) => formatCurrency(row.penalty_detail?.total_paid ?? 0) },
     { title: 'Sisa Tagihan', render: (_, row) => formatCurrency(row.penalty_detail?.total_outstanding ?? 0) },
     { title: 'Status', render: (_, row) => <StatusBadge type="billing" value={row.status_id} /> },
@@ -321,7 +323,7 @@ export default function PaymentsPage() {
                       data={unpaidBillings}
                       columns={billingColumns}
                       pagination={false}
-                      scrollX={1000}
+                      scrollX={1300}
                     />
 
                     <Tabs

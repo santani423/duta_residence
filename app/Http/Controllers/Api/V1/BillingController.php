@@ -8,11 +8,13 @@ use App\Models\Billing;
 use App\Models\Unit;
 use App\Services\AuditService;
 use App\Services\BillingService;
+use App\Services\ClusterRateScheduleService;
 use App\Services\DiscountService;
 use App\Services\PenaltyService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class BillingController extends Controller
 {
@@ -111,6 +113,23 @@ class BillingController extends Controller
         return $this->success($billing->load('unit'), 'Tagihan khusus berhasil dibuat.', 201);
     }
 
+    /**
+     * Preview-only lookup for the "Tagihan Mundur" form: resolves the same read-only IPL
+     * nominal that prepareBack() would use, without creating any billing.
+     */
+    public function previewBackRate(Request $request, ClusterRateScheduleService $rateScheduleService)
+    {
+        $data = $request->validate([
+            'unit_id' => ['required', 'exists:units,id'],
+            'year' => ['required', 'integer', 'min:2020', 'max:2100'],
+            'month' => ['required', 'integer', 'between:1,12'],
+        ]);
+
+        $unit = Unit::with('cluster')->findOrFail($data['unit_id']);
+
+        return $this->success($rateScheduleService->resolveRateForBackdatedPeriod($unit->cluster, $data['year'], $data['month']));
+    }
+
     public function prepareBack(Request $request, BillingService $service)
     {
         $data = $request->validate([
@@ -118,13 +137,12 @@ class BillingController extends Controller
             'periods' => ['required', 'array', 'min:1'],
             'periods.*.year' => ['required', 'integer', 'min:2020', 'max:2100'],
             'periods.*.month' => ['required', 'integer', 'between:1,12'],
-            'periods.*.amount' => ['required', 'numeric', 'min:0'],
         ]);
 
-        $unit = Unit::findOrFail($data['unit_id']);
-        $billings = collect($data['periods'])->map(fn ($period) => tap(
-            $service->prepareSpecial($unit, $period['year'], $period['month'], $period['amount'], $request->user()->id),
-            fn (Billing $billing) => $billing->update(['billing_type' => 'back'])
+        $unit = Unit::with('cluster')->findOrFail($data['unit_id']);
+
+        $billings = DB::transaction(fn () => collect($data['periods'])->map(
+            fn ($period) => $service->prepareBack($unit, $period['year'], $period['month'], $request->user()->id)
         ));
 
         return $this->success($billings->values(), 'Tagihan mundur berhasil dibuat.', 201);

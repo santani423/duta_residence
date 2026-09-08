@@ -20,17 +20,17 @@ class CollectorManagementTest extends TestCase
         return $collector;
     }
 
-    private function createUnit(string $unitId, string $residentName): array
+    private function createUnit(string $lotSeed, string $residentName): array
     {
         Sanctum::actingAs(User::where('username', 'root')->first());
 
         $residentId = $this->postJson('/api/v1/residents', ['name' => $residentName])
             ->assertCreated()->json('data.resident.id');
 
-        $this->postJson('/api/v1/units', [
-            'id' => $unitId, 'resident_id' => $residentId, 'cluster_id' => 'GA', 'block' => 'Z',
-            'lot_number' => substr($unitId, -2), 'property_type_id' => 'B', 'occupancy_id' => '1', 'status_id' => 'AK',
-        ])->assertCreated();
+        $unitId = $this->postJson('/api/v1/units', [
+            'resident_id' => $residentId, 'cluster_id' => 'GA', 'block' => 'Z',
+            'lot_number' => substr($lotSeed, -2), 'property_type_id' => 'B', 'occupancy_id' => '1', 'status_id' => 'AK',
+        ])->assertCreated()->json('data.id');
 
         return ['resident_id' => $residentId, 'unit_id' => $unitId];
     }

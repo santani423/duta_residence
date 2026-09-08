@@ -111,7 +111,7 @@ export default function UnitsPage() {
           columns={[
             { title: 'ID', dataIndex: 'id', fixed: 'left', width: 90 },
             { title: 'Nomor VA', dataIndex: 'va_number', width: 140, render: (value) => value || <Tag color="default">Belum ada</Tag> },
-            { title: 'Pemilik', dataIndex: ['resident', 'name'], width: 220 },
+            { title: 'Pemilik', dataIndex: ['resident', 'name'], width: 220, render: (value) => value || <Tag color="default">Belum ada penghuni</Tag> },
             { title: 'Cluster', dataIndex: ['cluster', 'name'], width: 160 },
             { title: 'Blok', dataIndex: 'block', width: 80 },
             { title: 'Kavling', dataIndex: 'lot_number', width: 90 },
@@ -163,7 +163,7 @@ export default function UnitsPage() {
         extra={<Space><Button onClick={() => setDrawer({ type: null, record: null })}>Batal</Button><Button type="primary" loading={save.isPending} onClick={() => form.submit()}>Simpan</Button></Space>}
         destroyOnHidden
       >
-        <UnitForm form={form} clusters={clusters.data?.data || []} residents={residents.data?.data || []} disabledId={drawer.type === 'edit'} onFinish={save.mutate} loading={save.isPending} />
+        <UnitForm form={form} clusters={clusters.data?.data || []} residents={residents.data?.data || []} isEdit={drawer.type === 'edit'} onFinish={save.mutate} loading={save.isPending} />
       </Drawer>
 
       <Drawer title="Detail Unit" open={drawer.type === 'detail'} onClose={() => setDrawer({ type: null, record: null })} width={840}>
@@ -176,7 +176,7 @@ export default function UnitsPage() {
                 <Descriptions bordered column={{ xs: 1, md: 2 }}>
                   <Descriptions.Item label="ID">{detailData?.id}</Descriptions.Item>
                   <Descriptions.Item label="Nomor VA">{detailData?.va_number || <Tag color="default">Belum ada</Tag>}</Descriptions.Item>
-                  <Descriptions.Item label="Pemilik">{detailData?.resident?.name}</Descriptions.Item>
+                  <Descriptions.Item label="Pemilik">{detailData?.resident?.name || <Tag color="default">Belum ada penghuni</Tag>}</Descriptions.Item>
                   <Descriptions.Item label="Cluster">{detailData?.cluster?.name}</Descriptions.Item>
                   <Descriptions.Item label="Unit">{detailData?.block}-{detailData?.lot_number}</Descriptions.Item>
                   <Descriptions.Item label="Tipe">{detailData?.property_type?.name || detailData?.propertyType?.name}</Descriptions.Item>

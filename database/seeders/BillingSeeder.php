@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Billing;
 use App\Models\Unit;
 use App\Models\User;
+use App\Services\ClusterRateScheduleService;
 use App\Services\DiscountService;
 use App\Services\PenaltyService;
 use Illuminate\Database\Seeder;
@@ -37,13 +38,20 @@ class BillingSeeder extends Seeder
         $finance = User::where('username', 'finance')->first() ?: User::where('username', 'root')->first();
         $penaltyService = app(PenaltyService::class);
         $discountService = app(DiscountService::class);
+        $rateScheduleService = app(ClusterRateScheduleService::class);
+        $rateCache = [];
+        $resolveRate = function ($cluster, int $year, int $month) use (&$rateCache, $rateScheduleService) {
+            $key = "{$cluster->id}-{$year}-{$month}";
+
+            return $rateCache[$key] ??= $rateScheduleService->rateForPeriod($cluster, $year, $month);
+        };
         $types = ['regular', 'security', 'cleaning', 'water', 'common-electricity', 'parking', 'maintenance', 'facility', 'special'];
         $skipUnits = ['AL005'];
 
         Unit::with(['cluster', 'discountRule'])
             ->where('status_id', '!=', 'RK')
             ->orderBy('id')
-            ->chunk(100, function ($units) use ($finance, $penaltyService, $discountService, $types, $skipUnits) {
+            ->chunk(100, function ($units) use ($finance, $penaltyService, $discountService, $resolveRate, $types, $skipUnits) {
                 foreach ($units as $unit) {
                     if (in_array($unit->id, $skipUnits, true)) {
                         continue;
@@ -57,7 +65,7 @@ class BillingSeeder extends Seeder
 
                     for ($offset = $historyMonths - 1; $offset >= 0; $offset--) {
                         $period = now()->subMonths($offset);
-                        $amount = (float) $unit->cluster->monthly_rate + (($offset % 2) * 25000);
+                        $amount = $resolveRate($unit->cluster, $period->year, $period->month);
                         $discountResult = $discountService->calculateForNewBilling($unit, $amount);
                         $discount = $discountResult['amount'];
                         $discountRuleId = $discountResult['rule']?->id;

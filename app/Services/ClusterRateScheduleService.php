@@ -58,6 +58,44 @@ class ClusterRateScheduleService
         })->all();
     }
 
+    /**
+     * Resolve the IPL nominal to use for a backdated ("Tagihan Mundur") billing period.
+     *
+     * Never uses the requested period's own rate: it always looks at the period immediately
+     * before it, and - since a ClusterRateSchedule stays effective until superseded - walking
+     * further back only matters when no schedule was ever effective by that point, in which
+     * case this keeps searching earlier periods until it finds one. A schedule effective in a
+     * month after the requested period is never considered. Throws instead of ever falling back
+     * to Cluster::monthly_rate (which defaults to 0), so a backdated bill can never be created
+     * with a silent zero nominal.
+     *
+     * @return array{rate: float, source_year: int, source_month: int, schedule_id: int}
+     */
+    public function resolveRateForBackdatedPeriod(Cluster $cluster, int $year, int $month): array
+    {
+        $lookupPeriod = Carbon::create($year, $month, 1)->subMonthNoOverflow();
+
+        $schedule = ClusterRateSchedule::query()
+            ->where('cluster_id', $cluster->id)
+            ->active()
+            ->whereDate('effective_date', '<=', $lookupPeriod)
+            ->orderByDesc('effective_date')
+            ->first();
+
+        if (! $schedule) {
+            throw ValidationException::withMessages([
+                'periods' => ["Nominal IPL cluster {$cluster->name} belum dikonfigurasi untuk {$lookupPeriod->translatedFormat('F Y')} maupun periode-periode sebelumnya."],
+            ]);
+        }
+
+        return [
+            'rate' => (float) $schedule->rate,
+            'source_year' => $schedule->effective_date->year,
+            'source_month' => $schedule->effective_date->month,
+            'schedule_id' => $schedule->id,
+        ];
+    }
+
     public function assertNoConflict(string $clusterId, string $effectiveDate, ?int $ignoreId = null): void
     {
         $exists = ClusterRateSchedule::query()

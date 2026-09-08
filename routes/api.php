@@ -252,6 +252,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::post('billings/prepare-monthly', [BillingController::class, 'prepareMonthly'])->middleware('permission:billings.prepare');
     Route::post('billings/prepare-special', [BillingController::class, 'prepareSpecial'])->middleware('permission:billings.prepare-special');
     Route::post('billings/prepare-back', [BillingController::class, 'prepareBack'])->middleware('permission:billings.prepare-back');
+    Route::get('billings/back-preview', [BillingController::class, 'previewBackRate'])->middleware('permission:billings.prepare-back');
     Route::get('billings', [BillingController::class, 'index'])->middleware('permission:billings.view');
     Route::get('billings/summary', [BillingController::class, 'summary'])->middleware('permission:billings.view');
     Route::get('billings/pending-approval', [BillingController::class, 'pendingApproval'])->middleware('permission:billings.approve');

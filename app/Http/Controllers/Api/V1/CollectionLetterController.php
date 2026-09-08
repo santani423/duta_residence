@@ -45,6 +45,10 @@ class CollectionLetterController extends Controller
 
         $unit = Unit::query()->with(['cluster', 'resident'])->findOrFail($data['unit_id']);
 
+        if (! $unit->resident_id) {
+            return $this->error('Unit belum memiliki penghuni terdaftar, tidak dapat membuat surat penagihan.', 422);
+        }
+
         if ($request->user()->hasRole('collector')) {
             $assignmentService->assertUnitAssigned($request->user(), $unit->id);
         }

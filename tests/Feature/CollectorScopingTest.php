@@ -19,7 +19,7 @@ class CollectorScopingTest extends TestCase
         return $collector;
     }
 
-    private function createResidentAndUnit(string $unitId, string $residentName = 'Scoping Test Resident'): array
+    private function createResidentAndUnit(string $lotSeed, string $residentName = 'Scoping Test Resident'): array
     {
         Sanctum::actingAs(User::where('username', 'root')->first());
 
@@ -27,16 +27,15 @@ class CollectorScopingTest extends TestCase
             ->assertCreated()
             ->json('data.resident.id');
 
-        $this->postJson('/api/v1/units', [
-            'id' => $unitId,
+        $unitId = $this->postJson('/api/v1/units', [
             'resident_id' => $residentId,
             'cluster_id' => 'GA',
             'block' => 'Z',
-            'lot_number' => substr($unitId, -2),
+            'lot_number' => substr($lotSeed, -2),
             'property_type_id' => 'B',
             'occupancy_id' => '1',
             'status_id' => 'AK',
-        ])->assertCreated();
+        ])->assertCreated()->json('data.id');
 
         return ['resident_id' => $residentId, 'unit_id' => $unitId];
     }

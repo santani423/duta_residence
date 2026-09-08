@@ -37,6 +37,11 @@ class CollectorReminderController extends Controller
         ]);
 
         $unit = Unit::query()->findOrFail($data['unit_id']);
+
+        if (! $unit->resident_id) {
+            return $this->error('Unit belum memiliki penghuni terdaftar, tidak dapat mencatat pengingat.', 422);
+        }
+
         $assignmentService->assertUnitAssigned($request->user(), $unit->id);
 
         $reminder = CollectorReminder::query()->create([

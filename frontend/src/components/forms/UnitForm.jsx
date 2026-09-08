@@ -20,7 +20,7 @@ export const residentStatusOptions = [
   { value: 'TA', label: 'Tidak Aktif' },
 ];
 
-export default function UnitForm({ form, clusters = [], residents = [], disabledId = false, onFinish, loading }) {
+export default function UnitForm({ form, clusters = [], residents = [], isEdit = false, onFinish, loading }) {
   return (
     <Form
       form={form}
@@ -39,9 +39,11 @@ export default function UnitForm({ form, clusters = [], residents = [], disabled
       }}
       disabled={loading}
     >
-      <Form.Item label="ID Unit" name="id" rules={[{ required: true }, { len: 5 }]} getValueFromEvent={(event) => event.target.value.toUpperCase()}>
-        <Input placeholder="GA099" disabled={disabledId} />
-      </Form.Item>
+      {isEdit && (
+        <Form.Item label="ID Unit" name="id" tooltip="Dibuat otomatis oleh sistem dan tidak dapat diubah.">
+          <Input disabled />
+        </Form.Item>
+      )}
       <Form.Item
         label="Nomor Virtual Account (VA)"
         name="va_number"
@@ -50,8 +52,12 @@ export default function UnitForm({ form, clusters = [], residents = [], disabled
       >
         <Input placeholder="8801000123" />
       </Form.Item>
-      <Form.Item label="Pemilik" name="resident_id" rules={[{ required: true }]}>
-        <Select showSearch optionFilterProp="label" options={residents.map((item) => ({ value: item.id, label: `${item.id} - ${item.name}` }))} />
+      <Form.Item
+        label="Pemilik / Penghuni"
+        name="resident_id"
+        tooltip="Opsional. Unit dapat dibuat terlebih dahulu tanpa penghuni, lalu ditambahkan kemudian melalui menu Edit."
+      >
+        <Select allowClear showSearch optionFilterProp="label" placeholder="Belum ada penghuni" options={residents.map((item) => ({ value: item.id, label: `${item.id} - ${item.name}` }))} />
       </Form.Item>
       <Form.Item label="Cluster" name="cluster_id" rules={[{ required: true }]}>
         <Select showSearch optionFilterProp="label" options={clusters.map((item) => ({ value: item.id, label: `${item.id} - ${item.name}` }))} />

@@ -203,6 +203,11 @@ a {
   margin-top: 16px;
 }
 
+.ipl-current-month-row > td {
+  background: #e6f4ea !important;
+  font-weight: 600;
+}
+
 .stack {
   display: grid;
   gap: 16px;

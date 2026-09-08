@@ -158,7 +158,7 @@ class PaymentService
                 'number' => $receiptNumber,
                 'unit_id' => $lockedUnit->id,
                 'transaction_date' => $now,
-                'resident_name' => $lockedUnit->resident->name,
+                'resident_name' => $lockedUnit->resident?->name ?? '-',
                 'cluster_name' => $lockedUnit->cluster->name,
                 'block' => $lockedUnit->block,
                 'lot_number' => $lockedUnit->lot_number,
@@ -313,7 +313,7 @@ class PaymentService
             'user_id' => null,
             'type' => $hasPartial ? 'payment_partial' : 'payment_success',
             'channel' => 'in_app',
-            'recipient' => $unit->resident->phone ?: ($unit->resident->email ?: $unit->id),
+            'recipient' => $unit->resident?->phone ?: ($unit->resident?->email ?: $unit->id),
             'message' => $hasPartial
                 ? "Pembayaran sebagian untuk tagihan periode {$periods} telah diterima. Masih terdapat sisa tagihan."
                 : "Pembayaran untuk tagihan periode {$periods} telah berhasil dan lunas.",

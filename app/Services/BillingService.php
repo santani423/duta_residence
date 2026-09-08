@@ -78,6 +78,31 @@ class BillingService
         ]);
     }
 
+    /**
+     * Create a backdated ("Tagihan Mundur") billing. The amount is never taken from caller
+     * input - it is always resolved server-side from the IPL rate configured for the period
+     * before $month (walking further back if needed), per ClusterRateScheduleService.
+     */
+    public function prepareBack(Unit $unit, int $year, int $month, int $userId): Billing
+    {
+        $resolved = $this->rateScheduleService->resolveRateForBackdatedPeriod($unit->cluster, $year, $month);
+        $discount = $this->discountService->calculateForNewBilling($unit, $resolved['rate']);
+
+        return Billing::query()->create([
+            'unit_id' => $unit->id,
+            'year' => $year,
+            'month' => $month,
+            'amount' => $resolved['rate'],
+            'discount' => $discount['amount'],
+            'discount_rule_id' => $discount['rule']?->id,
+            'status_id' => '01',
+            'billing_type' => 'back',
+            'is_penalty_eligible' => $unit->is_penalty_eligible,
+            'is_discount_eligible' => $unit->is_discount_eligible,
+            'created_by' => $userId,
+        ]);
+    }
+
     public function approve(Billing $billing, int $userId, ?string $notes = null): Billing
     {
         $billing->forceFill([

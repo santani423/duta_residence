@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\BillingStatus;
 use App\Models\Cluster;
+use App\Models\ClusterRateSchedule;
 use App\Models\ResidentStatus;
 use App\Models\District;
 use App\Models\OccupancyStatus;
@@ -66,12 +67,27 @@ class EstateSeeder extends Seeder
         }
 
         foreach (self::CLUSTERS as $index => $row) {
+            $operatingSince = now()->subYears(8 - ($index % 5));
+
             Cluster::updateOrCreate(['id' => $row['id']], [
                 'name' => $row['name'],
                 'monthly_rate' => $row['rate'],
                 'is_active' => $index !== 13,
-                'description' => "{$row['profile']}. Alamat: Boulevard Grand Duta blok {$row['id']}. Fasilitas: taman, keamanan 24 jam, CCTV, jogging track. Pengelola: Estate Office {$row['name']}. Beroperasi sejak ".now()->subYears(8 - ($index % 5))->format('Y-m-d').'.',
+                'description' => "{$row['profile']}. Alamat: Boulevard Grand Duta blok {$row['id']}. Fasilitas: taman, keamanan 24 jam, CCTV, jogging track. Pengelola: Estate Office {$row['name']}. Beroperasi sejak ".$operatingSince->format('Y-m-d').'.',
             ]);
+
+            // Mirrors what ClusterController::store() does for clusters created via the API -
+            // without this, cluster_rate_schedules stays empty and the tariff history table
+            // on the cluster detail page has nothing to show.
+            ClusterRateSchedule::updateOrCreate(
+                ['cluster_id' => $row['id'], 'effective_date' => $operatingSince->toDateString()],
+                [
+                    'rate' => $row['rate'],
+                    'notes' => 'Tarif awal saat cluster dibuat.',
+                    'is_active' => true,
+                    'activated_at' => $operatingSince,
+                ]
+            );
         }
     }
 }

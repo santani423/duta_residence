@@ -9,8 +9,11 @@ use App\Models\Unit;
 use App\Services\AuditService;
 use App\Services\CollectorAssignmentService;
 use App\Services\PenaltyService;
+use App\Services\UnitCodeGeneratorService;
 use App\Services\UnitOwnershipSyncService;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class UnitController extends Controller
@@ -38,11 +41,36 @@ class UnitController extends Controller
         return $this->paginated($query->orderBy('cluster_id')->orderBy('block')->paginate($request->integer('per_page', 15)));
     }
 
-    public function store(Request $request, AuditService $auditService, UnitOwnershipSyncService $ownershipSync)
+    public function store(Request $request, AuditService $auditService, UnitOwnershipSyncService $ownershipSync, UnitCodeGeneratorService $codeGenerator)
     {
         $data = $this->validateUnit($request);
         $data['created_by'] = $request->user()->id;
-        $unit = Unit::query()->create($data);
+
+        // Menghasilkan kode unit lalu menyimpannya dikunci per cluster (lihat
+        // UnitCodeGeneratorService), tapi tetap dibungkus retry di sini sebagai jaring
+        // pengaman kedua: kalau dua request tetap berhasil menghitung nomor urut yang
+        // sama (mis. driver DB yang tidak mendukung row lock), unique constraint pada
+        // primary key units.id akan menolak insert-nya dan kita coba lagi dengan nomor
+        // berikutnya alih-alih gagal total.
+        $attempts = 0;
+
+        do {
+            $attempts++;
+
+            try {
+                $unit = DB::transaction(function () use ($data, $codeGenerator) {
+                    $data['id'] = $codeGenerator->generate($data['cluster_id']);
+
+                    return Unit::query()->create($data);
+                });
+                break;
+            } catch (QueryException $e) {
+                if ($attempts >= 5 || $e->getCode() !== '23000') {
+                    throw $e;
+                }
+            }
+        } while (true);
+
         $auditService->log('unit_created', 'units', 'CREATE', $unit, [], $unit->toArray());
         $ownershipSync->sync($unit, $auditService);
 
@@ -111,9 +139,8 @@ class UnitController extends Controller
     private function validateUnit(Request $request, ?Unit $unit = null): array
     {
         return $request->validate([
-            'id' => ['required', 'string', 'size:5', Rule::unique('units', 'id')->ignore($unit?->id, 'id')],
             'va_number' => ['nullable', 'string', 'max:32', Rule::unique('units', 'va_number')->ignore($unit?->id)],
-            'resident_id' => ['required', 'exists:residents,id'],
+            'resident_id' => ['nullable', 'exists:residents,id'],
             'cluster_id' => ['required', 'exists:clusters,id'],
             'block' => ['required', 'string', 'max:5'],
             'lot_number' => ['required', 'string', 'max:10'],

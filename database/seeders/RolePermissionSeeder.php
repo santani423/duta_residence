@@ -157,6 +157,7 @@ class RolePermissionSeeder extends Seeder
             'vendor' => ['residents.view', 'units.view', 'clusters.view', 'cluster-maps.view'],
             'loket' => [
                 'residents.view', 'residents.create', 'units.view', 'clusters.view', 'cluster-maps.view', 'billings.view',
+                'billings.prepare-back',
                 'payments.view', 'payments.process', 'payments.create',
                 'installments.view', 'installments.create',
                 'installment-plans.view', 'installment-plans.submit',
