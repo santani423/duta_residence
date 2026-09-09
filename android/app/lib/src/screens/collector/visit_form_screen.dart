@@ -1,9 +1,5 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:signature/signature.dart';
 
 import '../../api/api_client.dart';
 import '../../api/api_exception.dart';
@@ -11,6 +7,7 @@ import '../../constants/app_spacing.dart';
 import '../../services/location_service.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/duta_card.dart';
+import 'signature_capture_screen.dart';
 
 const _statusOptions = [
   ('completed', 'Selesai'),
@@ -40,12 +37,10 @@ class _VisitFormScreenState extends State<VisitFormScreen> {
   final _notesController = TextEditingController();
   String _status = 'completed';
   bool _saving = false;
+  bool _completing = false;
   String? _createdVisitId;
+  bool _hasSignature = false;
   final _locationService = const LocationService();
-  final _signatureController = SignatureController(
-    penStrokeWidth: 3,
-    penColor: Colors.black,
-  );
 
   @override
   void dispose() {
@@ -53,9 +48,10 @@ class _VisitFormScreenState extends State<VisitFormScreen> {
     _resultController.dispose();
     _metWithController.dispose();
     _notesController.dispose();
-    _signatureController.dispose();
     super.dispose();
   }
+
+  bool get _signatureRequired => _status == 'completed';
 
   Future<void> _submit() async {
     if (_purposeController.text.trim().isEmpty) {
@@ -76,27 +72,26 @@ class _VisitFormScreenState extends State<VisitFormScreen> {
         // GPS check-in is best-effort - a visit can still be logged without it.
       }
 
-      final result = await widget.apiClient.postJson(
-        'units/${widget.unit['id']}/visits',
-        {
-          'visit_date': DateTime.now().toIso8601String(),
-          'purpose': _purposeController.text.trim(),
-          'result': _resultController.text.trim(),
-          'met_with': _metWithController.text.trim(),
-          'notes': _notesController.text.trim(),
-          'status': _status,
-          if (lat != null) 'checkin_latitude': lat,
-          if (lng != null) 'checkin_longitude': lng,
-        },
-      );
+      final result = await widget.apiClient
+          .postJson('units/${widget.unit['id']}/visits', {
+            'visit_date': DateTime.now().toIso8601String(),
+            'purpose': _purposeController.text.trim(),
+            'result': _resultController.text.trim(),
+            'met_with': _metWithController.text.trim(),
+            'notes': _notesController.text.trim(),
+            'status': _status,
+            if (lat != null) 'checkin_latitude': lat,
+            if (lng != null) 'checkin_longitude': lng,
+          });
       final visit = asMap(result.data);
       setState(() => _createdVisitId = visit['id']?.toString());
 
       if (lat != null && lng != null && _createdVisitId != null) {
-        await widget.apiClient.postJson(
-          'visits/$_createdVisitId/evidence',
-          {'type': 'gps', 'latitude': lat, 'longitude': lng},
-        );
+        await widget.apiClient.postJson('visits/$_createdVisitId/evidence', {
+          'type': 'gps',
+          'latitude': lat,
+          'longitude': lng,
+        });
       }
 
       if (mounted) {
@@ -145,28 +140,55 @@ class _VisitFormScreenState extends State<VisitFormScreen> {
     }
   }
 
-  Future<void> _uploadSignature() async {
-    if (_createdVisitId == null || _signatureController.isEmpty) return;
-    final bytes = await _signatureController.toPngBytes();
-    if (bytes == null) return;
-    final directory = await getTemporaryDirectory();
-    final file = File(
-      '${directory.path}/signature-$_createdVisitId.png',
+  Future<void> _requestSignature() async {
+    if (_createdVisitId == null) return;
+    final signed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => SignatureCaptureScreen(
+          apiClient: widget.apiClient,
+          visitId: _createdVisitId!,
+        ),
+      ),
     );
-    await file.writeAsBytes(bytes, flush: true);
-    try {
-      await widget.apiClient.postMultipart(
-        'visits/$_createdVisitId/evidence',
-        fields: {'type': 'signature'},
-        fileField: 'file',
-        filePath: file.path,
-        fileName: 'signature.png',
+    if (signed == true && mounted) {
+      setState(() => _hasSignature = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tanda tangan berhasil disimpan.')),
       );
-      _signatureController.clear();
+    }
+  }
+
+  Future<void> _finish() async {
+    if (_signatureRequired && !_hasSignature) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Tanda tangan penghuni diperlukan. Silakan minta penghuni untuk melakukan tanda tangan terlebih dahulu.',
+          ),
+        ),
+      );
+      return;
+    }
+    if (!_signatureRequired) {
+      Navigator.of(context).pop();
+      return;
+    }
+
+    setState(() => _completing = true);
+    try {
+      await widget.apiClient.putJson('visits/$_createdVisitId', {
+        'visit_date': DateTime.now().toIso8601String(),
+        'purpose': _purposeController.text.trim(),
+        'result': _resultController.text.trim(),
+        'met_with': _metWithController.text.trim(),
+        'notes': _notesController.text.trim(),
+        'status': _status,
+      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tanda tangan diunggah.')),
+          const SnackBar(content: Text('Kunjungan berhasil diselesaikan.')),
         );
+        Navigator.of(context).pop();
       }
     } on ApiException catch (error) {
       if (mounted) {
@@ -174,12 +196,15 @@ class _VisitFormScreenState extends State<VisitFormScreen> {
           context,
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
+    } finally {
+      if (mounted) setState(() => _completing = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final unit = widget.unit;
+    final colors = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(title: const Text('Catat Kunjungan')),
       body: ListView(
@@ -257,40 +282,63 @@ class _VisitFormScreenState extends State<VisitFormScreen> {
               icon: const Icon(Icons.camera_alt_outlined),
               label: const Text('Ambil Foto Bukti'),
             ),
-            const SizedBox(height: AppSpacing.lg),
-            const Text('Tanda Tangan Penghuni'),
-            const SizedBox(height: AppSpacing.sm),
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.outlineVariant,
+            if (_signatureRequired) ...[
+              const SizedBox(height: AppSpacing.lg),
+              DutaCard(
+                color: _hasSignature
+                    ? colors.primaryContainer
+                    : colors.errorContainer,
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Row(
+                  children: [
+                    Icon(
+                      _hasSignature
+                          ? Icons.check_circle_outline
+                          : Icons.warning_amber_outlined,
+                      color: _hasSignature
+                          ? colors.onPrimaryContainer
+                          : colors.onErrorContainer,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        _hasSignature
+                            ? 'Tanda tangan penghuni sudah tersimpan.'
+                            : 'Tanda tangan penghuni belum diberikan.',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: _hasSignature
+                              ? colors.onPrimaryContainer
+                              : colors.onErrorContainer,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
               ),
-              child: Signature(
-                controller: _signatureController,
-                height: 180,
-                backgroundColor: Colors.white,
+              const SizedBox(height: AppSpacing.sm),
+              OutlinedButton.icon(
+                onPressed: _requestSignature,
+                icon: const Icon(Icons.draw_outlined),
+                label: Text(
+                  _hasSignature
+                      ? 'Tanda Tangan Ulang'
+                      : 'Minta Tanda Tangan Penghuni',
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              children: [
-                TextButton(
-                  onPressed: _signatureController.clear,
-                  child: const Text('Hapus'),
-                ),
-                const Spacer(),
-                FilledButton(
-                  onPressed: _uploadSignature,
-                  child: const Text('Simpan Tanda Tangan'),
-                ),
-              ],
-            ),
+            ],
             const SizedBox(height: AppSpacing.lg),
             FilledButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Selesai'),
+              onPressed: _completing ? null : _finish,
+              child: _completing
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(
+                      _signatureRequired ? 'Selesaikan Kunjungan' : 'Selesai',
+                    ),
             ),
           ],
         ],

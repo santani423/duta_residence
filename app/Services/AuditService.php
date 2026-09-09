@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AuditLog;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 
 class AuditService
@@ -65,8 +66,22 @@ class AuditService
             $keyString = strtolower((string) $key);
             $isSensitive = collect($this->sensitiveKeys)->contains(fn ($sensitive) => str_contains($keyString, $sensitive));
 
-            return [$key => $isSensitive ? '[masked]' : $value];
+            return [$key => $isSensitive ? '[masked]' : $this->redactFiles($value)];
         })->all();
+    }
+
+    // Uploaded files carry a file-handle resource that can't be JSON-encoded
+    // for storage in the audit log, so replace them with their filename.
+    private function redactFiles(mixed $value): mixed
+    {
+        if ($value instanceof UploadedFile) {
+            return '[file:'.$value->getClientOriginalName().']';
+        }
+        if (is_array($value)) {
+            return collect($value)->map(fn ($item) => $this->redactFiles($item))->all();
+        }
+
+        return $value;
     }
 
     private function changedFields(array $old, array $new): array

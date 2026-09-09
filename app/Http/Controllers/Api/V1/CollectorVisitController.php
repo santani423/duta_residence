@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\CollectorVisit;
+use App\Models\CollectorVisitEvidence;
 use App\Models\Resident;
 use App\Models\Unit;
 use App\Services\AuditService;
@@ -27,6 +28,7 @@ class CollectorVisitController extends Controller
 
         $query = CollectorVisit::query()
             ->with(['unit.cluster', 'collector'])
+            ->withExists(['evidence as has_signature' => fn ($q) => $q->where('type', CollectorVisitEvidence::TYPE_SIGNATURE)])
             ->whereIn('unit_id', $unitIds)
             ->when($request->query('status'), fn ($q, $value) => $q->where('status', $value));
 
@@ -83,6 +85,14 @@ class CollectorVisitController extends Controller
             'status' => ['required', Rule::in(['completed', 'no_answer', 'refused', 'rescheduled'])],
             'next_visit_date' => ['nullable', 'date'],
         ]);
+
+        if ($data['status'] === 'completed') {
+            $hasSignature = $visit->evidence()->where('type', CollectorVisitEvidence::TYPE_SIGNATURE)->exists();
+            if (! $hasSignature) {
+                return $this->error('Tanda tangan penghuni diperlukan sebelum kunjungan dapat diselesaikan.', 422);
+            }
+        }
+
         $old = $visit->toArray();
         $visit->update($data);
         $auditService->log('collector_visit_updated', 'visits', 'UPDATE', $visit, $old, $visit->refresh()->toArray());

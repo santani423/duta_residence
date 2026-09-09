@@ -84,15 +84,17 @@ class _UnitDetailScreenState extends State<UnitDetailScreen> {
           final resident = asMap(unit['resident']);
           final billings = asList(unit['billings']).map(asMap).toList();
           final outstanding = billings.where(
-            (billing) => billing['status_id'] != '02' && billing['status_id'] != '04',
+            (billing) =>
+                billing['status_id'] != '02' && billing['status_id'] != '04',
           );
           final totalOutstanding = outstanding.fold<double>(
             0,
             (sum, billing) =>
                 sum +
                 (num.tryParse(
-                          asMap(billing['penalty_detail'])['total_amount']
-                                  ?.toString() ??
+                          asMap(
+                                billing['penalty_detail'],
+                              )['total_amount']?.toString() ??
                               '',
                         ) ??
                         0)
@@ -124,7 +126,11 @@ class _UnitDetailScreenState extends State<UnitDetailScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                _ActionsGrid(apiClient: widget.apiClient, unit: unit, onChanged: _refresh),
+                _ActionsGrid(
+                  apiClient: widget.apiClient,
+                  unit: unit,
+                  onChanged: _refresh,
+                ),
                 const SizedBox(height: AppSpacing.lg),
                 DutaCard(
                   child: Column(
@@ -140,6 +146,12 @@ class _UnitDetailScreenState extends State<UnitDetailScreen> {
                             title: compact(asMap(visit)['purpose']),
                             subtitle:
                                 '${dateTime(asMap(visit)['visit_date'])} — ${compact(asMap(visit)['status'])}',
+                            trailing: asMap(visit)['status'] == 'completed'
+                                ? _SignatureBadge(
+                                    signed:
+                                        asMap(visit)['has_signature'] == true,
+                                  )
+                                : null,
                           ),
                     ],
                   ),
@@ -220,8 +232,7 @@ class _ActionsGrid extends StatelessWidget {
           onTap: () async {
             await Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) =>
-                    PtpFormScreen(apiClient: apiClient, unit: unit),
+                builder: (_) => PtpFormScreen(apiClient: apiClient, unit: unit),
               ),
             );
             onChanged();
@@ -303,21 +314,54 @@ class _ActionButton extends StatelessWidget {
 }
 
 class _ListLine extends StatelessWidget {
-  const _ListLine({required this.title, required this.subtitle});
+  const _ListLine({required this.title, required this.subtitle, this.trailing});
 
   final String title;
   final String subtitle;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-          Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
+          ),
+          ?trailing,
         ],
+      ),
+    );
+  }
+}
+
+class _SignatureBadge extends StatelessWidget {
+  const _SignatureBadge({required this.signed});
+
+  final bool signed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: signed
+          ? 'Tanda tangan penghuni sudah tersimpan'
+          : 'Belum ditandatangani',
+      child: Icon(
+        signed ? Icons.check_circle : Icons.warning_amber_rounded,
+        size: 18,
+        color: signed ? colors.primary : colors.error,
       ),
     );
   }
