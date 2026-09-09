@@ -160,6 +160,7 @@ export default function ResidentsPage() {
         <ResidentForm
           form={form}
           districts={districts.data?.data || []}
+          clusters={clusters.data?.data || []}
           onFinish={save.mutate}
           loading={save.isPending}
           editing={drawer.type === 'edit'}

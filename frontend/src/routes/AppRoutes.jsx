@@ -40,6 +40,7 @@ const ResidentPortalPage = lazy(() => import('../pages/resident/ResidentPortalPa
 const ManualBookPage = lazy(() => import('../pages/ManualBookPage.jsx'));
 const AdminManualBookPage = lazy(() => import('../pages/AdminManualBookPage.jsx'));
 const AdminHelpSettingsPage = lazy(() => import('../pages/AdminHelpSettingsPage.jsx'));
+const AdminWatermarkSettingsPage = lazy(() => import('../pages/AdminWatermarkSettingsPage.jsx'));
 const CmsHeroSlidesPage = lazy(() => import('../pages/cms/CmsHeroSlidesPage.jsx'));
 const CmsServicesPage = lazy(() => import('../pages/cms/CmsServicesPage.jsx'));
 const CmsFeaturesPage = lazy(() => import('../pages/cms/CmsFeaturesPage.jsx'));
@@ -164,6 +165,7 @@ export default function AppRoutes() {
         <Route path="manual-book/:module/:section" element={<LazyPage><ManualBookPage /></LazyPage>} />
         <Route path="admin/manual-book" element={<Protected permissions={['manual-book.manage']}><LazyPage><AdminManualBookPage /></LazyPage></Protected>} />
         <Route path="admin/help-settings" element={<Protected permissions={['help-settings.manage']}><LazyPage><AdminHelpSettingsPage /></LazyPage></Protected>} />
+        <Route path="admin/settings/watermark" element={<Protected permissions={['watermark-settings.manage']}><LazyPage><AdminWatermarkSettingsPage /></LazyPage></Protected>} />
         <Route path="admin/cms/hero-slides" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsHeroSlidesPage /></LazyPage></Protected>} />
         <Route path="admin/cms/services" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsServicesPage /></LazyPage></Protected>} />
         <Route path="admin/cms/features" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsFeaturesPage /></LazyPage></Protected>} />

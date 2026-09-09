@@ -35,7 +35,7 @@ class RolePermissionSeeder extends Seeder
             'resident-documents.view', 'resident-documents.create', 'resident-documents.update', 'resident-documents.delete', 'resident-documents.verify',
             'vehicles.view', 'vehicles.create', 'vehicles.update', 'vehicles.delete',
             'occupants.view', 'occupants.create', 'occupants.update', 'occupants.delete',
-            'manual-book.manage', 'help-settings.manage', 'guided-tours.manage',
+            'manual-book.manage', 'help-settings.manage', 'guided-tours.manage', 'watermark-settings.manage',
             'emergency-alerts.view', 'emergency-alerts.acknowledge', 'emergency-alerts.create',
             'landing-cms.manage',
             'collector-assignments.view', 'collector-assignments.create', 'collector-assignments.update', 'collector-assignments.delete', 'collector-assignments.assign',

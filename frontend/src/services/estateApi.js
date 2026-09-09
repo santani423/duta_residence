@@ -299,6 +299,11 @@ export const api = {
     upsert: (settings) => http.put('/admin/help-settings', { settings }),
     remove: (id) => http.delete(`/admin/help-settings/${id}`),
   },
+  watermarkSettings: {
+    show: () => http.get('/watermark-settings'),
+    update: (payload) => http.put('/admin/watermark-settings', payload),
+    uploadLogo: (formData) => http.post('/admin/watermark-settings/logo', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  },
   guidedTours: {
     list: () => http.get('/guided-tours'),
     progress: (id, payload) => http.post(`/guided-tours/${id}/progress`, payload),

@@ -77,6 +77,7 @@ use App\Http\Controllers\Api\V1\UnitController;
 use App\Http\Controllers\Api\V1\UnitOccupantController;
 use App\Http\Controllers\Api\V1\UnitVehicleController;
 use App\Http\Controllers\Api\V1\UserController;
+use App\Http\Controllers\Api\V1\WatermarkSettingController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
@@ -378,6 +379,13 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::get('help-settings', [HelpSettingController::class, 'index']);
     Route::put('admin/help-settings', [HelpSettingController::class, 'upsert'])->middleware('permission:help-settings.manage');
     Route::delete('admin/help-settings/{setting}', [HelpSettingController::class, 'destroy'])->middleware('permission:help-settings.manage');
+
+    // Watermark overlay config - read is open to every logged-in role (the
+    // app shell needs it to render the global overlay), writes are Super
+    // Admin only via watermark-settings.manage.
+    Route::get('watermark-settings', [WatermarkSettingController::class, 'show']);
+    Route::put('admin/watermark-settings', [WatermarkSettingController::class, 'update'])->middleware('permission:watermark-settings.manage');
+    Route::post('admin/watermark-settings/logo', [WatermarkSettingController::class, 'uploadLogo'])->middleware('permission:watermark-settings.manage');
 
     Route::get('guided-tours', [GuidedTourController::class, 'index']);
     Route::post('guided-tours/{tour}/progress', [GuidedTourController::class, 'progress']);

@@ -16,6 +16,7 @@ const MODULE_ROUTES = [
   ['/audit-logs', 'users'],
   ['/admin/manual-book', 'general'],
   ['/admin/help-settings', 'general'],
+  ['/admin/settings/watermark', 'general'],
   ['/admin/settings', 'payments'],
   ['/manual-book', 'general'],
 ];

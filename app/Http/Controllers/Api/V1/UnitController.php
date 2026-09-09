@@ -29,6 +29,8 @@ class UnitController extends Controller
             ->when($request->query('status_id'), fn ($q, $value) => $q->where('status_id', $value))
             ->when($request->query('property_type_id'), fn ($q, $value) => $q->where('property_type_id', $value))
             ->when($request->query('resident_id'), fn ($q, $value) => $q->where('resident_id', $value))
+            ->when($request->query('block'), fn ($q, $value) => $q->where('block', 'like', "%{$value}%"))
+            ->when($request->boolean('unassigned'), fn ($q) => $q->whereNull('resident_id'))
             ->when($request->query('customer'), fn ($q, $value) => $q->whereHas('resident', fn ($r) => $r->where('name', 'like', "%{$value}%")))
             ->when($request->query('address'), fn ($q, $value) => $q->where(fn ($inner) => $inner
                 ->where('block', 'like', "%{$value}%")
@@ -45,6 +47,10 @@ class UnitController extends Controller
     {
         $data = $this->validateUnit($request);
         $data['created_by'] = $request->user()->id;
+
+        if (($data['status_id'] ?? null) === 'AK' && empty($data['handover_date'])) {
+            $data['handover_date'] = now()->toDateString();
+        }
 
         // Menghasilkan kode unit lalu menyimpannya dikunci per cluster (lihat
         // UnitCodeGeneratorService), tapi tetap dibungkus retry di sini sebagai jaring
@@ -96,6 +102,11 @@ class UnitController extends Controller
     {
         $data = $this->validateUnit($request, $unit);
         $data['updated_by'] = $request->user()->id;
+
+        if (($data['status_id'] ?? $unit->status_id) === 'AK' && empty($data['handover_date']) && empty($unit->handover_date)) {
+            $data['handover_date'] = now()->toDateString();
+        }
+
         $old = $unit->toArray();
         $unit->update($data);
         $auditService->log('unit_updated', 'units', 'UPDATE', $unit, $old, $unit->toArray());

@@ -40,6 +40,7 @@ import {
   FileProtectOutlined,
   UserSwitchOutlined,
   SwapOutlined,
+  EyeInvisibleOutlined,
 } from '@ant-design/icons';
 
 export const roles = ['root', 'back_office', 'loket', 'cs', 'customer', 'collector'];
@@ -63,6 +64,7 @@ export const menuItems = [
   { key: '/admin/settings/payment-gateway', label: 'Payment Gateway', icon: SafetyCertificateOutlined, permissions: ['payment-settings.view'] },
   { key: '/admin/manual-book', label: 'Kelola Manual Book', icon: ReadOutlined, permissions: ['manual-book.manage'] },
   { key: '/admin/help-settings', label: 'Pengaturan Bantuan', icon: SettingOutlined, permissions: ['help-settings.manage'] },
+  { key: '/admin/settings/watermark', label: 'Watermark Management', icon: EyeInvisibleOutlined, permissions: ['watermark-settings.manage'] },
   {
     key: '/admin/cms',
     label: 'CMS Landing Page',
@@ -205,6 +207,7 @@ export const permissionLabels = {
   'payment-settings.update': 'Ubah pengaturan payment gateway',
   'manual-book.manage': 'Kelola Manual Book',
   'help-settings.manage': 'Kelola pengaturan ikon bantuan',
+  'watermark-settings.manage': 'Kelola pengaturan watermark',
   'guided-tours.manage': 'Kelola Guided Tour',
   'landing-cms.manage': 'Kelola CMS Landing Page',
   'visits.view': 'Lihat kunjungan kolektor',

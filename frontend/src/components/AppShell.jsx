@@ -18,6 +18,7 @@ import { useThemeMode } from '../state/ThemeContext.jsx';
 import { HelpCenterProvider } from '../state/HelpCenterContext.jsx';
 import NotificationBell from './layout/NotificationBell.jsx';
 import EmergencyAlertWatcher from './layout/EmergencyAlertWatcher.jsx';
+import WatermarkOverlay from './layout/WatermarkOverlay.jsx';
 import HelpCenter from './help/HelpCenter.jsx';
 
 const { Header, Sider, Content } = Layout;
@@ -122,6 +123,7 @@ export default function AppShell() {
   return (
     <HelpCenterProvider>
       <EmergencyAlertWatcher />
+      <WatermarkOverlay />
       <Layout className="app-shell">
         {!isMobile ? (
           <Sider width={250} collapsible collapsed={collapsed} trigger={null} className="app-sider">

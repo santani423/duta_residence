@@ -77,9 +77,16 @@ export default function UnitForm({ form, clusters = [], residents = [], isEdit =
       <Form.Item label="Luas Tanah" name="land_area">
         <InputNumber min={0} addonAfter="m2" style={{ width: '100%' }} />
       </Form.Item>
-      <Form.Item label="Tanggal Serah Terima" name="handover_date" getValueProps={(value) => ({ value: value ? dayjs(value) : null })}>
-        <DatePicker style={{ width: '100%' }} />
-      </Form.Item>
+      {isEdit && (
+        <Form.Item
+          label="Tanggal Serah Terima"
+          name="handover_date"
+          tooltip="Otomatis tercatat saat status unit diubah menjadi Aktif."
+          getValueProps={(value) => ({ value: value ? dayjs(value) : null })}
+        >
+          <DatePicker style={{ width: '100%' }} />
+        </Form.Item>
+      )}
       <Form.Item label="Occupancy" name="occupancy_id">
         <Select options={occupancyOptions} />
       </Form.Item>

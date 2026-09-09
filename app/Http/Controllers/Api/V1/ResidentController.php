@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\Resident;
+use App\Models\Unit;
 use App\Models\User;
 use App\Services\AuditService;
 use App\Services\CollectorAssignmentService;
 use App\Services\ResidentAccountService;
+use App\Services\UnitOwnershipSyncService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -59,9 +61,11 @@ class ResidentController extends Controller
         ]);
     }
 
-    public function store(Request $request, AuditService $auditService, ResidentAccountService $accounts)
+    public function store(Request $request, AuditService $auditService, ResidentAccountService $accounts, UnitOwnershipSyncService $ownershipSync)
     {
         $data = $this->validateResident($request);
+        $unitId = $data['unit_id'] ?? null;
+        unset($data['unit_id']);
         $username = $data['username'] ?? null;
         unset($data['username']);
         $data['id'] = $accounts->generateResidentId();
@@ -70,6 +74,17 @@ class ResidentController extends Controller
         $auditService->log('resident_created', 'residents', 'CREATE', $resident, [], $resident->toArray());
 
         $loginAccount = $accounts->createCustomerAccount($resident, $auditService, $username);
+
+        if ($unitId) {
+            // Unit yang dipilih sudah divalidasi masih kosong (resident_id null) saat validasi
+            // request, tapi dikunci ulang di sini untuk menutup celah race condition dengan
+            // request lain yang menautkan unit yang sama secara bersamaan.
+            $unit = Unit::query()->whereNull('resident_id')->findOrFail($unitId);
+            $oldUnit = $unit->toArray();
+            $unit->update(['resident_id' => $resident->id, 'updated_by' => $request->user()->id]);
+            $auditService->log('unit_updated', 'units', 'UPDATE', $unit, $oldUnit, $unit->toArray());
+            $ownershipSync->sync($unit, $auditService);
+        }
 
         return $this->success([
             'resident' => $resident,
@@ -146,9 +161,14 @@ class ResidentController extends Controller
                 'regex:/^[a-zA-Z0-9._-]+$/',
                 Rule::unique('users', 'username'),
             ],
+            'unit_id' => $resident ? ['sometimes'] : [
+                'nullable',
+                Rule::exists('units', 'id')->whereNull('resident_id'),
+            ],
         ], [
             'phone.regex' => 'Nomor HP tidak valid.',
             'username.regex' => 'Username hanya boleh huruf, angka, titik, - dan _.',
+            'unit_id.exists' => 'Unit tidak ditemukan atau sudah memiliki penghuni.',
         ]);
     }
 }

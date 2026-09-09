@@ -1,4 +1,6 @@
 import { Form, Input, Select, Space } from 'antd';
+import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { api } from '../../services/estateApi.js';
 import InfoIcon from '../help/InfoIcon.jsx';
 
@@ -23,7 +25,16 @@ async function checkAvailability(field, value, excludeId, label) {
   }
 }
 
-export default function ResidentForm({ form, districts = [], onFinish, loading, editing = false, residentId = null }) {
+export default function ResidentForm({ form, districts = [], clusters = [], onFinish, loading, editing = false, residentId = null }) {
+  const [unitClusterFilter, setUnitClusterFilter] = useState(undefined);
+  const [unitBlockFilter, setUnitBlockFilter] = useState(undefined);
+
+  const availableUnits = useQuery({
+    queryKey: ['available-units', unitClusterFilter, unitBlockFilter],
+    queryFn: () => api.units.list({ unassigned: 1, cluster_id: unitClusterFilter, block: unitBlockFilter, per_page: 200 }),
+    enabled: !editing,
+  });
+
   return (
     <Form
       form={form}
@@ -35,6 +46,49 @@ export default function ResidentForm({ form, districts = [], onFinish, loading, 
       <Form.Item label="Nama" name="name" rules={[{ required: true, message: 'Nama wajib diisi' }]}>
         <Input placeholder="Nama pemilik atau penghuni" />
       </Form.Item>
+      {!editing ? (
+        <>
+          <Form.Item label="Filter Unit Kosong" className="full-span" tooltip="Persempit daftar unit kosong di bawah berdasarkan cluster dan blok.">
+            <Space wrap>
+              <Select
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                placeholder="Cluster"
+                style={{ width: 180 }}
+                value={unitClusterFilter}
+                onChange={setUnitClusterFilter}
+                options={clusters.map((item) => ({ value: item.id, label: `${item.id} - ${item.name}` }))}
+              />
+              <Input
+                allowClear
+                placeholder="Blok"
+                style={{ width: 120 }}
+                value={unitBlockFilter}
+                onChange={(event) => setUnitBlockFilter(event.target.value || undefined)}
+              />
+            </Space>
+          </Form.Item>
+          <Form.Item
+            label={<Space size={4}>Unit<InfoIcon scope={{ module: 'residents', component: 'resident-unit-field' }} tooltip="Opsional. Pilih unit yang belum memiliki penghuni untuk langsung ditautkan ke penghuni baru ini." module="residents" slug="kelola-data-penghuni" /></Space>}
+            name="unit_id"
+            className="full-span"
+          >
+            <Select
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              placeholder="Belum ditautkan ke unit manapun"
+              loading={availableUnits.isFetching}
+              notFoundContent={availableUnits.isFetching ? 'Memuat...' : 'Tidak ada unit kosong'}
+              options={(availableUnits.data?.data || []).map((unit) => ({
+                value: unit.id,
+                label: `${unit.id} - ${unit.cluster?.name || unit.cluster_id} Blok ${unit.block} No ${unit.lot_number}`,
+              }))}
+            />
+          </Form.Item>
+        </>
+      ) : null}
       <Form.Item
         label="Nomor HP"
         name="phone"

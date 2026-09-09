@@ -37,6 +37,7 @@ class MediaController extends Controller
             'landing_gallery_items' => ['media_id'],
             'landing_events' => ['banner_media_id'],
             'landing_articles' => ['featured_image_media_id', 'thumbnail_media_id'],
+            'watermark_settings' => ['media_id'],
         ];
     }
 
