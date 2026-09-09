@@ -274,7 +274,7 @@ export default function ClusterDetailPage() {
           columns={[
             { title: 'Unit', dataIndex: 'id', fixed: 'left', width: 90 },
             { title: 'Blok', dataIndex: 'block', width: 80 },
-            { title: 'Kavling', dataIndex: 'lot_number', width: 90 },
+            { title: 'No Unit', dataIndex: 'lot_number', width: 90 },
             {
               title: 'Penghuni',
               width: 220,

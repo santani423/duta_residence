@@ -33,7 +33,7 @@ export default function UnitForm({ form, clusters = [], residents = [], isEdit =
       initialValues={{
         property_type_id: 'B',
         occupancy_id: '1',
-        status_id: 'AK',
+        status_id: 'TA',
         is_penalty_eligible: true,
         is_discount_eligible: false,
       }}
@@ -65,7 +65,7 @@ export default function UnitForm({ form, clusters = [], residents = [], isEdit =
       <Form.Item label="Blok" name="block" rules={[{ required: true }]}>
         <Input placeholder="A" />
       </Form.Item>
-      <Form.Item label="Nomor Kavling" name="lot_number" rules={[{ required: true }]}>
+      <Form.Item label="Nomor Unit" name="lot_number" rules={[{ required: true }]}>
         <Input placeholder="01" />
       </Form.Item>
       <Form.Item label="Tipe Properti" name="property_type_id" rules={[{ required: true }]}>
@@ -90,9 +90,15 @@ export default function UnitForm({ form, clusters = [], residents = [], isEdit =
       <Form.Item label="Occupancy" name="occupancy_id">
         <Select options={occupancyOptions} />
       </Form.Item>
-      <Form.Item label="Status Unit" name="status_id">
-        <Select options={residentStatusOptions} />
-      </Form.Item>
+      {isEdit ? (
+        <Form.Item label="Status Unit" name="status_id">
+          <Select options={residentStatusOptions} />
+        </Form.Item>
+      ) : (
+        <Form.Item name="status_id" hidden>
+          <Input />
+        </Form.Item>
+      )}
       <Form.Item label="Catatan" name="notes" className="full-span">
         <Input.TextArea rows={3} />
       </Form.Item>

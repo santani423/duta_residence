@@ -30,6 +30,7 @@ class UnitController extends Controller
             ->when($request->query('property_type_id'), fn ($q, $value) => $q->where('property_type_id', $value))
             ->when($request->query('resident_id'), fn ($q, $value) => $q->where('resident_id', $value))
             ->when($request->query('block'), fn ($q, $value) => $q->where('block', 'like', "%{$value}%"))
+            ->when($request->query('lot_number'), fn ($q, $value) => $q->where('lot_number', 'like', "%{$value}%"))
             ->when($request->boolean('unassigned'), fn ($q) => $q->whereNull('resident_id'))
             ->when($request->query('customer'), fn ($q, $value) => $q->whereHas('resident', fn ($r) => $r->where('name', 'like', "%{$value}%")))
             ->when($request->query('address'), fn ($q, $value) => $q->where(fn ($inner) => $inner
