@@ -255,4 +255,67 @@ class UnitApiTest extends TestCase
         $response->assertJsonPath('data.id', 'DA101');
         $this->assertCount(1, Unit::where('id', 'DA100')->get());
     }
+
+    public function test_unit_uniqueness_is_scoped_to_cluster_block_and_lot_number_combination(): void
+    {
+        $this->seed();
+
+        Sanctum::actingAs(User::where('username', 'root')->first());
+
+        Unit::factory()->create(['id' => 'DA200', 'cluster_id' => 'DA', 'block' => 'A', 'lot_number' => '1']);
+
+        $payload = [
+            'cluster_id' => 'DA',
+            'block' => 'A',
+            'lot_number' => '1',
+            'property_type_id' => 'B',
+            'occupancy_id' => '1',
+            'status_id' => 'AK',
+        ];
+
+        // Same cluster + block + lot number must be rejected.
+        $this->postJson('/api/v1/units', $payload)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('lot_number')
+            ->assertJsonFragment(['lot_number' => ['Unit dengan Blok A Nomor 1 sudah terdaftar di Cluster Cluster Dahlia. Silakan gunakan Blok atau Nomor Unit lain.']]);
+
+        // Same cluster + block but a different lot number is allowed.
+        $this->postJson('/api/v1/units', [...$payload, 'lot_number' => '2'])->assertCreated();
+
+        // Same cluster + lot number but a different block is allowed.
+        $this->postJson('/api/v1/units', [...$payload, 'block' => 'B'])->assertCreated();
+
+        // Same block + lot number but a different cluster is allowed.
+        $this->postJson('/api/v1/units', [...$payload, 'cluster_id' => 'GA'])->assertCreated();
+    }
+
+    public function test_updating_unit_to_an_already_used_combination_is_rejected_but_keeping_its_own_is_allowed(): void
+    {
+        $this->seed();
+
+        Sanctum::actingAs(User::where('username', 'root')->first());
+
+        Unit::factory()->create(['id' => 'DA210', 'cluster_id' => 'DA', 'block' => 'A', 'lot_number' => '1']);
+        $otherId = Unit::factory()->create(['id' => 'DA211', 'cluster_id' => 'DA', 'block' => 'A', 'lot_number' => '2'])->id;
+
+        // Editing a unit to collide with another unit's combination must be rejected.
+        $this->putJson("/api/v1/units/{$otherId}", [
+            'cluster_id' => 'DA',
+            'block' => 'A',
+            'lot_number' => '1',
+            'property_type_id' => 'B',
+            'occupancy_id' => '1',
+            'status_id' => 'AK',
+        ])->assertUnprocessable()->assertJsonValidationErrors('lot_number');
+
+        // Saving a unit with its own unchanged combination must not be flagged as a duplicate.
+        $this->putJson("/api/v1/units/{$otherId}", [
+            'cluster_id' => 'DA',
+            'block' => 'A',
+            'lot_number' => '2',
+            'property_type_id' => 'B',
+            'occupancy_id' => '1',
+            'status_id' => 'AK',
+        ])->assertOk();
+    }
 }
