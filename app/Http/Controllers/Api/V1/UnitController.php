@@ -78,11 +78,17 @@ class UnitController extends Controller
                     throw $e;
                 }
 
-                // Bukan tabrakan primary key (yang memang ditangani via retry di atas),
-                // melainkan pelanggaran unique constraint lain (mis. kombinasi
-                // cluster+blok+nomor unit) akibat race condition tepat setelah validasi
-                // lolos: laporkan sebagai error validasi yang jelas, jangan diulang.
-                if (! str_contains($e->getMessage(), 'PRIMARY')) {
+                // $e->getMessage() also has the full SQL (with every column, "lot_number"
+                // included) appended by Laravel for debugging, so it can't be used to tell
+                // which constraint failed. The raw driver message in errorInfo[2] only
+                // names the columns/index actually violated: SQLite says "UNIQUE constraint
+                // failed: units.cluster_id, units.block, units.lot_number" and MySQL's key
+                // name is "units_cluster_id_block_lot_number_unique" - both mention
+                // "lot_number" only for that composite constraint, never for a plain
+                // primary-key (units.id / PRIMARY) collision.
+                $driverMessage = $e->errorInfo[2] ?? '';
+
+                if (str_contains($driverMessage, 'lot_number')) {
                     $this->assertLotNumberAvailable($data['cluster_id'], $data['block'], $data['lot_number'], null);
 
                     throw $e;

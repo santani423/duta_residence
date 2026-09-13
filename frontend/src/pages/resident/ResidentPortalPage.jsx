@@ -40,9 +40,9 @@ import FilterBar from '../../components/common/FilterBar.jsx';
 import { EmptyData, ErrorState, LoadingState } from '../../components/common/ApiState.jsx';
 import StatusBadge from '../../components/common/StatusBadge.jsx';
 import ResponsiveTable from '../../components/tables/ResponsiveTable.jsx';
-import { api } from '../../services/estateApi.js';
+import { api, storageUrl } from '../../services/estateApi.js';
 import { useTableState } from '../../hooks/useTableState.js';
-import { compactText, formatCurrency, formatDate, formatDateTime, formatNotificationType } from '../../utils/format.js';
+import { compactText, formatCurrency, formatDate, formatDateTime, formatNotificationType, formatPeriod } from '../../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../../utils/apiError.js';
 import { downloadBlob } from '../../utils/download.js';
 import { useThemeMode } from '../../state/ThemeContext.jsx';
@@ -145,9 +145,29 @@ function PaymentConfigCard({ config, total, invoiceNumber, onProvider, vaNumber 
   );
 }
 
+function ManualProofPreview({ file }) {
+  const originFile = file?.[0]?.originFileObj;
+  const url = useMemo(() => (originFile ? URL.createObjectURL(originFile) : null), [originFile]);
+  useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
+
+  if (!originFile) return null;
+  const isImage = originFile.type?.startsWith('image/');
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      {isImage ? (
+        <img src={url} alt="Pratinjau bukti pembayaran" style={{ maxWidth: '100%', maxHeight: 260, borderRadius: 8, border: '1px solid #d9d9d9' }} />
+      ) : (
+        <Alert type="info" showIcon message={originFile.name} description="Berkas PDF siap dikirim." />
+      )}
+    </div>
+  );
+}
+
 function ManualProofDrawer({ payment, open, onClose }) {
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
+  const proofFile = Form.useWatch('proof', form);
   const upload = useMutation({
     mutationFn: (values) => {
       const formData = new FormData();
@@ -161,7 +181,7 @@ function ManualProofDrawer({ payment, open, onClose }) {
       return api.resident.uploadManualProof(payment.id, formData);
     },
     onSuccess: () => {
-      message.success('Bukti pembayaran dikirim dan menunggu verifikasi.');
+      message.success('Bukti pembayaran berhasil dikirim dan sedang menunggu verifikasi.');
       queryClient.invalidateQueries({ queryKey: ['resident-payments'] });
       queryClient.invalidateQueries({ queryKey: ['resident-payment', payment?.id] });
       form.resetFields();
@@ -173,21 +193,48 @@ function ManualProofDrawer({ payment, open, onClose }) {
     },
   });
 
+  function confirmSubmit(values) {
+    Modal.confirm({
+      title: 'Kirim bukti pembayaran?',
+      content: `Nominal ${formatCurrency(values.amount)} akan dikirim sebagai bukti pembayaran untuk ${payment?.invoice_number}. Pastikan data dan bukti sudah benar sebelum mengirim.`,
+      okText: 'Kirim',
+      cancelText: 'Periksa Lagi',
+      onOk: () => upload.mutate(values),
+    });
+  }
+
   return (
     <Drawer title="Upload Bukti Pembayaran" open={open} onClose={onClose} width={560} extra={<Button type="primary" loading={upload.isPending} onClick={() => form.submit()}>Kirim</Button>} destroyOnHidden>
-      <Alert type="info" showIcon message={payment?.invoice_number} description={`Total transfer: ${formatCurrency(payment?.total)}`} />
-      <Form form={form} layout="vertical" className="section-row" initialValues={{ amount: payment?.total, manual_transfer_date: dayjs() }} onFinish={upload.mutate}>
+      <Alert type="info" showIcon message={payment?.invoice_number} description={`Total tagihan: ${formatCurrency(payment?.total)} · Status: ${payment?.status || '-'}`} />
+      {asList(payment?.billings).length ? (
+        <Descriptions size="small" bordered column={1} style={{ marginTop: 12 }}>
+          {asList(payment.billings).map((billing) => (
+            <Descriptions.Item key={billing.id} label={billing.invoice_number}>
+              Periode {formatPeriod(billing.year, billing.month)} · {billing.billing_type} · Jatuh tempo {formatDate(billing.due_date)}
+            </Descriptions.Item>
+          ))}
+        </Descriptions>
+      ) : null}
+      <Form form={form} layout="vertical" className="section-row" initialValues={{ amount: payment?.total, manual_transfer_date: dayjs() }} onFinish={confirmSubmit}>
         <Form.Item label="Nama pengirim" name="sender_name" rules={[{ required: true }]}><Input /></Form.Item>
         <Form.Item label="Bank pengirim" name="sender_bank" rules={[{ required: true }]}><Input /></Form.Item>
         <Form.Item label="Nomor rekening pengirim" name="sender_account_number"><Input /></Form.Item>
         <Form.Item label="Nominal transfer" name="amount" rules={[{ required: true }]}><Input type="number" /></Form.Item>
         <Form.Item label="Tanggal transfer" name="manual_transfer_date" rules={[{ required: true }]}><DatePicker style={{ width: '100%' }} /></Form.Item>
-        <Form.Item label="Bukti pembayaran" name="proof" valuePropName="fileList" getValueFromEvent={(event) => event?.fileList} rules={[{ required: true }]}>
+        <Form.Item
+          label="Bukti pembayaran"
+          name="proof"
+          valuePropName="fileList"
+          getValueFromEvent={(event) => event?.fileList}
+          rules={[{ required: true, message: 'Bukti pembayaran wajib diunggah' }]}
+          extra="Format: JPG, JPEG, PNG, atau PDF. Maksimal ukuran mengikuti konfigurasi sistem."
+        >
           <Upload.Dragger beforeUpload={() => false} maxCount={1} accept=".jpg,.jpeg,.png,.pdf">
             <p className="ant-upload-drag-icon"><CloudUploadOutlined /></p>
-            <p>Pilih atau tarik file bukti pembayaran</p>
+            <p>Ambil foto, pilih dari galeri, atau pilih file PDF</p>
           </Upload.Dragger>
         </Form.Item>
+        <ManualProofPreview file={proofFile} />
         <Form.Item label="Catatan" name="manual_notes"><Input.TextArea rows={3} /></Form.Item>
       </Form>
     </Drawer>
@@ -659,17 +706,28 @@ function PaymentTable({ query, data, onChange }) {
           query={query}
           data={data}
           onChange={onChange}
-          scrollX={1260}
+          scrollX={1820}
           columns={[
             { title: 'Transaksi', dataIndex: 'transaction_number', width: 190, fixed: 'left' },
             { title: 'Invoice', dataIndex: 'invoice_number', width: 180 },
             { title: 'Gateway', dataIndex: 'payment_gateway', width: 110 },
             { title: 'Metode', dataIndex: 'payment_method', width: 130 },
             { title: 'Nominal', dataIndex: 'total', render: formatCurrency, width: 140 },
-            { title: 'Status', dataIndex: 'status', render: (value) => <StatusBadge type="transaction" value={value} />, width: 170 },
+            {
+              title: 'Status',
+              dataIndex: 'status',
+              width: 200,
+              render: (value, row) => (
+                <Space direction="vertical" size={2}>
+                  <StatusBadge type="transaction" value={value} />
+                  {value === 'rejected' && row.rejection_reason ? <Typography.Text type="danger" style={{ fontSize: 12 }}>{row.rejection_reason}</Typography.Text> : null}
+                </Space>
+              ),
+            },
+            { title: 'Bukti', render: (_, row) => (row.manual_proof_path ? <a href={storageUrl(row.manual_proof_path)} target="_blank" rel="noreferrer">Lihat</a> : '-'), width: 90 },
             { title: 'Transaksi', dataIndex: 'created_at', render: formatDateTime, width: 170 },
             { title: 'Dibayar', dataIndex: 'paid_at', render: formatDateTime, width: 170 },
-            { title: 'Kedaluwarsa', dataIndex: 'expired_at', render: formatDateTime, width: 170 },
+            { title: 'Diverifikasi Oleh', dataIndex: 'verified_by', render: (value) => value || '-', width: 160 },
             {
               title: 'Aksi',
               fixed: 'right',
@@ -718,15 +776,38 @@ function ResidentPaymentDetail() {
       {query.isLoading ? <LoadingState rows={8} /> : query.isError ? <ErrorState error={query.error} onRetry={query.refetch} /> : (
         <div className="resident-grid resident-grid-2">
           <Card title={data.transaction_number}>
-            <InfoList data={{ Invoice: data.invoice_number, Penghuni: data.resident?.name, Gateway: data.payment_gateway, Metode: data.payment_method, Subtotal: formatCurrency(data.fee_breakdown?.subtotal), Admin: formatCurrency(data.fee_breakdown?.admin_fee), Total: formatCurrency(data.fee_breakdown?.total), Status: data.status, 'Waktu transaksi': formatDateTime(data.created_at), 'Waktu pembayaran': formatDateTime(data.paid_at), 'Kedaluwarsa': formatDateTime(data.expired_at), 'Bukti manual': data.manual_proof_path, 'Catatan verifikator': data.verification_notes }} />
+            {data.status === 'rejected' && data.rejection_reason ? (
+              <Alert style={{ marginBottom: 16 }} type="error" showIcon message="Bukti pembayaran ditolak" description={`Alasan: ${data.rejection_reason}`} />
+            ) : null}
+            <InfoList data={{
+              Invoice: data.invoice_number,
+              Penghuni: data.resident?.name,
+              Gateway: data.payment_gateway,
+              Metode: data.payment_method,
+              Subtotal: formatCurrency(data.fee_breakdown?.subtotal),
+              Admin: formatCurrency(data.fee_breakdown?.admin_fee),
+              Total: formatCurrency(data.fee_breakdown?.total),
+              'Nominal Dibayar': data.manual_amount ? formatCurrency(data.manual_amount) : undefined,
+              'Tanggal Pembayaran': data.manual_transfer_date ? formatDate(data.manual_transfer_date) : undefined,
+              Status: data.status,
+              'Waktu transaksi': formatDateTime(data.created_at),
+              'Waktu pembayaran': formatDateTime(data.paid_at),
+              'Diverifikasi Oleh': data.verified_by,
+              'Bukti pembayaran': data.manual_proof_path ? <a href={storageUrl(data.manual_proof_path)} target="_blank" rel="noreferrer">Lihat Bukti</a> : undefined,
+            }} />
+            {data.manual_proof_path && /\.(jpe?g|png)$/i.test(data.manual_proof_path) ? (
+              <a href={storageUrl(data.manual_proof_path)} target="_blank" rel="noreferrer">
+                <img src={storageUrl(data.manual_proof_path)} alt="Bukti pembayaran" style={{ maxWidth: '100%', maxHeight: 320, marginTop: 12, borderRadius: 8, border: '1px solid #d9d9d9' }} />
+              </a>
+            ) : null}
             <Space className="action-row" wrap>
               {data.status === 'paid' ? <Button icon={<DownloadOutlined />} onClick={async () => downloadBlob(await api.resident.downloadPaymentReceipt(data.id), `${data.transaction_number}.pdf`)}>Download Receipt</Button> : null}
               {data.payment_url && data.status === 'pending' ? <Button icon={<LinkOutlined />} href={data.payment_url} target="_blank">Lanjutkan Pembayaran</Button> : null}
-              {data.payment_gateway === 'manual' && ['pending', 'rejected'].includes(data.status) ? <Button icon={<CloudUploadOutlined />} onClick={() => setProofOpen(true)}>Upload Bukti</Button> : null}
+              {data.payment_gateway === 'manual' && ['pending', 'rejected'].includes(data.status) ? <Button icon={<CloudUploadOutlined />} onClick={() => setProofOpen(true)}>{data.status === 'rejected' ? 'Upload Ulang Bukti' : 'Upload Bukti'}</Button> : null}
             </Space>
           </Card>
           <Card title="Riwayat Status">
-            <Timeline items={asList(data.status_history).map((item) => ({ children: <span><StatusBadge type="transaction" value={item.status} /> {formatDateTime(item.changed_at)}<br />{item.notes}</span> }))} />
+            <Timeline items={asList(data.status_history).map((item) => ({ children: <span><StatusBadge type="transaction" value={item.status} /> {formatDateTime(item.changed_at)}{item.verified_by ? ` · ${item.verified_by}` : ''}<br />{item.notes}</span> }))} />
           </Card>
         </div>
       )}

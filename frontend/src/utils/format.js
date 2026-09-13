@@ -32,6 +32,9 @@ export function compactText(value, fallback = '-') {
 
 const NOTIFICATION_TYPE_LABELS = {
   emergency_alert: 'Emergency Alert',
+  payment_proof_uploaded: 'Bukti Pembayaran Diunggah',
+  payment_verified: 'Pembayaran Diverifikasi',
+  payment_rejected: 'Pembayaran Ditolak',
 };
 
 export function formatNotificationType(value, fallback = '-') {

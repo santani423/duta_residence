@@ -13,7 +13,9 @@ class PaymentTransaction extends Model
         'transaction_number', 'invoice_number', 'unit_id', 'subtotal', 'tax',
         'admin_fee', 'total', 'currency', 'payment_provider', 'payment_method',
         'provider_reference', 'status', 'payment_url', 'expired_at', 'paid_at',
-        'manual_proof_path', 'manual_transfer_date', 'manual_notes',
+        'manual_proof_path', 'manual_sender_name', 'manual_sender_bank',
+        'manual_sender_account_number', 'manual_amount', 'manual_transfer_date',
+        'manual_notes', 'manual_proof_uploaded_at',
         'verification_notes', 'verified_by', 'verified_at', 'provider_payload', 'created_by',
     ];
 
@@ -22,9 +24,11 @@ class PaymentTransaction extends Model
         'tax' => 'decimal:2',
         'admin_fee' => 'decimal:2',
         'total' => 'decimal:2',
+        'manual_amount' => 'decimal:2',
         'expired_at' => 'datetime',
         'paid_at' => 'datetime',
         'manual_transfer_date' => 'date',
+        'manual_proof_uploaded_at' => 'datetime',
         'verified_at' => 'datetime',
         'provider_payload' => 'array',
     ];

@@ -20,6 +20,7 @@ use App\Models\Resident;
 use App\Models\SiteSetting;
 use App\Models\Unit;
 use App\Models\UnitDeposit;
+use App\Models\User;
 use App\Services\AuditService;
 use App\Services\PaymentService;
 use App\Services\PenaltyService;
@@ -353,7 +354,7 @@ class ResidentPortalController extends Controller
     {
         $unit = $this->unit($request);
         $query = PaymentTransaction::query()
-            ->with('billings')
+            ->with(['billings', 'verifier'])
             ->where('unit_id', $unit->id)
             ->when($request->query('search'), fn (Builder $q, $value) => $q->where(fn (Builder $inner) => $inner
                 ->where('transaction_number', 'like', "%{$value}%")
@@ -423,20 +424,53 @@ class ResidentPortalController extends Controller
         $this->storeManagedFile($data['proof'], $request->user(), $payment, 'manual-payments', $stored);
         $payment->update([
             'manual_proof_path' => $stored,
+            'manual_sender_name' => $data['sender_name'],
+            'manual_sender_bank' => $data['sender_bank'],
+            'manual_sender_account_number' => $data['sender_account_number'] ?? null,
+            'manual_amount' => $data['amount'],
             'manual_transfer_date' => $data['manual_transfer_date'],
-            'manual_notes' => trim(collect([
-                "Pengirim: {$data['sender_name']}",
-                "Bank: {$data['sender_bank']}",
-                isset($data['sender_account_number']) ? "Rekening: {$data['sender_account_number']}" : null,
-                "Nominal: {$data['amount']}",
-                $data['manual_notes'] ?? null,
-            ])->filter()->implode("\n")),
+            'manual_notes' => $data['manual_notes'] ?? null,
+            'manual_proof_uploaded_at' => now(),
             'status' => 'waiting_verification',
             'verification_notes' => null,
         ]);
-        $auditService->log('manual_payment_proof_uploaded', 'payments', 'UPLOAD_PROOF', $payment, $old, $payment->refresh()->toArray());
+        $payment->refresh();
+        $auditService->log('manual_payment_proof_uploaded', 'payments', 'UPLOAD_PROOF', $payment, $old, $payment->toArray());
 
-        return $this->success($this->paymentPayload($payment), 'Bukti pembayaran berhasil dikirim.');
+        NotificationQueue::query()->create([
+            'unit_id' => $payment->unit_id,
+            'user_id' => $request->user()->id,
+            'type' => 'payment_proof_uploaded',
+            'channel' => 'in_app',
+            'recipient' => $request->user()->id,
+            'message' => 'Bukti pembayaran berhasil dikirim dan sedang menunggu verifikasi.',
+            'read_status' => 'unread',
+            'status' => 'sent',
+            'sent_at' => now(),
+        ]);
+
+        // Penghuni hanya melihat notifikasi ini di portalnya sendiri (di-scope oleh
+        // user_id di atas) - staff perlu baris terpisah per admin/finance agar muncul
+        // di bell notifikasi mereka, karena tanpa ini tidak ada satupun mekanisme yang
+        // memberi tahu petugas bahwa ada bukti baru menunggu diverifikasi.
+        $residentName = $payment->unit?->resident?->name ?? $payment->unit_id;
+        $verifiers = User::permission('payments.verify')->get();
+
+        foreach ($verifiers as $verifier) {
+            NotificationQueue::query()->create([
+                'unit_id' => $payment->unit_id,
+                'user_id' => $verifier->id,
+                'type' => 'payment_proof_uploaded',
+                'channel' => 'in_app',
+                'recipient' => $verifier->id,
+                'message' => "Bukti pembayaran baru dari {$residentName} (Unit {$payment->unit_id}) menunggu verifikasi.",
+                'read_status' => 'unread',
+                'status' => 'sent',
+                'sent_at' => now(),
+            ]);
+        }
+
+        return $this->success($this->paymentPayload($payment), 'Bukti pembayaran berhasil dikirim dan sedang menunggu verifikasi.');
     }
 
     public function downloadReceipt(Request $request, PaymentTransaction $payment)
@@ -985,7 +1019,7 @@ class ResidentPortalController extends Controller
         $unit = $this->unit($request);
         abort_if($payment->unit_id !== $unit->id, 404);
 
-        return $payment->load(['unit.cluster', 'billings']);
+        return $payment->load(['unit.cluster', 'billings', 'verifier']);
     }
 
     private function assertIsDesignatedPayer(Request $request, Unit $unit): void
@@ -1106,6 +1140,14 @@ class ResidentPortalController extends Controller
             'transaction_number' => $transaction->transaction_number,
             'invoice_number' => $transaction->invoice_number,
             'billing_invoice_numbers' => $transaction->billings->map(fn (Billing $billing) => 'BIL-'.$billing->id)->values(),
+            'billings' => $transaction->billings->map(fn (Billing $billing) => [
+                'id' => $billing->id,
+                'invoice_number' => 'BIL-'.$billing->id,
+                'year' => $billing->year,
+                'month' => $billing->month,
+                'billing_type' => $billing->billing_type,
+                'due_date' => $this->penaltyService->dueDate($billing),
+            ])->values(),
             'payment_gateway' => $transaction->payment_provider,
             'payment_method' => $transaction->payment_method,
             'subtotal' => (float) $transaction->subtotal,
@@ -1117,9 +1159,18 @@ class ResidentPortalController extends Controller
             'payment_url' => $transaction->payment_url,
             'provider_reference' => $transaction->provider_reference,
             'manual_proof_path' => $transaction->manual_proof_path,
+            'manual_proof_url' => $transaction->manual_proof_path ? asset('storage/'.$transaction->manual_proof_path) : null,
+            'manual_sender_name' => $transaction->manual_sender_name,
+            'manual_sender_bank' => $transaction->manual_sender_bank,
+            'manual_sender_account_number' => $transaction->manual_sender_account_number,
+            'manual_amount' => $transaction->manual_amount !== null ? (float) $transaction->manual_amount : null,
             'manual_transfer_date' => $transaction->manual_transfer_date,
             'manual_notes' => $transaction->manual_notes,
+            'manual_proof_uploaded_at' => $transaction->manual_proof_uploaded_at,
             'verification_notes' => $transaction->verification_notes,
+            'rejection_reason' => $transaction->status === 'rejected' ? $transaction->verification_notes : null,
+            'verified_by' => $transaction->verifier?->name,
+            'verified_at' => $transaction->verified_at,
             'created_at' => $transaction->created_at,
             'paid_at' => $transaction->paid_at,
             'expired_at' => $transaction->expired_at,
@@ -1130,9 +1181,9 @@ class ResidentPortalController extends Controller
     {
         return collect([
             ['status' => 'pending', 'changed_at' => $payment->created_at, 'notes' => 'Transaksi dibuat.'],
-            $payment->manual_proof_path ? ['status' => 'waiting_verification', 'changed_at' => $payment->updated_at, 'notes' => 'Bukti pembayaran manual dikirim.'] : null,
-            $payment->paid_at ? ['status' => 'paid', 'changed_at' => $payment->paid_at, 'notes' => 'Pembayaran berhasil.'] : null,
-            $payment->status === 'rejected' ? ['status' => 'rejected', 'changed_at' => $payment->verified_at, 'notes' => $payment->verification_notes] : null,
+            $payment->manual_proof_path ? ['status' => 'waiting_verification', 'changed_at' => $payment->manual_proof_uploaded_at ?: $payment->updated_at, 'notes' => 'Bukti pembayaran manual dikirim.'] : null,
+            $payment->paid_at ? ['status' => 'paid', 'changed_at' => $payment->paid_at, 'notes' => 'Pembayaran berhasil.', 'verified_by' => $payment->verifier?->name] : null,
+            $payment->status === 'rejected' ? ['status' => 'rejected', 'changed_at' => $payment->verified_at, 'notes' => $payment->verification_notes, 'verified_by' => $payment->verifier?->name] : null,
             in_array($payment->status, ['failed', 'expired', 'cancelled', 'refunded'], true) ? ['status' => $payment->status, 'changed_at' => $payment->updated_at, 'notes' => 'Status diperbarui oleh gateway.'] : null,
         ])->filter()->values()->all();
     }

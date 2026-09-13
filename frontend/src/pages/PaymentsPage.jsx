@@ -1,4 +1,4 @@
-import { Alert, Button, Card, Checkbox, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Select, Space, Statistic, Tabs, Upload, message, Typography } from 'antd';
+import { Alert, Badge, Button, Card, Checkbox, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Select, Space, Statistic, Tabs, Upload, message, Typography } from 'antd';
 import { CheckOutlined, CloudUploadOutlined, CloseOutlined, FileExcelOutlined, LinkOutlined, PrinterOutlined, SearchOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -8,9 +8,10 @@ import FilterBar from '../components/common/FilterBar.jsx';
 import Can from '../components/common/Can.jsx';
 import StatusBadge from '../components/common/StatusBadge.jsx';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
-import { api } from '../services/estateApi.js';
+import { api, storageUrl } from '../services/estateApi.js';
 import { useTableState } from '../hooks/useTableState.js';
 import { useDebounce } from '../hooks/useDebounce.js';
+import { usePendingPaymentVerificationCount } from '../hooks/usePendingPaymentVerificationCount.js';
 import { formatCurrency, formatDate, formatDateTime, formatPeriod } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
 import { downloadBlob, openBlobInWindow } from '../utils/download.js';
@@ -22,6 +23,7 @@ export default function PaymentsPage() {
   const [unit, setUnit] = useState(null);
   const [transaction, setTransaction] = useState(null);
   const [proofOpen, setProofOpen] = useState(null);
+  const [detailOpen, setDetailOpen] = useState(null);
   const [successReceipt, setSuccessReceipt] = useState(null);
   const [unitQuery, setUnitQuery] = useState('');
   const [unitFilters, setUnitFilters] = useState({});
@@ -32,6 +34,7 @@ export default function PaymentsPage() {
   const [gatewayForm] = Form.useForm();
   const [proofForm] = Form.useForm();
   const [verifyForm] = Form.useForm();
+  const pendingVerificationCount = usePendingPaymentVerificationCount();
   const queryClient = useQueryClient();
   const transactionTable = useTableState();
   const receiptTable = useTableState();
@@ -131,6 +134,7 @@ export default function PaymentsPage() {
       const formData = new FormData();
       formData.append('proof', values.proof[0].originFileObj);
       formData.append('manual_transfer_date', values.manual_transfer_date.format('YYYY-MM-DD'));
+      if (values.amount) formData.append('amount', values.amount);
       if (values.manual_notes) formData.append('manual_notes', values.manual_notes);
       return api.payments.uploadManualProof(proofOpen.id, formData);
     },
@@ -416,7 +420,12 @@ export default function PaymentsPage() {
           },
           {
             key: 'transactions',
-            label: 'Transaksi Gateway',
+            label: pendingVerificationCount ? (
+              <Space size={6}>
+                Transaksi Gateway
+                <Badge count={pendingVerificationCount} size="small" />
+              </Space>
+            ) : 'Transaksi Gateway',
             children: (
               <>
                 <FilterBar
@@ -454,21 +463,25 @@ export default function PaymentsPage() {
                   <ResponsiveTable
                     query={transactions}
                     onChange={transactionTable.handleTableChange}
-                    scrollX={1320}
+                    scrollX={1680}
                     columns={[
                       { title: 'Invoice', dataIndex: 'invoice_number', width: 190, fixed: 'left' },
                       { title: 'Penghuni', dataIndex: ['unit', 'resident', 'name'], width: 200 },
                       { title: 'Alamat Unit', render: (_, row) => `${row.unit?.cluster?.name || ''} ${row.unit?.block || ''}/${row.unit?.lot_number || ''}`, width: 180 },
                       { title: 'Provider', dataIndex: 'payment_provider', width: 110 },
-                      { title: 'Total', dataIndex: 'total', render: formatCurrency, width: 140 },
+                      { title: 'Nominal Tagihan', dataIndex: 'total', render: formatCurrency, width: 140 },
+                      { title: 'Nominal Dibayar', dataIndex: 'manual_amount', render: (value) => (value ? formatCurrency(value) : '-'), width: 140 },
+                      { title: 'Tgl Bayar', dataIndex: 'manual_transfer_date', render: (value) => (value ? formatDate(value) : '-'), width: 120 },
+                      { title: 'Bukti', render: (_, row) => (row.manual_proof_path ? <a href={storageUrl(row.manual_proof_path)} target="_blank" rel="noreferrer">Lihat Bukti</a> : '-'), width: 100 },
                       { title: 'Status', dataIndex: 'status', render: (value) => <StatusBadge type="transaction" value={value} />, width: 170 },
-                      { title: 'Dibuat', dataIndex: 'created_at', render: formatDateTime, width: 170 },
+                      { title: 'Waktu Upload', dataIndex: 'manual_proof_uploaded_at', render: (value) => (value ? formatDateTime(value) : '-'), width: 170 },
                       {
                         title: 'Aksi',
                         fixed: 'right',
-                        width: 240,
+                        width: 290,
                         render: (_, row) => (
                           <Space>
+                            <Button size="small" onClick={() => setDetailOpen(row)}>Detail</Button>
                             {row.payment_provider === 'manual' ? <Button size="small" icon={<CloudUploadOutlined />} onClick={() => setProofOpen(row)}>Upload</Button> : null}
                             <Can permission="payments.verify">
                               <Button size="small" icon={<CheckOutlined />} disabled={row.status !== 'waiting_verification'} onClick={() => Modal.confirm({
@@ -478,7 +491,7 @@ export default function PaymentsPage() {
                               })}>Verifikasi</Button>
                               <Button size="small" danger icon={<CloseOutlined />} disabled={row.status !== 'waiting_verification'} onClick={() => Modal.confirm({
                                 title: 'Tolak pembayaran manual?',
-                                content: <Form form={verifyForm} layout="vertical"><Form.Item label="Alasan" name="notes" rules={[{ required: true }]}><Input.TextArea rows={3} /></Form.Item></Form>,
+                                content: <Form form={verifyForm} layout="vertical"><Form.Item label="Alasan" name="notes" rules={[{ required: true, message: 'Alasan penolakan wajib diisi' }]}><Input.TextArea rows={3} /></Form.Item></Form>,
                                 onOk: () => verify.mutate({ id: row.id, status: 'rejected', notes: verifyForm.getFieldValue('notes') }),
                               })}>Tolak</Button>
                             </Can>
@@ -562,6 +575,9 @@ export default function PaymentsPage() {
       <Drawer title="Upload Bukti Pembayaran Manual" open={Boolean(proofOpen)} onClose={() => setProofOpen(null)} width={520} extra={<Button type="primary" onClick={() => proofForm.submit()} loading={uploadProof.isPending}>Upload</Button>} destroyOnHidden>
         <Alert type="info" showIcon message={proofOpen?.invoice_number} description={`Total transfer: ${formatCurrency(proofOpen?.total)}`} />
         <Form form={proofForm} layout="vertical" className="section-row" onFinish={uploadProof.mutate} initialValues={{ manual_transfer_date: dayjs() }}>
+          <Form.Item label="Nominal Dibayar" name="amount">
+            <InputNumber min={0} step={1000} style={{ width: '100%' }} placeholder={proofOpen?.total} />
+          </Form.Item>
           <Form.Item label="Tanggal Transfer" name="manual_transfer_date" rules={[{ required: true }]}>
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
@@ -583,6 +599,60 @@ export default function PaymentsPage() {
           </Form.Item>
         </Form>
       </Drawer>
+
+      <Modal
+        title="Detail Pembayaran"
+        open={Boolean(detailOpen)}
+        onCancel={() => setDetailOpen(null)}
+        footer={<Button onClick={() => setDetailOpen(null)}>Tutup</Button>}
+        width={640}
+      >
+        {detailOpen ? (
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <Descriptions bordered size="small" column={2}>
+              <Descriptions.Item label="Penghuni">{detailOpen.unit?.resident?.name || '-'}</Descriptions.Item>
+              <Descriptions.Item label="Unit">{detailOpen.unit_id}</Descriptions.Item>
+              <Descriptions.Item label="Nomor Tagihan" span={2}>
+                {(detailOpen.billings || []).map((billing) => `BIL-${billing.id}`).join(', ') || '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Periode" span={2}>
+                {(detailOpen.billings || []).map((billing) => formatPeriod(billing.year, billing.month)).join(', ') || '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Jenis Tagihan" span={2}>
+                {[...new Set((detailOpen.billings || []).map((billing) => billing.billing_type))].join(', ') || '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Nominal Tagihan">{formatCurrency(detailOpen.total)}</Descriptions.Item>
+              <Descriptions.Item label="Nominal Dibayar">{detailOpen.manual_amount ? formatCurrency(detailOpen.manual_amount) : '-'}</Descriptions.Item>
+              <Descriptions.Item label="Tanggal Pembayaran">{detailOpen.manual_transfer_date ? formatDate(detailOpen.manual_transfer_date) : '-'}</Descriptions.Item>
+              <Descriptions.Item label="Waktu Upload">{detailOpen.manual_proof_uploaded_at ? formatDateTime(detailOpen.manual_proof_uploaded_at) : '-'}</Descriptions.Item>
+              <Descriptions.Item label="Catatan Penghuni" span={2}>{detailOpen.manual_notes || '-'}</Descriptions.Item>
+              <Descriptions.Item label="Status" span={2}><StatusBadge type="transaction" value={detailOpen.status} /></Descriptions.Item>
+              {detailOpen.verified_by || detailOpen.verifier?.name ? (
+                <Descriptions.Item label="Diverifikasi Oleh">{detailOpen.verifier?.name || detailOpen.verified_by}</Descriptions.Item>
+              ) : null}
+              {detailOpen.verification_notes ? (
+                <Descriptions.Item label="Catatan Verifikasi" span={2}>{detailOpen.verification_notes}</Descriptions.Item>
+              ) : null}
+            </Descriptions>
+            {detailOpen.manual_proof_path ? (
+              <div>
+                <Typography.Text strong>Bukti Pembayaran</Typography.Text>
+                <div style={{ marginTop: 8 }}>
+                  {/\.pdf$/i.test(detailOpen.manual_proof_path) ? (
+                    <a href={storageUrl(detailOpen.manual_proof_path)} target="_blank" rel="noreferrer">Buka PDF Bukti Pembayaran</a>
+                  ) : (
+                    <a href={storageUrl(detailOpen.manual_proof_path)} target="_blank" rel="noreferrer">
+                      <img src={storageUrl(detailOpen.manual_proof_path)} alt="Bukti pembayaran" style={{ maxWidth: '100%', maxHeight: 420, borderRadius: 8, border: '1px solid #d9d9d9' }} />
+                    </a>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <Alert type="warning" showIcon message="Bukti pembayaran belum diunggah." />
+            )}
+          </Space>
+        ) : null}
+      </Modal>
 
       <Modal
         title="Pembayaran Berhasil"

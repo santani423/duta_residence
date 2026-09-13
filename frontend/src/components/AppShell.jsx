@@ -8,11 +8,12 @@ import {
   SunOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Avatar, Button, Drawer, Dropdown, Grid, Layout, Menu, Select, Space, Typography, theme } from 'antd';
+import { Avatar, Badge, Button, Drawer, Dropdown, Grid, Layout, Menu, Select, Space, Typography, theme } from 'antd';
 import { createElement, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { menuItems } from '../constants/permissions.js';
 import { useSiteIdentity } from '../hooks/useSiteIdentity.js';
+import { usePendingPaymentVerificationCount } from '../hooks/usePendingPaymentVerificationCount.js';
 import { useAuth } from '../state/AuthContext.jsx';
 import { useThemeMode } from '../state/ThemeContext.jsx';
 import { HelpCenterProvider } from '../state/HelpCenterContext.jsx';
@@ -28,17 +29,29 @@ function passesGate(entry, canAny, hasRole) {
     && (entry.permissions.length === 0 || canAny(entry.permissions));
 }
 
-function buildMenuItems(canAny, hasRole) {
+function menuLabel(item, badgeCounts) {
+  const count = badgeCounts?.[item.key];
+  if (!count) return item.label;
+
+  return (
+    <Space size={6}>
+      {item.label}
+      <Badge count={count} size="small" />
+    </Space>
+  );
+}
+
+function buildMenuItems(canAny, hasRole, badgeCounts) {
   return menuItems
     .filter((item) => passesGate(item, canAny, hasRole))
     .map((item) => {
       if (!item.children) {
-        return { key: item.key, label: item.label, icon: item.icon ? createElement(item.icon) : null };
+        return { key: item.key, label: menuLabel(item, badgeCounts), icon: item.icon ? createElement(item.icon) : null };
       }
 
       const children = item.children
         .filter((child) => passesGate(child, canAny, hasRole))
-        .map((child) => ({ key: child.key, label: child.label, icon: child.icon ? createElement(child.icon) : null }));
+        .map((child) => ({ key: child.key, label: menuLabel(child, badgeCounts), icon: child.icon ? createElement(child.icon) : null }));
 
       // A submenu with every child filtered out has nothing useful to show.
       return children.length ? { key: item.key, label: item.label, icon: item.icon ? createElement(item.icon) : null, children } : null;
@@ -61,7 +74,9 @@ export default function AppShell() {
   const siteName = useSiteIdentity();
   const navigate = useNavigate();
   const location = useLocation();
-  const items = useMemo(() => buildMenuItems(canAny, hasRole), [canAny, hasRole]);
+  const pendingPaymentVerificationCount = usePendingPaymentVerificationCount();
+  const badgeCounts = useMemo(() => ({ '/payments': pendingPaymentVerificationCount }), [pendingPaymentVerificationCount]);
+  const items = useMemo(() => buildMenuItems(canAny, hasRole, badgeCounts), [canAny, hasRole, badgeCounts]);
   const flatKeys = useMemo(() => flattenKeys(items), [items]);
   const selectedKey = flatKeys
     .filter((key) => key !== '/' && location.pathname.startsWith(key))

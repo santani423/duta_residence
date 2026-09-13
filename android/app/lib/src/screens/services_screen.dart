@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -559,11 +560,26 @@ class _PaymentsSectionState extends State<_PaymentsSection> {
                           'Invoice': payment['invoice_number'],
                           'Gateway': payment['payment_gateway'],
                           'Metode': payment['payment_method'],
-                          'Nominal': money(payment['total']),
+                          'Nominal Tagihan': money(payment['total']),
+                          if (payment['manual_amount'] != null)
+                            'Nominal Dibayar': money(payment['manual_amount']),
+                          if (payment['manual_transfer_date'] != null)
+                            'Tanggal Bayar': dateOnly(
+                              payment['manual_transfer_date'],
+                            ),
                           'Transaksi': dateTime(payment['created_at']),
                           'Dibayar': dateTime(payment['paid_at']),
+                          if (payment['verified_by'] != null)
+                            'Diverifikasi Oleh': payment['verified_by'],
                         },
                       ),
+                      if (payment['status'] == 'rejected' &&
+                          compact(payment['rejection_reason']).isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.md),
+                        _RejectionBanner(
+                          reason: compact(payment['rejection_reason']),
+                        ),
+                      ],
                       if ((paymentUrl != null && paymentUrl.isNotEmpty) ||
                           canUpload) ...[
                         const SizedBox(height: AppSpacing.lg),
@@ -601,6 +617,41 @@ class _PaymentsSectionState extends State<_PaymentsSection> {
   }
 }
 
+class _RejectionBanner extends StatelessWidget {
+  const _RejectionBanner({required this.reason});
+
+  final String reason;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.error_outline_rounded,
+            color: colorScheme.onErrorContainer,
+            size: 20,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              'Alasan penolakan: $reason',
+              style: TextStyle(color: colorScheme.onErrorContainer),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ManualProofSheet extends StatefulWidget {
   const _ManualProofSheet({required this.apiClient, required this.payment});
 
@@ -618,8 +669,16 @@ class _ManualProofSheetState extends State<_ManualProofSheet> {
   final _account = TextEditingController();
   final _amount = TextEditingController();
   final _notes = TextEditingController();
-  PlatformFile? _file;
+  String? _pickedPath;
+  String? _pickedName;
   bool _saving = false;
+
+  bool get _isPickedImage {
+    final name = _pickedName?.toLowerCase() ?? '';
+    return name.endsWith('.jpg') ||
+        name.endsWith('.jpeg') ||
+        name.endsWith('.png');
+  }
 
   @override
   void initState() {
@@ -637,23 +696,88 @@ class _ManualProofSheetState extends State<_ManualProofSheet> {
     super.dispose();
   }
 
-  Future<void> _pickFile() async {
+  Future<void> _pickFromCamera() async {
+    final file = await ImagePicker().pickImage(
+      source: ImageSource.camera,
+      imageQuality: 85,
+    );
+    if (file != null) {
+      setState(() {
+        _pickedPath = file.path;
+        _pickedName = file.name;
+      });
+    }
+  }
+
+  Future<void> _pickFromGallery() async {
+    final file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
+    if (file != null) {
+      setState(() {
+        _pickedPath = file.path;
+        _pickedName = file.name;
+      });
+    }
+  }
+
+  Future<void> _pickPdf() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+      allowedExtensions: ['pdf'],
     );
-    if (result != null) setState(() => _file = result.files.single);
+    final picked = result?.files.single;
+    if (picked?.path != null) {
+      setState(() {
+        _pickedPath = picked!.path;
+        _pickedName = picked.name;
+      });
+    }
+  }
+
+  Future<void> _confirmAndSave() async {
+    if (!_formKey.currentState!.validate() || _saving) return;
+    if (_pickedPath == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih bukti pembayaran terlebih dahulu.')),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Kirim bukti pembayaran?'),
+        content: Text(
+          'Nominal ${_amount.text.trim()} akan dikirim sebagai bukti pembayaran untuk ${compact(widget.payment['invoice_number'])}. Pastikan data dan bukti sudah benar.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Kirim'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) await _save();
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate() || _file == null || _saving) return;
+    if (_pickedPath == null || _saving) return;
     setState(() => _saving = true);
     try {
       final now = DateTime.now();
       await widget.apiClient.postMultipart(
         'resident/payments/${widget.payment['id']}/manual-proof',
         fileField: 'proof',
-        file: _file,
+        filePath: _pickedPath,
+        fileName: _pickedName,
         fields: {
           'sender_name': _name.text.trim(),
           'sender_bank': _bank.text.trim(),
@@ -664,7 +788,16 @@ class _ManualProofSheetState extends State<_ManualProofSheet> {
           if (_notes.text.trim().isNotEmpty) 'manual_notes': _notes.text.trim(),
         },
       );
-      if (mounted) Navigator.pop(context, true);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Bukti pembayaran berhasil dikirim dan sedang menunggu verifikasi.',
+            ),
+          ),
+        );
+        Navigator.pop(context, true);
+      }
     } on ApiException catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -697,6 +830,14 @@ class _ManualProofSheetState extends State<_ManualProofSheet> {
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
               ),
+              const SizedBox(height: AppSpacing.md),
+              InfoRows(
+                items: {
+                  'Invoice': widget.payment['invoice_number'],
+                  'Total Tagihan': money(widget.payment['total']),
+                  'Status': titleCaseStatus(widget.payment['status']),
+                },
+              ),
               const SizedBox(height: AppSpacing.lg),
               TextFormField(
                 controller: _name,
@@ -726,11 +867,63 @@ class _ManualProofSheetState extends State<_ManualProofSheet> {
                 validator: _required,
               ),
               const SizedBox(height: AppSpacing.md),
-              OutlinedButton.icon(
-                onPressed: _pickFile,
-                icon: const Icon(Icons.attach_file_rounded),
-                label: Text(_file?.name ?? 'Pilih bukti JPG, PNG, atau PDF'),
+              Text(
+                'Bukti Pembayaran',
+                style: Theme.of(context).textTheme.labelLarge,
               ),
+              const SizedBox(height: AppSpacing.sm),
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _pickFromCamera,
+                    icon: const Icon(Icons.camera_alt_outlined),
+                    label: const Text('Ambil Foto'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _pickFromGallery,
+                    icon: const Icon(Icons.photo_library_outlined),
+                    label: const Text('Galeri'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _pickPdf,
+                    icon: const Icon(Icons.picture_as_pdf_outlined),
+                    label: const Text('File PDF'),
+                  ),
+                ],
+              ),
+              if (_pickedPath != null) ...[
+                const SizedBox(height: AppSpacing.md),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  child: Container(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    padding: _isPickedImage
+                        ? EdgeInsets.zero
+                        : const EdgeInsets.all(AppSpacing.md),
+                    child: _isPickedImage
+                        ? Image.file(
+                            File(_pickedPath!),
+                            height: 180,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                          )
+                        : Row(
+                            children: [
+                              const Icon(Icons.picture_as_pdf_rounded),
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(
+                                child: Text(
+                                  _pickedName ?? 'Berkas terpilih',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+              ],
               const SizedBox(height: AppSpacing.md),
               TextField(
                 controller: _notes,
@@ -740,7 +933,7 @@ class _ManualProofSheetState extends State<_ManualProofSheet> {
               ),
               const SizedBox(height: AppSpacing.lg),
               FilledButton(
-                onPressed: _saving ? null : _save,
+                onPressed: _saving ? null : _confirmAndSave,
                 child: Text(_saving ? 'Mengirim...' : 'Kirim Bukti'),
               ),
             ],

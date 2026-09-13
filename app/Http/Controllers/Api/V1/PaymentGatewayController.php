@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\Billing;
 use App\Models\ManagedFile;
+use App\Models\NotificationQueue;
 use App\Models\PaymentGatewaySetting;
 use App\Models\PaymentTransaction;
 use App\Models\PaymentWebhookEvent;
@@ -30,7 +31,7 @@ class PaymentGatewayController extends Controller
     public function index(Request $request)
     {
         $query = PaymentTransaction::query()
-            ->with(['unit.cluster', 'unit.resident', 'billings'])
+            ->with(['unit.cluster', 'unit.resident', 'billings', 'verifier'])
             ->when($request->query('search'), fn ($q, $value) => $q->where(fn ($inner) => $inner
                 ->where('transaction_number', 'like', "%{$value}%")
                 ->orWhere('invoice_number', 'like', "%{$value}%")
@@ -58,7 +59,7 @@ class PaymentGatewayController extends Controller
 
     public function show(PaymentTransaction $transaction)
     {
-        return $this->success($transaction->load(['unit.cluster', 'billings']));
+        return $this->success($transaction->load(['unit.cluster', 'unit.resident', 'billings', 'verifier']));
     }
 
     public function create(Request $request, PaymentGatewayFactory $factory, PenaltyService $penaltyService)
@@ -116,8 +117,11 @@ class PaymentGatewayController extends Controller
 
     public function uploadManualProof(Request $request, PaymentTransaction $transaction)
     {
+        $setting = PaymentGatewaySetting::current();
+        $extensions = implode(',', $setting->proof_allowed_extensions ?: ['jpg', 'jpeg', 'png', 'pdf']);
         $data = $request->validate([
-            'proof' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:'.config('grandduta.max_upload_size', 5120)],
+            'proof' => ['required', 'file', "mimes:{$extensions}", 'max:'.$setting->proof_max_size_kb],
+            'amount' => ['nullable', 'numeric', 'min:1'],
             'manual_transfer_date' => ['required', 'date'],
             'manual_notes' => ['nullable', 'string'],
         ]);
@@ -140,9 +144,12 @@ class PaymentGatewayController extends Controller
 
         $transaction->update([
             'manual_proof_path' => $stored,
+            'manual_amount' => $data['amount'] ?? $transaction->manual_amount,
             'manual_transfer_date' => $data['manual_transfer_date'],
             'manual_notes' => $data['manual_notes'] ?? null,
+            'manual_proof_uploaded_at' => now(),
             'status' => 'waiting_verification',
+            'verification_notes' => null,
         ]);
 
         return $this->success($transaction->refresh(), 'Bukti pembayaran berhasil diunggah.');
@@ -162,19 +169,45 @@ class PaymentGatewayController extends Controller
             ]);
             $paymentService->settleGatewayTransaction($transaction->refresh());
             $auditService->log('payment_manual_verified', 'payments', 'VERIFY', $transaction, $old, $transaction->toArray());
+
+            NotificationQueue::query()->create([
+                'unit_id' => $transaction->unit_id,
+                'user_id' => null,
+                'type' => 'payment_verified',
+                'channel' => 'in_app',
+                'recipient' => $transaction->unit?->resident?->phone ?: ($transaction->unit?->resident?->email ?: $transaction->unit_id),
+                'message' => 'Pembayaran Anda telah diverifikasi dan tagihan dinyatakan lunas.',
+                'read_status' => 'unread',
+                'status' => 'sent',
+                'sent_at' => now(),
+            ]);
         });
 
         return $this->success($transaction->refresh(), 'Pembayaran manual berhasil diverifikasi.');
     }
 
-    public function rejectManual(Request $request, PaymentTransaction $transaction)
+    public function rejectManual(Request $request, PaymentTransaction $transaction, AuditService $auditService)
     {
         $data = $request->validate(['verification_notes' => ['required', 'string']]);
+        $old = $transaction->toArray();
         $transaction->update([
             'status' => 'rejected',
             'verified_by' => $request->user()->id,
             'verified_at' => now(),
             'verification_notes' => $data['verification_notes'],
+        ]);
+        $auditService->log('payment_manual_rejected', 'payments', 'REJECT', $transaction, $old, $transaction->refresh()->toArray());
+
+        NotificationQueue::query()->create([
+            'unit_id' => $transaction->unit_id,
+            'user_id' => null,
+            'type' => 'payment_rejected',
+            'channel' => 'in_app',
+            'recipient' => $transaction->unit?->resident?->phone ?: ($transaction->unit?->resident?->email ?: $transaction->unit_id),
+            'message' => "Bukti pembayaran Anda ditolak. Alasan: {$data['verification_notes']}. Silakan periksa alasan penolakan dan upload kembali bukti pembayaran.",
+            'read_status' => 'unread',
+            'status' => 'sent',
+            'sent_at' => now(),
         ]);
 
         return $this->success($transaction->refresh(), 'Pembayaran manual berhasil ditolak.');
