@@ -61,14 +61,15 @@ export default function BillingsPage() {
   const back = useMutation({
     mutationFn: (values) => api.billings.prepareBack({
       unit_id: values.unit_id,
-      periods: values.periods.map((item) => ({
-        year: item.period.year(),
-        month: item.period.month() + 1,
+      periods: monthsInRange(values.period_range?.[0], values.period_range?.[1]).map((period) => ({
+        year: period.year(),
+        month: period.month() + 1,
       })),
     }),
     onSuccess: () => {
-      message.success('Tagihan mundur berhasil dibuat. Nominal IPL diambil otomatis dari periode sebelumnya.');
+      message.success('Tagihan mundur berhasil dibuat. Nominal IPL diambil otomatis untuk setiap periode.');
       setDrawer(null);
+      form.resetFields();
       queryClient.invalidateQueries({ queryKey: ['billings'] });
     },
     onError: (error) => {
@@ -247,25 +248,18 @@ export default function BillingsPage() {
             <Form.Item label="Nominal" name="amount" rules={[{ required: true }]}><InputNumber min={0} style={{ width: '100%' }} /></Form.Item>
           </Form>
         ) : (
-          <Form form={form} layout="vertical" onFinish={back.mutate} initialValues={{ periods: [{ period: dayjs() }] }}>
+          <Form form={form} layout="vertical" onFinish={back.mutate} initialValues={{ period_range: [nextBackPeriod(), nextBackPeriod()] }}>
             <Form.Item label="Unit" name="unit_id" rules={[{ required: true, message: 'Pilih unit' }]}>
               <UnitPicker clusters={clusters.data?.data || []} />
             </Form.Item>
             <p className="ant-form-text" style={{ marginBottom: 12 }}>
-              Nominal IPL diambil otomatis dari periode 1 bulan sebelum periode yang dipilih (atau periode terakhir
-              sebelumnya yang sudah memiliki nominal IPL, jika bulan sebelumnya belum diset) dan tidak bisa diubah manual.
+              Nominal IPL diambil otomatis dari nominal IPL yang berlaku pada tiap periode (atau periode terakhir
+              sebelumnya yang sudah memiliki nominal IPL, jika periode tersebut belum diset) dan tidak bisa diubah manual.
             </p>
-            <Form.List name="periods">
-              {(fields, { add, remove }) => (
-                <>
-                  {fields.map((field) => (
-                    <BackPeriodRow key={field.key} field={field} form={form} unitId={selectedUnitId} onRemove={() => remove(field.name)} />
-                  ))}
-                  <Button onClick={() => add({ period: dayjs() })}>Tambah Periode</Button>
-                </>
-              )}
-            </Form.List>
-            <BackPeriodsTotal form={form} unitId={selectedUnitId} />
+            <Form.Item label="Rentang Periode" name="period_range" rules={[{ required: true, message: 'Pilih rentang periode' }]}>
+              <DatePicker.RangePicker picker="month" style={{ width: '100%' }} disabledDate={isBeforeNextBackPeriod} />
+            </Form.Item>
+            <BackPeriodsPreview form={form} unitId={selectedUnitId} />
           </Form>
         )}
       </Drawer>
@@ -343,43 +337,40 @@ function UnitPicker({ value, onChange, clusters = [] }) {
   );
 }
 
-function BackPeriodRow({ field, form, unitId, onRemove }) {
-  const period = Form.useWatch(['periods', field.name, 'period'], form);
-  const year = period?.year();
-  const month = period ? period.month() + 1 : undefined;
-
-  const preview = useQuery({
-    queryKey: ['billings', 'back-preview', unitId, year, month],
-    queryFn: () => api.billings.previewBackRate({ unit_id: unitId, year, month }),
-    enabled: Boolean(unitId && year && month),
-    retry: false,
-  });
-
-  let nominalDisplay = 'Pilih unit & periode';
-  if (unitId && period) {
-    if (preview.isFetching) nominalDisplay = 'Menghitung...';
-    else if (preview.isError) nominalDisplay = getApiErrorMessage(preview.error, 'Nominal IPL belum tersedia');
-    else nominalDisplay = formatCurrency(preview.data?.data?.rate ?? 0);
-  }
-
-  return (
-    <Space align="start" className="period-row">
-      <Form.Item {...field} label="Periode" name={[field.name, 'period']} rules={[{ required: true }]}><DatePicker picker="month" /></Form.Item>
-      <Form.Item label="Nominal IPL (otomatis)">
-        <Input disabled value={nominalDisplay} status={preview.isError ? 'error' : undefined} style={{ width: 240 }} />
-      </Form.Item>
-      <Button danger onClick={onRemove}>Hapus</Button>
-    </Space>
-  );
+// Tagihan mundur hanya boleh dibuat untuk periode yang akan datang (mulai bulan depan) - bulan
+// berjalan dan sebelumnya sudah tercakup oleh tagihan bulanan reguler / riwayat tagihan.
+function nextBackPeriod() {
+  return dayjs().add(1, 'month').startOf('month');
 }
 
-function BackPeriodsTotal({ form, unitId }) {
-  const periods = Form.useWatch('periods', form) || [];
+function isBeforeNextBackPeriod(current) {
+  return Boolean(current) && current.isBefore(nextBackPeriod(), 'month');
+}
+
+function monthsInRange(start, end) {
+  if (!start || !end) return [];
+
+  const months = [];
+  let cursor = start.startOf('month');
+  const lastValue = end.startOf('month').valueOf();
+
+  // Safety cap (5 tahun) agar tidak pernah menghasilkan daftar periode yang tak terbatas.
+  for (let i = 0; cursor.valueOf() <= lastValue && i < 60; i += 1) {
+    months.push(cursor);
+    cursor = cursor.add(1, 'month');
+  }
+
+  return months;
+}
+
+function BackPeriodsPreview({ form, unitId }) {
+  const range = Form.useWatch('period_range', form);
+  const months = monthsInRange(range?.[0], range?.[1]);
 
   const queries = useQueries({
-    queries: periods.map((item) => {
-      const year = item?.period?.year();
-      const month = item?.period ? item.period.month() + 1 : undefined;
+    queries: months.map((period) => {
+      const year = period.year();
+      const month = period.month() + 1;
 
       return {
         queryKey: ['billings', 'back-preview', unitId, year, month],
@@ -395,14 +386,36 @@ function BackPeriodsTotal({ form, unitId }) {
   const hasError = queries.some((query) => query.isError);
 
   return (
-    <div style={{ marginTop: 8, marginBottom: 16, fontWeight: 600, fontSize: 15 }}>
-      Total Nominal IPL ({periods.length} periode): {isCalculating ? 'Menghitung...' : formatCurrency(total)}
-      {hasError && (
-        <span style={{ color: '#ff4d4f', fontWeight: 400, marginLeft: 8 }}>
-          (sebagian periode belum bisa dihitung nominalnya)
-        </span>
-      )}
-    </div>
+    <>
+      {months.map((period, index) => {
+        const query = queries[index];
+        let nominalDisplay = 'Pilih unit & periode';
+        if (unitId) {
+          if (query.isFetching) nominalDisplay = 'Menghitung...';
+          else if (query.isError) nominalDisplay = getApiErrorMessage(query.error, 'Nominal IPL belum tersedia');
+          else nominalDisplay = formatCurrency(query.data?.data?.rate ?? 0);
+        }
+
+        return (
+          <Space key={period.format('YYYY-MM')} align="start" className="period-row">
+            <Form.Item label="Periode">
+              <Input disabled value={formatPeriod(period.year(), period.month() + 1)} style={{ width: 160 }} />
+            </Form.Item>
+            <Form.Item label="Nominal IPL (otomatis)">
+              <Input disabled value={nominalDisplay} status={query.isError ? 'error' : undefined} style={{ width: 240 }} />
+            </Form.Item>
+          </Space>
+        );
+      })}
+      <div style={{ marginTop: 8, marginBottom: 16, fontWeight: 600, fontSize: 15 }}>
+        Total Nominal IPL ({months.length} periode): {isCalculating ? 'Menghitung...' : formatCurrency(total)}
+        {hasError && (
+          <span style={{ color: '#ff4d4f', fontWeight: 400, marginLeft: 8 }}>
+            (sebagian periode belum bisa dihitung nominalnya)
+          </span>
+        )}
+      </div>
+    </>
   );
 }
 

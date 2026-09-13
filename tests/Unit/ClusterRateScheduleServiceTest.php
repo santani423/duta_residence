@@ -33,7 +33,7 @@ class ClusterRateScheduleServiceTest extends TestCase
         ]);
     }
 
-    public function test_it_uses_the_ipl_nominal_from_one_month_before_the_selected_period(): void
+    public function test_it_uses_the_ipl_nominal_from_one_month_before_the_selected_period_when_the_selected_period_has_none_of_its_own(): void
     {
         $cluster = $this->makeCluster();
         $this->schedule($cluster, '2026-08-01', 300000);
@@ -43,6 +43,32 @@ class ClusterRateScheduleServiceTest extends TestCase
         $this->assertSame(300000.0, $result['rate']);
         $this->assertSame(2026, $result['source_year']);
         $this->assertSame(8, $result['source_month']);
+    }
+
+    public function test_it_uses_the_selected_periods_own_ipl_nominal_when_one_is_configured(): void
+    {
+        $cluster = $this->makeCluster();
+        $this->schedule($cluster, '2026-11-01', 350000);
+        $this->schedule($cluster, '2026-12-01', 400000);
+
+        $result = app(ClusterRateScheduleService::class)->resolveRateForBackdatedPeriod($cluster, 2026, 12);
+
+        $this->assertSame(400000.0, $result['rate']);
+        $this->assertSame(2026, $result['source_year']);
+        $this->assertSame(12, $result['source_month']);
+    }
+
+    public function test_it_falls_back_to_the_last_known_rate_when_the_selected_period_has_no_ipl_of_its_own(): void
+    {
+        $cluster = $this->makeCluster();
+        $this->schedule($cluster, '2026-03-01', 400000);
+        // April (the selected period) has no rate of its own yet.
+
+        $result = app(ClusterRateScheduleService::class)->resolveRateForBackdatedPeriod($cluster, 2026, 4);
+
+        $this->assertSame(400000.0, $result['rate']);
+        $this->assertSame(2026, $result['source_year']);
+        $this->assertSame(3, $result['source_month']);
     }
 
     public function test_it_falls_back_two_months_back_when_the_previous_month_has_no_ipl(): void

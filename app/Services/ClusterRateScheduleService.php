@@ -61,30 +61,31 @@ class ClusterRateScheduleService
     /**
      * Resolve the IPL nominal to use for a backdated ("Tagihan Mundur") billing period.
      *
-     * Never uses the requested period's own rate: it always looks at the period immediately
-     * before it, and - since a ClusterRateSchedule stays effective until superseded - walking
-     * further back only matters when no schedule was ever effective by that point, in which
-     * case this keeps searching earlier periods until it finds one. A schedule effective in a
-     * month after the requested period is never considered. Throws instead of ever falling back
-     * to Cluster::monthly_rate (which defaults to 0), so a backdated bill can never be created
-     * with a silent zero nominal.
+     * Uses the requested period's own rate when a schedule is already effective for it (e.g.
+     * a December bill uses December's own rate, even if November's rate was different). Only
+     * when the requested period has no schedule of its own does this fall back and keep
+     * searching earlier periods until it finds one - since a ClusterRateSchedule stays
+     * effective until superseded, that fallback rate is simply the latest one on record. A
+     * schedule effective in a month after the requested period is never considered. Throws
+     * instead of ever falling back to Cluster::monthly_rate (which defaults to 0), so a
+     * backdated bill can never be created with a silent zero nominal.
      *
      * @return array{rate: float, source_year: int, source_month: int, schedule_id: int}
      */
     public function resolveRateForBackdatedPeriod(Cluster $cluster, int $year, int $month): array
     {
-        $lookupPeriod = Carbon::create($year, $month, 1)->subMonthNoOverflow();
+        $periodStart = Carbon::create($year, $month, 1);
 
         $schedule = ClusterRateSchedule::query()
             ->where('cluster_id', $cluster->id)
             ->active()
-            ->whereDate('effective_date', '<=', $lookupPeriod)
+            ->whereDate('effective_date', '<=', $periodStart)
             ->orderByDesc('effective_date')
             ->first();
 
         if (! $schedule) {
             throw ValidationException::withMessages([
-                'periods' => ["Nominal IPL cluster {$cluster->name} belum dikonfigurasi untuk {$lookupPeriod->translatedFormat('F Y')} maupun periode-periode sebelumnya."],
+                'periods' => ["Nominal IPL cluster {$cluster->name} belum dikonfigurasi untuk {$periodStart->translatedFormat('F Y')} maupun periode-periode sebelumnya."],
             ]);
         }
 
