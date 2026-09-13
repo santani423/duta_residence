@@ -12,6 +12,23 @@ class Unit extends Model
 {
     use HasFactory, HasStringPrimaryKey, SoftDeletes;
 
+    /**
+     * property_type_id yang berupa lahan tanpa bangunan (Kavling), dipakai untuk
+     * menentukan apakah unit kosong berlabel "Ready Stock" (Bangunan/Ruko) atau
+     * "Tanah Kosong" (Kavling) - lihat getOccupancyStatusAttribute().
+     */
+    public const LAND_PROPERTY_TYPES = ['K', 'P'];
+
+    public const OCCUPANCY_STATUS_READY_STOCK = 'ready_stock';
+    public const OCCUPANCY_STATUS_TANAH_KOSONG = 'tanah_kosong';
+    public const OCCUPANCY_STATUS_OCCUPIED = 'occupied';
+
+    public const OCCUPANCY_STATUS_LABELS = [
+        self::OCCUPANCY_STATUS_READY_STOCK => 'Ready Stock',
+        self::OCCUPANCY_STATUS_TANAH_KOSONG => 'Tanah Kosong',
+        self::OCCUPANCY_STATUS_OCCUPIED => 'Occupied',
+    ];
+
     protected $fillable = [
         'id', 'va_number', 'resident_id', 'tenant_resident_id', 'billing_payer', 'cluster_id', 'block', 'lot_number', 'property_type_id',
         'building_area', 'land_area', 'handover_date', 'occupancy_id', 'status_id',
@@ -32,7 +49,7 @@ class Unit extends Model
         'balance' => 'decimal:2',
     ];
 
-    protected $appends = ['deposit_balance'];
+    protected $appends = ['deposit_balance', 'occupancy_status', 'occupancy_status_label'];
 
     public function resident()
     {
@@ -147,6 +164,74 @@ class Unit extends Model
     public function getDepositBalanceAttribute(): float
     {
         return (float) $this->balance;
+    }
+
+    /**
+     * Apakah unit ini bertipe lahan (Kavling Developer/Penghuni) dan bukan bangunan/ruko.
+     */
+    public function isLandType(): bool
+    {
+        return in_array($this->property_type_id, self::LAND_PROPERTY_TYPES, true);
+    }
+
+    /**
+     * Satu-satunya sumber kebenaran untuk "unit ini punya penghuni aktif atau tidak".
+     * status_id = 'AK' adalah konvensi yang sudah dipakai di codebase (lihat
+     * SupervisorTunggakanController) untuk menandai unit aktif/dihuni; resident()/
+     * tenantResident() otomatis bernilai null kalau resident terkait sudah soft-deleted
+     * atau memang belum pernah diisi, jadi penghuni lama/tidak aktif tidak akan
+     * dihitung sebagai penghuni aktif (lihat dokumentasi status unit di TECHNICAL_SPEC).
+     */
+    public function hasActiveResident(): bool
+    {
+        if ($this->status_id !== 'AK') {
+            return false;
+        }
+
+        return $this->resident !== null || $this->tenantResident !== null;
+    }
+
+    /**
+     * Status unit yang dihitung (bukan disimpan) dari tipe unit + ada/tidaknya penghuni
+     * aktif, supaya tidak bisa terjadi data tidak konsisten seperti "status Ready Stock
+     * tapi sebenarnya sudah ada penghuni".
+     */
+    public function getOccupancyStatusAttribute(): string
+    {
+        if ($this->hasActiveResident()) {
+            return self::OCCUPANCY_STATUS_OCCUPIED;
+        }
+
+        return $this->isLandType() ? self::OCCUPANCY_STATUS_TANAH_KOSONG : self::OCCUPANCY_STATUS_READY_STOCK;
+    }
+
+    public function getOccupancyStatusLabelAttribute(): string
+    {
+        return self::OCCUPANCY_STATUS_LABELS[$this->occupancy_status];
+    }
+
+    /**
+     * Filter berdasarkan status unit hasil hitungan (bukan kolom tersimpan), dipakai
+     * oleh UnitController::index agar filter "Ready Stock/Tanah Kosong/Occupied" di
+     * frontend konsisten dengan accessor occupancy_status di atas.
+     */
+    public function scopeOccupancyStatus(Builder $query, ?string $status): Builder
+    {
+        return $query->when($status, function (Builder $q) use ($status) {
+            $isOccupied = fn (Builder $inner) => $inner->where('status_id', 'AK')
+                ->where(fn (Builder $x) => $x->whereHas('resident')->orWhereHas('tenantResident'));
+
+            return match ($status) {
+                self::OCCUPANCY_STATUS_OCCUPIED => $q->where($isOccupied),
+                self::OCCUPANCY_STATUS_READY_STOCK => $q
+                    ->whereNotIn('property_type_id', self::LAND_PROPERTY_TYPES)
+                    ->whereNot($isOccupied),
+                self::OCCUPANCY_STATUS_TANAH_KOSONG => $q
+                    ->whereIn('property_type_id', self::LAND_PROPERTY_TYPES)
+                    ->whereNot($isOccupied),
+                default => $q,
+            };
+        });
     }
 
     public function scopeSearch(Builder $query, ?string $search): Builder

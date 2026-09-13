@@ -20,6 +20,15 @@ export const residentStatusOptions = [
   { value: 'TA', label: 'Tidak Aktif' },
 ];
 
+// Status unit yang dihitung backend (Unit::getOccupancyStatusAttribute) dari tipe unit +
+// ada/tidaknya penghuni aktif - satu-satunya sumber label status unit di seluruh frontend,
+// jangan buat varian/singkatan lain untuk ketiga status ini.
+export const unitOccupancyStatusOptions = [
+  { value: 'ready_stock', label: 'Ready Stock' },
+  { value: 'tanah_kosong', label: 'Tanah Kosong' },
+  { value: 'occupied', label: 'Occupied' },
+];
+
 export default function UnitForm({ form, clusters = [], residents = [], isEdit = false, onFinish, loading }) {
   return (
     <Form
@@ -99,7 +108,11 @@ export default function UnitForm({ form, clusters = [], residents = [], isEdit =
         <Select options={occupancyOptions} />
       </Form.Item>
       {isEdit ? (
-        <Form.Item label="Status Unit" name="status_id">
+        <Form.Item
+          label="Status Penghuni"
+          name="status_id"
+          tooltip="Status keaktifan penghuni yang terdaftar. Status Unit (Ready Stock/Tanah Kosong/Occupied) dihitung otomatis dari field ini dan tidak bisa dipilih manual."
+        >
           <Select options={residentStatusOptions} />
         </Form.Item>
       ) : (

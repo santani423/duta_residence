@@ -43,8 +43,9 @@ class ClusterMapController extends Controller
 
         $availableUnits = $cluster->units()
             ->whereNotIn('id', $placedUnitIds)
+            ->with(['resident:id,name', 'tenantResident:id,name'])
             ->orderBy('block')->orderBy('lot_number')
-            ->get(['id', 'block', 'lot_number', 'land_area', 'building_area']);
+            ->get(['id', 'block', 'lot_number', 'land_area', 'building_area', 'property_type_id', 'status_id', 'resident_id', 'tenant_resident_id']);
 
         return $this->success([
             'map' => $map ? $this->serializeMap($map, $penaltyService) : null,
@@ -429,6 +430,8 @@ class ClusterMapController extends Controller
                     'occupancy_name' => $unit->occupancy?->name,
                     'status_id' => $unit->status_id,
                     'status_name' => $unit->status?->name,
+                    'occupancy_status' => $unit->occupancy_status,
+                    'occupancy_status_label' => $unit->occupancy_status_label,
                     'has_arrears' => $outstanding['total_outstanding'] > 0,
                     'total_outstanding' => $outstanding['total_outstanding'],
                 ];

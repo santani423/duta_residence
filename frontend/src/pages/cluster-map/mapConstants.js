@@ -5,19 +5,19 @@ export const POLYGON_LIKE_SHAPES = ['trapezoid', 'polygon', 'line'];
 export const DEFAULT_UNIT_SIZE = { width: 60, height: 90 };
 
 export const STATUS_COLORS = {
-  dihuni: { fill: '#95de64', stroke: '#52c41a', label: 'Dihuni' },
-  kosong: { fill: '#69b1ff', stroke: '#1677ff', label: 'Kosong / Tersedia' },
+  occupied: { fill: '#95de64', stroke: '#52c41a', label: 'Occupied' },
+  ready_stock: { fill: '#69b1ff', stroke: '#1677ff', label: 'Ready Stock' },
+  tanah_kosong: { fill: '#ffd666', stroke: '#d48806', label: 'Tanah Kosong' },
   tunggakan: { fill: '#ff7875', stroke: '#cf1322', label: 'Ada Tunggakan' },
-  nonaktif: { fill: '#bfbfbf', stroke: '#595959', label: 'Belum Aktif' },
 };
 
+// unitDetail.occupancy_status dihitung backend (Unit::getOccupancyStatusAttribute) dari
+// tipe unit + ada/tidaknya penghuni aktif - jangan hitung ulang dari occupancy_id/status_id
+// di sini supaya warna peta selalu konsisten dengan badge Status Unit di halaman lain.
 export function deriveUnitColor(unitDetail) {
-  if (!unitDetail) return STATUS_COLORS.kosong;
+  if (!unitDetail) return STATUS_COLORS.ready_stock;
   if (unitDetail.has_arrears) return STATUS_COLORS.tunggakan;
-  if (String(unitDetail.occupancy_id) === '1') return STATUS_COLORS.dihuni;
-  if (String(unitDetail.occupancy_id) === '2') return STATUS_COLORS.kosong;
-  if (['RK', 'TA'].includes(unitDetail.status_id)) return STATUS_COLORS.nonaktif;
-  return STATUS_COLORS.kosong;
+  return STATUS_COLORS[unitDetail.occupancy_status] || STATUS_COLORS.ready_stock;
 }
 
 export function objectColor(object) {

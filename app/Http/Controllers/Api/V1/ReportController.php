@@ -25,7 +25,23 @@ class ReportController extends Controller
             'paid_billings' => Billing::where('status_id', Billing::STATUS_PAID)->count(),
             'today_receipts_total' => Receipt::whereDate('transaction_date', today())->sum('grand_total'),
             'recent_receipts' => Receipt::with('unit.resident')->latest('transaction_date')->limit(5)->get(),
+            'unit_occupancy' => $this->unitOccupancySummary(),
         ]);
+    }
+
+    /**
+     * Ready Stock/Tanah Kosong/Occupied dihitung dari Unit::scopeOccupancyStatus (lihat
+     * Unit::getOccupancyStatusAttribute) supaya angkanya selalu sama dengan status yang
+     * ditampilkan di halaman Unit/Cluster, bukan dihitung ulang dengan logic terpisah.
+     */
+    private function unitOccupancySummary(): array
+    {
+        return [
+            'total_units' => Unit::count(),
+            'ready_stock' => Unit::occupancyStatus(Unit::OCCUPANCY_STATUS_READY_STOCK)->count(),
+            'tanah_kosong' => Unit::occupancyStatus(Unit::OCCUPANCY_STATUS_TANAH_KOSONG)->count(),
+            'occupied' => Unit::occupancyStatus(Unit::OCCUPANCY_STATUS_OCCUPIED)->count(),
+        ];
     }
 
     public function monthly(Request $request)

@@ -254,7 +254,9 @@ export default function ClusterMapPage() {
       unit_detail: {
         id: unit.id, block: unit.block, lot_number: unit.lot_number,
         land_area: unit.land_area, building_area: unit.building_area,
-        resident_name: null, occupancy_id: null, status_id: null, has_arrears: false, total_outstanding: 0,
+        resident_name: unit.resident?.name || null, occupancy_id: unit.occupancy_id, status_id: unit.status_id,
+        occupancy_status: unit.occupancy_status, occupancy_status_label: unit.occupancy_status_label,
+        has_arrears: false, total_outstanding: 0,
       },
     };
     commitObjects((prev) => [...prev, newObject]);

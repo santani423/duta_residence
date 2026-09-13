@@ -30,6 +30,7 @@ export default function DashboardPage() {
   const data = dashboard.data?.data || {};
   const monthlyData = monthly.data?.data || [];
   const agingData = aging.data?.data || {};
+  const unitOccupancy = data.unit_occupancy || {};
   const pieData = [
     { name: '< 30 hari', value: Number(agingData.lt_30 || 0) },
     { name: '30-60 hari', value: Number(agingData.d30_60 || 0) },
@@ -86,6 +87,27 @@ export default function DashboardPage() {
                 </PieChart>
               </ResponsiveContainer>
             </div>
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={[16, 16]} className="section-row">
+        <Col xs={24} lg={8}>
+          <Card>
+            <Statistic title="Ready Stock" value={unitOccupancy.ready_stock || 0} valueStyle={{ color: '#1677ff' }} />
+            <div className="muted">Bangunan/Ruko yang belum ada penghuni</div>
+          </Card>
+        </Col>
+        <Col xs={24} lg={8}>
+          <Card>
+            <Statistic title="Tanah Kosong" value={unitOccupancy.tanah_kosong || 0} valueStyle={{ color: '#d48806' }} />
+            <div className="muted">Kavling yang belum ada penghuni</div>
+          </Card>
+        </Col>
+        <Col xs={24} lg={8}>
+          <Card>
+            <Statistic title="Occupied" value={unitOccupancy.occupied || 0} valueStyle={{ color: '#389e0d' }} />
+            <div className="muted">Unit yang sudah ada penghuni aktif</div>
           </Card>
         </Col>
       </Row>

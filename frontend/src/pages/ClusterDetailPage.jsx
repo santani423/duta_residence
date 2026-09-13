@@ -14,7 +14,8 @@ import { api } from '../services/estateApi.js';
 import { useTableState } from '../hooks/useTableState.js';
 import { formatCurrency, formatDate, formatDateTime, formatPeriod } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
-import { residentStatusOptions, occupancyOptions } from '../components/forms/UnitForm.jsx';
+import StatusBadge from '../components/common/StatusBadge.jsx';
+import { residentStatusOptions, unitOccupancyStatusOptions } from '../components/forms/UnitForm.jsx';
 
 const DONUT_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100'];
 const MONTHLY_RATE_MONTHS_PAST = 6;
@@ -166,9 +167,9 @@ export default function ClusterDetailPage() {
   const rows = schedules.data?.data || [];
   const monthlyRateRows = buildMonthlyRateRows(rows, cluster.monthly_rate);
   const allUnits = unitsAll.data?.data || [];
-  const occupancyData = occupancyOptions.map((option) => ({
+  const occupancyData = unitOccupancyStatusOptions.map((option) => ({
     name: option.label,
-    value: allUnits.filter((unit) => unit.occupancy_id === option.value).length,
+    value: allUnits.filter((unit) => unit.occupancy_status === option.value).length,
   }));
   const statusData = residentStatusOptions.map((option) => ({
     name: option.label,
@@ -256,7 +257,7 @@ export default function ClusterDetailPage() {
       >
         <Row gutter={[16, 16]} className="section-row">
           <Col xs={24} md={12}>
-            <DonutChart title="Okupansi Unit" data={occupancyData} loading={unitsAll.isLoading} />
+            <DonutChart title="Status Unit" data={occupancyData} loading={unitsAll.isLoading} />
           </Col>
           <Col xs={24} md={12}>
             <DonutChart title="Status Penghuni" data={statusData} loading={unitsAll.isLoading} />
@@ -264,8 +265,8 @@ export default function ClusterDetailPage() {
         </Row>
         <FilterBar>
           <Input allowClear placeholder="Cari ID unit, blok, nama pemilik" value={unitsTable.search} onChange={(event) => unitsTable.setSearch(event.target.value)} className="filter-input" />
-          <Select allowClear placeholder="Status" options={residentStatusOptions} value={unitsTable.filters.status_id} onChange={(value) => unitsTable.setFilters({ ...unitsTable.filters, status_id: value })} className="filter-input" />
-          <Select allowClear placeholder="Okupansi" options={occupancyOptions} value={unitsTable.filters.occupancy_id} onChange={(value) => unitsTable.setFilters({ ...unitsTable.filters, occupancy_id: value })} className="filter-input" />
+          <Select allowClear placeholder="Status Unit" options={unitOccupancyStatusOptions} value={unitsTable.filters.occupancy_status} onChange={(value) => unitsTable.setFilters({ ...unitsTable.filters, occupancy_status: value })} className="filter-input" />
+          <Select allowClear placeholder="Status Penghuni" options={residentStatusOptions} value={unitsTable.filters.status_id} onChange={(value) => unitsTable.setFilters({ ...unitsTable.filters, status_id: value })} className="filter-input" />
         </FilterBar>
         <ResponsiveTable
           query={units}
@@ -282,8 +283,8 @@ export default function ClusterDetailPage() {
             },
             { title: 'Telepon', render: (_, row) => row.resident?.phone || '-', width: 140 },
             { title: 'Tipe', render: (_, row) => row.property_type?.name || row.propertyType?.name || row.property_type_id, width: 150 },
-            { title: 'Okupansi', render: (_, row) => row.occupancy?.name || '-', width: 110 },
-            { title: 'Status', render: (_, row) => <Tag color={row.status_id === 'AK' ? 'green' : 'default'}>{row.status?.name || row.status_id}</Tag>, width: 130 },
+            { title: 'Status Unit', render: (_, row) => <StatusBadge type="unitOccupancy" value={row.occupancy_status} />, width: 130 },
+            { title: 'Status Penghuni', render: (_, row) => <Tag color={row.status_id === 'AK' ? 'green' : 'default'}>{row.status?.name || row.status_id}</Tag>, width: 130 },
           ]}
         />
       </Card>

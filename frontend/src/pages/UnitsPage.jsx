@@ -8,7 +8,7 @@ import PageHeader from '../components/common/PageHeader.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
 import StatusBadge from '../components/common/StatusBadge.jsx';
 import Can from '../components/common/Can.jsx';
-import UnitForm, { residentStatusOptions, propertyTypeOptions } from '../components/forms/UnitForm.jsx';
+import UnitForm, { residentStatusOptions, propertyTypeOptions, unitOccupancyStatusOptions } from '../components/forms/UnitForm.jsx';
 import ResidentForm from '../components/forms/ResidentForm.jsx';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import { api } from '../services/estateApi.js';
@@ -184,7 +184,8 @@ export default function UnitsPage() {
         <Select allowClear placeholder="Cluster" options={clusterOptions} value={table.filters.cluster_id} onChange={(value) => table.setFilters({ ...table.filters, cluster_id: value })} className="filter-input" />
         <Input allowClear placeholder="No Unit" value={table.filters.lot_number} onChange={(event) => table.setFilters({ ...table.filters, lot_number: event.target.value || undefined })} className="filter-input" />
         <Input allowClear placeholder="Blok" value={table.filters.block} onChange={(event) => table.setFilters({ ...table.filters, block: event.target.value || undefined })} className="filter-input" />
-        <Select allowClear placeholder="Status" options={residentStatusOptions} value={table.filters.status_id} onChange={(value) => table.setFilters({ ...table.filters, status_id: value })} className="filter-input" />
+        <Select allowClear placeholder="Status Unit" options={unitOccupancyStatusOptions} value={table.filters.occupancy_status} onChange={(value) => table.setFilters({ ...table.filters, occupancy_status: value })} className="filter-input" />
+        <Select allowClear placeholder="Status Penghuni" options={residentStatusOptions} value={table.filters.status_id} onChange={(value) => table.setFilters({ ...table.filters, status_id: value })} className="filter-input" />
         <Select allowClear placeholder="Tipe" options={propertyTypeOptions} value={table.filters.property_type_id} onChange={(value) => table.setFilters({ ...table.filters, property_type_id: value })} className="filter-input" />
       </FilterBar>
 
@@ -201,16 +202,8 @@ export default function UnitsPage() {
             { title: 'Blok', dataIndex: 'block', width: 80 },
             { title: 'No Unit', dataIndex: 'lot_number', width: 90 },
             { title: 'Tipe', render: (_, row) => row.property_type?.name || row.propertyType?.name || row.property_type_id },
-            { title: 'Status', render: (_, row) => <Tag color={row.status_id === 'AK' ? 'green' : 'default'}>{row.status?.name || row.status_id}</Tag> },
-            {
-              title: 'Keterangan',
-              width: 120,
-              render: (_, row) => (
-                row.property_type_id === 'B' && row.status_id === 'TA' && !row.resident?.id
-                  ? <Tag color="blue">Ready Stok</Tag>
-                  : null
-              ),
-            },
+            { title: 'Status Unit', width: 130, render: (_, row) => <StatusBadge type="unitOccupancy" value={row.occupancy_status} /> },
+            { title: 'Status Penghuni', render: (_, row) => <Tag color={row.status_id === 'AK' ? 'green' : 'default'}>{row.status?.name || row.status_id}</Tag> },
             {
               title: 'Aksi',
               fixed: 'right',
@@ -291,7 +284,10 @@ export default function UnitsPage() {
                   <Descriptions.Item label="Cluster">{detailData?.cluster?.name}</Descriptions.Item>
                   <Descriptions.Item label="Unit">{detailData?.block}-{detailData?.lot_number}</Descriptions.Item>
                   <Descriptions.Item label="Tipe">{detailData?.property_type?.name || detailData?.propertyType?.name}</Descriptions.Item>
-                  <Descriptions.Item label="Status">
+                  <Descriptions.Item label="Status Unit">
+                    <StatusBadge type="unitOccupancy" value={detailData?.occupancy_status} />
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Status Penghuni">
                     <Space>
                       {detailData?.status?.name}
                       {detailData?.property_type_id === 'B' && detailData?.resident?.id && detailData?.status_id !== 'AK' ? (
@@ -302,11 +298,6 @@ export default function UnitsPage() {
                         </Can>
                       ) : null}
                     </Space>
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Keterangan">
-                    {detailData?.property_type_id === 'B' && detailData?.status_id === 'TA' && !detailData?.resident?.id
-                      ? <Tag color="blue">Ready Stok</Tag>
-                      : '-'}
                   </Descriptions.Item>
                   <Descriptions.Item label="Telepon Pemilik">{compactText(detailData?.resident?.phone)}</Descriptions.Item>
                   <Descriptions.Item label="Email Pemilik">{compactText(detailData?.resident?.email)}</Descriptions.Item>

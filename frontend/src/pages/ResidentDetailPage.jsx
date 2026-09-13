@@ -252,7 +252,8 @@ function UnitInfoTab({ resident, units, unitId, onSelectUnit }) {
                 <Descriptions.Item label="Tarif Cluster">{formatCurrency(unit.cluster?.monthly_rate)}</Descriptions.Item>
                 <Descriptions.Item label="Mulai Menempati">{formatDate(unit.tenancy_start_date || unit.handover_date)}</Descriptions.Item>
                 {unit.occupancy_role === 'penyewa' ? <Descriptions.Item label="Akhir Sewa">{formatDate(unit.tenancy_end_date)}</Descriptions.Item> : null}
-                <Descriptions.Item label="Status Unit">{unit.status?.name}</Descriptions.Item>
+                <Descriptions.Item label="Status Unit"><StatusBadge type="unitOccupancy" value={unit.occupancy_status} /></Descriptions.Item>
+                <Descriptions.Item label="Status Penghuni">{unit.status?.name}</Descriptions.Item>
                 <Descriptions.Item label="Penyewa">{unit.tenant_resident?.name || 'Tidak ada'}</Descriptions.Item>
                 <Descriptions.Item label="Penanggung Jawab Tagihan">{unit.billing_payer === 'penyewa' ? 'Penyewa' : 'Pemilik'}</Descriptions.Item>
               </Descriptions>

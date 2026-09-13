@@ -30,6 +30,7 @@ class UnitController extends Controller
             ->when($request->query('cluster_id'), fn ($q, $value) => $q->where('cluster_id', $value))
             ->when($request->query('status_id'), fn ($q, $value) => $q->where('status_id', $value))
             ->when($request->query('property_type_id'), fn ($q, $value) => $q->where('property_type_id', $value))
+            ->occupancyStatus($request->query('occupancy_status'))
             ->when($request->query('resident_id'), fn ($q, $value) => $q->where('resident_id', $value))
             ->when($request->query('block'), fn ($q, $value) => $q->where('block', 'like', "%{$value}%"))
             ->when($request->query('lot_number'), fn ($q, $value) => $q->where('lot_number', 'like', "%{$value}%"))

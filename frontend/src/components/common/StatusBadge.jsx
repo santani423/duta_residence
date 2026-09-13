@@ -45,6 +45,13 @@ const maps = {
     credit: ['Masuk', 'green'],
     debit: ['Keluar', 'red'],
   },
+  // Status unit yang dihitung backend (Unit::getOccupancyStatusAttribute) - satu-satunya
+  // sumber warna/label status unit, dipakai di semua halaman (list/detail/cluster/peta).
+  unitOccupancy: {
+    ready_stock: ['Ready Stock', 'blue'],
+    tanah_kosong: ['Tanah Kosong', 'gold'],
+    occupied: ['Occupied', 'green'],
+  },
 };
 
 export default function StatusBadge({ type, value, children }) {

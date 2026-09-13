@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Input, Select, Space, theme } from 'antd';
-import { residentStatusOptions, occupancyOptions } from '../../components/forms/UnitForm.jsx';
+import { residentStatusOptions, unitOccupancyStatusOptions } from '../../components/forms/UnitForm.jsx';
 
 const paymentOptions = [
   { value: 'lunas', label: 'Lunas' },
@@ -10,12 +10,12 @@ const paymentOptions = [
 export default function ClusterMapSearchBar({ objects, onFocusUnit, onDimmedChange }) {
   const [search, setSearch] = useState('');
   const [statusId, setStatusId] = useState();
-  const [occupancyId, setOccupancyId] = useState();
+  const [occupancyStatus, setOccupancyStatus] = useState();
   const [paymentStatus, setPaymentStatus] = useState();
   const { token } = theme.useToken();
 
   useEffect(() => {
-    if (!statusId && !occupancyId && !paymentStatus) {
+    if (!statusId && !occupancyStatus && !paymentStatus) {
       onDimmedChange([]);
       return;
     }
@@ -25,14 +25,14 @@ export default function ClusterMapSearchBar({ objects, onFocusUnit, onDimmedChan
         const detail = object.unit_detail;
         if (!detail) return false;
         if (statusId && detail.status_id !== statusId) return true;
-        if (occupancyId && String(detail.occupancy_id) !== occupancyId) return true;
+        if (occupancyStatus && detail.occupancy_status !== occupancyStatus) return true;
         if (paymentStatus === 'lunas' && detail.has_arrears) return true;
         if (paymentStatus === 'tunggakan' && !detail.has_arrears) return true;
         return false;
       })
       .map((object) => object.id);
     onDimmedChange(dimmed);
-  }, [statusId, occupancyId, paymentStatus, objects, onDimmedChange]);
+  }, [statusId, occupancyStatus, paymentStatus, objects, onDimmedChange]);
 
   function handleSearch(value) {
     const term = value.trim().toLowerCase();
@@ -57,8 +57,8 @@ export default function ClusterMapSearchBar({ objects, onFocusUnit, onDimmedChan
         onSearch={handleSearch}
         allowClear
       />
-      <Select allowClear placeholder="Status Unit" options={residentStatusOptions} value={statusId} onChange={setStatusId} style={{ width: 140 }} />
-      <Select allowClear placeholder="Okupansi" options={occupancyOptions} value={occupancyId} onChange={setOccupancyId} style={{ width: 140 }} />
+      <Select allowClear placeholder="Status Unit" options={unitOccupancyStatusOptions} value={occupancyStatus} onChange={setOccupancyStatus} style={{ width: 150 }} />
+      <Select allowClear placeholder="Status Penghuni" options={residentStatusOptions} value={statusId} onChange={setStatusId} style={{ width: 150 }} />
       <Select allowClear placeholder="Status Bayar" options={paymentOptions} value={paymentStatus} onChange={setPaymentStatus} style={{ width: 150 }} />
     </Space>
   );
