@@ -204,8 +204,13 @@ a {
 }
 
 .ipl-current-month-row > td {
-  background: #e6f4ea !important;
+  background: rgba(15, 118, 110, 0.12) !important;
+  color: inherit !important;
   font-weight: 600;
+}
+
+:root[data-theme='dark'] .ipl-current-month-row > td {
+  background: rgba(45, 212, 191, 0.16) !important;
 }
 
 .stack {
