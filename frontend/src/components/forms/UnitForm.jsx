@@ -27,6 +27,7 @@ export default function UnitForm({ form, clusters = [], residents = [], isEdit =
       layout="vertical"
       onFinish={(values) => onFinish({
         ...values,
+        lot_number: values.lot_number != null ? String(values.lot_number) : values.lot_number,
         handover_date: values.handover_date?.format?.('YYYY-MM-DD') || values.handover_date || null,
       })}
       className="responsive-form"
@@ -44,14 +45,16 @@ export default function UnitForm({ form, clusters = [], residents = [], isEdit =
           <Input disabled />
         </Form.Item>
       )}
-      <Form.Item
-        label="Nomor Virtual Account (VA)"
-        name="va_number"
-        rules={[{ max: 32, message: 'Maksimal 32 karakter' }]}
-        tooltip="Digunakan sebagai identitas pembayaran tagihan bulanan unit ini. Kosongkan jika belum tersedia; jika diisi harus unik untuk setiap unit."
-      >
-        <Input placeholder="8801000123" />
-      </Form.Item>
+      {isEdit && (
+        <Form.Item
+          label="Nomor Virtual Account (VA)"
+          name="va_number"
+          rules={[{ max: 32, message: 'Maksimal 32 karakter' }]}
+          tooltip="Digunakan sebagai identitas pembayaran tagihan bulanan unit ini. Kosongkan jika belum tersedia; jika diisi harus unik untuk setiap unit."
+        >
+          <Input placeholder="8801000123" />
+        </Form.Item>
+      )}
       <Form.Item
         label="Pemilik / Penghuni"
         name="resident_id"
@@ -65,8 +68,13 @@ export default function UnitForm({ form, clusters = [], residents = [], isEdit =
       <Form.Item label="Blok" name="block" rules={[{ required: true }]}>
         <Input placeholder="A" />
       </Form.Item>
-      <Form.Item label="Nomor Unit" name="lot_number" rules={[{ required: true }]}>
-        <Input placeholder="01" />
+      <Form.Item
+        label="Nomor Unit"
+        name="lot_number"
+        rules={[{ required: true, message: 'Nomor unit wajib diisi' }]}
+        tooltip="Gunakan angka saja, contoh: 1 (bukan 01 atau 001), agar tidak terjadi duplikasi akibat perbedaan format."
+      >
+        <InputNumber min={1} precision={0} placeholder="1" style={{ width: '100%' }} />
       </Form.Item>
       <Form.Item label="Tipe Properti" name="property_type_id" rules={[{ required: true }]}>
         <Select options={propertyTypeOptions} />
@@ -102,12 +110,16 @@ export default function UnitForm({ form, clusters = [], residents = [], isEdit =
       <Form.Item label="Catatan" name="notes" className="full-span">
         <Input.TextArea rows={3} />
       </Form.Item>
-      <Form.Item label="Kena Denda" name="is_penalty_eligible" valuePropName="checked">
-        <Switch />
-      </Form.Item>
-      <Form.Item label="Bisa Diskon" name="is_discount_eligible" valuePropName="checked">
-        <Switch />
-      </Form.Item>
+      {isEdit && (
+        <>
+          <Form.Item label="Kena Denda" name="is_penalty_eligible" valuePropName="checked">
+            <Switch />
+          </Form.Item>
+          <Form.Item label="Bisa Diskon" name="is_discount_eligible" valuePropName="checked">
+            <Switch />
+          </Form.Item>
+        </>
+      )}
     </Form>
   );
 }

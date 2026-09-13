@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\Billing;
+use App\Models\Cluster;
 use App\Models\Unit;
 use App\Services\AuditService;
 use App\Services\CollectorAssignmentService;
@@ -15,6 +16,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class UnitController extends Controller
 {
@@ -72,7 +74,21 @@ class UnitController extends Controller
                 });
                 break;
             } catch (QueryException $e) {
-                if ($attempts >= 5 || $e->getCode() !== '23000') {
+                if ($e->getCode() !== '23000') {
+                    throw $e;
+                }
+
+                // Bukan tabrakan primary key (yang memang ditangani via retry di atas),
+                // melainkan pelanggaran unique constraint lain (mis. kombinasi
+                // cluster+blok+nomor unit) akibat race condition tepat setelah validasi
+                // lolos: laporkan sebagai error validasi yang jelas, jangan diulang.
+                if (! str_contains($e->getMessage(), 'PRIMARY')) {
+                    $this->assertLotNumberAvailable($data['cluster_id'], $data['block'], $data['lot_number'], null);
+
+                    throw $e;
+                }
+
+                if ($attempts >= 5) {
                     throw $e;
                 }
             }
@@ -103,6 +119,14 @@ class UnitController extends Controller
     {
         $data = $this->validateUnit($request, $unit);
         $data['updated_by'] = $request->user()->id;
+
+        $activatingUnit = $unit->status_id !== 'AK' && ($data['status_id'] ?? $unit->status_id) === 'AK';
+
+        if ($activatingUnit && empty($data['va_number'] ?? $unit->va_number)) {
+            throw ValidationException::withMessages([
+                'va_number' => ['Nomor virtual account wajib diisi untuk mengaktifkan unit melalui serah terima kunci.'],
+            ]);
+        }
 
         if (($data['status_id'] ?? $unit->status_id) === 'AK' && empty($data['handover_date']) && empty($unit->handover_date)) {
             $data['handover_date'] = now()->toDateString();
@@ -150,12 +174,12 @@ class UnitController extends Controller
 
     private function validateUnit(Request $request, ?Unit $unit = null): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'va_number' => ['nullable', 'string', 'max:32', Rule::unique('units', 'va_number')->ignore($unit?->id)],
             'resident_id' => ['nullable', 'exists:residents,id'],
             'cluster_id' => ['required', 'exists:clusters,id'],
             'block' => ['required', 'string', 'max:5'],
-            'lot_number' => ['required', 'string', 'max:10'],
+            'lot_number' => ['required', 'regex:/^[0-9]{1,10}$/'],
             'property_type_id' => ['required', 'exists:property_types,id'],
             'building_area' => ['nullable', 'numeric', 'min:0'],
             'land_area' => ['nullable', 'numeric', 'min:0'],
@@ -169,6 +193,33 @@ class UnitController extends Controller
             'is_discount_eligible' => ['sometimes', 'boolean'],
             'discount_rule_id' => ['nullable', 'exists:discount_rules,id'],
             'notes' => ['nullable', 'string'],
+        ], [
+            'va_number.unique' => 'Nomor virtual account ini sudah digunakan oleh unit lain. Silakan gunakan nomor lain.',
+            'lot_number.regex' => 'Nomor unit harus berupa angka, contoh: 1 (bukan 01 atau 001).',
+        ]);
+
+        $this->assertLotNumberAvailable($data['cluster_id'], $data['block'], $data['lot_number'], $unit);
+
+        return $data;
+    }
+
+    private function assertLotNumberAvailable(string $clusterId, string $block, string $lotNumber, ?Unit $unit): void
+    {
+        $duplicate = Unit::query()
+            ->where('cluster_id', $clusterId)
+            ->where('block', $block)
+            ->where('lot_number', $lotNumber)
+            ->when($unit, fn ($query) => $query->where('id', '!=', $unit->id))
+            ->exists();
+
+        if (! $duplicate) {
+            return;
+        }
+
+        $clusterName = Cluster::query()->whereKey($clusterId)->value('name') ?? $clusterId;
+
+        throw ValidationException::withMessages([
+            'lot_number' => ["Unit dengan Blok {$block} Nomor {$lotNumber} sudah terdaftar di Cluster {$clusterName}. Silakan gunakan Blok atau Nomor Unit lain."],
         ]);
     }
 }

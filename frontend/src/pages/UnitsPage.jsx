@@ -1,7 +1,8 @@
-import { Button, Card, Descriptions, Drawer, Dropdown, Form, Input, Modal, Select, Space, Tabs, Tag, message } from 'antd';
+import { Button, Card, DatePicker, Descriptions, Drawer, Dropdown, Form, Input, Modal, Select, Space, Tabs, Tag, message } from 'antd';
 import { DeleteOutlined, EditOutlined, EyeOutlined, KeyOutlined, MoreOutlined, PlusOutlined, SwapOutlined, UserAddOutlined, UserOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/common/PageHeader.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
@@ -24,6 +25,7 @@ export default function UnitsPage() {
   const [form] = Form.useForm();
   const [convertForm] = Form.useForm();
   const [residentForm] = Form.useForm();
+  const [handoverForm] = Form.useForm();
   const queryClient = useQueryClient();
   const { can } = useAuth();
   const siteName = useSiteIdentity();
@@ -105,8 +107,8 @@ export default function UnitsPage() {
   });
 
   const handover = useMutation({
-    mutationFn: (unit) => api.units.update(unit.id, {
-      va_number: unit.va_number,
+    mutationFn: ({ unit, va_number, handover_date }) => api.units.update(unit.id, {
+      va_number,
       resident_id: unit.resident_id ?? unit.resident?.id,
       cluster_id: unit.cluster_id,
       block: unit.block,
@@ -114,7 +116,7 @@ export default function UnitsPage() {
       property_type_id: unit.property_type_id,
       building_area: unit.building_area,
       land_area: unit.land_area,
-      handover_date: unit.handover_date || new Date().toISOString().slice(0, 10),
+      handover_date,
       occupancy_id: unit.occupancy_id,
       status_id: 'AK',
       occupancy_role: unit.occupancy_role,
@@ -127,18 +129,23 @@ export default function UnitsPage() {
     }),
     onSuccess: () => {
       message.success('Serah terima kunci berhasil, unit sekarang aktif');
+      setDrawer({ type: null, record: null });
+      handoverForm.resetFields();
       queryClient.invalidateQueries({ queryKey: ['units'] });
     },
-    onError: (error) => message.error(getApiErrorMessage(error)),
+    onError: (error) => {
+      handoverForm.setFields(mapValidationErrors(error));
+      message.error(getApiErrorMessage(error));
+    },
   });
 
-  function confirmHandover(unit) {
-    Modal.confirm({
-      title: 'Serah Terima Kunci?',
-      content: 'Unit akan diaktifkan dan dapat mulai ditagih biaya IPL.',
-      okText: 'Aktifkan',
-      onOk: () => handover.mutate(unit),
+  function openHandover(unit) {
+    handoverForm.resetFields();
+    handoverForm.setFieldsValue({
+      va_number: unit.va_number || undefined,
+      handover_date: dayjs(),
     });
+    setDrawer({ type: 'handover', record: unit });
   }
 
   function openCreate() {
@@ -209,21 +216,26 @@ export default function UnitsPage() {
               fixed: 'right',
               width: 92,
               render: (_, record) => {
+                const canHandover = record.property_type_id === 'B' && Boolean(record.resident?.id) && record.status_id !== 'AK';
                 const items = [
                   { key: 'detail', label: 'Detail', icon: <EyeOutlined /> },
                   record.resident?.id
                     ? { key: 'resident', label: 'Detail Penghuni', icon: <UserOutlined /> }
                     : { key: 'add-resident', label: 'Tambah Penghuni', icon: <UserAddOutlined />, permission: 'residents.create' },
+                  canHandover
+                    ? { key: 'handover', label: 'Serah Terima Kunci', icon: <KeyOutlined />, permission: 'units.update' }
+                    : null,
                   { key: 'edit', label: 'Edit', icon: <EditOutlined />, permission: 'units.update' },
                   { key: 'convert', label: 'Konversi Properti', icon: <SwapOutlined />, disabled: record.property_type_id !== 'K', permission: 'units.convert-property' },
                   { type: 'divider' },
                   { key: 'delete', label: 'Hapus', icon: <DeleteOutlined />, danger: true, permission: 'units.delete' },
-                ].filter((item) => !item.permission || can(item.permission));
+                ].filter((item) => item && (!item.permission || can(item.permission)));
                 return (
                   <Dropdown menu={{ items, onClick: ({ key }) => {
                     if (key === 'detail') setDrawer({ type: 'detail', record });
                     if (key === 'resident') navigate(`/residents/${record.resident.id}`);
                     if (key === 'add-resident') openAddResident(record);
+                    if (key === 'handover') openHandover(record);
                     if (key === 'edit') openEdit(record);
                     if (key === 'convert') setDrawer({ type: 'convert', record });
                     if (key === 'delete') {
@@ -282,9 +294,9 @@ export default function UnitsPage() {
                   <Descriptions.Item label="Status">
                     <Space>
                       {detailData?.status?.name}
-                      {detailData?.resident?.id && detailData?.status_id !== 'AK' ? (
+                      {detailData?.property_type_id === 'B' && detailData?.resident?.id && detailData?.status_id !== 'AK' ? (
                         <Can permission="units.update">
-                          <Button size="small" type="link" icon={<KeyOutlined />} loading={handover.isPending} onClick={() => confirmHandover(detailData)}>
+                          <Button size="small" type="link" icon={<KeyOutlined />} onClick={() => openHandover(detailData)}>
                             Serah Terima Kunci
                           </Button>
                         </Can>
@@ -373,6 +385,36 @@ export default function UnitsPage() {
           </Form.Item>
           <Form.Item label="Catatan" name="notes">
             <Input.TextArea rows={3} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="Serah Terima Kunci"
+        open={drawer.type === 'handover'}
+        onCancel={() => setDrawer({ type: null, record: null })}
+        onOk={() => handoverForm.submit()}
+        confirmLoading={handover.isPending}
+        okText="Aktifkan Unit"
+        destroyOnHidden
+      >
+        <p>
+          Unit <strong>{drawer.record?.id}</strong> akan diaktifkan setelah serah terima kunci dan dapat mulai ditagih biaya IPL sejak tanggal serah terima.
+        </p>
+        <Form
+          form={handoverForm}
+          layout="vertical"
+          onFinish={(values) => handover.mutate({
+            unit: drawer.record,
+            va_number: values.va_number,
+            handover_date: values.handover_date.format('YYYY-MM-DD'),
+          })}
+        >
+          <Form.Item label="Nomor Virtual Account" name="va_number" rules={[{ required: true, message: 'Nomor virtual account wajib diisi' }]}>
+            <Input placeholder="Masukkan nomor virtual account" />
+          </Form.Item>
+          <Form.Item label="Tanggal Serah Terima Kunci" name="handover_date" rules={[{ required: true, message: 'Pilih tanggal serah terima kunci' }]}>
+            <DatePicker style={{ width: '100%' }} />
           </Form.Item>
         </Form>
       </Modal>
