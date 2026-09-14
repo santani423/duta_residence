@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import PageHeader from '../components/common/PageHeader.jsx';
 import Can from '../components/common/Can.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
@@ -15,7 +15,7 @@ import { useTableState } from '../hooks/useTableState.js';
 import { formatCurrency, formatDate, formatDateTime, formatPeriod } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
 import StatusBadge from '../components/common/StatusBadge.jsx';
-import { residentStatusOptions, unitOccupancyStatusOptions } from '../components/forms/UnitForm.jsx';
+import { propertyTypeOptions, residentStatusOptions, unitOccupancyStatusOptions } from '../components/forms/UnitForm.jsx';
 
 const DONUT_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100'];
 const MONTHLY_RATE_MONTHS_PAST = 6;
@@ -67,6 +67,29 @@ function DonutChart({ title, data, loading }) {
               <Tooltip formatter={(value, name) => [`${value} unit`, name]} />
               <Legend verticalAlign="bottom" formatter={(value, entry) => `${value} (${entry.payload.value})`} />
             </PieChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function InactiveUnitsByTypeChart({ data, loading }) {
+  const total = data.reduce((sum, item) => sum + item.value, 0);
+  return (
+    <Card size="small" type="inner" title={`Unit Tidak Aktif Berdasarkan Tipe (${total} unit)`} loading={loading}>
+      {total === 0 ? (
+        <Empty description="Belum ada data" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+      ) : (
+        <div className="chart-box">
+          <ResponsiveContainer>
+            <BarChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="name" />
+              <YAxis allowDecimals={false} />
+              <Tooltip formatter={(value) => [`${value} unit`, 'Jumlah']} />
+              <Bar dataKey="value" fill={DONUT_COLORS[0]} radius={[4, 4, 0, 0]} />
+            </BarChart>
           </ResponsiveContainer>
         </div>
       )}
@@ -171,9 +194,10 @@ export default function ClusterDetailPage() {
     name: option.label,
     value: allUnits.filter((unit) => unit.occupancy_status === option.value).length,
   }));
-  const statusData = residentStatusOptions.map((option) => ({
+  const inactiveUnits = allUnits.filter((unit) => unit.status_id === 'TA');
+  const inactiveByTypeData = propertyTypeOptions.map((option) => ({
     name: option.label,
-    value: allUnits.filter((unit) => unit.status_id === option.value).length,
+    value: inactiveUnits.filter((unit) => unit.property_type_id === option.value).length,
   }));
 
   return (
@@ -260,7 +284,7 @@ export default function ClusterDetailPage() {
             <DonutChart title="Status Unit" data={occupancyData} loading={unitsAll.isLoading} />
           </Col>
           <Col xs={24} md={12}>
-            <DonutChart title="Status Penghuni" data={statusData} loading={unitsAll.isLoading} />
+            <InactiveUnitsByTypeChart data={inactiveByTypeData} loading={unitsAll.isLoading} />
           </Col>
         </Row>
         <FilterBar>
