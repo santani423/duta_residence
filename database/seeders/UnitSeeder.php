@@ -80,7 +80,7 @@ class UnitSeeder extends Seeder
                     'resident_id' => $resident->id,
                     'cluster_id' => $cluster['id'],
                     'block' => chr(65 + (($i - 1) % 6)),
-                    'lot_number' => str_pad((string) $i, 3, '0', STR_PAD_LEFT),
+                    'lot_number' => (string) $i,
                     'property_type_id' => $profile['type'],
                     'building_area' => $profile['building'],
                     'land_area' => $profile['land'],

@@ -3,7 +3,7 @@
 @section('content')
     <h1>Transaksi Gateway</h1>
     <table>
-        <thead><tr><th>Invoice</th><th>Penghuni</th><th>Alamat Unit</th><th>Provider</th><th class="right">Total</th><th>Status</th><th>Dibuat</th></tr></thead>
+        <thead><tr><th>Invoice</th><th>Penghuni</th><th>Alamat Unit</th><th>Via</th><th class="right">Total</th><th>Status</th><th>Dibuat</th></tr></thead>
         <tbody>
             @foreach ($transactions as $transaction)
                 <tr>

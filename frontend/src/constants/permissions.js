@@ -48,7 +48,7 @@ export const menuItems = [
   { key: '/', label: 'Dashboard', icon: DashboardOutlined, permissions: ['reports.view', 'residents.view', 'billings.view'] },
   { key: '/manual-book', label: 'Manual Book', icon: ReadOutlined, permissions: [] },
   { key: '/clusters', label: 'Cluster', icon: HomeOutlined, permissions: ['clusters.view'] },
-  { key: '/units', label: 'Unit Rumah', icon: ApartmentOutlined, permissions: ['units.view'] },
+  { key: '/units', label: 'Unit Properti', icon: ApartmentOutlined, permissions: ['units.view'] },
   { key: '/billings', label: 'Tagihan', icon: FileTextOutlined, permissions: ['billings.view'] },
   { key: '/payments', label: 'Pembayaran', icon: CreditCardOutlined, permissions: ['payments.view'] },
   { key: '/admin/balance-reconciliation', label: 'Rekonsiliasi Saldo', icon: SwapOutlined, permissions: ['balances.view'] },

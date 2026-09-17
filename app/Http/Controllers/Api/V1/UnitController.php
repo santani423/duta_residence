@@ -139,6 +139,13 @@ class UnitController extends Controller
             $data['handover_date'] = now()->toDateString();
         }
 
+        // Unit baru saja ditautkan ke seorang penghuni/customer (mis. lewat field "Pemilik /
+        // Penghuni" di form edit unit) - tandai Occupancy sebagai Booked, konsisten dengan alur
+        // "Masukan Penghuni" di ResidentController::store().
+        if ($unit->resident_id === null && ! empty($data['resident_id'] ?? null)) {
+            $data['occupancy_id'] = Unit::OCCUPANCY_BOOKED_ID;
+        }
+
         $old = $unit->toArray();
         $unit->update($data);
         $auditService->log('unit_updated', 'units', 'UPDATE', $unit, $old, $unit->toArray());
@@ -191,7 +198,7 @@ class UnitController extends Controller
             'building_area' => ['nullable', 'numeric', 'min:0'],
             'land_area' => ['nullable', 'numeric', 'min:0'],
             'handover_date' => ['nullable', 'date'],
-            'occupancy_id' => ['required', 'exists:occupancy_statuses,id'],
+            'occupancy_id' => ['nullable', 'exists:occupancy_statuses,id'],
             'status_id' => ['required', 'exists:resident_statuses,id'],
             'occupancy_role' => ['sometimes', Rule::in(['pemilik', 'penyewa', 'keluarga', 'sementara'])],
             'tenancy_start_date' => ['nullable', 'date'],

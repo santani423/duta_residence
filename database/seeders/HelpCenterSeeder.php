@@ -181,7 +181,7 @@ class HelpCenterSeeder extends Seeder
                 'roles' => ['root', 'super_admin', 'admin_estate', 'back_office'],
                 'title' => 'Kelola Data Unit',
                 'summary' => 'Cara menambah unit, mengubah data, dan memindahkan kepemilikan.',
-                'content' => 'Menu Unit Rumah menyimpan data properti (kavling/bangunan) beserta pemiliknya. Mengubah pemilik unit (field Pemilik) akan otomatis menyesuaikan akun login penghuni terkait — akun pemilik lama dilepas dari unit tersebut, dan akun pemilik baru ditautkan.',
+                'content' => 'Menu Unit Properti menyimpan data properti (kavling/bangunan) beserta pemiliknya. Mengubah pemilik unit (field Pemilik) akan otomatis menyesuaikan akun login penghuni terkait — akun pemilik lama dilepas dari unit tersebut, dan akun pemilik baru ditautkan.',
                 'steps' => [
                     ['title' => 'Tambah unit', 'description' => 'Isi ID unit, pilih Pemilik (penghuni), Cluster, Blok, Kavling, dan tipe properti, lalu Simpan.'],
                     ['title' => 'Ubah pemilik unit', 'description' => 'Buka Edit pada unit, ganti field Pemilik ke penghuni yang benar, lalu Simpan.'],

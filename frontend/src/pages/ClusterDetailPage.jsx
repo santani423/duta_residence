@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
-import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import PageHeader from '../components/common/PageHeader.jsx';
 import Can from '../components/common/Can.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
@@ -67,29 +67,6 @@ function DonutChart({ title, data, loading }) {
               <Tooltip formatter={(value, name) => [`${value} unit`, name]} />
               <Legend verticalAlign="bottom" formatter={(value, entry) => `${value} (${entry.payload.value})`} />
             </PieChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-    </Card>
-  );
-}
-
-function InactiveUnitsByTypeChart({ data, loading }) {
-  const total = data.reduce((sum, item) => sum + item.value, 0);
-  return (
-    <Card size="small" type="inner" title={`Unit Tidak Aktif Berdasarkan Tipe (${total} unit)`} loading={loading}>
-      {total === 0 ? (
-        <Empty description="Belum ada data" image={Empty.PRESENTED_IMAGE_SIMPLE} />
-      ) : (
-        <div className="chart-box">
-          <ResponsiveContainer>
-            <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="name" />
-              <YAxis allowDecimals={false} />
-              <Tooltip formatter={(value) => [`${value} unit`, 'Jumlah']} />
-              <Bar dataKey="value" fill={DONUT_COLORS[0]} radius={[4, 4, 0, 0]} />
-            </BarChart>
           </ResponsiveContainer>
         </div>
       )}
@@ -284,7 +261,7 @@ export default function ClusterDetailPage() {
             <DonutChart title="Status Unit" data={occupancyData} loading={unitsAll.isLoading} />
           </Col>
           <Col xs={24} md={12}>
-            <InactiveUnitsByTypeChart data={inactiveByTypeData} loading={unitsAll.isLoading} />
+            <DonutChart title="Unit Tidak Aktif Berdasarkan Tipe" data={inactiveByTypeData} loading={unitsAll.isLoading} />
           </Col>
         </Row>
         <FilterBar>

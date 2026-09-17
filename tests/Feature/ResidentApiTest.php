@@ -105,6 +105,7 @@ class ResidentApiTest extends TestCase
 
         $unit = Unit::query()->find($unitId);
         $this->assertSame($residentId, $unit->resident_id);
+        $this->assertSame(Unit::OCCUPANCY_BOOKED_ID, $unit->occupancy_id);
 
         $user = User::where('resident_id', $residentId)->first();
         $this->assertSame($unitId, $user->unit_id);

@@ -158,9 +158,9 @@ export default function UnitsPage() {
     setDrawer({ type: 'edit', record });
   }
 
-  function openAddResident(record) {
+  function openAddResident(record = null) {
     residentForm.resetFields();
-    residentForm.setFieldsValue({ unit_id: record.id });
+    if (record) residentForm.setFieldsValue({ unit_id: record.id });
     setDrawer({ type: 'add-resident', record });
   }
 
@@ -171,12 +171,17 @@ export default function UnitsPage() {
   return (
     <section>
       <PageHeader
-        title="Unit Rumah"
+        title="Unit Properti"
         subtitle={`Master data unit dan kepemilikan di ${siteName}.`}
-        breadcrumbs={[{ label: 'Unit Rumah' }]}
+        breadcrumbs={[{ label: 'Unit Properti' }]}
         onRefresh={units.refetch}
         loading={units.isFetching}
-        extra={<Can permission="units.create"><Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Tambah Unit</Button></Can>}
+        extra={
+          <Space wrap>
+            <Can permission="units.create"><Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Tambah Unit</Button></Can>
+            <Can permission="residents.create"><Button icon={<UserAddOutlined />} onClick={() => openAddResident()}>Masukan Penghuni</Button></Can>
+          </Space>
+        }
       />
 
       <FilterBar>
@@ -214,7 +219,7 @@ export default function UnitsPage() {
                   { key: 'detail', label: 'Detail', icon: <EyeOutlined /> },
                   record.resident?.id
                     ? { key: 'resident', label: 'Detail Penghuni', icon: <UserOutlined /> }
-                    : { key: 'add-resident', label: 'Tambah Penghuni', icon: <UserAddOutlined />, permission: 'residents.create' },
+                    : { key: 'add-resident', label: 'Masukan Penghuni', icon: <UserAddOutlined />, permission: 'residents.create' },
                   canHandover
                     ? { key: 'handover', label: 'Serah Terima Kunci', icon: <KeyOutlined />, permission: 'units.update' }
                     : null,
@@ -276,7 +281,7 @@ export default function UnitsPage() {
                       <Space>
                         <Tag color="default">Belum ada penghuni</Tag>
                         <Can permission="residents.create">
-                          <Button size="small" type="link" icon={<UserAddOutlined />} onClick={() => openAddResident(detailData)}>Tambah Penghuni</Button>
+                          <Button size="small" type="link" icon={<UserAddOutlined />} onClick={() => openAddResident(detailData)}>Masukan Penghuni</Button>
                         </Can>
                       </Space>
                     )}
@@ -347,7 +352,7 @@ export default function UnitsPage() {
       </Drawer>
 
       <Drawer
-        title="Tambah Penghuni"
+        title="Masukan Penghuni"
         open={drawer.type === 'add-resident'}
         onClose={() => setDrawer({ type: null, record: null })}
         width={620}

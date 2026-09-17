@@ -250,7 +250,7 @@ export default function BillingsPage() {
         ) : (
           <Form form={form} layout="vertical" onFinish={back.mutate} initialValues={{ period_range: [nextBackPeriod(), nextBackPeriod()] }}>
             <Form.Item label="Unit" name="unit_id" rules={[{ required: true, message: 'Pilih unit' }]}>
-              <UnitPicker clusters={clusters.data?.data || []} />
+              <UnitPicker clusters={clusters.data?.data || []} statusId="AK" />
             </Form.Item>
             <p className="ant-form-text" style={{ marginBottom: 12 }}>
               Nominal IPL diambil otomatis dari nominal IPL yang berlaku pada tiap periode (atau periode terakhir
@@ -292,13 +292,13 @@ export default function BillingsPage() {
   );
 }
 
-function UnitPicker({ value, onChange, clusters = [] }) {
+function UnitPicker({ value, onChange, clusters = [], statusId }) {
   const [clusterId, setClusterId] = useState(undefined);
   const [search, setSearch] = useState('');
   const debounced = useDebounce(search);
   const units = useQuery({
-    queryKey: ['units', 'picker', clusterId, debounced],
-    queryFn: () => api.units.list({ cluster_id: clusterId, search: debounced || undefined, per_page: 20 }),
+    queryKey: ['units', 'picker', clusterId, debounced, statusId],
+    queryFn: () => api.units.list({ cluster_id: clusterId, status_id: statusId, search: debounced || undefined, per_page: 20 }),
   });
 
   const clusterOptions = clusters.map((item) => ({ value: item.id, label: item.name }));

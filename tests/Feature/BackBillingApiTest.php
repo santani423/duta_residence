@@ -180,6 +180,38 @@ class BackBillingApiTest extends TestCase
             ->assertStatus(422);
     }
 
+    public function test_prepare_back_is_rejected_for_an_inactive_unit(): void
+    {
+        $unit = $this->makeUnit();
+        $unit->update(['status_id' => 'TA']);
+        ClusterRateSchedule::query()->create([
+            'cluster_id' => $unit->cluster_id,
+            'effective_date' => '2026-08-01',
+            'rate' => 320000,
+            'is_active' => true,
+        ]);
+
+        Sanctum::actingAs($this->makeAuthorizedUser());
+
+        $this->postJson('/api/v1/billings/prepare-back', [
+            'unit_id' => $unit->id,
+            'periods' => [['year' => 2026, 'month' => 9]],
+        ])->assertStatus(422)->assertJsonValidationErrors(['unit_id']);
+
+        $this->assertSame(0, Billing::where('unit_id', $unit->id)->count());
+    }
+
+    public function test_back_preview_is_rejected_for_an_inactive_unit(): void
+    {
+        $unit = $this->makeUnit();
+        $unit->update(['status_id' => 'TA']);
+
+        Sanctum::actingAs($this->makeAuthorizedUser());
+
+        $this->getJson('/api/v1/billings/back-preview?'.http_build_query(['unit_id' => $unit->id, 'year' => 2026, 'month' => 9]))
+            ->assertStatus(422)->assertJsonValidationErrors(['unit_id']);
+    }
+
     public function test_one_invalid_period_rolls_back_the_whole_backdated_batch(): void
     {
         $unit = $this->makeUnit();

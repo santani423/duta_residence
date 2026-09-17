@@ -12,11 +12,12 @@ export const occupancyOptions = [
   { value: '1', label: 'Dihuni' },
   { value: '2', label: 'Kosong' },
   { value: '3', label: 'Sewa' },
+  { value: '4', label: 'Booked' },
 ];
 
 export const residentStatusOptions = [
   { value: 'AK', label: 'Aktif' },
-  { value: 'RK', label: 'Rumah Kosong' },
+  { value: 'RK', label: 'Properti Kosong' },
   { value: 'TA', label: 'Tidak Aktif' },
 ];
 
@@ -42,7 +43,6 @@ export default function UnitForm({ form, clusters = [], residents = [], isEdit =
       className="responsive-form"
       initialValues={{
         property_type_id: 'B',
-        occupancy_id: '1',
         status_id: 'TA',
         is_penalty_eligible: true,
         is_discount_eligible: false,
@@ -105,7 +105,7 @@ export default function UnitForm({ form, clusters = [], residents = [], isEdit =
         </Form.Item>
       )}
       <Form.Item label="Occupancy" name="occupancy_id">
-        <Select options={occupancyOptions} />
+        <Select allowClear placeholder="Belum ditentukan" options={occupancyOptions} />
       </Form.Item>
       {isEdit ? (
         <Form.Item

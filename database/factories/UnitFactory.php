@@ -28,7 +28,7 @@ class UnitFactory extends Factory
             'resident_id' => Resident::factory(),
             'cluster_id' => 'AL',
             'block' => fake()->randomElement(['A', 'B', 'C', 'D', 'E']),
-            'lot_number' => str_pad((string) fake()->unique()->numberBetween(1, 999), 3, '0', STR_PAD_LEFT),
+            'lot_number' => (string) fake()->unique()->numberBetween(1, 999),
             'property_type_id' => $type['code'],
             'building_area' => $type['building'],
             'land_area' => $type['land'],

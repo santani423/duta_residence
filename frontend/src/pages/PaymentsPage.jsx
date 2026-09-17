@@ -389,7 +389,7 @@ export default function PaymentsPage() {
                                 description={activeGateway === 'manual' ? `${manualInfo.bank_name || '-'} ${manualInfo.account_number || ''} a.n. ${manualInfo.account_name || '-'}` : 'Transaksi akan menghasilkan payment URL jika provider aktif. Transaksi gateway melunasi seluruh tunggakan unit ini.'}
                               />
                               <Form form={gatewayForm} layout="vertical" onFinish={createGateway.mutate} initialValues={{ provider: activeGateway }} className="section-row">
-                                <Form.Item label="Provider" name="provider" rules={[{ required: true }]}>
+                                <Form.Item label="Via" name="provider" rules={[{ required: true }]}>
                                   <Select options={[
                                     { value: 'manual', label: 'Manual Transfer' },
                                     { value: 'xendit', label: 'Xendit' },
@@ -442,7 +442,7 @@ export default function PaymentsPage() {
                   <Select allowClear showSearch placeholder="Cluster" value={transactionTable.filters.cluster_id} onChange={(value) => transactionTable.setFilters({ ...transactionTable.filters, cluster_id: value })} className="filter-input" options={clusterOptions} optionFilterProp="label" loading={clusters.isFetching} />
                   <Input allowClear placeholder="Nama penghuni/customer" value={transactionTable.filters.customer} onChange={(event) => transactionTable.setFilters({ ...transactionTable.filters, customer: event.target.value || undefined })} className="filter-input" />
                   <Input allowClear placeholder="Alamat unit (cluster/blok/kavling)" value={transactionTable.filters.address} onChange={(event) => transactionTable.setFilters({ ...transactionTable.filters, address: event.target.value || undefined })} className="filter-input" />
-                  <Select allowClear placeholder="Provider" value={transactionTable.filters.provider} onChange={(value) => transactionTable.setFilters({ ...transactionTable.filters, provider: value })} className="filter-input" options={[{ value: 'manual', label: 'Manual' }, { value: 'xendit', label: 'Xendit' }, { value: 'midtrans', label: 'Midtrans' }]} />
+                  <Select allowClear placeholder="Via" value={transactionTable.filters.provider} onChange={(value) => transactionTable.setFilters({ ...transactionTable.filters, provider: value })} className="filter-input" options={[{ value: 'manual', label: 'Manual' }, { value: 'xendit', label: 'Xendit' }, { value: 'midtrans', label: 'Midtrans' }]} />
                   <Select allowClear placeholder="Status" value={transactionTable.filters.status} onChange={(value) => transactionTable.setFilters({ ...transactionTable.filters, status: value })} className="filter-input" options={['pending', 'waiting_verification', 'paid', 'rejected', 'failed', 'expired'].map((value) => ({ value, label: value }))} />
                   <DatePicker.RangePicker
                     allowClear
@@ -468,7 +468,7 @@ export default function PaymentsPage() {
                       { title: 'Invoice', dataIndex: 'invoice_number', width: 190, fixed: 'left' },
                       { title: 'Penghuni', dataIndex: ['unit', 'resident', 'name'], width: 200 },
                       { title: 'Alamat Unit', render: (_, row) => `${row.unit?.cluster?.name || ''} ${row.unit?.block || ''}/${row.unit?.lot_number || ''}`, width: 180 },
-                      { title: 'Provider', dataIndex: 'payment_provider', width: 110 },
+                      { title: 'Via', dataIndex: 'payment_provider', width: 110 },
                       { title: 'Nominal Tagihan', dataIndex: 'total', render: formatCurrency, width: 140 },
                       { title: 'Nominal Dibayar', dataIndex: 'manual_amount', render: (value) => (value ? formatCurrency(value) : '-'), width: 140 },
                       { title: 'Tgl Bayar', dataIndex: 'manual_transfer_date', render: (value) => (value ? formatDate(value) : '-'), width: 120 },

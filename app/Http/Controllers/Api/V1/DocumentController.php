@@ -116,7 +116,7 @@ class DocumentController extends Controller
         return response()->streamDownload(function () use ($transactions) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, ['Invoice', 'Penghuni', 'Unit', 'Alamat Unit', 'Provider', 'Total', 'Status', 'Dibuat']);
+            fputcsv($out, ['Invoice', 'Penghuni', 'Unit', 'Alamat Unit', 'Via', 'Total', 'Status', 'Dibuat']);
 
             foreach ($transactions as $transaction) {
                 fputcsv($out, [

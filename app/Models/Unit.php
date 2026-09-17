@@ -20,7 +20,9 @@ class Unit extends Model
     public const LAND_PROPERTY_TYPES = ['K', 'P'];
 
     public const OCCUPANCY_STATUS_READY_STOCK = 'ready_stock';
+
     public const OCCUPANCY_STATUS_TANAH_KOSONG = 'tanah_kosong';
+
     public const OCCUPANCY_STATUS_OCCUPIED = 'occupied';
 
     public const OCCUPANCY_STATUS_LABELS = [
@@ -28,6 +30,14 @@ class Unit extends Model
         self::OCCUPANCY_STATUS_TANAH_KOSONG => 'Tanah Kosong',
         self::OCCUPANCY_STATUS_OCCUPIED => 'Occupied',
     ];
+
+    /**
+     * Nilai occupancy_id (lookup ke tabel occupancy_statuses, bukan accessor
+     * occupancy_status di atas) yang dipasang otomatis begitu sebuah Unit berhasil
+     * ditautkan ke seorang Resident/customer - lihat ResidentController::store() dan
+     * UnitController::update().
+     */
+    public const OCCUPANCY_BOOKED_ID = '4';
 
     protected $fillable = [
         'id', 'va_number', 'resident_id', 'tenant_resident_id', 'billing_payer', 'cluster_id', 'block', 'lot_number', 'property_type_id',

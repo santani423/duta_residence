@@ -81,7 +81,7 @@ class ResidentController extends Controller
             // request lain yang menautkan unit yang sama secara bersamaan.
             $unit = Unit::query()->whereNull('resident_id')->findOrFail($unitId);
             $oldUnit = $unit->toArray();
-            $unit->update(['resident_id' => $resident->id, 'updated_by' => $request->user()->id]);
+            $unit->update(['resident_id' => $resident->id, 'occupancy_id' => Unit::OCCUPANCY_BOOKED_ID, 'updated_by' => $request->user()->id]);
             $auditService->log('unit_updated', 'units', 'UPDATE', $unit, $oldUnit, $unit->toArray());
             $ownershipSync->sync($unit, $auditService);
         }

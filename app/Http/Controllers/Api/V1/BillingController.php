@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class BillingController extends Controller
 {
@@ -50,7 +51,7 @@ class BillingController extends Controller
                 return $this->whereOverdueMonths($q->outstanding()->where('is_penalty_eligible', true), $now, $wantsPenalty ? '>=' : '<', 1);
             });
 
-        $paginator = $query->latest()->paginate($request->integer('per_page', 15));
+        $paginator = $query->orderBy('year')->orderBy('month')->orderBy('id')->paginate($request->integer('per_page', 15));
         $paginator->setCollection($paginator->getCollection()->map(fn (Billing $billing) => [
             ...$billing->toArray(),
             'penalty_detail' => $penaltyService->calculateInvoiceTotal($billing, $now),
@@ -120,9 +121,11 @@ class BillingController extends Controller
     public function previewBackRate(Request $request, ClusterRateScheduleService $rateScheduleService)
     {
         $data = $request->validate([
-            'unit_id' => ['required', 'exists:units,id'],
+            'unit_id' => ['required', Rule::exists('units', 'id')->where('status_id', 'AK')],
             'year' => ['required', 'integer', 'min:2020', 'max:2100'],
             'month' => ['required', 'integer', 'between:1,12'],
+        ], [
+            'unit_id.exists' => 'Unit tidak ditemukan atau sudah tidak aktif.',
         ]);
 
         $unit = Unit::with('cluster')->findOrFail($data['unit_id']);
@@ -133,10 +136,12 @@ class BillingController extends Controller
     public function prepareBack(Request $request, BillingService $service)
     {
         $data = $request->validate([
-            'unit_id' => ['required', 'exists:units,id'],
+            'unit_id' => ['required', Rule::exists('units', 'id')->where('status_id', 'AK')],
             'periods' => ['required', 'array', 'min:1'],
             'periods.*.year' => ['required', 'integer', 'min:2020', 'max:2100'],
             'periods.*.month' => ['required', 'integer', 'between:1,12'],
+        ], [
+            'unit_id.exists' => 'Unit tidak ditemukan atau sudah tidak aktif.',
         ]);
 
         $unit = Unit::with('cluster')->findOrFail($data['unit_id']);

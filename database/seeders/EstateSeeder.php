@@ -43,12 +43,12 @@ class EstateSeeder extends Seeder
             ['id' => 'R', 'name' => 'Ruko', 'description' => 'Rumah toko'],
         ])->each(fn ($row) => PropertyType::updateOrCreate(['id' => $row['id']], $row));
 
-        collect([['id' => '1', 'name' => 'Dihuni'], ['id' => '2', 'name' => 'Kosong'], ['id' => '3', 'name' => 'Sewa']])
+        collect([['id' => '1', 'name' => 'Dihuni'], ['id' => '2', 'name' => 'Kosong'], ['id' => '3', 'name' => 'Sewa'], ['id' => '4', 'name' => 'Booked']])
             ->each(fn ($row) => OccupancyStatus::updateOrCreate(['id' => $row['id']], $row));
 
         collect([
             ['id' => 'AK', 'name' => 'Aktif', 'description' => 'Penghuni aktif'],
-            ['id' => 'RK', 'name' => 'Rumah Kosong', 'description' => 'Unit kosong atau renovasi'],
+            ['id' => 'RK', 'name' => 'Properti Kosong', 'description' => 'Unit kosong atau renovasi'],
             ['id' => 'TA', 'name' => 'Tidak Aktif', 'description' => 'Penghuni tidak aktif'],
         ])->each(fn ($row) => ResidentStatus::updateOrCreate(['id' => $row['id']], $row));
 
