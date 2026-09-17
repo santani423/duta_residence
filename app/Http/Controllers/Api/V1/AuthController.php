@@ -23,13 +23,22 @@ class AuthController extends Controller
 
         // The login screen has always advertised "username, email, atau telepon" as
         // acceptable identifiers (see android login_screen.dart); the backend only ever
-        // matched `username` until now. Email is safe to match here because it's already
-        // validated unique across the whole `users` table (UserController/CollectorController),
-        // so this can never resolve to more than one account.
+        // matched `username`/`email` until now. Email is safe to match directly because
+        // it's already validated unique across the whole `users` table
+        // (UserController/CollectorController). `phone` has no unique constraint, so it
+        // only resolves a login when exactly one account has that number — otherwise we
+        // fall through to the "salah" error rather than risk logging into the wrong account.
         $user = User::query()
             ->where('username', $credentials['username'])
             ->orWhere('email', $credentials['username'])
             ->first();
+
+        if (! $user) {
+            $phoneMatches = User::query()->where('phone', $credentials['username'])->limit(2)->get();
+            if ($phoneMatches->count() === 1) {
+                $user = $phoneMatches->first();
+            }
+        }
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             $auditService->log('login_failed', 'auth', 'LOGIN', null, [], ['username' => $credentials['username']], 'failed');

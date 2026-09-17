@@ -25,6 +25,45 @@ class AuthApiTest extends TestCase
             ->assertJsonStructure(['data' => ['token', 'user' => ['permissions']]]);
     }
 
+    public function test_user_can_login_with_email(): void
+    {
+        $this->seed();
+
+        $root = User::where('username', 'root')->first();
+        $root->forceFill(['email' => 'root@example.test'])->save();
+
+        $this->postJson('/api/v1/auth/login', [
+            'username' => 'root@example.test',
+            'password' => 'password',
+        ])->assertOk()->assertJsonPath('success', true);
+    }
+
+    public function test_user_can_login_with_unique_phone_number(): void
+    {
+        $this->seed();
+
+        $root = User::where('username', 'root')->first();
+        $root->forceFill(['phone' => '081234567890'])->save();
+
+        $this->postJson('/api/v1/auth/login', [
+            'username' => '081234567890',
+            'password' => 'password',
+        ])->assertOk()->assertJsonPath('success', true);
+    }
+
+    public function test_login_with_ambiguous_phone_number_is_rejected(): void
+    {
+        $this->seed();
+
+        User::where('username', 'root')->update(['phone' => '081234567890']);
+        User::where('username', 'cs')->update(['phone' => '081234567890']);
+
+        $this->postJson('/api/v1/auth/login', [
+            'username' => '081234567890',
+            'password' => 'password',
+        ])->assertUnprocessable();
+    }
+
     public function test_inactive_user_cannot_login(): void
     {
         $this->seed();
