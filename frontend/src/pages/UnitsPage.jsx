@@ -150,6 +150,7 @@ export default function UnitsPage() {
 
   function openCreate() {
     form.resetFields();
+    form.setFieldsValue({ occupancy_id: '2' });
     setDrawer({ type: 'create', record: null });
   }
 
@@ -263,7 +264,7 @@ export default function UnitsPage() {
         extra={<Space><Button onClick={() => setDrawer({ type: null, record: null })}>Batal</Button><Button type="primary" loading={save.isPending} onClick={() => form.submit()}>Simpan</Button></Space>}
         destroyOnHidden
       >
-        <UnitForm form={form} clusters={clusters.data?.data || []} residents={residents.data?.data || []} isEdit={drawer.type === 'edit'} onFinish={save.mutate} loading={save.isPending} />
+        <UnitForm form={form} clusters={clusters.data?.data || []} residents={residents.data?.data || []} onFinish={save.mutate} loading={save.isPending} />
       </Drawer>
 
       <Drawer title="Detail Unit" open={drawer.type === 'detail'} onClose={() => setDrawer({ type: null, record: null })} width={840}>
