@@ -15,18 +15,18 @@ class BillingIndexSortingTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_billing_list_is_sorted_chronologically_by_period_not_creation_order(): void
+    public function test_billing_list_is_sorted_by_latest_period_then_latest_update(): void
     {
         $this->seed(EstateSeeder::class);
 
         $unit = Unit::factory()->create(['cluster_id' => 'AL']);
 
-        // Inserted out of chronological order on purpose, so a created_at-based sort
-        // would return them in a different order than the expected 2026-01..2026-04.
+        // Inserted out of period order on purpose, so a created_at-based sort would differ.
         Billing::factory()->create(['unit_id' => $unit->id, 'year' => 2026, 'month' => 10]);
         Billing::factory()->create(['unit_id' => $unit->id, 'year' => 2026, 'month' => 2]);
         Billing::factory()->create(['unit_id' => $unit->id, 'year' => 2026, 'month' => 3]);
         Billing::factory()->create(['unit_id' => $unit->id, 'year' => 2026, 'month' => 1]);
+        Billing::factory()->create(['unit_id' => $unit->id, 'year' => 2025, 'month' => 12]);
 
         Permission::findOrCreate('billings.view');
         $user = User::factory()->create(['is_active' => true]);
@@ -38,10 +38,31 @@ class BillingIndexSortingTest extends TestCase
         $periods = collect($response->json('data'))->map(fn ($row) => [$row['year'], $row['month']])->values()->all();
 
         $this->assertSame([
-            [2026, 1],
-            [2026, 2],
-            [2026, 3],
             [2026, 10],
+            [2026, 3],
+            [2026, 2],
+            [2026, 1],
+            [2025, 12],
         ], $periods);
+    }
+
+    public function test_billing_list_puts_most_recently_updated_first_within_same_period(): void
+    {
+        $this->seed(EstateSeeder::class);
+
+        $unitA = Unit::factory()->create(['cluster_id' => 'AL']);
+        $unitB = Unit::factory()->create(['cluster_id' => 'AL']);
+
+        $older = Billing::factory()->create(['unit_id' => $unitA->id, 'year' => 2026, 'month' => 5, 'updated_at' => now()->subDay()]);
+        $newer = Billing::factory()->create(['unit_id' => $unitB->id, 'year' => 2026, 'month' => 5, 'updated_at' => now()]);
+
+        Permission::findOrCreate('billings.view');
+        $user = User::factory()->create(['is_active' => true]);
+        $user->givePermissionTo('billings.view');
+        Sanctum::actingAs($user);
+
+        $ids = collect($this->getJson('/api/v1/billings?year=2026&month=5&per_page=10')->assertOk()->json('data'))->pluck('id')->all();
+
+        $this->assertSame([$newer->id, $older->id], $ids);
     }
 }

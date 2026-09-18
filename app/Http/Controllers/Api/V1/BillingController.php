@@ -52,7 +52,8 @@ class BillingController extends Controller
                 return $this->whereOverdueMonths($q->outstanding()->where('is_penalty_eligible', true), $now, $wantsPenalty ? '>=' : '<', 1);
             });
 
-        $paginator = $query->orderBy('year')->orderBy('month')->orderBy('id')->paginate($request->integer('per_page', 15));
+        // Periode terbaru di atas; dalam periode yang sama, tagihan yang paling baru diperbarui di atas.
+        $paginator = $query->orderByDesc('year')->orderByDesc('month')->orderByDesc('updated_at')->orderByDesc('id')->paginate($request->integer('per_page', 15));
         $paginator->setCollection($paginator->getCollection()->map(fn (Billing $billing) => [
             ...$billing->toArray(),
             'penalty_detail' => $penaltyService->calculateInvoiceTotal($billing, $now),
