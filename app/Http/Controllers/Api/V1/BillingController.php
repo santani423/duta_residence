@@ -25,32 +25,7 @@ class BillingController extends Controller
     public function index(Request $request, PenaltyService $penaltyService)
     {
         $now = now();
-        $query = Billing::query()
-            ->with(['unit.cluster', 'unit.resident', 'status', 'approver'])
-            ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value))
-            ->when($request->query('resident_id'), fn ($q, $value) => $q->whereHas('unit', fn ($inner) => $inner->where('resident_id', $value)))
-            ->when($request->query('year'), fn ($q, $value) => $q->where('year', $value))
-            ->when($request->query('month'), fn ($q, $value) => $q->where('month', $value))
-            ->when($request->query('status_id'), fn ($q, $value) => $q->where('status_id', $value))
-            ->when($request->query('cluster_id'), fn ($q, $value) => $q->whereHas('unit', fn ($inner) => $inner->where('cluster_id', $value)))
-            // Umur tunggakan dihitung murni dari selisih year/month (tanpa GREATEST/MAX untuk
-            // tetap kompatibel lintas driver - nilai negatif otomatis gagal filter ambang >= 0).
-            ->when($request->filled('min_overdue_months'), fn ($q) => $this->whereOverdueMonths($q, $now, '>=', $request->integer('min_overdue_months')))
-            ->when($request->filled('max_overdue_months'), fn ($q) => $this->whereOverdueMonths($q, $now, '<=', $request->integer('max_overdue_months')))
-            // Pendekatan (bukan hasil PenaltyService penuh): tidak memperhitungkan penalty_rule
-            // per-tier yang bernilai 0, penalty_waived_amount, atau override per cluster - hanya
-            // aproksimasi murah "outstanding, eligible, dan sudah lewat bulan berjalan" agar filter
-            // ini tetap satu query SQL, bukan N+1. Nonaktifkan sepenuhnya saat saklar global mati,
-            // supaya tidak bertentangan dengan penalty_amount=0 yang ditampilkan PenaltyService.
-            ->when($request->filled('has_penalty'), function ($q) use ($request, $penaltyService, $now) {
-                $wantsPenalty = $request->boolean('has_penalty');
-
-                if (! $penaltyService->isPenaltyEnabled()) {
-                    return $wantsPenalty ? $q->whereRaw('1 = 0') : $q->outstanding();
-                }
-
-                return $this->whereOverdueMonths($q->outstanding()->where('is_penalty_eligible', true), $now, $wantsPenalty ? '>=' : '<', 1);
-            });
+        $query = $this->filteredQuery($request, $penaltyService, $now);
 
         // Periode terbaru di atas; dalam periode yang sama, tagihan yang paling baru diperbarui di atas.
         $paginator = $query->orderByDesc('year')->orderByDesc('month')->orderByDesc('updated_at')->orderByDesc('id')->paginate($request->integer('per_page', 15));
@@ -70,12 +45,7 @@ class BillingController extends Controller
     public function summary(Request $request, PenaltyService $penaltyService)
     {
         $now = now();
-        $billings = Billing::query()
-            ->with('unit')
-            ->outstanding()
-            ->when($request->query('cluster_id'), fn ($q, $value) => $q->whereHas('unit', fn ($inner) => $inner->where('cluster_id', $value)))
-            ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value))
-            ->get();
+        $billings = $this->filteredQuery($request, $penaltyService, $now)->outstanding()->get();
 
         $items = $billings->map(fn (Billing $billing) => $penaltyService->calculateInvoiceTotal($billing, $now));
 
@@ -230,6 +200,44 @@ class BillingController extends Controller
         $billing = $service->applyManualDiscount($billing, (float) $data['discount'], $data['reason'], $request->user()->id);
 
         return $this->success($billing->fresh(['unit.cluster', 'unit.resident', 'status']), 'Diskon tagihan berhasil diperbarui.');
+    }
+
+    /**
+     * Filter bersama untuk daftar tagihan dan ringkasannya, supaya total di kartu ringkasan
+     * selalu sama dengan baris yang tampil. Sengaja TIDAK ada filter tahun bawaan: tahun hanya
+     * berlaku bila diminta eksplisit lewat query `year`.
+     */
+    private function filteredQuery(Request $request, PenaltyService $penaltyService, Carbon $now): Builder
+    {
+        return Billing::query()
+            ->with(['unit.cluster', 'unit.resident', 'status', 'approver'])
+            ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value))
+            ->when($request->query('resident_id'), fn ($q, $value) => $q->whereHas('unit', fn ($inner) => $inner->where('resident_id', $value)))
+            ->when($request->query('year'), fn ($q, $value) => $q->where('year', $value))
+            ->when($request->query('month'), fn ($q, $value) => $q->where('month', $value))
+            ->when($request->query('status_id'), fn ($q, $value) => $q->where('status_id', $value))
+            // Halaman "Tagihan": hanya yang belum lunas (Belum Bayar + Sebagian) dari SEMUA tahun.
+            // Riwayat Tagihan tidak mengirim flag ini sehingga semua status ikut tampil.
+            ->when($request->boolean('outstanding'), fn ($q) => $q->outstanding())
+            ->when($request->query('cluster_id'), fn ($q, $value) => $q->whereHas('unit', fn ($inner) => $inner->where('cluster_id', $value)))
+            // Umur tunggakan dihitung murni dari selisih year/month (tanpa GREATEST/MAX untuk
+            // tetap kompatibel lintas driver - nilai negatif otomatis gagal filter ambang >= 0).
+            ->when($request->filled('min_overdue_months'), fn ($q) => $this->whereOverdueMonths($q, $now, '>=', $request->integer('min_overdue_months')))
+            ->when($request->filled('max_overdue_months'), fn ($q) => $this->whereOverdueMonths($q, $now, '<=', $request->integer('max_overdue_months')))
+            // Pendekatan (bukan hasil PenaltyService penuh): tidak memperhitungkan penalty_rule
+            // per-tier yang bernilai 0, penalty_waived_amount, atau override per cluster - hanya
+            // aproksimasi murah "outstanding, eligible, dan sudah lewat bulan berjalan" agar filter
+            // ini tetap satu query SQL, bukan N+1. Nonaktifkan sepenuhnya saat saklar global mati,
+            // supaya tidak bertentangan dengan penalty_amount=0 yang ditampilkan PenaltyService.
+            ->when($request->filled('has_penalty'), function ($q) use ($request, $penaltyService, $now) {
+                $wantsPenalty = $request->boolean('has_penalty');
+
+                if (! $penaltyService->isPenaltyEnabled()) {
+                    return $wantsPenalty ? $q->whereRaw('1 = 0') : $q->outstanding();
+                }
+
+                return $this->whereOverdueMonths($q->outstanding()->where('is_penalty_eligible', true), $now, $wantsPenalty ? '>=' : '<', 1);
+            });
     }
 
     private function whereOverdueMonths(Builder $query, Carbon $now, string $operator, int $threshold): Builder

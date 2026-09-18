@@ -1,7 +1,8 @@
 import { Alert, Badge, Button, Card, Checkbox, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Select, Space, Statistic, Tabs, Upload, message, Typography } from 'antd';
 import { CheckOutlined, CloudUploadOutlined, CloseOutlined, FileExcelOutlined, LinkOutlined, PrinterOutlined, SearchOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import PageHeader from '../components/common/PageHeader.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
@@ -40,8 +41,11 @@ export default function PaymentsPage() {
   const [verifyForm] = Form.useForm();
   const pendingVerificationCount = usePendingPaymentVerificationCount();
   const queryClient = useQueryClient();
-  const transactionTable = useTableState();
-  const receiptTable = useTableState();
+  // Dari aksi "Pembayaran" di halaman Unit: /payments?unit_id=... membatasi transaksi & kuitansi ke unit itu saja.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlUnitId = searchParams.get('unit_id') || undefined;
+  const transactionTable = useTableState({ unit_id: urlUnitId });
+  const receiptTable = useTableState({ unit_id: urlUnitId });
   const debouncedUnitQuery = useDebounce(unitQuery);
 
   const config = useQuery({ queryKey: ['payment-gateway-config'], queryFn: api.payments.gatewayConfig });
@@ -255,6 +259,11 @@ export default function PaymentsPage() {
     }
   }
 
+  useEffect(() => {
+    if ((transactionTable.filters.unit_id || undefined) !== urlUnitId) transactionTable.setFilters({ ...transactionTable.filters, unit_id: urlUnitId });
+    if ((receiptTable.filters.unit_id || undefined) !== urlUnitId) receiptTable.setFilters({ ...receiptTable.filters, unit_id: urlUnitId });
+  }, [urlUnitId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function updateUnitFilters(patch) {
     setUnitFilters((previous) => ({ ...previous, ...patch }));
     searchForm.setFieldValue('unit_id', undefined);
@@ -314,7 +323,18 @@ export default function PaymentsPage() {
         }}
       />
 
+      {urlUnitId ? (
+        <Alert
+          type="info"
+          showIcon
+          className="section-row"
+          message={`Menampilkan transaksi dan kuitansi pembayaran untuk unit ${urlUnitId}`}
+          action={<Button size="small" onClick={() => setSearchParams({})}>Tampilkan semua unit</Button>}
+        />
+      ) : null}
+
       <Tabs
+        defaultActiveKey={urlUnitId ? 'receipts' : 'workspace'}
         items={[
           {
             key: 'workspace',

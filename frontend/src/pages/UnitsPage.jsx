@@ -1,5 +1,5 @@
 import { Button, Card, DatePicker, Descriptions, Drawer, Dropdown, Form, Input, Modal, Select, Space, Tabs, Tag, message } from 'antd';
-import { DeleteOutlined, EditOutlined, EyeOutlined, KeyOutlined, MoreOutlined, PlusOutlined, SwapOutlined, UserAddOutlined, UserOutlined } from '@ant-design/icons';
+import { CreditCardOutlined, DeleteOutlined, EditOutlined, EyeOutlined, FileTextOutlined, HistoryOutlined, KeyOutlined, MoreOutlined, PlusOutlined, SwapOutlined, UserAddOutlined, UserOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import dayjs from 'dayjs';
@@ -224,6 +224,9 @@ export default function UnitsPage() {
                   canHandover
                     ? { key: 'handover', label: 'Serah Terima', icon: <KeyOutlined />, permission: 'units.update' }
                     : null,
+                  { key: 'billings', label: 'Tagihan', icon: <FileTextOutlined />, permission: 'billings.view' },
+                  { key: 'billing-history', label: 'Riwayat Tagihan', icon: <HistoryOutlined />, permission: 'billings.view' },
+                  { key: 'payments', label: 'Pembayaran', icon: <CreditCardOutlined />, permission: 'payments.view' },
                   { key: 'edit', label: 'Edit', icon: <EditOutlined />, permission: 'units.update' },
                   { key: 'convert', label: 'Konversi Properti', icon: <SwapOutlined />, disabled: record.property_type_id !== 'K', permission: 'units.convert-property' },
                   { type: 'divider' },
@@ -233,6 +236,9 @@ export default function UnitsPage() {
                   <Dropdown menu={{ items, onClick: ({ key }) => {
                     if (key === 'detail') setDrawer({ type: 'detail', record });
                     if (key === 'resident') navigate(`/residents/${record.resident.id}`);
+                    if (key === 'billings') navigate(`/billings?unit_id=${encodeURIComponent(record.id)}`);
+                    if (key === 'billing-history') navigate(`/billings/history?unit_id=${encodeURIComponent(record.id)}`);
+                    if (key === 'payments') navigate(`/payments?unit_id=${encodeURIComponent(record.id)}`);
                     if (key === 'add-resident') openAddResident(record);
                     if (key === 'handover') openHandover(record);
                     if (key === 'edit') openEdit(record);

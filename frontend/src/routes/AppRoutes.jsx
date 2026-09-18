@@ -146,7 +146,8 @@ export default function AppRoutes() {
         <Route path="residents" element={<Protected permissions={['residents.view']}><LazyPage><ResidentsPage /></LazyPage></Protected>} />
         <Route path="residents/:id" element={<Protected permissions={['residents.view']}><LazyPage><ResidentDetailPage /></LazyPage></Protected>} />
         <Route path="units" element={<Protected permissions={['units.view']}><LazyPage><UnitsPage /></LazyPage></Protected>} />
-        <Route path="billings" element={<Protected permissions={['billings.view']}><LazyPage><BillingsPage /></LazyPage></Protected>} />
+        <Route path="billings" element={<Protected permissions={['billings.view']}><LazyPage><BillingsPage key="outstanding" mode="outstanding" /></LazyPage></Protected>} />
+        <Route path="billings/history" element={<Protected permissions={['billings.view']}><LazyPage><BillingsPage key="history" mode="history" /></LazyPage></Protected>} />
         <Route path="payments" element={<Protected permissions={['payments.view']}><LazyPage><PaymentsPage /></LazyPage></Protected>} />
         <Route path="admin/balance-reconciliation" element={<Protected permissions={['balances.view']}><LazyPage><BalanceReconciliationPage /></LazyPage></Protected>} />
         <Route path="installments" element={<Protected permissions={['installments.view']}><LazyPage><InstallmentsPage /></LazyPage></Protected>} />

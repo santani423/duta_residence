@@ -121,6 +121,7 @@ export const api = {
   },
   billings: {
     list: (params) => http.get('/billings', { params }),
+    summary: (params) => http.get('/billings/summary', { params }),
     pendingApproval: (params) => http.get('/billings/pending-approval', { params }),
     prepareMonthly: (payload) => http.post('/billings/prepare-monthly', payload),
     prepareSpecial: (payload) => http.post('/billings/prepare-special', payload),

@@ -100,7 +100,9 @@ class DocumentController extends Controller
             ->when($request->query('cluster_id'), fn ($q, $value) => $q->whereHas('unit', fn ($inner) => $inner->where('cluster_id', $value)))
             ->when($request->query('year'), fn ($q, $value) => $q->where('year', $value))
             ->when($request->query('month'), fn ($q, $value) => $q->where('month', $value))
+            ->when($request->query('resident_id'), fn ($q, $value) => $q->whereHas('unit', fn ($inner) => $inner->where('resident_id', $value)))
             ->when($request->query('status_id'), fn ($q, $value) => $q->where('status_id', $value))
+            ->when($request->boolean('outstanding'), fn ($q) => $q->outstanding())
             ->orderBy('year')->orderBy('month');
     }
 

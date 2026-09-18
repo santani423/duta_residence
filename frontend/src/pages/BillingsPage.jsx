@@ -1,8 +1,9 @@
-import { Alert, Button, Card, DatePicker, Drawer, Form, Input, InputNumber, Modal, Select, Space, Tabs, message } from 'antd';
+import { Alert, Button, Card, Col, DatePicker, Drawer, Form, Input, InputNumber, Modal, Row, Select, Space, Statistic, Tabs, message } from 'antd';
 import { CheckOutlined, FileExcelOutlined, FilePdfOutlined, PercentageOutlined, PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import PageHeader from '../components/common/PageHeader.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
 import Can from '../components/common/Can.jsx';
@@ -15,8 +16,13 @@ import { formatCurrency, formatDateTime, formatPeriod } from '../utils/format.js
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
 import { downloadBlob } from '../utils/download.js';
 
-export default function BillingsPage() {
-  const table = useTableState({ year: dayjs().year() });
+// mode 'outstanding' = halaman Tagihan (semua tagihan belum lunas, lintas tahun);
+// mode 'history' = Riwayat Tagihan (semua status, lintas tahun). Tidak ada filter tahun bawaan.
+export default function BillingsPage({ mode = 'outstanding' }) {
+  const isHistory = mode === 'history';
+  const [searchParams] = useSearchParams();
+  const urlUnitId = searchParams.get('unit_id') || undefined;
+  const table = useTableState({ unit_id: urlUnitId });
   const [drawer, setDrawer] = useState(null);
   const [selected, setSelected] = useState([]);
   const [discountTarget, setDiscountTarget] = useState(null);
@@ -26,7 +32,15 @@ export default function BillingsPage() {
   const [discountForm] = Form.useForm();
   const queryClient = useQueryClient();
 
-  const billings = useQuery({ queryKey: ['billings', table.params], queryFn: () => api.billings.list(table.params) });
+  // Sinkronkan filter unit bila URL berubah (mis. dari aksi Unit) saat halaman sudah terbuka.
+  useEffect(() => {
+    if ((table.filters.unit_id || undefined) !== urlUnitId) table.setFilters({ ...table.filters, unit_id: urlUnitId });
+  }, [urlUnitId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const listParams = isHistory ? table.params : { ...table.params, outstanding: 1 };
+  const billings = useQuery({ queryKey: ['billings', mode, listParams], queryFn: () => api.billings.list(listParams) });
+  const { page: _p, per_page: _pp, ...summaryParams } = listParams;
+  const summary = useQuery({ queryKey: ['billings', 'summary', mode, summaryParams], queryFn: () => api.billings.summary(summaryParams), enabled: !isHistory });
   const clusters = useQuery({ queryKey: ['clusters'], queryFn: () => api.clusters.list() });
   const selectedUnitId = Form.useWatch('unit_id', form);
   const backEnd = Form.useWatch('period_end', form);
@@ -128,11 +142,11 @@ export default function BillingsPage() {
   async function handleExport(format) {
     setExporting(format);
     try {
-      const { search: _search, page: _page, per_page: _perPage, ...filters } = table.params;
+      const { search: _search, page: _page, per_page: _perPage, ...filters } = listParams;
       const blob = format === 'pdf'
         ? await api.documents.billingRecapPdf(filters)
         : await api.documents.billingRecapExcel(filters);
-      downloadBlob(blob, format === 'pdf' ? 'tagihan.pdf' : 'tagihan.csv');
+      downloadBlob(blob, `${isHistory ? 'riwayat-tagihan' : 'tagihan'}.${format === 'pdf' ? 'pdf' : 'csv'}`);
     } catch (error) {
       message.error(getApiErrorMessage(error, 'Gagal mengunduh data tagihan'));
     } finally {
@@ -151,11 +165,15 @@ export default function BillingsPage() {
     { title: 'Umur Tunggakan', render: (_, row) => `${row.penalty_detail?.overdue_months ?? 0} bulan`, width: 130 },
     { title: 'Denda', render: (_, row) => formatCurrency(row.penalty_detail?.penalty_amount ?? 0), width: 130 },
     { title: 'Total', render: (_, row) => formatCurrency(row.penalty_detail?.total_amount ?? row.amount), width: 140 },
+    { title: 'Dibayar', render: (_, row) => formatCurrency(row.penalty_detail?.total_paid ?? 0), width: 140 },
     { title: 'Sisa Tagihan', render: (_, row) => formatCurrency(row.penalty_detail?.total_outstanding ?? 0), width: 140 },
     { title: 'Status', dataIndex: 'status_id', render: (value) => <StatusBadge type="billing" value={value} />, width: 120 },
     { title: 'Approval', render: (_, row) => <StatusBadge type="approval" value={row.approved_at ? 'approved' : 'pending'} />, width: 130 },
     { title: 'Approved At', dataIndex: 'approved_at', render: formatDateTime, width: 170 },
-    {
+    ...(isHistory ? [
+      { title: 'Tgl Bayar', dataIndex: 'paid_at', render: (value) => (value ? formatDateTime(value) : '-'), width: 170 },
+      { title: 'No. Kuitansi', dataIndex: 'receipt_number', render: (value) => value || '-', width: 170 },
+    ] : [{
       title: 'Aksi',
       fixed: 'right',
       width: 220,
@@ -187,22 +205,31 @@ export default function BillingsPage() {
           </Can>
         </Space>
       ),
-    },
+    }]),
   ];
 
   return (
     <section>
       <PageHeader
-        title="Tagihan"
-        subtitle="Generate, filter, dan approval tagihan estate."
-        breadcrumbs={[{ label: 'Tagihan' }]}
-        onRefresh={billings.refetch}
+        title={isHistory ? 'Riwayat Tagihan' : 'Tagihan'}
+        subtitle={isHistory
+          ? `Seluruh riwayat tagihan (belum bayar, sebagian, lunas) dari semua tahun${urlUnitId ? ` untuk unit ${urlUnitId}` : ''}.`
+          : `Seluruh tagihan yang belum lunas dari semua tahun${urlUnitId ? ` untuk unit ${urlUnitId}` : ''}. Generate, filter, dan approval tagihan estate.`}
+        breadcrumbs={[{ label: isHistory ? 'Riwayat Tagihan' : 'Tagihan' }]}
+        onRefresh={() => {
+          billings.refetch();
+          if (!isHistory) summary.refetch();
+        }}
         loading={billings.isFetching}
         extra={
           <Space wrap>
-            <Can permission="billings.prepare"><Button icon={<PlusOutlined />} onClick={() => setDrawer('monthly')}>Generate Bulanan</Button></Can>
-            <Can permission="billings.prepare-special"><Button onClick={() => setDrawer('special')}>Tagihan Khusus</Button></Can>
-            <Can permission="billings.prepare-back"><Button onClick={() => setDrawer('back')}>Tagihan Mundur</Button></Can>
+            {isHistory ? null : (
+              <>
+                <Can permission="billings.prepare"><Button icon={<PlusOutlined />} onClick={() => setDrawer('monthly')}>Generate Bulanan</Button></Can>
+                <Can permission="billings.prepare-special"><Button onClick={() => setDrawer('special')}>Tagihan Khusus</Button></Can>
+                <Can permission="billings.prepare-back"><Button onClick={() => setDrawer('back')}>Tagihan Mundur</Button></Can>
+              </>
+            )}
             <Can permission="documents.generate">
               <Button icon={<FilePdfOutlined />} loading={exporting === 'pdf'} disabled={Boolean(exporting)} onClick={() => handleExport('pdf')}>Download PDF</Button>
               <Button icon={<FileExcelOutlined />} loading={exporting === 'excel'} disabled={Boolean(exporting)} onClick={() => handleExport('excel')}>Download Excel</Button>
@@ -212,35 +239,43 @@ export default function BillingsPage() {
       />
 
       <FilterBar
-        extra={
+        extra={isHistory ? null : (
           <Can permission="billings.approve">
             <Button type="primary" icon={<CheckOutlined />} disabled={!selected.length} onClick={() => approve.mutate({ ids: selected, notes: approveForm.getFieldValue('approval_notes') })}>
               Approve Terpilih
             </Button>
           </Can>
-        }
+        )}
       >
         <Input allowClear placeholder="ID unit" value={table.filters.unit_id} onChange={(event) => table.setFilters({ ...table.filters, unit_id: event.target.value || undefined })} className="filter-input" />
         <ResidentFilter value={table.filters.resident_id} onChange={(value) => table.setFilters({ ...table.filters, resident_id: value })} />
         <Select allowClear placeholder="Cluster" options={(clusters.data?.data || []).map((item) => ({ value: item.id, label: item.name }))} value={table.filters.cluster_id} onChange={(value) => table.setFilters({ ...table.filters, cluster_id: value })} className="filter-input" />
         <InputNumber placeholder="Tahun" value={table.filters.year} onChange={(value) => table.setFilters({ ...table.filters, year: value })} className="filter-input" />
         <Select allowClear placeholder="Bulan" value={table.filters.month} onChange={(value) => table.setFilters({ ...table.filters, month: value })} className="filter-input" options={Array.from({ length: 12 }, (_, index) => ({ value: index + 1, label: dayjs().month(index).format('MMMM') }))} />
-        <Select allowClear placeholder="Status" value={table.filters.status_id} onChange={(value) => table.setFilters({ ...table.filters, status_id: value })} className="filter-input" options={[{ value: '01', label: 'Belum Bayar' }, { value: '02', label: 'Lunas' }]} />
+        <Select allowClear placeholder="Status" value={table.filters.status_id} onChange={(value) => table.setFilters({ ...table.filters, status_id: value })} className="filter-input" options={isHistory ? [{ value: '01', label: 'Belum Bayar' }, { value: '03', label: 'Sebagian' }, { value: '02', label: 'Lunas' }, { value: '04', label: 'Dibatalkan' }] : [{ value: '01', label: 'Belum Bayar' }, { value: '03', label: 'Sebagian' }]} />
       </FilterBar>
+
+      {isHistory ? null : (
+        <Row gutter={[16, 16]} className="section-row">
+          <Col xs={24} md={8}><Card loading={summary.isLoading}><Statistic title={`Total Tagihan Belum Lunas (${summary.data?.data?.invoice_count ?? 0} tagihan)`} value={formatCurrency(summary.data?.data?.total_outstanding ?? 0)} /></Card></Col>
+          <Col xs={24} md={8}><Card loading={summary.isLoading}><Statistic title="Pokok Belum Dibayar" value={formatCurrency(summary.data?.data?.total_principal_outstanding ?? 0)} /></Card></Col>
+          <Col xs={24} md={8}><Card loading={summary.isLoading}><Statistic title="Denda Belum Dibayar" value={formatCurrency(summary.data?.data?.total_penalty_outstanding ?? 0)} /></Card></Col>
+        </Row>
+      )}
 
       <Card>
         <Tabs
           items={[
             {
               key: 'all',
-              label: 'Semua Tagihan',
+              label: isHistory ? 'Semua Riwayat' : 'Tagihan Belum Lunas',
               children: (
                 <ResponsiveTable
                   query={billings}
                   columns={columns}
                   onChange={table.handleTableChange}
-                  rowSelection={{ selectedRowKeys: selected, onChange: setSelected, getCheckboxProps: (record) => ({ disabled: Boolean(record.approved_at) }) }}
-                  scrollX={1730}
+                  rowSelection={isHistory ? undefined : { selectedRowKeys: selected, onChange: setSelected, getCheckboxProps: (record) => ({ disabled: Boolean(record.approved_at) }) }}
+                  scrollX={isHistory ? 2000 : 1870}
                 />
               ),
             },
