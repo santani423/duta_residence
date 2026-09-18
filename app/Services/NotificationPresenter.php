@@ -57,6 +57,7 @@ class NotificationPresenter
     /** type => [category, label] */
     private const TYPES = [
         'payment_proof_uploaded' => ['payment', 'Bukti Pembayaran Diunggah'],
+        'payment_received' => ['payment', 'Pembayaran Online Diterima'],
         'payment_verified' => ['payment', 'Pembayaran Diverifikasi'],
         'payment_rejected' => ['payment', 'Pembayaran Ditolak'],
         'payment_success' => ['payment', 'Pembayaran Berhasil'],

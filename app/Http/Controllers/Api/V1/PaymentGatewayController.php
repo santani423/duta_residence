@@ -13,6 +13,7 @@ use App\Models\PaymentTransaction;
 use App\Models\PaymentWebhookEvent;
 use App\Services\AuditService;
 use App\Services\PaymentService;
+use App\Services\PaymentStaffNotifier;
 use App\Services\PenaltyService;
 use App\Services\Payments\PaymentGatewayFactory;
 use Illuminate\Http\Request;
@@ -154,6 +155,7 @@ class PaymentGatewayController extends Controller
             'status' => 'waiting_verification',
             'verification_notes' => null,
         ]);
+        app(PaymentStaffNotifier::class)->proofUploaded($transaction->refresh(), $request->user()->id);
 
         return $this->success($transaction->refresh(), 'Bukti pembayaran berhasil diunggah.');
     }
@@ -248,6 +250,7 @@ class PaymentGatewayController extends Controller
 
             if ($transaction->status === 'paid') {
                 $paymentService->settleGatewayTransaction($transaction);
+                app(PaymentStaffNotifier::class)->gatewayPaid($transaction);
             }
 
             return $transaction;

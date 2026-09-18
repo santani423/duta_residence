@@ -20,9 +20,9 @@ use App\Models\Resident;
 use App\Models\SiteSetting;
 use App\Models\Unit;
 use App\Models\UnitDeposit;
-use App\Models\User;
 use App\Services\AuditService;
 use App\Services\NotificationPresenter;
+use App\Services\PaymentStaffNotifier;
 use App\Services\PaymentService;
 use App\Services\PenaltyService;
 use App\Services\Payments\PaymentGatewayFactory;
@@ -451,30 +451,9 @@ class ResidentPortalController extends Controller
             'sent_at' => now(),
         ]);
 
-        // Penghuni hanya melihat notifikasi ini di portalnya sendiri (di-scope oleh
-        // user_id di atas) - staff perlu baris terpisah per admin/finance agar muncul
-        // di bell notifikasi mereka, karena tanpa ini tidak ada satupun mekanisme yang
-        // memberi tahu petugas bahwa ada bukti baru menunggu diverifikasi.
-        $residentName = $payment->unit?->resident?->name ?? $payment->unit_id;
-        // Loket tidak punya payments.verify (pemisahan tugas) tetapi menangani pembayaran
-        // (payments.create), jadi ikut diberi tahu; hanya pemegang payments.verify yang bisa memutuskan.
-        $recipients = User::permission(['payments.verify', 'payments.create'])->get();
-
-        foreach ($recipients as $verifier) {
-            NotificationQueue::query()->create([
-                'unit_id' => $payment->unit_id,
-                'user_id' => $verifier->id,
-                'type' => 'payment_proof_uploaded',
-                'sender_id' => $request->user()->id,
-                ...NotificationPresenter::referenceFor($payment),
-                'channel' => 'in_app',
-                'recipient' => $verifier->id,
-                'message' => "Bukti pembayaran baru dari {$residentName} (Unit {$payment->unit_id}) menunggu verifikasi.",
-                'read_status' => 'unread',
-                'status' => 'sent',
-                'sent_at' => now(),
-            ]);
-        }
+        // Penghuni hanya melihat notifikasi di atas di portalnya sendiri (di-scope oleh user_id);
+        // petugas verifikasi dan loket diberi tahu lewat baris terpisah agar muncul di bell mereka.
+        app(PaymentStaffNotifier::class)->proofUploaded($payment, $request->user()->id);
 
         return $this->success($this->paymentPayload($payment), 'Bukti pembayaran berhasil dikirim dan sedang menunggu verifikasi.');
     }
