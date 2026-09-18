@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/common/PageHeader.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
+import StatusBadge from '../components/common/StatusBadge.jsx';
 import Can from '../components/common/Can.jsx';
 import ResidentForm from '../components/forms/ResidentForm.jsx';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
@@ -101,6 +102,18 @@ export default function ResidentsPage() {
           className="filter-input"
         />
         <Input allowClear placeholder="Blok" value={table.filters.block} onChange={(event) => table.setFilters({ ...table.filters, block: event.target.value || undefined })} className="filter-input" />
+        <Select
+          allowClear
+          placeholder="Status Unit"
+          value={table.filters.unit_status}
+          onChange={(value) => table.setFilters({ ...table.filters, unit_status: value })}
+          options={[
+            { value: 'with_unit', label: 'Punya Unit' },
+            { value: 'without_unit', label: 'Penghuni Tanpa Unit' },
+            { value: 'never_linked', label: 'Belum Ada Unit' },
+          ]}
+          className="filter-input"
+        />
       </FilterBar>
 
       <Card>
@@ -114,6 +127,7 @@ export default function ResidentsPage() {
             { title: 'Nama', dataIndex: 'name', width: 220 },
             { title: 'Telepon', dataIndex: 'phone' },
             { title: 'Email', dataIndex: 'email' },
+            { title: 'Status Unit', dataIndex: 'unit_status', width: 140, render: (value) => <StatusBadge type="residentUnit" value={value} /> },
             {
               title: 'Aksi',
               fixed: 'right',

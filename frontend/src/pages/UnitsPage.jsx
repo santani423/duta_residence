@@ -41,7 +41,7 @@ export default function UnitsPage() {
   });
 
   const save = useMutation({
-    mutationFn: (values) => drawer.type === 'edit' ? api.units.update(drawer.record.id, values) : api.units.create(values),
+    mutationFn: (values) => drawer.type === 'edit' ? api.units.update(drawer.record.id, { ...values, resident_id: values.resident_id ?? null }) : api.units.create(values),
     onSuccess: () => {
       message.success('Unit berhasil disimpan');
       setDrawer({ type: null, record: null });

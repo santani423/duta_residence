@@ -24,13 +24,18 @@ class ResidentController extends Controller
             ->search($request->query('search'))
             ->address($request->query('address'))
             ->cluster($request->query('cluster_id'))
-            ->block($request->query('block'));
+            ->block($request->query('block'))
+            ->unitStatus($request->query('unit_status'))
+            ->withCount(['units', 'tenantUnits']);
 
         if ($request->user()->hasRole('collector')) {
             $query->whereIn('id', $assignmentService->residentIdsFor($request->user()));
         }
 
-        return $this->paginated($query->orderBy('name')->paginate($request->integer('per_page', 15)));
+        $residents = $query->orderBy('name')->paginate($request->integer('per_page', 15));
+        $residents->getCollection()->each->append('unit_status');
+
+        return $this->paginated($residents);
     }
 
     /**
@@ -97,6 +102,8 @@ class ResidentController extends Controller
         if ($request->user()->hasRole('collector')) {
             abort_unless(in_array($resident->id, $assignmentService->residentIdsFor($request->user()), true), 403, 'Penghuni ini tidak ditugaskan kepada Anda.');
         }
+
+        $resident->append('unit_status');
 
         return $this->success($resident->load([
             'district.regency',

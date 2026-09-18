@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Resident;
 use App\Models\Unit;
 use App\Models\User;
 
@@ -41,6 +42,8 @@ class UnitOwnershipSyncService
                 $auditService->log('user_unlinked_from_unit', 'users', 'UPDATE', $stale, $old, $stale->toArray());
             });
 
+        Resident::query()->whereIn('id', $validResidentIds)->whereNotNull('unit_unlinked_at')->update(['unit_unlinked_at' => null]);
+
         foreach ($validResidentIds as $residentId) {
             $account = User::query()->role('customer')->where('resident_id', $residentId)->first();
 
@@ -50,5 +53,21 @@ class UnitOwnershipSyncService
                 $auditService->log('user_linked_to_unit', 'users', 'UPDATE', $account, $old, $account->toArray());
             }
         }
+    }
+
+    /**
+     * Tandai penghuni sebagai "Penghuni Tanpa Unit" bila hubungannya ke Unit baru saja
+     * dibatalkan (unit dilepas/dihapus) dan ia tidak punya unit lain sebagai pemilik maupun
+     * penyewa. Dipanggil SETELAH perubahan unit disimpan, supaya pengecekan unit lain akurat.
+     *
+     * @param  array<int, string|null>  $residentIds
+     */
+    public function markUnlinked(array $residentIds): void
+    {
+        Resident::query()
+            ->whereIn('id', array_filter($residentIds))
+            ->whereDoesntHave('units')
+            ->whereDoesntHave('tenantUnits')
+            ->update(['unit_unlinked_at' => now()]);
     }
 }

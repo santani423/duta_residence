@@ -135,4 +135,63 @@ class ResidentApiTest extends TestCase
             'unit_id' => $unitId,
         ])->assertStatus(422)->assertJsonValidationErrors(['unit_id']);
     }
+
+    public function test_resident_becomes_without_unit_after_unit_link_is_cancelled(): void
+    {
+        $this->seed();
+
+        Sanctum::actingAs(User::where('username', 'root')->first());
+
+        $residentId = $this->postJson('/api/v1/residents', ['name' => 'Lepas Unit'])
+            ->assertCreated()->json('data.resident.id');
+        $neverLinkedId = $this->postJson('/api/v1/residents', ['name' => 'Belum Pernah'])
+            ->assertCreated()->json('data.resident.id');
+
+        $unitPayload = [
+            'cluster_id' => 'GA',
+            'block' => 'Y',
+            'lot_number' => '1',
+            'property_type_id' => 'B',
+            'status_id' => 'RK',
+        ];
+        $unit = $this->postJson('/api/v1/units', $unitPayload + ['resident_id' => $residentId])
+            ->assertCreated()->json('data');
+
+        $this->getJson("/api/v1/residents/{$residentId}")->assertJsonPath('data.unit_status', 'with_unit');
+        $this->getJson("/api/v1/residents/{$neverLinkedId}")->assertJsonPath('data.unit_status', 'never_linked');
+
+        $this->putJson("/api/v1/units/{$unit['id']}", $unitPayload + ['resident_id' => null, 'occupancy_id' => '4'])->assertOk();
+
+        $this->getJson("/api/v1/residents/{$residentId}")
+            ->assertJsonPath('data.unit_status', 'without_unit')
+            ->assertJsonPath('data.unit_unlinked_at', fn ($value) => $value !== null);
+        $this->assertNull(Unit::find($unit['id'])->occupancy_id);
+
+        $ids = collect($this->getJson('/api/v1/residents?unit_status=without_unit')->assertOk()->json('data'))->pluck('id');
+        $this->assertSame([$residentId], $ids->all());
+
+        // Terhubung lagi ke unit -> bukan lagi Penghuni Tanpa Unit.
+        $this->putJson("/api/v1/units/{$unit['id']}", $unitPayload + ['resident_id' => $residentId])->assertOk();
+        $this->getJson("/api/v1/residents/{$residentId}")
+            ->assertJsonPath('data.unit_status', 'with_unit')
+            ->assertJsonPath('data.unit_unlinked_at', null);
+    }
+
+    public function test_resident_with_another_unit_is_not_marked_without_unit_when_one_link_is_cancelled(): void
+    {
+        $this->seed();
+
+        Sanctum::actingAs(User::where('username', 'root')->first());
+
+        $residentId = $this->postJson('/api/v1/residents', ['name' => 'Dua Unit'])
+            ->assertCreated()->json('data.resident.id');
+
+        $base = ['cluster_id' => 'GA', 'block' => 'X', 'property_type_id' => 'B', 'status_id' => 'RK'];
+        $first = $this->postJson('/api/v1/units', $base + ['lot_number' => '1', 'resident_id' => $residentId])->json('data.id');
+        $this->postJson('/api/v1/units', $base + ['lot_number' => '2', 'resident_id' => $residentId])->assertCreated();
+
+        $this->deleteJson("/api/v1/units/{$first}")->assertOk();
+
+        $this->getJson("/api/v1/residents/{$residentId}")->assertJsonPath('data.unit_status', 'with_unit');
+    }
 }

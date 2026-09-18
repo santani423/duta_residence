@@ -16,8 +16,18 @@ class Resident extends Model
         'id', 'name', 'phone', 'telephone', 'id_card_address',
         'district_id', 'email', 'identity_number', 'identity_type',
         'emergency_contact_name', 'emergency_contact_phone', 'notes',
-        'created_by', 'updated_by',
+        'unit_unlinked_at', 'created_by', 'updated_by',
     ];
+
+    protected $casts = [
+        'unit_unlinked_at' => 'datetime',
+    ];
+
+    public const UNIT_STATUS_WITH_UNIT = 'with_unit';
+
+    public const UNIT_STATUS_NEVER_LINKED = 'never_linked';
+
+    public const UNIT_STATUS_WITHOUT_UNIT = 'without_unit';
 
     public function district()
     {
@@ -27,6 +37,11 @@ class Resident extends Model
     public function units()
     {
         return $this->hasMany(Unit::class);
+    }
+
+    public function tenantUnits()
+    {
+        return $this->hasMany(Unit::class, 'tenant_resident_id');
     }
 
     public function users()
@@ -52,6 +67,40 @@ class Resident extends Model
     public function collectionLetters()
     {
         return $this->hasMany(CollectionLetter::class);
+    }
+
+    /**
+     * Status hubungan penghuni-unit (with_unit / without_unit / never_linked), dipakai
+     * frontend untuk badge "Tanpa Unit". Memakai units_count/tenant_units_count kalau
+     * sudah di-load (lihat ResidentController::index) supaya daftar tidak N+1.
+     */
+    public function getUnitStatusAttribute(): string
+    {
+        $hasUnit = ($this->units_count ?? $this->units()->count()) > 0
+            || ($this->tenant_units_count ?? $this->tenantUnits()->count()) > 0;
+
+        if ($hasUnit) {
+            return self::UNIT_STATUS_WITH_UNIT;
+        }
+
+        return $this->unit_unlinked_at ? self::UNIT_STATUS_WITHOUT_UNIT : self::UNIT_STATUS_NEVER_LINKED;
+    }
+
+    /**
+     * Penghuni Tanpa Unit: sebelumnya sudah terhubung ke suatu unit, lalu hubungan itu
+     * dibatalkan (unit dilepas/dihapus) dan tidak ada unit lain (sebagai pemilik maupun
+     * penyewa). Penghuni yang belum pernah dihubungkan ke unit mana pun bukan kategori ini.
+     */
+    public function scopeUnitStatus(Builder $query, ?string $status): Builder
+    {
+        $hasUnit = fn (Builder $q) => $q->whereHas('units')->orWhereHas('tenantUnits');
+
+        return $query->when($status, fn (Builder $q) => match ($status) {
+            self::UNIT_STATUS_WITH_UNIT => $q->where($hasUnit),
+            self::UNIT_STATUS_WITHOUT_UNIT => $q->whereNotNull('unit_unlinked_at')->whereNot($hasUnit),
+            self::UNIT_STATUS_NEVER_LINKED => $q->whereNull('unit_unlinked_at')->whereNot($hasUnit),
+            default => $q,
+        });
     }
 
     public function scopeSearch(Builder $query, ?string $search): Builder

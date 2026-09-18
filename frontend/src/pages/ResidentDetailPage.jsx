@@ -191,6 +191,10 @@ function ResidentInfoTab({ resident, onEdit }) {
         <Col xs={24} lg={16}>
           <Card title="Alamat & Catatan" size="small">
             <Descriptions column={1} size="small">
+              <Descriptions.Item label="Status Unit">
+                <StatusBadge type="residentUnit" value={resident.unit_status} />
+                {resident.unit_status === 'without_unit' && resident.unit_unlinked_at ? <span> sejak {formatDateTime(resident.unit_unlinked_at)}</span> : null}
+              </Descriptions.Item>
               <Descriptions.Item label="Alamat KTP">{compactText(resident.id_card_address)}</Descriptions.Item>
               <Descriptions.Item label="Catatan">{compactText(resident.notes)}</Descriptions.Item>
             </Descriptions>

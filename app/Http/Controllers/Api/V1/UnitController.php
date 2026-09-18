@@ -152,19 +152,31 @@ class UnitController extends Controller
             $data['occupancy_id'] = Unit::OCCUPANCY_BOOKED_ID;
         }
 
+        // Hubungan ke penghuni dilepas: status Booked hanya berlaku selama ada penghuni.
+        $releasedResidentIds = [];
+        if (array_key_exists('resident_id', $data) && $data['resident_id'] !== $unit->resident_id) {
+            $releasedResidentIds[] = $unit->resident_id;
+
+            if (empty($data['resident_id']) && ($data['occupancy_id'] ?? $unit->occupancy_id) === Unit::OCCUPANCY_BOOKED_ID) {
+                $data['occupancy_id'] = null;
+            }
+        }
+
         $old = $unit->toArray();
         $unit->update($data);
         $auditService->log('unit_updated', 'units', 'UPDATE', $unit, $old, $unit->toArray());
         $ownershipSync->sync($unit, $auditService);
+        $ownershipSync->markUnlinked($releasedResidentIds);
 
         return $this->success($unit->refresh()->load(['cluster', 'status', 'resident']), 'Unit berhasil diperbarui.');
     }
 
-    public function destroy(Unit $unit, AuditService $auditService)
+    public function destroy(Unit $unit, AuditService $auditService, UnitOwnershipSyncService $ownershipSync)
     {
         $old = $unit->toArray();
         $unit->delete();
         $auditService->log('unit_deleted', 'units', 'DELETE', $unit, $old, []);
+        $ownershipSync->markUnlinked([$unit->resident_id, $unit->tenant_resident_id]);
 
         return $this->success(null, 'Unit berhasil dihapus.');
     }

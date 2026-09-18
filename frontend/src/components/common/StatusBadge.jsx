@@ -53,6 +53,12 @@ const maps = {
     booked: ['Booked', 'purple'],
     occupied: ['Occupied', 'green'],
   },
+  // Status hubungan penghuni-unit dari backend (Resident::getUnitStatusAttribute).
+  residentUnit: {
+    with_unit: ['Punya Unit', 'green'],
+    without_unit: ['Tanpa Unit', 'orange'],
+    never_linked: ['Belum Ada Unit', 'default'],
+  },
 };
 
 export default function StatusBadge({ type, value, children }) {
