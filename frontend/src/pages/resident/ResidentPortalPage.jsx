@@ -51,6 +51,15 @@ import { getApiErrorMessage, mapValidationErrors } from '../../utils/apiError.js
 import { downloadBlob } from '../../utils/download.js';
 import { useThemeMode } from '../../state/ThemeContext.jsx';
 
+// Download errors used to surface as unhandled promise rejections (the button just did nothing).
+async function saveDownload(request, filename) {
+  try {
+    downloadBlob(await request(), filename);
+  } catch (error) {
+    message.error(getApiErrorMessage(error, 'Gagal mengunduh dokumen'));
+  }
+}
+
 const invoiceStatuses = ['unpaid', 'pending', 'partially_paid', 'paid', 'overdue', 'cancelled'];
 const paymentStatuses = ['pending', 'waiting_verification', 'paid', 'failed', 'expired', 'cancelled', 'rejected', 'refunded'];
 const gateways = [
@@ -478,7 +487,7 @@ function InvoiceTable({ query, data, onChange, onPay, payDisabledReason }) {
                     Bayar
                   </Button>
                 </Tooltip>
-                <Button size="small" icon={<DownloadOutlined />} onClick={async () => downloadBlob(await api.resident.downloadInvoice(row.id), `${row.invoice_number}.pdf`)}>PDF</Button>
+                <Button size="small" icon={<DownloadOutlined />} onClick={() => saveDownload(() => api.resident.downloadInvoice(row.id), `${row.invoice_number}.pdf`)}>PDF</Button>
               </Space>
             ),
           },
@@ -680,7 +689,7 @@ function ResidentInvoiceDetail() {
               }}
             />
             <Space className="action-row" wrap>
-              <Button icon={<DownloadOutlined />} onClick={async () => downloadBlob(await api.resident.downloadInvoice(data.id), `${data.invoice_number}.pdf`)}>Download Invoice</Button>
+              <Button icon={<DownloadOutlined />} onClick={() => saveDownload(() => api.resident.downloadInvoice(data.id), `${data.invoice_number}.pdf`)}>Download Invoice</Button>
               <Tooltip title={payDisabledReason}>
                 <Button
                   type="primary"
@@ -739,7 +748,7 @@ function PaymentTable({ query, data, onChange }) {
               render: (_, row) => (
                 <Space>
                   <Button size="small" icon={<EyeOutlined />} onClick={() => navigate(`/resident/payments/${row.id}`)}>Detail</Button>
-                  {row.status === 'paid' ? <Button size="small" icon={<DownloadOutlined />} onClick={async () => downloadBlob(await api.resident.downloadPaymentReceipt(row.id), `${row.transaction_number}.pdf`)}>Receipt</Button> : null}
+                  {row.status === 'paid' ? <Button size="small" icon={<DownloadOutlined />} onClick={() => saveDownload(() => api.resident.downloadPaymentReceipt(row.id), `${row.transaction_number}.pdf`)}>Receipt</Button> : null}
                   {row.payment_url && row.status === 'pending' ? <Button size="small" icon={<LinkOutlined />} href={row.payment_url} target="_blank">Lanjut</Button> : null}
                   {row.payment_gateway === 'manual' && ['pending', 'rejected'].includes(row.status) ? <Button size="small" icon={<CloudUploadOutlined />} onClick={() => setProof(row)}>Upload</Button> : null}
                 </Space>
@@ -805,7 +814,7 @@ function ResidentPaymentDetail() {
               </a>
             ) : null}
             <Space className="action-row" wrap>
-              {data.status === 'paid' ? <Button icon={<DownloadOutlined />} onClick={async () => downloadBlob(await api.resident.downloadPaymentReceipt(data.id), `${data.transaction_number}.pdf`)}>Download Receipt</Button> : null}
+              {data.status === 'paid' ? <Button icon={<DownloadOutlined />} onClick={() => saveDownload(() => api.resident.downloadPaymentReceipt(data.id), `${data.transaction_number}.pdf`)}>Download Receipt</Button> : null}
               {data.payment_url && data.status === 'pending' ? <Button icon={<LinkOutlined />} href={data.payment_url} target="_blank">Lanjutkan Pembayaran</Button> : null}
               {data.payment_gateway === 'manual' && ['pending', 'rejected'].includes(data.status) ? <Button icon={<CloudUploadOutlined />} onClick={() => setProofOpen(true)}>{data.status === 'rejected' ? 'Upload Ulang Bukti' : 'Upload Bukti'}</Button> : null}
             </Space>
@@ -975,13 +984,13 @@ function ComplaintMaintenancePage({ kind }) {
 
 function DocumentList({ documents, query }) {
   const items = documents || unwrapQuery(query) || [];
-  async function download(row) {
-    const blob = row.download_type === 'payment_receipt'
-      ? await api.resident.downloadPaymentReceipt(row.download_id)
+  function download(row) {
+    const request = row.download_type === 'payment_receipt'
+      ? () => api.resident.downloadPaymentReceipt(row.download_id)
       : row.download_type === 'receipt'
-        ? await api.resident.downloadCashReceipt(row.download_id)
-        : await api.resident.downloadInvoice(row.download_id);
-    downloadBlob(blob, `${row.reference || row.name}.pdf`);
+        ? () => api.resident.downloadCashReceipt(row.download_id)
+        : () => api.resident.downloadInvoice(row.download_id);
+    return saveDownload(request, `${row.reference || row.name}.pdf`);
   }
   return (
     <Card>

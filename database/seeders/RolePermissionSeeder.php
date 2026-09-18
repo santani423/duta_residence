@@ -158,7 +158,7 @@ class RolePermissionSeeder extends Seeder
             'loket' => [
                 'residents.view', 'residents.create', 'units.view', 'units.create', 'units.update', 'units.delete', 'clusters.view', 'cluster-maps.view', 'billings.view',
                 'billings.prepare-back',
-                'payments.view', 'payments.process', 'payments.create',
+                'payments.view', 'payments.process', 'payments.create', 'payments.verify',
                 'installments.view', 'installments.create',
                 'installment-plans.view', 'installment-plans.submit',
                 'reversals.view', 'reversals.submit',

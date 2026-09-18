@@ -23,8 +23,17 @@ http.interceptors.request.use((config) => {
 
 http.interceptors.response.use(
   (response) => response.data,
-  (error) => {
-    const payload = error.response?.data;
+  async (error) => {
+    let payload = error.response?.data;
+    // Blob requests (PDF/CSV) receive their JSON error body as a Blob too; without parsing
+    // it the real reason (e.g. "terlalu banyak data") is lost behind axios' generic message.
+    if (payload instanceof Blob && payload.type.includes('json')) {
+      try {
+        payload = JSON.parse(await payload.text());
+      } catch {
+        payload = undefined;
+      }
+    }
     const status = error.response?.status;
     const normalized = {
       status,

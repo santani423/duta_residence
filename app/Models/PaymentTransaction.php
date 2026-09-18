@@ -19,6 +19,16 @@ class PaymentTransaction extends Model
         'gateway' => 'Gateway',
     ];
 
+    private const STATUS_LABELS = [
+        'pending' => 'Pending',
+        'waiting_verification' => 'Menunggu Verifikasi',
+        'paid' => 'Berhasil',
+        'failed' => 'Gagal',
+        'expired' => 'Kedaluwarsa',
+        'cancelled' => 'Dibatalkan',
+        'rejected' => 'Ditolak',
+    ];
+
     protected $fillable = [
         'transaction_number', 'invoice_number', 'unit_id', 'subtotal', 'tax',
         'admin_fee', 'total', 'currency', 'payment_provider', 'payment_method',
@@ -48,6 +58,11 @@ class PaymentTransaction extends Model
     public function getPaymentMethodLabelAttribute(): ?string
     {
         return $this->payment_method ? (self::METHOD_LABELS[$this->payment_method] ?? $this->payment_method) : null;
+    }
+
+    public function statusLabel(): string
+    {
+        return self::STATUS_LABELS[$this->status] ?? (string) $this->status;
     }
 
     public function billings()

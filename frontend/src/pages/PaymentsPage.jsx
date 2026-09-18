@@ -14,7 +14,7 @@ import { useDebounce } from '../hooks/useDebounce.js';
 import { usePendingPaymentVerificationCount } from '../hooks/usePendingPaymentVerificationCount.js';
 import { formatCurrency, formatDate, formatDateTime, formatPaymentMethod, formatPeriod } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
-import { downloadBlob, openBlobInWindow } from '../utils/download.js';
+import { downloadBlob, printPdf } from '../utils/download.js';
 
 const PAYMENT_METHOD_LABELS = { C: 'Cash', D: 'Debit/Transfer' };
 const PROVIDER_LABELS = { manual: 'Transfer', xendit: 'Xendit', midtrans: 'Midtrans' };
@@ -26,6 +26,8 @@ export default function PaymentsPage() {
   const [selectedVia, setVia] = useState('loket');
   const [proofOpen, setProofOpen] = useState(null);
   const [detailOpen, setDetailOpen] = useState(null);
+  const [verifyTarget, setVerifyTarget] = useState(null);
+  const [printingTransactionId, setPrintingTransactionId] = useState(null);
   const [successReceipt, setSuccessReceipt] = useState(null);
   const [unitQuery, setUnitQuery] = useState('');
   const [unitFilters, setUnitFilters] = useState({});
@@ -154,34 +156,57 @@ export default function PaymentsPage() {
     mutationFn: ({ id, status, notes }) => status === 'paid'
       ? api.payments.verifyManual(id, { verification_notes: notes })
       : api.payments.rejectManual(id, { verification_notes: notes }),
-    onSuccess: () => {
-      message.success('Status pembayaran manual diperbarui');
-      verifyForm.resetFields();
+    onSuccess: (_response, { status }) => {
+      message.success(status === 'paid' ? 'Pembayaran berhasil diverifikasi' : 'Pembayaran ditolak');
+      closeVerifyModal();
+      setDetailOpen(null);
       queryClient.invalidateQueries({ queryKey: ['payment-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
-    onError: (error) => message.error(getApiErrorMessage(error)),
+    onError: (error) => {
+      verifyForm.setFields(mapValidationErrors(error));
+      message.error(getApiErrorMessage(error));
+    },
   });
 
+  function openVerifyModal(row, status) {
+    setVerifyTarget({ row, status });
+  }
+
+  function closeVerifyModal() {
+    setVerifyTarget(null);
+  }
+
+  async function submitVerify() {
+    const { notes } = await verifyForm.validateFields();
+    verify.mutate({ id: verifyTarget.row.id, status: verifyTarget.status, notes });
+  }
+
   async function printReceipt(number) {
-    const printWindow = window.open('', '_blank');
     try {
-      const blob = await api.documents.receiptPdf(number);
-      openBlobInWindow(printWindow, blob);
+      await printPdf(() => api.documents.receiptPdf(number), `kuitansi-${number}.pdf`);
     } catch (error) {
-      printWindow?.close();
       message.error(getApiErrorMessage(error, 'Gagal memuat kuitansi'));
     }
   }
 
+  async function printTransaction(row) {
+    setPrintingTransactionId(row.id);
+    try {
+      await printPdf(() => api.documents.paymentTransactionPdf(row.id), `transaksi-${row.invoice_number}.pdf`);
+    } catch (error) {
+      message.error(getApiErrorMessage(error, 'Gagal memuat bukti transaksi'));
+    } finally {
+      setPrintingTransactionId(null);
+    }
+  }
+
   async function printTransactions() {
-    const printWindow = window.open('', '_blank');
     const { page: _page, per_page: _perPage, ...filters } = transactionTable.params;
     setExportingTransactions('pdf');
     try {
-      const blob = await api.documents.paymentTransactionsPdf(filters);
-      openBlobInWindow(printWindow, blob);
+      await printPdf(() => api.documents.paymentTransactionsPdf(filters), 'transaksi-gateway.pdf');
     } catch (error) {
-      printWindow?.close();
       message.error(getApiErrorMessage(error, 'Gagal memuat PDF transaksi'));
     } finally {
       setExportingTransactions(null);
@@ -202,14 +227,11 @@ export default function PaymentsPage() {
   }
 
   async function printReceipts() {
-    const printWindow = window.open('', '_blank');
     const { page: _page, per_page: _perPage, ...filters } = receiptTable.params;
     setExportingReceipts('pdf');
     try {
-      const blob = await api.documents.paymentReceiptsPdf(filters);
-      openBlobInWindow(printWindow, blob);
+      await printPdf(() => api.documents.paymentReceiptsPdf(filters), 'riwayat-kuitansi.pdf');
     } catch (error) {
-      printWindow?.close();
       message.error(getApiErrorMessage(error, 'Gagal memuat PDF kuitansi'));
     } finally {
       setExportingReceipts(null);
@@ -452,7 +474,7 @@ export default function PaymentsPage() {
                   <ResponsiveTable
                     query={transactions}
                     onChange={transactionTable.handleTableChange}
-                    scrollX={2030}
+                    scrollX={2100}
                     columns={[
                       { title: 'Invoice', dataIndex: 'invoice_number', width: 190, fixed: 'left' },
                       { title: 'Penghuni', dataIndex: ['unit', 'resident', 'name'], width: 200 },
@@ -468,22 +490,17 @@ export default function PaymentsPage() {
                       {
                         title: 'Aksi',
                         fixed: 'right',
-                        width: 400,
+                        width: 470,
                         render: (_, row) => (
                           <Space size={[8, 8]} wrap>
                             <Button size="small" onClick={() => setDetailOpen(row)}>Detail</Button>
+                            <Can permission="documents.generate">
+                              <Button size="small" icon={<PrinterOutlined />} loading={printingTransactionId === row.id} onClick={() => printTransaction(row)}>Cetak</Button>
+                            </Can>
                             {row.payment_provider === 'manual' && row.status !== 'paid' ? <Button size="small" icon={<CloudUploadOutlined />} onClick={() => setProofOpen(row)}>Upload</Button> : null}
                             <Can permission="payments.verify">
-                              <Button size="small" icon={<CheckOutlined />} disabled={row.status !== 'waiting_verification'} onClick={() => Modal.confirm({
-                                title: 'Verifikasi pembayaran manual?',
-                                content: <Form form={verifyForm} layout="vertical"><Form.Item label="Catatan" name="notes"><Input.TextArea rows={3} /></Form.Item></Form>,
-                                onOk: () => verify.mutate({ id: row.id, status: 'paid', notes: verifyForm.getFieldValue('notes') }),
-                              })}>Verifikasi</Button>
-                              <Button size="small" danger icon={<CloseOutlined />} disabled={row.status !== 'waiting_verification'} onClick={() => Modal.confirm({
-                                title: 'Tolak pembayaran manual?',
-                                content: <Form form={verifyForm} layout="vertical"><Form.Item label="Alasan" name="notes" rules={[{ required: true, message: 'Alasan penolakan wajib diisi' }]}><Input.TextArea rows={3} /></Form.Item></Form>,
-                                onOk: () => verify.mutate({ id: row.id, status: 'rejected', notes: verifyForm.getFieldValue('notes') }),
-                              })}>Tolak</Button>
+                              <Button size="small" icon={<CheckOutlined />} disabled={row.status !== 'waiting_verification'} onClick={() => openVerifyModal(row, 'paid')}>Verifikasi</Button>
+                              <Button size="small" danger icon={<CloseOutlined />} disabled={row.status !== 'waiting_verification'} onClick={() => openVerifyModal(row, 'rejected')}>Tolak</Button>
                             </Can>
                           </Space>
                         ),
@@ -594,7 +611,22 @@ export default function PaymentsPage() {
         title="Detail Pembayaran"
         open={Boolean(detailOpen)}
         onCancel={() => setDetailOpen(null)}
-        footer={<Button onClick={() => setDetailOpen(null)}>Tutup</Button>}
+        footer={(
+          <Space wrap>
+            <Can permission="payments.verify">
+              {detailOpen?.status === 'waiting_verification' ? (
+                <>
+                  <Button danger icon={<CloseOutlined />} onClick={() => openVerifyModal(detailOpen, 'rejected')}>Tolak</Button>
+                  <Button type="primary" icon={<CheckOutlined />} onClick={() => openVerifyModal(detailOpen, 'paid')}>Verifikasi</Button>
+                </>
+              ) : null}
+            </Can>
+            <Can permission="documents.generate">
+              <Button icon={<PrinterOutlined />} loading={printingTransactionId === detailOpen?.id} onClick={() => printTransaction(detailOpen)}>Cetak</Button>
+            </Can>
+            <Button onClick={() => setDetailOpen(null)}>Tutup</Button>
+          </Space>
+        )}
         width={640}
       >
         {detailOpen ? (
@@ -641,6 +673,37 @@ export default function PaymentsPage() {
             ) : (
               <Alert type="warning" showIcon message="Bukti pembayaran belum diunggah." />
             )}
+          </Space>
+        ) : null}
+      </Modal>
+
+      <Modal
+        title={verifyTarget?.status === 'paid' ? 'Verifikasi pembayaran manual?' : 'Tolak pembayaran manual?'}
+        open={Boolean(verifyTarget)}
+        onCancel={closeVerifyModal}
+        onOk={submitVerify}
+        okText={verifyTarget?.status === 'paid' ? 'Verifikasi' : 'Tolak'}
+        okButtonProps={{ danger: verifyTarget?.status === 'rejected', loading: verify.isPending }}
+        cancelText="Batal"
+        destroyOnHidden
+      >
+        {verifyTarget ? (
+          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+            <Alert
+              type={verifyTarget.status === 'paid' ? 'info' : 'warning'}
+              showIcon
+              message={verifyTarget.row.invoice_number}
+              description={`${verifyTarget.row.unit?.resident?.name || '-'} - Unit ${verifyTarget.row.unit_id} - ${formatCurrency(verifyTarget.row.manual_amount || verifyTarget.row.total)}`}
+            />
+            <Form form={verifyForm} layout="vertical" preserve={false}>
+              {verifyTarget.status === 'paid' ? (
+                <Form.Item label="Catatan" name="notes"><Input.TextArea rows={3} /></Form.Item>
+              ) : (
+                <Form.Item label="Alasan" name="notes" rules={[{ required: true, whitespace: true, message: 'Alasan penolakan wajib diisi' }]}>
+                  <Input.TextArea rows={3} />
+                </Form.Item>
+              )}
+            </Form>
           </Space>
         ) : null}
       </Modal>

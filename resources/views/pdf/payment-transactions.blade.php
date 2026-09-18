@@ -12,10 +12,13 @@
                     <td>{{ trim(($transaction->unit->cluster->name ?? '').' '.($transaction->unit->block ?? '').'/'.($transaction->unit->lot_number ?? '')) }}</td>
                     <td>{{ $transaction->payment_provider }}</td>
                     <td class="right">Rp {{ number_format($transaction->total, 0, ',', '.') }}</td>
-                    <td>{{ $transaction->status }}</td>
+                    <td>{{ $transaction->statusLabel() }}</td>
                     <td>{{ $transaction->created_at?->format('d-m-Y H:i') ?? '-' }}</td>
                 </tr>
             @endforeach
         </tbody>
+        <tfoot>
+            <tr><th colspan="4">Total Berhasil ({{ $transactions->where('status', 'paid')->count() }} dari {{ $transactions->count() }} transaksi)</th><th class="right">Rp {{ number_format($transactions->where('status', 'paid')->sum('total'), 0, ',', '.') }}</th><th colspan="2"></th></tr>
+        </tfoot>
     </table>
 @endsection

@@ -18,5 +18,8 @@
                 </tr>
             @endforeach
         </tbody>
+        <tfoot>
+            <tr><th colspan="5">Total ({{ $receipts->count() }} kuitansi)</th><th class="right">Rp {{ number_format($receipts->sum('grand_total'), 0, ',', '.') }}</th><th colspan="2"></th></tr>
+        </tfoot>
     </table>
 @endsection

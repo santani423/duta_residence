@@ -9,8 +9,8 @@ use App\Models\User;
 /**
  * In-app alerts to counter/finance staff when a resident's payment needs attention.
  *
- * Loket has no payments.verify (separation of duties) but handles payments (payments.create),
- * so it is told about every resident payment even though only payments.verify holders can decide.
+ * Loket both handles payments (payments.create) and verifies them (payments.verify); collectors
+ * process payments in the field but are not part of this alert.
  */
 class PaymentStaffNotifier
 {

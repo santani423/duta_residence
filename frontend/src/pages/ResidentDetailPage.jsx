@@ -35,6 +35,7 @@ import {
   EyeOutlined,
   MoreOutlined,
   PlusOutlined,
+  PrinterOutlined,
   SendOutlined,
   UserOutlined,
 } from '@ant-design/icons';
@@ -53,6 +54,7 @@ import { api, storageUrl } from '../services/estateApi.js';
 import { useTableState } from '../hooks/useTableState.js';
 import { compactText, formatCurrency, formatDate, formatDateTime, formatPeriod } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
+import { downloadBlob, printPdf } from '../utils/download.js';
 import { useAuth } from '../state/AuthContext.jsx';
 
 const vehicleTypeOptions = [
@@ -372,6 +374,32 @@ function TransactionsTab({ residentId, unitId, units }) {
     onError: (error) => message.error(getApiErrorMessage(error)),
   });
 
+  // Plain <a href> links to the API would 401 (the Bearer token is only attached by axios),
+  // so receipts are fetched through the api client and then opened/saved from a Blob.
+  async function viewReceipt(number) {
+    try {
+      await printPdf(() => api.documents.receiptPdf(number), `kuitansi-${number}.pdf`);
+    } catch (error) {
+      message.error(getApiErrorMessage(error, 'Gagal memuat kuitansi'));
+    }
+  }
+
+  async function downloadReceipt(number) {
+    try {
+      downloadBlob(await api.documents.receiptPdf(number), `kuitansi-${number}.pdf`);
+    } catch (error) {
+      message.error(getApiErrorMessage(error, 'Gagal mengunduh kuitansi'));
+    }
+  }
+
+  async function printTransaction(row) {
+    try {
+      await printPdf(() => api.documents.paymentTransactionPdf(row.id), `transaksi-${row.invoice_number}.pdf`);
+    } catch (error) {
+      message.error(getApiErrorMessage(error, 'Gagal memuat bukti transaksi'));
+    }
+  }
+
   return (
     <section>
       <UnitScopeNote unitId={unitId} units={units} />
@@ -379,7 +407,7 @@ function TransactionsTab({ residentId, unitId, units }) {
         <ResponsiveTable
           query={transactions}
           onChange={table.handleTableChange}
-          scrollX={1500}
+          scrollX={1610}
           columns={[
             { title: 'No. Transaksi', dataIndex: 'transaction_number', width: 190, fixed: 'left' },
             { title: 'Unit', dataIndex: 'unit_id', width: 90 },
@@ -391,6 +419,16 @@ function TransactionsTab({ residentId, unitId, units }) {
             { title: 'Verifikasi', render: (_, row) => (row.verified_at ? `${row.verifier?.name || '-'} (${formatDateTime(row.verified_at)})` : '-'), width: 200 },
             { title: 'Status', dataIndex: 'status', render: (value) => <StatusBadge type="transaction" value={value} />, width: 160 },
             { title: 'Catatan', render: (_, row) => compactText(row.manual_notes || row.verification_notes), width: 200 },
+            {
+              title: 'Aksi',
+              fixed: 'right',
+              width: 110,
+              render: (_, row) => (
+                <Can permission="documents.generate">
+                  <Button size="small" icon={<PrinterOutlined />} onClick={() => printTransaction(row)}>Cetak</Button>
+                </Can>
+              ),
+            },
           ]}
         />
       </Card>
@@ -412,8 +450,10 @@ function TransactionsTab({ residentId, unitId, units }) {
               width: 260,
               render: (_, row) => (
                 <Space>
-                  <Button size="small" icon={<EyeOutlined />} href={api.documents.url(`/documents/spt/${row.number}`)} target="_blank">Lihat/Cetak</Button>
-                  <Button size="small" icon={<DownloadOutlined />} href={api.documents.url(`/documents/spt/${row.number}`)} target="_blank">Unduh</Button>
+                  <Can permission="documents.generate">
+                    <Button size="small" icon={<EyeOutlined />} onClick={() => viewReceipt(row.number)}>Lihat/Cetak</Button>
+                    <Button size="small" icon={<DownloadOutlined />} onClick={() => downloadReceipt(row.number)}>Unduh</Button>
+                  </Can>
                   <Button size="small" icon={<SendOutlined />} loading={send.isPending} onClick={() => send.mutate(row.number)}>Kirim</Button>
                 </Space>
               ),

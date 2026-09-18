@@ -221,9 +221,9 @@ class NotificationDetailTest extends TestCase
         $this->assertSame((string) $payment->id, $row->reference_id);
         $this->assertSame($customer->id, $row->sender_id);
 
-        // Loket cannot verify, but must still see that a proof is waiting.
+        // Loket verifies payments too, so it must see that a proof is waiting.
         $loket = User::role('loket')->firstOrFail();
-        $this->assertFalse($loket->can('payments.verify'));
+        $this->assertTrue($loket->can('payments.verify'));
         $this->assertTrue(
             NotificationQueue::where('user_id', $loket->id)->where('type', 'payment_proof_uploaded')
                 ->where('reference_id', (string) $payment->id)->exists()

@@ -14,6 +14,13 @@ use Illuminate\Http\Request;
 
 class DocumentController extends Controller
 {
+    /**
+     * DomPDF memakai ~0,2MB per baris tabel (di atas ~200 baris melewati memory_limit 128M dan
+     * berakhir HTTP 500). Cetak PDF daftar dibatasi jumlah barisnya; untuk data lebih besar
+     * pengguna diminta mempersempit filter atau memakai ekspor Excel/CSV yang di-stream.
+     */
+    private const LIST_PDF_MAX_ROWS = 500;
+
     public function spt(Receipt $receipt)
     {
         $receipt->load(['unit.cluster', 'billings', 'paymentTransaction.allocations.billing']);
@@ -99,10 +106,25 @@ class DocumentController extends Controller
 
     public function paymentTransactions(Request $request)
     {
-        $transactions = $this->filteredTransactions($request)->get();
+        $query = $this->filteredTransactions($request);
+        $this->guardListPdfSize($query, 'transaksi');
+        $transactions = $query->get();
 
         return Pdf::loadHTML(view('pdf.payment-transactions', compact('transactions'))->render())
+            ->setPaper('a4', 'landscape')
             ->download('transaksi-gateway.pdf');
+    }
+
+    /**
+     * Bukti transaksi untuk satu transaksi pembayaran (loket, transfer manual, atau gateway),
+     * apa pun statusnya - berbeda dengan kuitansi (spt) yang hanya ada untuk pembayaran loket.
+     */
+    public function paymentTransaction(PaymentTransaction $transaction)
+    {
+        $transaction->load(['unit.cluster', 'unit.resident', 'billings', 'allocations.billing', 'verifier', 'creator']);
+
+        return Pdf::loadHTML(view('pdf.payment-transaction', compact('transaction'))->render())
+            ->download("Transaksi-{$transaction->invoice_number}.pdf");
     }
 
     /**
@@ -165,9 +187,12 @@ class DocumentController extends Controller
 
     public function paymentReceipts(Request $request)
     {
-        $receipts = $this->filteredReceipts($request)->get();
+        $query = $this->filteredReceipts($request);
+        $this->guardListPdfSize($query, 'kuitansi');
+        $receipts = $query->get();
 
         return Pdf::loadHTML(view('pdf.payment-receipts', compact('receipts'))->render())
+            ->setPaper('a4', 'landscape')
             ->download('riwayat-kuitansi.pdf');
     }
 
@@ -205,7 +230,6 @@ class DocumentController extends Controller
     private function filteredReceipts(Request $request)
     {
         return Receipt::query()
-            ->with('unit.cluster')
             ->when($request->query('search'), fn ($q, $value) => $q->where(fn ($inner) => $inner
                 ->where('number', 'like', "%{$value}%")
                 ->orWhere('unit_id', 'like', "%{$value}%")
@@ -220,6 +244,36 @@ class DocumentController extends Controller
             ->when($request->query('date_to'), fn ($q, $value) => $q->whereDate('transaction_date', '<=', $value))
             ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value))
             ->latest('transaction_date');
+    }
+
+    private function guardListPdfSize($query, string $noun): void
+    {
+        $total = (clone $query)->reorder()->count();
+        $max = self::LIST_PDF_MAX_ROWS;
+
+        abort_if(
+            $total > $max,
+            422,
+            "Terlalu banyak {$noun} untuk dicetak ({$total} baris, maksimal {$max}). Persempit filter (tanggal, cluster, dsb.) atau gunakan Export Excel."
+        );
+
+        // Cukup untuk batas baris di atas; hanya menaikkan, tidak pernah menurunkan batas server.
+        if (($limit = $this->memoryLimitBytes()) !== -1 && $limit < 512 * 1024 * 1024) {
+            ini_set('memory_limit', '512M');
+        }
+    }
+
+    private function memoryLimitBytes(): int
+    {
+        $raw = trim((string) ini_get('memory_limit'));
+        $value = (int) $raw;
+
+        return match (strtolower(substr($raw, -1))) {
+            'g' => $value * 1024 ** 3,
+            'm' => $value * 1024 ** 2,
+            'k' => $value * 1024,
+            default => $value,
+        };
     }
 
     public function residentList()

@@ -6,15 +6,39 @@ export function downloadBlob(blob, filename) {
   const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = filename;
+  // Firefox only honours click() on anchors that are attached to the document.
+  document.body.appendChild(anchor);
   anchor.click();
-  URL.revokeObjectURL(url);
+  anchor.remove();
+  // Revoking straight away can cancel the download in Safari/Firefox.
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 // Show a Blob (e.g. a PDF, for viewing/printing) in a tab opened via window.open.
 // Open the tab synchronously in the click handler and pass its handle here once the
 // blob resolves - opening it only after the await would get blocked as a popup in
 // most browsers since it's no longer inside the synchronous user-gesture call stack.
-export function openBlobInWindow(target, blob) {
-  if (!target) return;
-  target.location.href = URL.createObjectURL(blob);
+// If the browser blocked the tab anyway (target is null) the file is downloaded instead,
+// so the click never ends in silence.
+export function openBlobInWindow(target, blob, fallbackFilename = 'dokumen.pdf') {
+  if (!target) {
+    downloadBlob(blob, fallbackFilename);
+    return;
+  }
+  const url = URL.createObjectURL(blob);
+  target.location.href = url;
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+// Fetch a PDF through axios (so the Bearer token is attached) and open it in a new tab.
+// `request` must resolve to a Blob (the http interceptor already unwraps response.data).
+// Errors are re-thrown after closing the blank tab, so callers only need a try/catch.
+export async function printPdf(request, fallbackFilename) {
+  const printWindow = window.open('', '_blank');
+  try {
+    openBlobInWindow(printWindow, await request(), fallbackFilename);
+  } catch (error) {
+    printWindow?.close();
+    throw error;
+  }
 }

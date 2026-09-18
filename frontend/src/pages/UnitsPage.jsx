@@ -222,7 +222,7 @@ export default function UnitsPage() {
                     ? { key: 'resident', label: 'Detail Penghuni', icon: <UserOutlined /> }
                     : { key: 'add-resident', label: 'Masukan Penghuni', icon: <UserAddOutlined />, permission: 'residents.create' },
                   canHandover
-                    ? { key: 'handover', label: 'Serah Terima Kunci', icon: <KeyOutlined />, permission: 'units.update' }
+                    ? { key: 'handover', label: 'Serah Terima', icon: <KeyOutlined />, permission: 'units.update' }
                     : null,
                   { key: 'edit', label: 'Edit', icon: <EditOutlined />, permission: 'units.update' },
                   { key: 'convert', label: 'Konversi Properti', icon: <SwapOutlined />, disabled: record.property_type_id !== 'K', permission: 'units.convert-property' },
@@ -299,7 +299,7 @@ export default function UnitsPage() {
                       {detailData?.property_type_id === 'B' && detailData?.resident?.id && detailData?.status_id !== 'AK' ? (
                         <Can permission="units.update">
                           <Button size="small" type="link" icon={<KeyOutlined />} onClick={() => openHandover(detailData)}>
-                            Serah Terima Kunci
+                            Serah Terima
                           </Button>
                         </Can>
                       ) : null}
@@ -387,7 +387,7 @@ export default function UnitsPage() {
       </Modal>
 
       <Modal
-        title="Serah Terima Kunci"
+        title="Serah Terima"
         open={drawer.type === 'handover'}
         onCancel={() => setDrawer({ type: null, record: null })}
         onOk={() => handoverForm.submit()}
