@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class BillingController extends Controller
 {
@@ -133,6 +134,28 @@ class BillingController extends Controller
         return $this->success($rateScheduleService->resolveRateForBackdatedPeriod($unit->cluster, $data['year'], $data['month']));
     }
 
+    /**
+     * Where the "Tagihan Mundur" range must start for a unit: the month after its last billing.
+     * The start is fixed; only the end of the range is the user's choice.
+     */
+    public function backRange(Request $request, BillingService $service)
+    {
+        $data = $request->validate([
+            'unit_id' => ['required', Rule::exists('units', 'id')->where('status_id', 'AK')],
+        ], [
+            'unit_id.exists' => 'Unit tidak ditemukan atau sudah tidak aktif.',
+        ]);
+
+        $unit = Unit::findOrFail($data['unit_id']);
+        $last = $service->lastBilledPeriod($unit);
+        $start = $service->backStartPeriod($unit);
+
+        return $this->success([
+            'last_billed_period' => $last ? ['year' => $last->year, 'month' => $last->month] : null,
+            'start_period' => ['year' => $start->year, 'month' => $start->month],
+        ]);
+    }
+
     public function prepareBack(Request $request, BillingService $service)
     {
         $data = $request->validate([
@@ -145,6 +168,17 @@ class BillingController extends Controller
         ]);
 
         $unit = Unit::with('cluster')->findOrFail($data['unit_id']);
+
+        // The range must begin right after the unit's last billed month and run without gaps.
+        $expected = $service->backStartPeriod($unit);
+        foreach ($data['periods'] as $index => $period) {
+            if ((int) $period['year'] !== $expected->year || (int) $period['month'] !== $expected->month) {
+                throw ValidationException::withMessages([
+                    "periods.{$index}" => ["Periode tagihan mundur harus berurutan dan dimulai dari {$expected->copy()->locale('id')->translatedFormat('F Y')} (bulan setelah tagihan terakhir unit ini)."],
+                ]);
+            }
+            $expected = $expected->copy()->addMonthNoOverflow();
+        }
 
         $billings = DB::transaction(fn () => collect($data['periods'])->map(
             fn ($period) => $service->prepareBack($unit, $period['year'], $period['month'], $request->user()->id)

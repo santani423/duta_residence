@@ -1,8 +1,8 @@
-import { Button, Card, DatePicker, Drawer, Form, Input, InputNumber, Modal, Select, Space, Tabs, message } from 'antd';
+import { Alert, Button, Card, DatePicker, Drawer, Form, Input, InputNumber, Modal, Select, Space, Tabs, message } from 'antd';
 import { CheckOutlined, FileExcelOutlined, FilePdfOutlined, PercentageOutlined, PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import PageHeader from '../components/common/PageHeader.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
 import Can from '../components/common/Can.jsx';
@@ -29,6 +29,26 @@ export default function BillingsPage() {
   const billings = useQuery({ queryKey: ['billings', table.params], queryFn: () => api.billings.list(table.params) });
   const clusters = useQuery({ queryKey: ['clusters'], queryFn: () => api.clusters.list() });
   const selectedUnitId = Form.useWatch('unit_id', form);
+  const backEnd = Form.useWatch('period_end', form);
+
+  // The start of a back-billing range is decided by the unit's last billing, never by the user.
+  const backRange = useQuery({
+    queryKey: ['billings', 'back-range', selectedUnitId],
+    queryFn: () => api.billings.backRange({ unit_id: selectedUnitId }),
+    enabled: drawer === 'back' && Boolean(selectedUnitId),
+    retry: false,
+    staleTime: 0,
+    gcTime: 0,
+  });
+  const backStart = backRange.data?.data?.start_period
+    ? dayjs(new Date(backRange.data.data.start_period.year, backRange.data.data.start_period.month - 1, 1))
+    : null;
+  const backLast = backRange.data?.data?.last_billed_period;
+
+  useEffect(() => {
+    // New unit / new start: the end can never precede the start, so reset it to the start.
+    if (drawer === 'back') form.setFieldValue('period_end', backStart);
+  }, [drawer, form, backStart?.valueOf()]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const monthly = useMutation({
     mutationFn: ({ period }) => api.billings.prepareMonthly({ year: period.year(), month: period.month() + 1 }),
@@ -61,7 +81,7 @@ export default function BillingsPage() {
   const back = useMutation({
     mutationFn: (values) => api.billings.prepareBack({
       unit_id: values.unit_id,
-      periods: monthsInRange(values.period_range?.[0], values.period_range?.[1]).map((period) => ({
+      periods: monthsInRange(backStart, values.period_end).map((period) => ({
         year: period.year(),
         month: period.month() + 1,
       })),
@@ -248,7 +268,7 @@ export default function BillingsPage() {
             <Form.Item label="Nominal" name="amount" rules={[{ required: true }]}><InputNumber min={0} style={{ width: '100%' }} /></Form.Item>
           </Form>
         ) : (
-          <Form form={form} layout="vertical" onFinish={back.mutate} initialValues={{ period_range: [nextBackPeriod(), nextBackPeriod()] }}>
+          <Form form={form} layout="vertical" onFinish={back.mutate}>
             <Form.Item label="Unit" name="unit_id" rules={[{ required: true, message: 'Pilih unit' }]}>
               <UnitPicker clusters={clusters.data?.data || []} statusId="AK" />
             </Form.Item>
@@ -256,10 +276,29 @@ export default function BillingsPage() {
               Nominal IPL diambil otomatis dari nominal IPL yang berlaku pada tiap periode (atau periode terakhir
               sebelumnya yang sudah memiliki nominal IPL, jika periode tersebut belum diset) dan tidak bisa diubah manual.
             </p>
-            <Form.Item label="Rentang Periode" name="period_range" rules={[{ required: true, message: 'Pilih rentang periode' }]}>
-              <DatePicker.RangePicker picker="month" style={{ width: '100%' }} disabledDate={isBeforeNextBackPeriod} />
-            </Form.Item>
-            <BackPeriodsPreview form={form} unitId={selectedUnitId} />
+            {selectedUnitId && backRange.isError ? <Alert type="error" showIcon style={{ marginBottom: 12 }} message={getApiErrorMessage(backRange.error, 'Gagal memuat periode tagihan unit')} /> : null}
+            {selectedUnitId && backStart ? (
+              <p className="ant-form-text" style={{ marginBottom: 12 }}>
+                {backLast ? `Tagihan unit ini sudah sampai ${formatPeriod(backLast.year, backLast.month)}.` : 'Unit ini belum memiliki tagihan.'}
+                {' '}Rentang periode dimulai dari bulan berikutnya dan tidak dapat diubah.
+              </p>
+            ) : null}
+            <Space align="start" wrap>
+              <Form.Item label="Mulai Periode">
+                <Input disabled value={backStart ? formatPeriod(backStart.year(), backStart.month() + 1) : 'Pilih unit terlebih dahulu'} style={{ width: 220 }} />
+              </Form.Item>
+              <Form.Item label="Sampai Periode" name="period_end" rules={[{ required: true, message: 'Pilih bulan akhir' }]}>
+                <DatePicker
+                  picker="month"
+                  style={{ width: 220 }}
+                  disabled={!backStart}
+                  allowClear={false}
+                  placeholder="Pilih bulan akhir"
+                  disabledDate={(current) => Boolean(backStart) && Boolean(current) && current.isBefore(backStart, 'month')}
+                />
+              </Form.Item>
+            </Space>
+            <BackPeriodsPreview unitId={selectedUnitId} start={backStart} end={backEnd} />
           </Form>
         )}
       </Drawer>
@@ -337,16 +376,6 @@ function UnitPicker({ value, onChange, clusters = [], statusId }) {
   );
 }
 
-// Tagihan mundur hanya boleh dibuat untuk periode yang akan datang (mulai bulan depan) - bulan
-// berjalan dan sebelumnya sudah tercakup oleh tagihan bulanan reguler / riwayat tagihan.
-function nextBackPeriod() {
-  return dayjs().add(1, 'month').startOf('month');
-}
-
-function isBeforeNextBackPeriod(current) {
-  return Boolean(current) && current.isBefore(nextBackPeriod(), 'month');
-}
-
 function monthsInRange(start, end) {
   if (!start || !end) return [];
 
@@ -363,9 +392,8 @@ function monthsInRange(start, end) {
   return months;
 }
 
-function BackPeriodsPreview({ form, unitId }) {
-  const range = Form.useWatch('period_range', form);
-  const months = monthsInRange(range?.[0], range?.[1]);
+function BackPeriodsPreview({ unitId, start, end }) {
+  const months = unitId ? monthsInRange(start, end) : [];
 
   const queries = useQueries({
     queries: months.map((period) => {

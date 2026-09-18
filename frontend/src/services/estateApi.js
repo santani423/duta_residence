@@ -125,6 +125,7 @@ export const api = {
     prepareMonthly: (payload) => http.post('/billings/prepare-monthly', payload),
     prepareSpecial: (payload) => http.post('/billings/prepare-special', payload),
     prepareBack: (payload) => http.post('/billings/prepare-back', payload),
+    backRange: (params) => http.get('/billings/back-range', { params }),
     previewBackRate: (params) => http.get('/billings/back-preview', { params }),
     approve: (id, payload) => http.post(`/billings/${id}/approve`, payload),
     approveBatch: (payload) => http.post('/billings/approve-batch', payload),

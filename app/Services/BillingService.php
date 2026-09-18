@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Billing;
 use App\Models\Unit;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -83,6 +84,32 @@ class BillingService
      * input - it is always resolved server-side from the IPL rate configured for the period
      * before $month (walking further back if needed), per ClusterRateScheduleService.
      */
+    /**
+     * First month a back-dated billing may cover for this unit: the month right after the last
+     * period the unit has been billed for (cancelled billings don't count). A unit with no billing
+     * yet starts from next month, since the current month is covered by regular monthly billing.
+     */
+    public function backStartPeriod(Unit $unit): Carbon
+    {
+        $last = Billing::query()
+            ->where('unit_id', $unit->id)
+            ->where('status_id', '!=', Billing::STATUS_CANCELLED)
+            ->orderByDesc('year')->orderByDesc('month')
+            ->first(['year', 'month']);
+
+        return $last
+            ? Carbon::create($last->year, $last->month, 1)->startOfDay()->addMonthNoOverflow()
+            : now()->startOfMonth()->addMonthNoOverflow();
+    }
+
+    public function lastBilledPeriod(Unit $unit): ?Carbon
+    {
+        $start = $this->backStartPeriod($unit);
+        $hasBilling = Billing::query()->where('unit_id', $unit->id)->where('status_id', '!=', Billing::STATUS_CANCELLED)->exists();
+
+        return $hasBilling ? $start->copy()->subMonthNoOverflow() : null;
+    }
+
     public function prepareBack(Unit $unit, int $year, int $month, int $userId): Billing
     {
         $resolved = $this->rateScheduleService->resolveRateForBackdatedPeriod($unit->cluster, $year, $month);

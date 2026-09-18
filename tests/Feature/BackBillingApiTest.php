@@ -47,6 +47,14 @@ class BackBillingApiTest extends TestCase
         return Unit::factory()->create(['cluster_id' => $cluster->id, 'resident_id' => $resident->id]);
     }
 
+    /** @return array{year: int, month: int} first month back-billing may cover for a unit without billings. */
+    private function startPeriod(): array
+    {
+        $next = now()->startOfMonth()->addMonthNoOverflow();
+
+        return ['year' => $next->year, 'month' => $next->month];
+    }
+
     public function test_a_loket_role_user_can_create_a_backdated_billing(): void
     {
         $this->seed(RolePermissionSeeder::class);
@@ -66,7 +74,7 @@ class BackBillingApiTest extends TestCase
 
         $this->postJson('/api/v1/billings/prepare-back', [
             'unit_id' => $unit->id,
-            'periods' => [['year' => 2026, 'month' => 9]],
+            'periods' => [$this->startPeriod()],
         ])->assertCreated()->assertJsonPath('data.0.amount', '320000.00');
     }
 
@@ -84,15 +92,14 @@ class BackBillingApiTest extends TestCase
 
         $response = $this->postJson('/api/v1/billings/prepare-back', [
             'unit_id' => $unit->id,
-            'periods' => [['year' => 2026, 'month' => 9]],
+            'periods' => [$this->startPeriod()],
         ])->assertCreated();
 
         $response->assertJsonPath('data.0.amount', '320000.00');
         $response->assertJsonPath('data.0.billing_type', 'back');
         $this->assertDatabaseHas('billings', [
             'unit_id' => $unit->id,
-            'year' => 2026,
-            'month' => 9,
+            ...$this->startPeriod(),
             'amount' => 320000,
             'billing_type' => 'back',
         ]);
@@ -113,7 +120,7 @@ class BackBillingApiTest extends TestCase
 
         $this->postJson('/api/v1/billings/prepare-back', [
             'unit_id' => $unit->id,
-            'periods' => [['year' => 2026, 'month' => 9]],
+            'periods' => [$this->startPeriod()],
         ])->assertCreated()->assertJsonPath('data.0.amount', '280000.00');
     }
 
@@ -125,7 +132,7 @@ class BackBillingApiTest extends TestCase
 
         $this->postJson('/api/v1/billings/prepare-back', [
             'unit_id' => $unit->id,
-            'periods' => [['year' => 2026, 'month' => 9]],
+            'periods' => [$this->startPeriod()],
         ])->assertStatus(422);
 
         $this->assertDatabaseMissing('billings', ['unit_id' => $unit->id]);
@@ -145,7 +152,7 @@ class BackBillingApiTest extends TestCase
 
         $this->postJson('/api/v1/billings/prepare-back', [
             'unit_id' => $unit->id,
-            'periods' => [['year' => 2026, 'month' => 9, 'amount' => 1]],
+            'periods' => [$this->startPeriod() + ['amount' => 1]],
         ])->assertCreated()->assertJsonPath('data.0.amount', '320000.00');
     }
 
@@ -195,7 +202,7 @@ class BackBillingApiTest extends TestCase
 
         $this->postJson('/api/v1/billings/prepare-back', [
             'unit_id' => $unit->id,
-            'periods' => [['year' => 2026, 'month' => 9]],
+            'periods' => [$this->startPeriod()],
         ])->assertStatus(422)->assertJsonValidationErrors(['unit_id']);
 
         $this->assertSame(0, Billing::where('unit_id', $unit->id)->count());
@@ -212,7 +219,7 @@ class BackBillingApiTest extends TestCase
             ->assertStatus(422)->assertJsonValidationErrors(['unit_id']);
     }
 
-    public function test_one_invalid_period_rolls_back_the_whole_backdated_batch(): void
+    public function test_one_invalid_period_creates_nothing_for_the_whole_backdated_batch(): void
     {
         $unit = $this->makeUnit();
         ClusterRateSchedule::query()->create([
@@ -224,15 +231,78 @@ class BackBillingApiTest extends TestCase
 
         Sanctum::actingAs($this->makeAuthorizedUser());
 
-        // September resolves fine (August is configured), but June has nothing before it.
+        // The first month is fine but the second goes backwards, so no billing may be created.
         $this->postJson('/api/v1/billings/prepare-back', [
             'unit_id' => $unit->id,
             'periods' => [
-                ['year' => 2026, 'month' => 9],
+                $this->startPeriod(),
                 ['year' => 2026, 'month' => 6],
             ],
         ])->assertStatus(422);
 
         $this->assertSame(0, Billing::where('unit_id', $unit->id)->count());
+    }
+
+    public function test_back_range_starts_the_month_after_the_units_last_billing_and_after_each_back_billing(): void
+    {
+        $unit = $this->makeUnit();
+        ClusterRateSchedule::query()->create([
+            'cluster_id' => $unit->cluster_id, 'effective_date' => '2026-01-01', 'rate' => 300000, 'is_active' => true,
+        ]);
+        Billing::factory()->create(['unit_id' => $unit->id, 'year' => 2026, 'month' => 9]);
+
+        Sanctum::actingAs($this->makeAuthorizedUser());
+
+        $this->getJson("/api/v1/billings/back-range?unit_id={$unit->id}")->assertOk()
+            ->assertJsonPath('data.last_billed_period', ['year' => 2026, 'month' => 9])
+            ->assertJsonPath('data.start_period', ['year' => 2026, 'month' => 10]);
+
+        // Back-bill Oct-Nov; the next range must then start in December.
+        $this->postJson('/api/v1/billings/prepare-back', [
+            'unit_id' => $unit->id,
+            'periods' => [['year' => 2026, 'month' => 10], ['year' => 2026, 'month' => 11]],
+        ])->assertCreated();
+
+        $this->getJson("/api/v1/billings/back-range?unit_id={$unit->id}")
+            ->assertJsonPath('data.start_period', ['year' => 2026, 'month' => 12]);
+
+        // December 2026 -> January 2027 crosses the year boundary.
+        $this->postJson('/api/v1/billings/prepare-back', [
+            'unit_id' => $unit->id,
+            'periods' => [['year' => 2026, 'month' => 12], ['year' => 2027, 'month' => 1]],
+        ])->assertCreated();
+        $this->getJson("/api/v1/billings/back-range?unit_id={$unit->id}")
+            ->assertJsonPath('data.start_period', ['year' => 2027, 'month' => 2]);
+    }
+
+    public function test_back_range_for_a_unit_without_billings_starts_next_month_and_has_no_last_period(): void
+    {
+        $unit = $this->makeUnit();
+
+        Sanctum::actingAs($this->makeAuthorizedUser());
+
+        $this->getJson("/api/v1/billings/back-range?unit_id={$unit->id}")->assertOk()
+            ->assertJsonPath('data.last_billed_period', null)
+            ->assertJsonPath('data.start_period', $this->startPeriod());
+    }
+
+    public function test_prepare_back_rejects_a_start_before_or_after_the_expected_month_and_gaps(): void
+    {
+        $unit = $this->makeUnit();
+        ClusterRateSchedule::query()->create([
+            'cluster_id' => $unit->cluster_id, 'effective_date' => '2026-01-01', 'rate' => 300000, 'is_active' => true,
+        ]);
+        Billing::factory()->create(['unit_id' => $unit->id, 'year' => 2026, 'month' => 9]);
+
+        Sanctum::actingAs($this->makeAuthorizedUser());
+
+        // Overlaps an already billed month.
+        $this->postJson('/api/v1/billings/prepare-back', ['unit_id' => $unit->id, 'periods' => [['year' => 2026, 'month' => 9]]])->assertStatus(422);
+        // Skips October.
+        $this->postJson('/api/v1/billings/prepare-back', ['unit_id' => $unit->id, 'periods' => [['year' => 2026, 'month' => 11]]])->assertStatus(422);
+        // Right start but a gap in the middle.
+        $this->postJson('/api/v1/billings/prepare-back', ['unit_id' => $unit->id, 'periods' => [['year' => 2026, 'month' => 10], ['year' => 2026, 'month' => 12]]])->assertStatus(422);
+
+        $this->assertSame(1, Billing::where('unit_id', $unit->id)->count());
     }
 }
