@@ -30,7 +30,7 @@ class ReportController extends Controller
     }
 
     /**
-     * Ready Stock/Tanah Kosong/Occupied dihitung dari Unit::scopeOccupancyStatus (lihat
+     * Ready Stock/Tanah Kosong/Booked/Occupied dihitung dari Unit::scopeOccupancyStatus (lihat
      * Unit::getOccupancyStatusAttribute) supaya angkanya selalu sama dengan status yang
      * ditampilkan di halaman Unit/Cluster, bukan dihitung ulang dengan logic terpisah.
      */
@@ -40,6 +40,7 @@ class ReportController extends Controller
             'total_units' => Unit::count(),
             'ready_stock' => Unit::occupancyStatus(Unit::OCCUPANCY_STATUS_READY_STOCK)->count(),
             'tanah_kosong' => Unit::occupancyStatus(Unit::OCCUPANCY_STATUS_TANAH_KOSONG)->count(),
+            'booked' => Unit::occupancyStatus(Unit::OCCUPANCY_STATUS_BOOKED)->count(),
             'occupied' => Unit::occupancyStatus(Unit::OCCUPANCY_STATUS_OCCUPIED)->count(),
         ];
     }

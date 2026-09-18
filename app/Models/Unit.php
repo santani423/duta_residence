@@ -23,11 +23,14 @@ class Unit extends Model
 
     public const OCCUPANCY_STATUS_TANAH_KOSONG = 'tanah_kosong';
 
+    public const OCCUPANCY_STATUS_BOOKED = 'booked';
+
     public const OCCUPANCY_STATUS_OCCUPIED = 'occupied';
 
     public const OCCUPANCY_STATUS_LABELS = [
         self::OCCUPANCY_STATUS_READY_STOCK => 'Ready Stock',
         self::OCCUPANCY_STATUS_TANAH_KOSONG => 'Tanah Kosong',
+        self::OCCUPANCY_STATUS_BOOKED => 'Booked',
         self::OCCUPANCY_STATUS_OCCUPIED => 'Occupied',
     ];
 
@@ -202,14 +205,30 @@ class Unit extends Model
     }
 
     /**
+     * Unit sudah ditautkan ke seorang penghuni/customer (occupancy_id = Booked, diset
+     * otomatis saat penautan) tapi belum aktif/serah terima kunci. Penghuni yang
+     * soft-deleted tidak dihitung, sama seperti hasActiveResident().
+     */
+    public function isBooked(): bool
+    {
+        return $this->occupancy_id === self::OCCUPANCY_BOOKED_ID
+            && ($this->resident !== null || $this->tenantResident !== null);
+    }
+
+    /**
      * Status unit yang dihitung (bukan disimpan) dari tipe unit + ada/tidaknya penghuni
      * aktif, supaya tidak bisa terjadi data tidak konsisten seperti "status Ready Stock
-     * tapi sebenarnya sudah ada penghuni".
+     * tapi sebenarnya sudah ada penghuni". Unit yang sudah ditautkan ke penghuni tapi
+     * belum aktif berstatus Booked, bukan lagi Ready Stock/Tanah Kosong.
      */
     public function getOccupancyStatusAttribute(): string
     {
         if ($this->hasActiveResident()) {
             return self::OCCUPANCY_STATUS_OCCUPIED;
+        }
+
+        if ($this->isBooked()) {
+            return self::OCCUPANCY_STATUS_BOOKED;
         }
 
         return $this->isLandType() ? self::OCCUPANCY_STATUS_TANAH_KOSONG : self::OCCUPANCY_STATUS_READY_STOCK;
@@ -228,17 +247,21 @@ class Unit extends Model
     public function scopeOccupancyStatus(Builder $query, ?string $status): Builder
     {
         return $query->when($status, function (Builder $q) use ($status) {
-            $isOccupied = fn (Builder $inner) => $inner->where('status_id', 'AK')
-                ->where(fn (Builder $x) => $x->whereHas('resident')->orWhereHas('tenantResident'));
+            $hasResident = fn (Builder $x) => $x->whereHas('resident')->orWhereHas('tenantResident');
+            $isOccupied = fn (Builder $inner) => $inner->where('status_id', 'AK')->where($hasResident);
+            $isBooked = fn (Builder $inner) => $inner->where('occupancy_id', self::OCCUPANCY_BOOKED_ID)->where($hasResident);
 
             return match ($status) {
                 self::OCCUPANCY_STATUS_OCCUPIED => $q->where($isOccupied),
+                self::OCCUPANCY_STATUS_BOOKED => $q->whereNot($isOccupied)->where($isBooked),
                 self::OCCUPANCY_STATUS_READY_STOCK => $q
                     ->whereNotIn('property_type_id', self::LAND_PROPERTY_TYPES)
-                    ->whereNot($isOccupied),
+                    ->whereNot($isOccupied)
+                    ->whereNot($isBooked),
                 self::OCCUPANCY_STATUS_TANAH_KOSONG => $q
                     ->whereIn('property_type_id', self::LAND_PROPERTY_TYPES)
-                    ->whereNot($isOccupied),
+                    ->whereNot($isOccupied)
+                    ->whereNot($isBooked),
                 default => $q,
             };
         });

@@ -56,6 +56,12 @@ class UnitController extends Controller
             $data['handover_date'] = now()->toDateString();
         }
 
+        // Unit yang langsung dibuat dengan penghuni/customer terkait ditandai Booked, sama
+        // seperti saat penghuni ditautkan belakangan (lihat update()).
+        if (! empty($data['resident_id'] ?? null)) {
+            $data['occupancy_id'] = Unit::OCCUPANCY_BOOKED_ID;
+        }
+
         // Menghasilkan kode unit lalu menyimpannya dikunci per cluster (lihat
         // UnitCodeGeneratorService), tapi tetap dibungkus retry di sini sebagai jaring
         // pengaman kedua: kalau dua request tetap berhasil menghitung nomor urut yang

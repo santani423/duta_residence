@@ -8,6 +8,7 @@ export const STATUS_COLORS = {
   occupied: { fill: '#95de64', stroke: '#52c41a', label: 'Occupied' },
   ready_stock: { fill: '#69b1ff', stroke: '#1677ff', label: 'Ready Stock' },
   tanah_kosong: { fill: '#ffd666', stroke: '#d48806', label: 'Tanah Kosong' },
+  booked: { fill: '#d3adf7', stroke: '#722ed1', label: 'Booked' },
   tunggakan: { fill: '#ff7875', stroke: '#cf1322', label: 'Ada Tunggakan' },
 };
 

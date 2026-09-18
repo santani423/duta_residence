@@ -92,19 +92,25 @@ export default function DashboardPage() {
       </Row>
 
       <Row gutter={[16, 16]} className="section-row">
-        <Col xs={24} lg={8}>
+        <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic title="Ready Stock" value={unitOccupancy.ready_stock || 0} valueStyle={{ color: '#1677ff' }} />
             <div className="muted">Bangunan/Ruko yang belum ada penghuni</div>
           </Card>
         </Col>
-        <Col xs={24} lg={8}>
+        <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic title="Tanah Kosong" value={unitOccupancy.tanah_kosong || 0} valueStyle={{ color: '#d48806' }} />
             <div className="muted">Kavling yang belum ada penghuni</div>
           </Card>
         </Col>
-        <Col xs={24} lg={8}>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic title="Booked" value={unitOccupancy.booked || 0} valueStyle={{ color: '#722ed1' }} />
+            <div className="muted">Unit yang sudah ditautkan ke penghuni, belum serah terima</div>
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic title="Occupied" value={unitOccupancy.occupied || 0} valueStyle={{ color: '#389e0d' }} />
             <div className="muted">Unit yang sudah ada penghuni aktif</div>

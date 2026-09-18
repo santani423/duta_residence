@@ -11,7 +11,7 @@ use Tests\TestCase;
 
 /**
  * Unit::getOccupancyStatusAttribute() adalah satu-satunya sumber status Ready Stock/
- * Tanah Kosong/Occupied di seluruh aplikasi (API, dashboard, filter). Test ini menutup
+ * Tanah Kosong/Booked/Occupied di seluruh aplikasi (API, dashboard, filter). Test ini menutup
  * semua kombinasi tipe unit x penghuni dari spesifikasi, termasuk lifecycle penghuni
  * ditambahkan/dipindahkan dan penghuni lama/soft-deleted yang tidak boleh dihitung aktif.
  */
@@ -139,6 +139,36 @@ class UnitOccupancyStatusTest extends TestCase
         $this->assertSame('tanah_kosong', $unit->fresh()->occupancy_status);
     }
 
+    public function test_unit_linked_to_resident_but_not_yet_active_is_booked(): void
+    {
+        $resident = Resident::factory()->create();
+        $unit = Unit::factory()->create(['property_type_id' => 'B', 'resident_id' => null, 'status_id' => 'TA', 'occupancy_id' => '2']);
+        $this->assertSame('ready_stock', $unit->occupancy_status);
+
+        $unit->update(['resident_id' => $resident->id, 'occupancy_id' => Unit::OCCUPANCY_BOOKED_ID]);
+
+        $this->assertSame('booked', $unit->fresh()->occupancy_status);
+        $this->assertSame('Booked', $unit->fresh()->occupancy_status_label);
+
+        // Serah terima kunci (status AK) mengubah Booked menjadi Occupied.
+        $unit->update(['status_id' => 'AK']);
+        $this->assertSame('occupied', $unit->fresh()->occupancy_status);
+    }
+
+    public function test_kavling_linked_to_resident_but_not_yet_active_is_booked(): void
+    {
+        $unit = Unit::factory()->create(['property_type_id' => 'K', 'status_id' => 'RK', 'occupancy_id' => Unit::OCCUPANCY_BOOKED_ID]);
+
+        $this->assertSame('booked', $unit->occupancy_status);
+    }
+
+    public function test_booked_marker_without_a_resident_is_not_booked(): void
+    {
+        $unit = Unit::factory()->create(['property_type_id' => 'B', 'resident_id' => null, 'status_id' => 'TA', 'occupancy_id' => Unit::OCCUPANCY_BOOKED_ID]);
+
+        $this->assertSame('ready_stock', $unit->occupancy_status);
+    }
+
     #[DataProvider('occupancyStatusProvider')]
     public function test_scope_occupancy_status_matches_the_computed_accessor_for_every_unit(string $status): void
     {
@@ -147,6 +177,7 @@ class UnitOccupancyStatusTest extends TestCase
         Unit::factory()->create(['property_type_id' => 'B', 'status_id' => 'AK']);
         Unit::factory()->create(['property_type_id' => 'P', 'status_id' => 'AK']);
         Unit::factory()->inactive()->create(['property_type_id' => 'R']);
+        Unit::factory()->create(['property_type_id' => 'B', 'status_id' => 'TA', 'occupancy_id' => Unit::OCCUPANCY_BOOKED_ID]);
 
         $expectedIds = Unit::all()->filter(fn (Unit $unit) => $unit->occupancy_status === $status)->pluck('id')->sort()->values();
         $actualIds = Unit::occupancyStatus($status)->pluck('id')->sort()->values();
@@ -160,6 +191,7 @@ class UnitOccupancyStatusTest extends TestCase
         return [
             'ready_stock' => [Unit::OCCUPANCY_STATUS_READY_STOCK],
             'tanah_kosong' => [Unit::OCCUPANCY_STATUS_TANAH_KOSONG],
+            'booked' => [Unit::OCCUPANCY_STATUS_BOOKED],
             'occupied' => [Unit::OCCUPANCY_STATUS_OCCUPIED],
         ];
     }

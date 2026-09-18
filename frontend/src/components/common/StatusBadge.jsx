@@ -50,6 +50,7 @@ const maps = {
   unitOccupancy: {
     ready_stock: ['Ready Stock', 'blue'],
     tanah_kosong: ['Tanah Kosong', 'gold'],
+    booked: ['Booked', 'purple'],
     occupied: ['Occupied', 'green'],
   },
 };

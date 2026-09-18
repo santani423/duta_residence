@@ -21,11 +21,12 @@ export const residentStatusOptions = [
 ];
 
 // Status unit yang dihitung backend (Unit::getOccupancyStatusAttribute) dari tipe unit +
-// ada/tidaknya penghuni aktif - satu-satunya sumber label status unit di seluruh frontend,
-// jangan buat varian/singkatan lain untuk ketiga status ini.
+// ada/tidaknya penghuni - satu-satunya sumber label status unit di seluruh frontend,
+// jangan buat varian/singkatan lain untuk keempat status ini.
 export const unitOccupancyStatusOptions = [
   { value: 'ready_stock', label: 'Ready Stock' },
   { value: 'tanah_kosong', label: 'Tanah Kosong' },
+  { value: 'booked', label: 'Booked' },
   { value: 'occupied', label: 'Occupied' },
 ];
 
