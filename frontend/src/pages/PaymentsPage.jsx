@@ -22,6 +22,7 @@ const PAYMENT_CHANNEL_LABELS = { L: 'Loket', M: 'Bank Transfer', Q: 'QRIS' };
 
 export default function PaymentsPage() {
   const [unit, setUnit] = useState(null);
+  const [selectedBillingIds, setSelectedBillingIds] = useState([]);
   const [transaction, setTransaction] = useState(null);
   const [selectedVia, setVia] = useState('loket');
   const [proofOpen, setProofOpen] = useState(null);
@@ -67,6 +68,7 @@ export default function PaymentsPage() {
     }),
     onSuccess: (response) => {
       setUnit(response.data);
+      setSelectedBillingIds((response.data?.billings || []).map((billing) => billing.id));
       setTransaction(null);
       loketForm.setFieldsValue({ amount: undefined, use_balance: true });
     },
@@ -78,19 +80,21 @@ export default function PaymentsPage() {
   const debouncedAmount = useDebounce(watchedAmount, 400);
 
   const previewQuery = useQuery({
-    queryKey: ['payment-preview', unit?.id, debouncedAmount, watchedUseBalance ?? true],
+    queryKey: ['payment-preview', unit?.id, selectedBillingIds, debouncedAmount, watchedUseBalance ?? true],
     queryFn: () => api.payments.preview({
       unit_id: unit.id,
+      billing_ids: selectedBillingIds,
       amount: Number(debouncedAmount) || 0,
       use_balance: watchedUseBalance ?? true,
     }),
-    enabled: Boolean(unit),
+    enabled: Boolean(unit) && selectedBillingIds.length > 0,
   });
-  const preview = previewQuery.data?.data;
+  const preview = selectedBillingIds.length ? previewQuery.data?.data : undefined;
 
   const processLoket = useMutation({
     mutationFn: (values) => api.payments.process({
       unit_id: unit.id,
+      billing_ids: selectedBillingIds,
       amount: Number(values.amount) || 0,
       use_balance: values.use_balance ?? true,
       payment_method_id: values.payment_method_id,
@@ -119,7 +123,7 @@ export default function PaymentsPage() {
     mutationFn: (values) => api.payments.createGateway({
       ...values,
       unit_id: unit.id,
-      billing_ids: (unit?.billings || []).map((billing) => billing.id),
+      billing_ids: selectedBillingIds,
     }),
     onSuccess: (response) => {
       message.success('Transaksi gateway berhasil dibuat');
@@ -259,6 +263,7 @@ export default function PaymentsPage() {
 
   function resetPaymentWorkspace() {
     setUnit(null);
+    setSelectedBillingIds([]);
     setTransaction(null);
     setUnitQuery('');
     setUnitFilters({});
@@ -267,6 +272,9 @@ export default function PaymentsPage() {
   }
 
   const unpaidBillings = unit?.billings || [];
+  const selectedTotal = unpaidBillings
+    .filter((billing) => selectedBillingIds.includes(billing.id))
+    .reduce((sum, billing) => sum + Number(billing.penalty_detail?.total_outstanding ?? 0), 0);
   // Loket and Transfer are always offered; Xendit/Midtrans only when the backend reports them enabled.
   const availableGateways = config.data?.data?.available_methods || ['manual'];
   const viaOptions = [
@@ -357,7 +365,14 @@ export default function PaymentsPage() {
                       columns={billingColumns}
                       pagination={false}
                       scrollX={1300}
+                      rowSelection={{
+                        selectedRowKeys: selectedBillingIds,
+                        onChange: (keys) => { setSelectedBillingIds(keys); setTransaction(null); },
+                      }}
                     />
+                    <Typography.Text className="section-row" style={{ display: 'block' }}>
+                      Dipilih: <strong>{selectedBillingIds.length}</strong> dari {unpaidBillings.length} tagihan — Total: <strong>{formatCurrency(selectedTotal)}</strong>
+                    </Typography.Text>
 
                     <Space className="section-row" direction="vertical" style={{ width: '100%' }}>
                       <Typography.Text strong>Via</Typography.Text>
@@ -409,9 +424,9 @@ export default function PaymentsPage() {
                                 type="info"
                                 showIcon
                                 message={`Via: ${viaLabel}`}
-                                description={via === 'manual' ? `${manualInfo.bank_name || '-'} ${manualInfo.account_number || ''} a.n. ${manualInfo.account_name || '-'}` : 'Transaksi akan menghasilkan payment URL. Transaksi gateway melunasi seluruh tunggakan unit ini.'}
+                                description={via === 'manual' ? `${manualInfo.bank_name || '-'} ${manualInfo.account_number || ''} a.n. ${manualInfo.account_name || '-'}` : 'Transaksi akan menghasilkan payment URL. Transaksi gateway melunasi seluruh tagihan yang dipilih.'}
                               />
-                              <Button className="section-row" type="primary" disabled={!unpaidBillings.length} loading={createGateway.isPending} onClick={() => createGateway.mutate({ provider: via })}>Buat Transaksi</Button>
+                              <Button className="section-row" type="primary" disabled={!selectedBillingIds.length} loading={createGateway.isPending} onClick={() => createGateway.mutate({ provider: via })}>Buat Transaksi</Button>
                               {transaction ? (
                                 <Card className="section-row" title={transaction.invoice_number}>
                                   <Space direction="vertical">
