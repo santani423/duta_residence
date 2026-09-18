@@ -55,7 +55,9 @@ class PaymentGatewayController extends Controller
             ->when($request->query('date_from'), fn ($q, $value) => $q->whereDate('created_at', '>=', $value))
             ->when($request->query('date_to'), fn ($q, $value) => $q->whereDate('created_at', '<=', $value));
 
-        return $this->paginated($query->latest()->paginate($request->integer('per_page', 15)));
+        // Most recently touched first (proof uploaded, verified, rejected, paid ...), not
+        // most recently created - so a transaction that just got a new proof jumps to the top.
+        return $this->paginated($query->orderByDesc('updated_at')->orderByDesc('id')->paginate($request->integer('per_page', 15)));
     }
 
     public function show(PaymentTransaction $transaction)

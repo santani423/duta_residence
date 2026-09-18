@@ -275,4 +275,34 @@ class NotificationDetailTest extends TestCase
 
         $this->getJson('/api/v1/supervisor-notifications')->assertOk()->assertJsonPath('meta.unread_count', 0);
     }
+
+    public function test_gateway_transactions_are_listed_by_most_recent_update_first(): void
+    {
+        $this->seed();
+        $finance = User::where('username', 'finance')->first();
+        $billing = Billing::query()->firstOrFail();
+
+        $make = function (string $number, $at) use ($billing) {
+            $transaction = new PaymentTransaction([
+                'transaction_number' => $number, 'invoice_number' => $number, 'unit_id' => $billing->unit_id,
+                'payment_provider' => 'manual', 'status' => 'pending', 'subtotal' => 1000, 'tax' => 0, 'admin_fee' => 0, 'total' => 1000,
+            ]);
+            $transaction->created_at = $at;
+            $transaction->updated_at = $at;
+            $transaction->save();
+
+            return $transaction;
+        };
+        $oldest = $make('ZZORD-OLD', now()->subDays(3));
+        $middle = $make('ZZORD-MID', now()->subDays(2));
+        $newest = $make('ZZORD-NEW', now()->subDay());
+
+        Sanctum::actingAs($finance);
+        $order = fn () => collect($this->getJson('/api/v1/payments/gateway/transactions?per_page=1000&search=ZZORD-')->assertOk()->json('data'))->pluck('transaction_number')->all();
+        $this->assertSame(['ZZORD-NEW', 'ZZORD-MID', 'ZZORD-OLD'], $order());
+
+        // The oldest transaction receives a new proof -> it must move to the top.
+        $oldest->update(['status' => 'waiting_verification', 'manual_proof_uploaded_at' => now()]);
+        $this->assertSame(['ZZORD-OLD', 'ZZORD-NEW', 'ZZORD-MID'], $order());
+    }
 }

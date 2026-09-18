@@ -14,7 +14,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // See config/database.php `read_timeout`: pdo_mysql has no per-connection read
+        // timeout, so the mysqlnd-wide ini is the only way to bound a stalled handshake.
+        $connection = config('database.default');
+        if (in_array($connection, ['mysql', 'mariadb'], true)) {
+            ini_set('mysqlnd.net_read_timeout', (string) config("database.connections.{$connection}.read_timeout", 10));
+        }
     }
 
     /**

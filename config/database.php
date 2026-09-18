@@ -61,10 +61,15 @@ return [
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
-                // Fail fast when the database host is saturated/unreachable instead of hanging
-                // until PHP's 30s max_execution_time kills the request with a fatal error.
+                // Bounds only the TCP connect. A server that accepts the socket but then stalls
+                // during the handshake is bounded by `read_timeout` below instead.
                 PDO::ATTR_TIMEOUT => (int) env('DB_CONNECT_TIMEOUT', 5),
             ]) : [],
+            // Seconds to wait for the database to answer (handshake included). Applied as
+            // mysqlnd.net_read_timeout in AppServiceProvider so a saturated/stalled host fails
+            // in seconds - and Laravel retries the connection once - instead of hanging until
+            // PHP's 30s max_execution_time kills the request with a fatal error.
+            'read_timeout' => (int) env('DB_READ_TIMEOUT', 10),
         ],
 
         'mariadb' => [
