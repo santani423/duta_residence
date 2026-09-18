@@ -312,6 +312,9 @@ class PaymentService
             'unit_id' => $unit->id,
             'user_id' => null,
             'type' => $hasPartial ? 'payment_partial' : 'payment_success',
+            // A payment can settle several invoices at once; only link one when it is unambiguous.
+            ...($touchedBillings->count() === 1 ? NotificationPresenter::referenceFor($touchedBillings->first()) : []),
+            'data' => ['periods' => $periods],
             'channel' => 'in_app',
             'recipient' => $unit->resident?->phone ?: ($unit->resident?->email ?: $unit->id),
             'message' => $hasPartial

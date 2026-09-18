@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'src/api/api_client.dart';
 import 'src/app/duta_residence_app.dart';
+import 'src/notifications/notification_link_handler.dart';
 import 'src/services/biometric_auth_service.dart';
 import 'src/state/session_controller.dart';
 import 'src/state/site_identity_controller.dart';
@@ -32,6 +33,13 @@ Future<void> main() async {
   );
   apiClient.onUnauthorized = sessionController.expireSession;
   final siteIdentityController = SiteIdentityController(apiClient: apiClient);
+  final navigatorKey = GlobalKey<NavigatorState>();
+  // Push / deep-link integrations (FCM, local notifications, app links) call
+  // `notificationLinkHandler.handlePayload(...)`; nothing is registered here yet.
+  final notificationLinkHandler = NotificationLinkHandler(
+    navigatorKey: navigatorKey,
+    apiClient: apiClient,
+  );
 
   // `runApp` must not be blocked behind the `auth/me` network call: on a
   // slow/flaky connection (common right after a fresh release-build
@@ -46,6 +54,8 @@ Future<void> main() async {
       sessionController: sessionController,
       themeController: themeController,
       siteIdentityController: siteIdentityController,
+      notificationLinkHandler: notificationLinkHandler,
+      navigatorKey: navigatorKey,
     ),
   );
 

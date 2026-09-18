@@ -208,7 +208,9 @@ export const api = {
     rateMaintenanceRequest: (id, payload) => http.post(`/resident/maintenance-requests/${id}/rating`, payload),
     documents: () => http.get('/resident/documents'),
     notifications: (params) => http.get('/resident/notifications', { params }),
+    notification: (id) => http.get(`/resident/notifications/${id}`),
     readNotification: (id) => http.post(`/resident/notifications/${id}/read`),
+    unreadNotification: (id) => http.post(`/resident/notifications/${id}/unread`),
     readAllNotifications: () => http.post('/resident/notifications/read-all'),
     activity: (params) => http.get('/resident/activity', { params }),
     settings: () => http.get('/resident/settings'),
@@ -268,7 +270,9 @@ export const api = {
   },
   notifications: {
     list: (params) => http.get('/notifications', { params }),
+    get: (id) => http.get(`/notifications/${id}`),
     read: (id) => http.post(`/notifications/${id}/read`),
+    unread: (id) => http.post(`/notifications/${id}/unread`),
     readAll: () => http.post('/notifications/read-all'),
   },
   emergencyAlerts: {
@@ -444,7 +448,10 @@ export const api = {
   },
   supervisorNotifications: {
     list: (params) => http.get('/supervisor-notifications', { params }),
+    get: (id) => http.get(`/supervisor-notifications/${id}`),
     markRead: (id) => http.post(`/supervisor-notifications/${id}/read`),
+    markUnread: (id) => http.post(`/supervisor-notifications/${id}/unread`),
+    markAllRead: () => http.post('/supervisor-notifications/read-all'),
     markHandled: (id) => http.post(`/supervisor-notifications/${id}/handled`),
     escalate: (id, payload) => http.post(`/supervisor-notifications/${id}/escalate`, payload),
   },

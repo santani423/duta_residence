@@ -100,7 +100,7 @@ class SupervisorController extends Controller
                 'total_clusters' => $assignments->count(),
                 'total_collectors' => count($collectorIds),
                 'pending_approvals' => ApprovalRequest::query()->pending()->whereIn('related_collector_id', $collectorIds)->count(),
-                'unread_notifications' => SupervisorNotification::query()->unread()->count(),
+                'unread_notifications' => SupervisorNotification::query()->unread()->where(fn ($q) => $q->whereNull('related_collector_id')->orWhereIn('related_collector_id', $collectorIds))->count(),
             ],
             'supervised_collectors' => User::query()->whereIn('id', $collectorIds)->with('collectorProfile')->get(),
         ]);

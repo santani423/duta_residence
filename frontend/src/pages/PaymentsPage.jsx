@@ -482,7 +482,7 @@ export default function PaymentsPage() {
                         render: (_, row) => (
                           <Space>
                             <Button size="small" onClick={() => setDetailOpen(row)}>Detail</Button>
-                            {row.payment_provider === 'manual' ? <Button size="small" icon={<CloudUploadOutlined />} onClick={() => setProofOpen(row)}>Upload</Button> : null}
+                            {row.payment_provider === 'manual' && row.status !== 'paid' ? <Button size="small" icon={<CloudUploadOutlined />} onClick={() => setProofOpen(row)}>Upload</Button> : null}
                             <Can permission="payments.verify">
                               <Button size="small" icon={<CheckOutlined />} disabled={row.status !== 'waiting_verification'} onClick={() => Modal.confirm({
                                 title: 'Verifikasi pembayaran manual?',

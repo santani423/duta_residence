@@ -22,6 +22,7 @@ use App\Models\Unit;
 use App\Models\UnitDeposit;
 use App\Models\User;
 use App\Services\AuditService;
+use App\Services\NotificationPresenter;
 use App\Services\PaymentService;
 use App\Services\PenaltyService;
 use App\Services\Payments\PaymentGatewayFactory;
@@ -94,7 +95,7 @@ class ResidentPortalController extends Controller
                 ],
             ],
             'latest_documents' => array_slice($this->documentsForUnit($unit), 0, 5),
-            'latest_notifications' => $this->notificationQuery($request, $unit)->latest()->limit(5)->get(),
+            'latest_notifications' => $this->notificationQuery($request, $unit)->latest()->latest('id')->limit(5)->get()->map(fn (NotificationQueue $n) => app(NotificationPresenter::class)->queue($n)),
             'latest_activity' => $this->activityQuery($request)->latest()->limit(8)->get(),
             'payment_config' => PaymentGatewaySetting::current()->publicConfig(),
         ]);
@@ -115,7 +116,7 @@ class ResidentPortalController extends Controller
                 'last_login_at' => $request->user()->last_login_at,
                 'last_login_ip' => $request->user()->last_login_ip,
             ],
-            'notifications' => $this->notificationQuery($request, $unit)->latest()->limit(10)->get(),
+            'notifications' => $this->notificationQuery($request, $unit)->latest()->latest('id')->limit(10)->get()->map(fn (NotificationQueue $n) => app(NotificationPresenter::class)->queue($n)),
             'activity' => $this->activityQuery($request)->latest()->limit(10)->get(),
         ]);
     }
@@ -408,7 +409,7 @@ class ResidentPortalController extends Controller
         $data = $request->validate([
             'sender_name' => ['required', 'string', 'max:100'],
             'sender_bank' => ['required', 'string', 'max:100'],
-            'sender_account_number' => ['nullable', 'string', 'max:100'],
+            'sender_account_number' => ['required', 'string', 'max:100'],
             'amount' => ['required', 'numeric', 'min:1'],
             'manual_transfer_date' => ['required', 'date'],
             'proof' => ['required', 'file', "mimes:{$extensions}", 'max:'.$setting->proof_max_size_kb],
@@ -441,6 +442,7 @@ class ResidentPortalController extends Controller
             'unit_id' => $payment->unit_id,
             'user_id' => $request->user()->id,
             'type' => 'payment_proof_uploaded',
+            ...NotificationPresenter::referenceFor($payment),
             'channel' => 'in_app',
             'recipient' => $request->user()->id,
             'message' => 'Bukti pembayaran berhasil dikirim dan sedang menunggu verifikasi.',
@@ -454,13 +456,17 @@ class ResidentPortalController extends Controller
         // di bell notifikasi mereka, karena tanpa ini tidak ada satupun mekanisme yang
         // memberi tahu petugas bahwa ada bukti baru menunggu diverifikasi.
         $residentName = $payment->unit?->resident?->name ?? $payment->unit_id;
-        $verifiers = User::permission('payments.verify')->get();
+        // Loket tidak punya payments.verify (pemisahan tugas) tetapi menangani pembayaran
+        // (payments.create), jadi ikut diberi tahu; hanya pemegang payments.verify yang bisa memutuskan.
+        $recipients = User::permission(['payments.verify', 'payments.create'])->get();
 
-        foreach ($verifiers as $verifier) {
+        foreach ($recipients as $verifier) {
             NotificationQueue::query()->create([
                 'unit_id' => $payment->unit_id,
                 'user_id' => $verifier->id,
                 'type' => 'payment_proof_uploaded',
+                'sender_id' => $request->user()->id,
+                ...NotificationPresenter::referenceFor($payment),
                 'channel' => 'in_app',
                 'recipient' => $verifier->id,
                 'message' => "Bukti pembayaran baru dari {$residentName} (Unit {$payment->unit_id}) menunggu verifikasi.",
@@ -707,34 +713,64 @@ class ResidentPortalController extends Controller
         return $this->success($this->documentsForUnit($this->unit($request)));
     }
 
-    public function notifications(Request $request)
+    public function notifications(Request $request, NotificationPresenter $presenter)
     {
         $unit = $this->unit($request);
+        $unreadCount = $this->notificationQuery($request, $unit)->unread()->count();
 
-        return $this->paginated(
-            $this->notificationQuery($request, $unit)
-                ->when($request->query('read_status'), fn (Builder $q, $value) => $q->where('read_status', $value))
-                ->when($request->query('type'), fn (Builder $q, $value) => $q->where('type', $value))
-                ->latest()
-                ->paginate($request->integer('per_page', 15))
-        );
+        $paginator = $this->notificationQuery($request, $unit)
+            ->when($request->query('read_status'), fn (Builder $q, $value) => $q->where('read_status', $value))
+            ->when($request->query('type'), fn (Builder $q, $value) => $q->where('type', $value))
+            ->with('sender:id,name')
+            ->latest()->latest('id')
+            ->paginate($request->integer('per_page', 15));
+
+        $paginator->setCollection($paginator->getCollection()->map(fn (NotificationQueue $n) => $presenter->queue($n)));
+
+        return $this->paginated($paginator, extraMeta: ['unread_count' => $unreadCount]);
     }
 
-    public function readNotification(Request $request, NotificationQueue $notification)
+    public function notificationUnreadCount(Request $request)
     {
-        $unit = $this->unit($request);
-        abort_if(! $this->notificationOwnedBy($notification, $request, $unit), 404);
-        $notification->update(['read_status' => 'read']);
+        return $this->success([
+            'unread_count' => $this->notificationQuery($request, $this->unit($request))->unread()->count(),
+        ]);
+    }
 
-        return $this->success($notification, 'Notifikasi ditandai dibaca.');
+    public function notification(Request $request, NotificationQueue $notification, NotificationPresenter $presenter)
+    {
+        $this->authorizeNotification($request, $notification);
+
+        return $this->success($presenter->queue($notification));
+    }
+
+    public function readNotification(Request $request, NotificationQueue $notification, NotificationPresenter $presenter)
+    {
+        $this->authorizeNotification($request, $notification);
+        $notification->markAsRead();
+
+        return $this->success($presenter->queue($notification), 'Notifikasi ditandai dibaca.');
+    }
+
+    public function unreadNotification(Request $request, NotificationQueue $notification, NotificationPresenter $presenter)
+    {
+        $this->authorizeNotification($request, $notification);
+        $notification->markAsUnread();
+
+        return $this->success($presenter->queue($notification), 'Notifikasi ditandai belum dibaca.');
     }
 
     public function readAllNotifications(Request $request)
     {
         $unit = $this->unit($request);
-        $this->notificationQuery($request, $unit)->update(['read_status' => 'read']);
+        $this->notificationQuery($request, $unit)->unread()->update(['read_status' => 'read', 'read_at' => now()]);
 
         return $this->success(null, 'Semua notifikasi ditandai dibaca.');
+    }
+
+    private function authorizeNotification(Request $request, NotificationQueue $notification): void
+    {
+        abort_if(! $this->notificationOwnedBy($notification, $request, $this->unit($request)), 404);
     }
 
     public function activity(Request $request)
@@ -806,6 +842,8 @@ class ResidentPortalController extends Controller
             'unit_id' => $unit->id,
             'user_id' => null,
             'type' => 'emergency_alert',
+            'sender_id' => $user->id,
+            ...NotificationPresenter::referenceFor($alert),
             'channel' => 'in_app',
             'recipient' => 'staff',
             'message' => "SINYAL DARURAT dari {$reporterName} (Unit {$unitLabel})".($alert->note ? ": {$alert->note}" : '.'),
@@ -1223,11 +1261,19 @@ class ResidentPortalController extends Controller
         return $invoices->merge($receipts)->merge($payments)->sortByDesc('created_at')->values()->all();
     }
 
+    /**
+     * A resident's inbox: rows for their unit that are not addressed to someone else
+     * (staff broadcasts and other users' personal rows are excluded even when they share
+     * this unit_id), rows addressed to them personally, and estate-wide announcements.
+     */
     private function notificationQuery(Request $request, Unit $unit): Builder
     {
         return NotificationQueue::query()
             ->where(function (Builder $q) use ($request, $unit) {
-                $q->where('unit_id', $unit->id)
+                $q->where(fn (Builder $own) => $own
+                    ->where('unit_id', $unit->id)
+                    ->where('recipient', '!=', NotificationQueue::STAFF_RECIPIENT)
+                    ->where(fn (Builder $addressee) => $addressee->whereNull('user_id')->orWhere('user_id', $request->user()->id)))
                     ->orWhere('user_id', $request->user()->id)
                     ->orWhere(fn (Builder $global) => $global->whereNull('unit_id')->whereNull('user_id')->where('type', 'like', 'announcement%'));
             });
@@ -1235,8 +1281,12 @@ class ResidentPortalController extends Controller
 
     private function notificationOwnedBy(NotificationQueue $notification, Request $request, Unit $unit): bool
     {
-        return $notification->unit_id === $unit->id
-            || $notification->user_id === $request->user()->id
+        $userId = $request->user()->id;
+
+        return ($notification->unit_id === $unit->id
+                && $notification->recipient !== NotificationQueue::STAFF_RECIPIENT
+                && (blank($notification->user_id) || $notification->user_id === $userId))
+            || $notification->user_id === $userId
             || (blank($notification->unit_id) && blank($notification->user_id) && str_starts_with($notification->type, 'announcement'));
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Services\NotificationPresenter;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\Billing;
@@ -174,6 +175,8 @@ class PaymentGatewayController extends Controller
                 'unit_id' => $transaction->unit_id,
                 'user_id' => null,
                 'type' => 'payment_verified',
+                'sender_id' => $request->user()->id,
+                ...NotificationPresenter::referenceFor($transaction),
                 'channel' => 'in_app',
                 'recipient' => $transaction->unit?->resident?->phone ?: ($transaction->unit?->resident?->email ?: $transaction->unit_id),
                 'message' => 'Pembayaran Anda telah diverifikasi dan tagihan dinyatakan lunas.',
@@ -202,6 +205,8 @@ class PaymentGatewayController extends Controller
             'unit_id' => $transaction->unit_id,
             'user_id' => null,
             'type' => 'payment_rejected',
+            'sender_id' => $request->user()->id,
+            ...NotificationPresenter::referenceFor($transaction),
             'channel' => 'in_app',
             'recipient' => $transaction->unit?->resident?->phone ?: ($transaction->unit?->resident?->email ?: $transaction->unit_id),
             'message' => "Bukti pembayaran Anda ditolak. Alasan: {$data['verification_notes']}. Silakan periksa alasan penolakan dan upload kembali bukti pembayaran.",

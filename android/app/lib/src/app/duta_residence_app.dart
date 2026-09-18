@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
+import '../notifications/notification_link_handler.dart';
 import '../screens/biometric_lock_screen.dart';
 import '../screens/collector/collector_home_shell.dart';
 import '../screens/home_shell.dart';
@@ -20,6 +21,8 @@ class DutaResidenceApp extends StatelessWidget {
     required this.sessionController,
     required this.themeController,
     required this.siteIdentityController,
+    this.notificationLinkHandler,
+    this.navigatorKey,
     super.key,
   });
 
@@ -27,6 +30,12 @@ class DutaResidenceApp extends StatelessWidget {
   final SessionController sessionController;
   final ThemeController themeController;
   final SiteIdentityController siteIdentityController;
+
+  /// Opens notification details from push notifications / deep links (see the class doc).
+  final NotificationLinkHandler? notificationLinkHandler;
+
+  /// Must be the same key the [notificationLinkHandler] was created with.
+  final GlobalKey<NavigatorState>? navigatorKey;
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +48,20 @@ class DutaResidenceApp extends StatelessWidget {
           siteIdentityController,
         ]),
         builder: (context, _) {
+          // Tell the link handler when a tapped push notification may be opened: only for
+          // a live, unlocked session. Post-frame so the navigator for the new home screen exists.
+          final linkHandler = notificationLinkHandler;
+          if (linkHandler != null) {
+            final ready =
+                sessionController.status == SessionStatus.authenticated &&
+                !sessionController.requiresBiometricUnlock;
+            final role = sessionController.user?.role;
+            WidgetsBinding.instance.addPostFrameCallback(
+              (_) => linkHandler.updateSession(ready: ready, role: role),
+            );
+          }
           return MaterialApp(
+            navigatorKey: navigatorKey,
             title: siteIdentityController.appName,
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light(),

@@ -2,6 +2,7 @@ import { Button, Card, Form, Input, InputNumber, Modal, Select, Space, Switch, T
 import { CheckOutlined, RiseOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader.jsx';
 import FilterBar from '../../components/common/FilterBar.jsx';
 import Can from '../../components/common/Can.jsx';
@@ -19,6 +20,8 @@ export default function SupervisorNotificationsPage() {
   const [escalateModal, setEscalateModal] = useState(null);
   const [escalateForm] = Form.useForm();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const list = useQuery({ queryKey: ['supervisor-notifications', table.params], queryFn: () => api.supervisorNotifications.list(table.params) });
 
@@ -87,10 +90,28 @@ export default function SupervisorNotificationsPage() {
           query={list}
           onChange={table.handleTableChange}
           scrollX={1100}
+          onRow={(record) => ({
+            onClick: () => navigate(`/supervisor/notifications/${record.id}`, { state: { from: { pathname: location.pathname, search: location.search } } }),
+            style: { cursor: 'pointer' },
+          })}
           columns={[
             { title: 'Prioritas', dataIndex: 'priority', width: 100, render: (v) => <Tag color={PRIORITY_COLORS[v]}>{v}</Tag> },
             { title: 'Kategori', dataIndex: 'category', width: 180 },
-            { title: 'Judul', dataIndex: 'title' },
+            {
+              title: 'Judul',
+              dataIndex: 'title',
+              render: (value, record) => (
+                <Link
+                  to={`/supervisor/notifications/${record.id}`}
+                  state={{ from: { pathname: location.pathname, search: location.search } }}
+                  onClick={(event) => event.stopPropagation()}
+                  aria-label={`${record.read_status === 'unread' ? 'Belum dibaca. ' : ''}${value}. Buka detail notifikasi.`}
+                >
+                  <span className="notification-dot" aria-hidden="true" style={{ display: 'inline-block', marginRight: 8, background: record.read_status === 'unread' ? 'var(--brand)' : 'transparent' }} />
+                  <span style={{ fontWeight: record.read_status === 'unread' ? 700 : 400 }}>{value}</span>
+                </Link>
+              ),
+            },
             { title: 'Status', dataIndex: 'handled_status', width: 120, render: (v) => <Tag color={HANDLED_COLORS[v]}>{v}</Tag> },
             { title: 'Dibuat', dataIndex: 'created_at', render: formatDateTime, width: 160 },
             {
@@ -98,7 +119,8 @@ export default function SupervisorNotificationsPage() {
               fixed: 'right',
               width: 220,
               render: (_, record) => (
-                <Space>
+                // Row click opens the detail page; the action buttons must not trigger it.
+                <Space onClick={(event) => event.stopPropagation()}>
                   {record.read_status === 'unread' && (
                     <Button size="small" onClick={() => markRead.mutate(record.id)}>Tandai Dibaca</Button>
                   )}

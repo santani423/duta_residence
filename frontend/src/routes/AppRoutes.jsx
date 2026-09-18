@@ -33,6 +33,7 @@ const UsersPage = lazy(() => import('../pages/UsersPage.jsx'));
 const UserDetailPage = lazy(() => import('../pages/UserDetailPage.jsx'));
 const AuditLogsPage = lazy(() => import('../pages/AuditLogsPage.jsx'));
 const NotificationsPage = lazy(() => import('../pages/NotificationsPage.jsx'));
+const NotificationDetailPage = lazy(() => import('../pages/NotificationDetailPage.jsx'));
 const ProfilePage = lazy(() => import('../pages/auth/ProfilePage.jsx'));
 const ChangePasswordPage = lazy(() => import('../pages/auth/ChangePasswordPage.jsx'));
 const AdminPaymentGatewaySettingsPage = lazy(() => import('../pages/AdminPaymentGatewaySettingsPage.jsx'));
@@ -157,6 +158,7 @@ export default function AppRoutes() {
         <Route path="users/:id" element={<Protected permissions={['users.view']}><LazyPage><UserDetailPage /></LazyPage></Protected>} />
         <Route path="audit-logs" element={<Protected permissions={['audit-logs.view']}><LazyPage><AuditLogsPage /></LazyPage></Protected>} />
         <Route path="notifications" element={<LazyPage><NotificationsPage /></LazyPage>} />
+        <Route path="notifications/:id" element={<LazyPage><NotificationDetailPage source="staff" /></LazyPage>} />
         <Route path="profile" element={<LazyPage><ProfilePage /></LazyPage>} />
         <Route path="change-password" element={<LazyPage><ChangePasswordPage /></LazyPage>} />
         <Route path="admin/settings/payment-gateway" element={<Protected permissions={['payment-settings.view']}><LazyPage><AdminPaymentGatewaySettingsPage /></LazyPage></Protected>} />
@@ -203,6 +205,7 @@ export default function AppRoutes() {
         <Route path="supervisor/tunggakan" element={<Protected permissions={['tunggakan-analysis.view']}><LazyPage><SupervisorTunggakanPage /></LazyPage></Protected>} />
         <Route path="supervisor/map" element={<Protected permissions={['collector-locations.view', 'collector-locations.track']}><LazyPage><SupervisorMapPage /></LazyPage></Protected>} />
         <Route path="supervisor/notifications" element={<Protected permissions={['supervisor-notifications.view']}><LazyPage><SupervisorNotificationsPage /></LazyPage></Protected>} />
+        <Route path="supervisor/notifications/:id" element={<Protected permissions={['supervisor-notifications.view']}><LazyPage><NotificationDetailPage source="supervisor" /></LazyPage></Protected>} />
         <Route path="supervisor/broadcast" element={<Protected permissions={['broadcasts.view', 'broadcasts.send']}><LazyPage><SupervisorBroadcastPage /></LazyPage></Protected>} />
         <Route path="supervisor/reports" element={<Protected permissions={['reports.export']}><LazyPage><SupervisorReportsPage /></LazyPage></Protected>} />
         <Route path="collector/performance" element={<Protected roles={['collector']}><LazyPage><CollectorPerformancePage /></LazyPage></Protected>} />
@@ -224,6 +227,7 @@ export default function AppRoutes() {
         <Route path="resident/complaints" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="complaints" /></LazyPage></Protected>} />
         <Route path="resident/documents" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="documents" /></LazyPage></Protected>} />
         <Route path="resident/notifications" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="notifications" /></LazyPage></Protected>} />
+        <Route path="resident/notifications/:id" element={<Protected roles={['customer']}><LazyPage><NotificationDetailPage source="resident" /></LazyPage></Protected>} />
         <Route path="resident/activity" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="activity" /></LazyPage></Protected>} />
         <Route path="resident/settings" element={<Protected roles={['customer']}><LazyPage><ResidentPortalPage page="settings" /></LazyPage></Protected>} />
       </Route>

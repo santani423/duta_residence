@@ -12,7 +12,7 @@ class PaymentSettingSeeder extends Seeder
     {
         PaymentGatewaySetting::updateOrCreate(['id' => 1], [
             'active_gateway' => 'manual',
-            'enabled_gateways' => ['manual', 'xendit', 'midtrans'],
+            'enabled_gateways' => ['manual'],
             'is_active' => true,
             'mode' => 'sandbox',
             'currency' => 'IDR',

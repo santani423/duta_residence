@@ -489,3 +489,82 @@ a {
     display: none !important;
   }
 }
+
+/* ---- Notification items (bell, lists, resident portal) ---- */
+.notification-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+}
+
+.notification-item:last-child {
+  border-bottom: 0;
+}
+
+.notification-item:hover {
+  background: color-mix(in srgb, var(--brand) 7%, transparent);
+}
+
+.notification-item:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: -2px;
+}
+
+.notification-item--unread {
+  background: color-mix(in srgb, var(--brand) 11%, transparent);
+}
+
+.notification-dot {
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  margin-top: 8px;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.notification-item--unread .notification-dot {
+  background: var(--brand);
+}
+
+.notification-item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-item-message {
+  overflow-wrap: anywhere;
+}
+
+.notification-item--compact .notification-item-message {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.notification-item-actions {
+  flex: 0 0 auto;
+}
+
+.notification-menu-list {
+  margin: 8px 0;
+}
+
+.notification-detail-meta {
+  margin-top: 16px;
+}
+
+@media (max-width: 576px) {
+  .notification-item {
+    flex-wrap: wrap;
+  }
+
+  .notification-item-actions {
+    margin-left: 18px;
+  }
+}

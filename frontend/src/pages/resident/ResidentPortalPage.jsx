@@ -15,6 +15,7 @@ import {
   Space,
   Statistic,
   Tabs,
+  Tag,
   Timeline,
   Tooltip,
   Typography,
@@ -33,12 +34,15 @@ import {
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import PageHeader from '../../components/common/PageHeader.jsx';
 import FilterBar from '../../components/common/FilterBar.jsx';
 import { EmptyData, ErrorState, LoadingState } from '../../components/common/ApiState.jsx';
 import StatusBadge from '../../components/common/StatusBadge.jsx';
+import NotificationInbox from '../../components/notifications/NotificationInbox.jsx';
+import NotificationListItem from '../../components/notifications/NotificationListItem.jsx';
+import { notificationSources } from '../../components/notifications/notificationSources.js';
 import ResponsiveTable from '../../components/tables/ResponsiveTable.jsx';
 import { api, storageUrl } from '../../services/estateApi.js';
 import { useTableState } from '../../hooks/useTableState.js';
@@ -173,7 +177,7 @@ function ManualProofDrawer({ payment, open, onClose }) {
       const formData = new FormData();
       formData.append('sender_name', values.sender_name);
       formData.append('sender_bank', values.sender_bank);
-      if (values.sender_account_number) formData.append('sender_account_number', values.sender_account_number);
+      formData.append('sender_account_number', values.sender_account_number);
       formData.append('amount', values.amount);
       formData.append('manual_transfer_date', values.manual_transfer_date.format('YYYY-MM-DD'));
       formData.append('proof', values.proof[0].originFileObj);
@@ -218,7 +222,7 @@ function ManualProofDrawer({ payment, open, onClose }) {
       <Form form={form} layout="vertical" className="section-row" initialValues={{ amount: payment?.total, manual_transfer_date: dayjs() }} onFinish={confirmSubmit}>
         <Form.Item label="Nama pengirim" name="sender_name" rules={[{ required: true }]}><Input /></Form.Item>
         <Form.Item label="Bank pengirim" name="sender_bank" rules={[{ required: true }]}><Input /></Form.Item>
-        <Form.Item label="Nomor rekening pengirim" name="sender_account_number"><Input /></Form.Item>
+        <Form.Item label="Nomor rekening pengirim" name="sender_account_number" rules={[{ required: true }]}><Input /></Form.Item>
         <Form.Item label="Nominal transfer" name="amount" rules={[{ required: true }]}><Input type="number" /></Form.Item>
         <Form.Item label="Tanggal transfer" name="manual_transfer_date" rules={[{ required: true }]}><DatePicker style={{ width: '100%' }} /></Form.Item>
         <Form.Item
@@ -313,7 +317,7 @@ function ResidentDashboard() {
         <Card title="Pembayaran Terbaru">{asList(payment.latest).map((item) => <p key={item.id}><Button type="link" onClick={() => navigate(`/resident/payments/${item.id}`)}>{item.transaction_number}</Button> {formatCurrency(item.total)} <StatusBadge type="transaction" value={item.status} /></p>)}</Card>
         <Card title="Penggunaan Layanan">{asList(services.usage).map((item) => <p key={item.label}>{item.label}: <strong>{item.value}</strong></p>)}</Card>
         <Card title="Dokumen Terbaru">{asList(data.latest_documents).map((item) => <p key={item.id}>{item.name}<br /><Typography.Text type="secondary">{formatDate(item.created_at)}</Typography.Text></p>)}</Card>
-        <Card title="Notifikasi Terbaru">{asList(data.latest_notifications).map((item) => <p key={item.id}>{item.title || item.subject || formatNotificationType(item.type)}<br /><Typography.Text type="secondary">{formatDateTime(item.created_at)}</Typography.Text></p>)}</Card>
+        <Card title="Notifikasi Terbaru">{asList(data.latest_notifications).map((item) => <p key={item.id}><Button type="link" onClick={() => navigate(notificationSources.resident.detailPath(item.id))}>{item.title || item.subject || formatNotificationType(item.type)}</Button>{item.read_status === 'unread' ? <Tag color="blue">Baru</Tag> : null}<br /><Typography.Text type="secondary">{formatDateTime(item.created_at)}</Typography.Text></p>)}</Card>
         <Card title="Aktivitas Terbaru">{asList(data.latest_activity).map((item) => <p key={item.id}>{item.action || item.event}<br /><Typography.Text type="secondary">{formatDateTime(item.created_at)}</Typography.Text></p>)}</Card>
       </div>
     </section>
@@ -1007,42 +1011,31 @@ function ResidentDocuments() {
   );
 }
 
-function NotificationList({ data, query, onRead }) {
+function NotificationList({ data, query }) {
   const items = data || query?.data?.data || [];
+  const navigate = useNavigate();
+  const location = useLocation();
   return (
     <Card>
       {items.length ? items.map((item) => (
-        <div className="resident-list-item" key={item.id}>
-          <div>
-            <Typography.Text strong>{item.title || item.subject || formatNotificationType(item.type)}</Typography.Text>
-            <div>{item.message || item.body || item.description}</div>
-            <Typography.Text type="secondary">{formatDateTime(item.created_at)}</Typography.Text>
-          </div>
-          <Space>
-            <StatusBadge type="read" value={item.read_status || (item.read_at ? 'read' : 'unread')} />
-            {onRead ? <Button size="small" onClick={() => onRead(item.id)}>Dibaca</Button> : null}
-          </Space>
-        </div>
+        <NotificationListItem
+          key={item.id}
+          item={item}
+          onOpen={() => navigate(notificationSources.resident.detailPath(item.id), { state: { from: { pathname: location.pathname, search: location.search } } })}
+        />
       )) : <EmptyData />}
     </Card>
   );
 }
 
 function ResidentNotifications() {
-  const table = useTableState();
-  const queryClient = useQueryClient();
-  const query = useQuery({ queryKey: ['resident-notifications', table.params], queryFn: () => api.resident.notifications(table.params) });
-  const read = useMutation({ mutationFn: api.resident.readNotification, onSuccess: () => queryClient.invalidateQueries({ queryKey: ['resident-notifications'] }) });
-  const readAll = useMutation({ mutationFn: api.resident.readAllNotifications, onSuccess: () => queryClient.invalidateQueries({ queryKey: ['resident-notifications'] }) });
   return (
-    <section>
-      <PageHeader title="Notifikasi Penghuni" breadcrumbs={[{ label: 'Penghuni' }, { label: 'Notifikasi' }]} actions={<Button icon={<CheckOutlined />} onClick={() => readAll.mutate()} loading={readAll.isPending}>Tandai Semua Dibaca</Button>} onRefresh={query.refetch} />
-      <FilterBar>
-        <Select allowClear placeholder="Status" value={table.filters.read_status} onChange={(value) => table.setFilters({ ...table.filters, read_status: value })} className="filter-input" options={[{ value: 'read', label: 'Dibaca' }, { value: 'unread', label: 'Belum Dibaca' }]} />
-        <Input allowClear placeholder="Tipe notifikasi" value={table.filters.type} onChange={(event) => table.setFilters({ ...table.filters, type: event.target.value || undefined })} className="filter-input" />
-      </FilterBar>
-      {query.isLoading ? <LoadingState /> : <NotificationList query={query} onRead={(id) => read.mutate(id)} />}
-    </section>
+    <NotificationInbox
+      source={notificationSources.resident}
+      title="Notifikasi Penghuni"
+      breadcrumbs={[{ label: 'Penghuni' }, { label: 'Notifikasi' }]}
+      typeFilter
+    />
   );
 }
 

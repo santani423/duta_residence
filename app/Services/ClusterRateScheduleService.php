@@ -129,6 +129,7 @@ class ClusterRateScheduleService
             'unit_id' => null,
             'user_id' => null,
             'type' => 'cluster_rate_scheduled',
+            ...NotificationPresenter::referenceFor($schedule),
             'channel' => 'in_app',
             'recipient' => 'staff',
             'message' => sprintf(
@@ -149,6 +150,7 @@ class ClusterRateScheduleService
             'unit_id' => null,
             'user_id' => null,
             'type' => 'cluster_rate_activated',
+            ...NotificationPresenter::referenceFor($schedule),
             'channel' => 'in_app',
             'recipient' => 'staff',
             'message' => sprintf(

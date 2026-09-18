@@ -5,7 +5,10 @@ import '../../api/api_exception.dart';
 import '../../constants/app_spacing.dart';
 import '../../theme/app_status_colors.dart';
 import '../../utils/formatters.dart';
-import '../../widgets/duta_card.dart';
+import '../../notifications/app_notification.dart';
+import '../../notifications/notification_detail_screen.dart';
+import '../../notifications/notification_repository.dart';
+import '../../notifications/notification_tile.dart';
 import '../../widgets/state_views.dart';
 
 const _priorityLabels = {
@@ -56,13 +59,18 @@ class _SupervisorNotificationsScreenState
     await _future;
   }
 
-  Future<void> _markRead(String id) async {
-    try {
-      await widget.apiClient.postJson('supervisor-notifications/$id/read', {});
-      await _refresh();
-    } on ApiException {
-      // Silent - opening the item to read it should not surface an error.
-    }
+  Future<void> _open(AppNotification notification) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => NotificationDetailScreen(
+          apiClient: widget.apiClient,
+          source: NotificationSource.supervisor,
+          notificationId: notification.id,
+          initial: notification,
+        ),
+      ),
+    );
+    if (mounted) _refresh();
   }
 
   Future<void> _markHandled(String id) async {
@@ -176,72 +184,41 @@ class _SupervisorNotificationsScreenState
                   itemBuilder: (context, index) {
                     final item = asMap(items[index]);
                     final id = item['id'].toString();
-                    final isRead = item['read_status'] == 'read';
+                    final notification = AppNotification.fromJson(item);
                     final isHandled = item['handled_status'] == 'handled';
                     final pair = _priorityColor(
                       context,
                       item['priority']?.toString(),
                     );
-                    return DutaCard(
-                      onTap: isRead ? null : () => _markRead(id),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  compact(item['title']),
-                                  style: Theme.of(context).textTheme.bodyLarge
-                                      ?.copyWith(
-                                        fontWeight: isRead
-                                            ? FontWeight.w600
-                                            : FontWeight.w900,
-                                      ),
-                                ),
-                              ),
-                              DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color: pair.container,
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
-                                  child: Text(
-                                    _priorityLabels[item['priority']] ??
-                                        compact(item['priority']),
-                                    style: TextStyle(
-                                      color: pair.onContainer,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
+                    return NotificationTile(
+                      notification: notification,
+                      onTap: () => _open(notification),
+                      subtitle:
+                          '${_handledLabels[item['handled_status']] ?? compact(item['handled_status'])} · ${dateTime(item['created_at'])}',
+                      trailing: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: pair.container,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
                           ),
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            compact(item['description']),
-                            style: Theme.of(context).textTheme.bodySmall,
+                          child: Text(
+                            _priorityLabels[item['priority']] ??
+                                compact(item['priority']),
+                            style: TextStyle(
+                              color: pair.onContainer,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            '${_handledLabels[item['handled_status']] ?? compact(item['handled_status'])} · ${dateTime(item['created_at'])}',
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                ),
-                          ),
-                          if (!isHandled) ...[
-                            const SizedBox(height: AppSpacing.md),
-                            Wrap(
+                        ),
+                      ),
+                      footer: isHandled
+                          ? null
+                          : Wrap(
                               spacing: AppSpacing.sm,
                               children: [
                                 OutlinedButton.icon(
@@ -262,9 +239,6 @@ class _SupervisorNotificationsScreenState
                                 ),
                               ],
                             ),
-                          ],
-                        ],
-                      ),
                     );
                   },
                 ),

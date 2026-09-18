@@ -212,7 +212,10 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::get('supervisor/map', [SupervisorMapController::class, 'index'])->middleware('permission:collector-locations.view|collector-locations.track');
 
     Route::get('supervisor-notifications', [SupervisorNotificationController::class, 'index'])->middleware('permission:supervisor-notifications.view');
+    Route::get('supervisor-notifications/{supervisorNotification}', [SupervisorNotificationController::class, 'show'])->middleware('permission:supervisor-notifications.view');
+    Route::post('supervisor-notifications/read-all', [SupervisorNotificationController::class, 'markAllRead'])->middleware('permission:supervisor-notifications.view');
     Route::post('supervisor-notifications/{supervisorNotification}/read', [SupervisorNotificationController::class, 'markRead'])->middleware('permission:supervisor-notifications.view');
+    Route::post('supervisor-notifications/{supervisorNotification}/unread', [SupervisorNotificationController::class, 'markUnread'])->middleware('permission:supervisor-notifications.view');
     Route::post('supervisor-notifications/{supervisorNotification}/handled', [SupervisorNotificationController::class, 'markHandled'])->middleware('permission:supervisor-notifications.view');
     Route::post('supervisor-notifications/{supervisorNotification}/escalate', [SupervisorNotificationController::class, 'escalate'])->middleware('permission:supervisor-notifications.escalate');
 
@@ -354,8 +357,11 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::post('admin/settings/payment-gateway/test', [PaymentGatewaySettingController::class, 'test'])->middleware('permission:payment-settings.view');
 
     Route::get('notifications', [NotificationController::class, 'index']);
-    Route::post('notifications/{notification}/read', [NotificationController::class, 'read']);
+    Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount']);
     Route::post('notifications/read-all', [NotificationController::class, 'readAll']);
+    Route::get('notifications/{notification}', [NotificationController::class, 'show']);
+    Route::post('notifications/{notification}/read', [NotificationController::class, 'read']);
+    Route::post('notifications/{notification}/unread', [NotificationController::class, 'unread']);
 
     Route::get('emergency-alerts', [EmergencyAlertController::class, 'index'])->middleware('permission:emergency-alerts.view');
     Route::post('emergency-alerts', [EmergencyAlertController::class, 'store'])->middleware('permission:emergency-alerts.create');
@@ -484,8 +490,11 @@ Route::middleware(['auth:sanctum', 'audit', 'role:customer', 'single-session'])-
     Route::post('maintenance-requests/{maintenance}/rating', [ResidentPortalController::class, 'rateMaintenanceRequest']);
     Route::get('documents', [ResidentPortalController::class, 'documents']);
     Route::get('notifications', [ResidentPortalController::class, 'notifications']);
-    Route::post('notifications/{notification}/read', [ResidentPortalController::class, 'readNotification']);
+    Route::get('notifications/unread-count', [ResidentPortalController::class, 'notificationUnreadCount']);
     Route::post('notifications/read-all', [ResidentPortalController::class, 'readAllNotifications']);
+    Route::get('notifications/{notification}', [ResidentPortalController::class, 'notification']);
+    Route::post('notifications/{notification}/read', [ResidentPortalController::class, 'readNotification']);
+    Route::post('notifications/{notification}/unread', [ResidentPortalController::class, 'unreadNotification']);
     Route::get('activity', [ResidentPortalController::class, 'activity']);
     Route::get('settings', [ResidentPortalController::class, 'settings']);
     Route::put('settings', [ResidentPortalController::class, 'updateSettings']);

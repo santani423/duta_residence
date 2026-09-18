@@ -42,6 +42,7 @@ class PenaltyNotificationService
                     'unit_id' => $billing->unit_id,
                     'user_id' => null,
                     'type' => $tier === 1 ? 'billing_overdue_started' : 'billing_penalty_tier_increased',
+                    ...NotificationPresenter::referenceFor($billing),
                     'channel' => 'in_app',
                     'recipient' => $billing->unit?->resident?->phone ?: ($billing->unit?->resident?->email ?: $billing->unit_id),
                     'message' => $message,

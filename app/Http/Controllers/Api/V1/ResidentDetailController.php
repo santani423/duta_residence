@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Services\NotificationPresenter;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\Billing;
@@ -83,6 +84,8 @@ class ResidentDetailController extends Controller
             'unit_id' => $receipt->unit_id,
             'user_id' => null,
             'type' => 'receipt_shared',
+            'sender_id' => $request->user()->id,
+            ...NotificationPresenter::referenceFor($receipt),
             'channel' => 'in_app',
             'recipient' => $recipient,
             'message' => "Kuitansi {$receipt->number} telah dikirimkan kepada Anda.",
@@ -182,6 +185,7 @@ class ResidentDetailController extends Controller
             'unit_id' => $data['unit_id'],
             'user_id' => null,
             'type' => 'manual_notification',
+            'sender_id' => $request->user()->id,
             'channel' => 'in_app',
             'recipient' => $resident->email ?: $resident->phone,
             'message' => $data['message'],
