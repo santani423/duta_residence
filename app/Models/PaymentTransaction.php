@@ -9,6 +9,16 @@ class PaymentTransaction extends Model
 {
     use HasFactory;
 
+    /** Set automatically whenever a payment proof is uploaded; never chosen by the payer. */
+    public const METHOD_BANK_TRANSFER = 'bank_transfer';
+
+    private const METHOD_LABELS = [
+        self::METHOD_BANK_TRANSFER => 'Transfer',
+        'xendit_invoice' => 'Xendit Invoice',
+        'snap' => 'Midtrans Snap',
+        'gateway' => 'Gateway',
+    ];
+
     protected $fillable = [
         'transaction_number', 'invoice_number', 'unit_id', 'subtotal', 'tax',
         'admin_fee', 'total', 'currency', 'payment_provider', 'payment_method',
@@ -18,6 +28,8 @@ class PaymentTransaction extends Model
         'manual_notes', 'manual_proof_uploaded_at',
         'verification_notes', 'verified_by', 'verified_at', 'provider_payload', 'created_by',
     ];
+
+    protected $appends = ['payment_method_label'];
 
     protected $casts = [
         'subtotal' => 'decimal:2',
@@ -32,6 +44,11 @@ class PaymentTransaction extends Model
         'verified_at' => 'datetime',
         'provider_payload' => 'array',
     ];
+
+    public function getPaymentMethodLabelAttribute(): ?string
+    {
+        return $this->payment_method ? (self::METHOD_LABELS[$this->payment_method] ?? $this->payment_method) : null;
+    }
 
     public function billings()
     {

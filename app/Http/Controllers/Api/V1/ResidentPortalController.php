@@ -318,9 +318,9 @@ class ResidentPortalController extends Controller
         $data = $request->validate([
             'provider' => ['nullable', Rule::in(['manual', 'xendit', 'midtrans'])],
         ]);
-        $provider = $data['provider'] ?? $setting->active_gateway;
+        $provider = $data['provider'] ?? $setting->defaultGateway();
 
-        if (! $setting->is_active || ! in_array($provider, $setting->availableGateways(), true)) {
+        if (! $setting->allows($provider)) {
             throw ValidationException::withMessages(['provider' => ['Metode pembayaran sedang tidak tersedia.']]);
         }
 
@@ -432,6 +432,7 @@ class ResidentPortalController extends Controller
             'manual_transfer_date' => $data['manual_transfer_date'],
             'manual_notes' => $data['manual_notes'] ?? null,
             'manual_proof_uploaded_at' => now(),
+            'payment_method' => PaymentTransaction::METHOD_BANK_TRANSFER,
             'status' => 'waiting_verification',
             'verification_notes' => null,
         ]);
@@ -1167,6 +1168,7 @@ class ResidentPortalController extends Controller
             ])->values(),
             'payment_gateway' => $transaction->payment_provider,
             'payment_method' => $transaction->payment_method,
+            'payment_method_label' => $transaction->payment_method_label,
             'subtotal' => (float) $transaction->subtotal,
             'tax' => (float) $transaction->tax,
             'admin_fee' => (float) $transaction->admin_fee,

@@ -46,7 +46,7 @@ import { notificationSources } from '../../components/notifications/notification
 import ResponsiveTable from '../../components/tables/ResponsiveTable.jsx';
 import { api, storageUrl } from '../../services/estateApi.js';
 import { useTableState } from '../../hooks/useTableState.js';
-import { compactText, formatCurrency, formatDate, formatDateTime, formatNotificationType, formatPeriod } from '../../utils/format.js';
+import { compactText, formatCurrency, formatDate, formatDateTime, formatNotificationType, formatPaymentMethod, formatPeriod } from '../../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../../utils/apiError.js';
 import { downloadBlob } from '../../utils/download.js';
 import { useThemeMode } from '../../state/ThemeContext.jsx';
@@ -56,7 +56,7 @@ const paymentStatuses = ['pending', 'waiting_verification', 'paid', 'failed', 'e
 const gateways = [
   { value: 'xendit', label: 'Xendit' },
   { value: 'midtrans', label: 'Midtrans' },
-  { value: 'manual', label: 'Manual Transfer' },
+  { value: 'manual', label: 'Transfer' },
 ];
 
 // Kepemilikan unit bisa berubah kapan saja dari sisi admin; halaman ini menampilkan
@@ -715,7 +715,7 @@ function PaymentTable({ query, data, onChange }) {
             { title: 'Transaksi', dataIndex: 'transaction_number', width: 190, fixed: 'left' },
             { title: 'Invoice', dataIndex: 'invoice_number', width: 180 },
             { title: 'Gateway', dataIndex: 'payment_gateway', width: 110 },
-            { title: 'Metode', dataIndex: 'payment_method', width: 130 },
+            { title: 'Metode', dataIndex: 'payment_method', render: (value) => formatPaymentMethod(value), width: 130 },
             { title: 'Nominal', dataIndex: 'total', render: formatCurrency, width: 140 },
             {
               title: 'Status',
@@ -787,7 +787,7 @@ function ResidentPaymentDetail() {
               Invoice: data.invoice_number,
               Penghuni: data.resident?.name,
               Gateway: data.payment_gateway,
-              Metode: data.payment_method,
+              Metode: formatPaymentMethod(data.payment_method),
               Subtotal: formatCurrency(data.fee_breakdown?.subtotal),
               Admin: formatCurrency(data.fee_breakdown?.admin_fee),
               Total: formatCurrency(data.fee_breakdown?.total),

@@ -559,7 +559,7 @@ class _PaymentsSectionState extends State<_PaymentsSection> {
                         items: {
                           'Invoice': payment['invoice_number'],
                           'Gateway': payment['payment_gateway'],
-                          'Metode': payment['payment_method'],
+                          'Metode': payment['payment_method_label'] ?? payment['payment_method'],
                           'Nominal Tagihan': money(payment['total']),
                           if (payment['manual_amount'] != null)
                             'Nominal Dibayar': money(payment['manual_amount']),

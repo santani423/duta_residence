@@ -12,16 +12,18 @@ import { api, storageUrl } from '../services/estateApi.js';
 import { useTableState } from '../hooks/useTableState.js';
 import { useDebounce } from '../hooks/useDebounce.js';
 import { usePendingPaymentVerificationCount } from '../hooks/usePendingPaymentVerificationCount.js';
-import { formatCurrency, formatDate, formatDateTime, formatPeriod } from '../utils/format.js';
+import { formatCurrency, formatDate, formatDateTime, formatPaymentMethod, formatPeriod } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
 import { downloadBlob, openBlobInWindow } from '../utils/download.js';
 
 const PAYMENT_METHOD_LABELS = { C: 'Cash', D: 'Debit/Transfer' };
+const PROVIDER_LABELS = { manual: 'Transfer', xendit: 'Xendit', midtrans: 'Midtrans' };
 const PAYMENT_CHANNEL_LABELS = { L: 'Loket', M: 'Bank Transfer', Q: 'QRIS' };
 
 export default function PaymentsPage() {
   const [unit, setUnit] = useState(null);
   const [transaction, setTransaction] = useState(null);
+  const [selectedVia, setVia] = useState('loket');
   const [proofOpen, setProofOpen] = useState(null);
   const [detailOpen, setDetailOpen] = useState(null);
   const [successReceipt, setSuccessReceipt] = useState(null);
@@ -31,7 +33,6 @@ export default function PaymentsPage() {
   const [exportingReceipts, setExportingReceipts] = useState(null);
   const [searchForm] = Form.useForm();
   const [loketForm] = Form.useForm();
-  const [gatewayForm] = Form.useForm();
   const [proofForm] = Form.useForm();
   const [verifyForm] = Form.useForm();
   const pendingVerificationCount = usePendingPaymentVerificationCount();
@@ -124,7 +125,6 @@ export default function PaymentsPage() {
       queryClient.invalidateQueries({ queryKey: ['payment-transactions'] });
     },
     onError: (error) => {
-      gatewayForm.setFields(mapValidationErrors(error));
       message.error(getApiErrorMessage(error));
     },
   });
@@ -242,11 +242,18 @@ export default function PaymentsPage() {
     setUnitFilters({});
     searchForm.resetFields();
     loketForm.resetFields();
-    gatewayForm.resetFields();
   }
 
   const unpaidBillings = unit?.billings || [];
-  const activeGateway = config.data?.data?.active_gateway || 'manual';
+  // Loket and Transfer are always offered; Xendit/Midtrans only when the backend reports them enabled.
+  const availableGateways = config.data?.data?.available_methods || ['manual'];
+  const viaOptions = [
+    { value: 'loket', label: 'Loket' },
+    { value: 'manual', label: 'Transfer' },
+    ...['xendit', 'midtrans'].filter((value) => availableGateways.includes(value)).map((value) => ({ value, label: PROVIDER_LABELS[value] })),
+  ];
+  const via = viaOptions.some((option) => option.value === selectedVia) ? selectedVia : 'loket';
+  const viaLabel = viaOptions.find((option) => option.value === via)?.label;
   const manualInfo = config.data?.data?.manual_payment || {};
   const unitOptions = (unitLookup.data?.data || []).map((item) => ({
     value: item.id,
@@ -330,12 +337,11 @@ export default function PaymentsPage() {
                       scrollX={1300}
                     />
 
-                    <Tabs
-                      items={[
-                        {
-                          key: 'loket',
-                          label: 'Loket',
-                          children: (
+                    <Space className="section-row" direction="vertical" style={{ width: '100%' }}>
+                      <Typography.Text strong>Via</Typography.Text>
+                      <Select value={via} onChange={(value) => { setVia(value); setTransaction(null); }} options={viaOptions} style={{ width: '100%', maxWidth: 320 }} />
+                    </Space>
+                    {via === 'loket' ? (
                             <Can permission="payments.process" fallback={<Alert type="warning" showIcon message="Anda tidak memiliki akses proses loket." />}>
                               <Form form={loketForm} layout="vertical" onFinish={processLoket.mutate} initialValues={{ payment_method_id: 'C', loket_code: 'L01', use_balance: true }} className="responsive-form">
                                 <Form.Item label="Nominal Pembayaran (tunai)" name="amount" rules={[{ type: 'number', min: 0, message: 'Nominal tidak boleh negatif' }]}>
@@ -375,44 +381,27 @@ export default function PaymentsPage() {
                                 </Form.Item>
                               </Form>
                             </Can>
-                          ),
-                        },
-                        {
-                          key: 'gateway',
-                          label: 'Gateway / Manual',
-                          children: (
+                    ) : (
                             <Can permission="payments.create" fallback={<Alert type="warning" showIcon message="Anda tidak memiliki akses membuat transaksi gateway." />}>
                               <Alert
                                 type="info"
                                 showIcon
-                                message={`Gateway aktif: ${activeGateway}`}
-                                description={activeGateway === 'manual' ? `${manualInfo.bank_name || '-'} ${manualInfo.account_number || ''} a.n. ${manualInfo.account_name || '-'}` : 'Transaksi akan menghasilkan payment URL jika provider aktif. Transaksi gateway melunasi seluruh tunggakan unit ini.'}
+                                message={`Via: ${viaLabel}`}
+                                description={via === 'manual' ? `${manualInfo.bank_name || '-'} ${manualInfo.account_number || ''} a.n. ${manualInfo.account_name || '-'}` : 'Transaksi akan menghasilkan payment URL. Transaksi gateway melunasi seluruh tunggakan unit ini.'}
                               />
-                              <Form form={gatewayForm} layout="vertical" onFinish={createGateway.mutate} initialValues={{ provider: activeGateway }} className="section-row">
-                                <Form.Item label="Via" name="provider" rules={[{ required: true }]}>
-                                  <Select options={[
-                                    { value: 'manual', label: 'Manual Transfer' },
-                                    { value: 'xendit', label: 'Xendit' },
-                                    { value: 'midtrans', label: 'Midtrans' },
-                                  ]} />
-                                </Form.Item>
-                                <Button type="primary" htmlType="submit" disabled={!unpaidBillings.length} loading={createGateway.isPending}>Buat Transaksi</Button>
-                              </Form>
+                              <Button className="section-row" type="primary" disabled={!unpaidBillings.length} loading={createGateway.isPending} onClick={() => createGateway.mutate({ provider: via })}>Buat Transaksi</Button>
                               {transaction ? (
                                 <Card className="section-row" title={transaction.invoice_number}>
                                   <Space direction="vertical">
                                     <StatusBadge type="transaction" value={transaction.status} />
                                     <Typography.Text>Total: {formatCurrency(transaction.total)}</Typography.Text>
                                     {transaction.payment_url ? <Button icon={<LinkOutlined />} href={transaction.payment_url} target="_blank">Buka Payment URL</Button> : null}
-                                    {transaction.payment_provider === 'manual' ? <Button icon={<CloudUploadOutlined />} onClick={() => setProofOpen(transaction)}>Upload Bukti Manual</Button> : null}
+                                    {transaction.payment_provider === 'manual' ? <Button icon={<CloudUploadOutlined />} onClick={() => setProofOpen(transaction)}>Upload Bukti Transfer</Button> : null}
                                   </Space>
                                 </Card>
                               ) : null}
                             </Can>
-                          ),
-                        },
-                      ]}
-                    />
+                    )}
                   </Card>
                 ) : null}
               </div>
@@ -442,7 +431,7 @@ export default function PaymentsPage() {
                   <Select allowClear showSearch placeholder="Cluster" value={transactionTable.filters.cluster_id} onChange={(value) => transactionTable.setFilters({ ...transactionTable.filters, cluster_id: value })} className="filter-input" options={clusterOptions} optionFilterProp="label" loading={clusters.isFetching} />
                   <Input allowClear placeholder="Nama penghuni/customer" value={transactionTable.filters.customer} onChange={(event) => transactionTable.setFilters({ ...transactionTable.filters, customer: event.target.value || undefined })} className="filter-input" />
                   <Input allowClear placeholder="Alamat unit (cluster/blok/kavling)" value={transactionTable.filters.address} onChange={(event) => transactionTable.setFilters({ ...transactionTable.filters, address: event.target.value || undefined })} className="filter-input" />
-                  <Select allowClear placeholder="Via" value={transactionTable.filters.provider} onChange={(value) => transactionTable.setFilters({ ...transactionTable.filters, provider: value })} className="filter-input" options={[{ value: 'manual', label: 'Manual' }, { value: 'xendit', label: 'Xendit' }, { value: 'midtrans', label: 'Midtrans' }]} />
+                  <Select allowClear placeholder="Via" value={transactionTable.filters.provider} onChange={(value) => transactionTable.setFilters({ ...transactionTable.filters, provider: value })} className="filter-input" options={viaOptions.filter((option) => option.value !== 'loket')} />
                   <Select allowClear placeholder="Status" value={transactionTable.filters.status} onChange={(value) => transactionTable.setFilters({ ...transactionTable.filters, status: value })} className="filter-input" options={['pending', 'waiting_verification', 'paid', 'rejected', 'failed', 'expired'].map((value) => ({ value, label: value }))} />
                   <DatePicker.RangePicker
                     allowClear
@@ -463,12 +452,13 @@ export default function PaymentsPage() {
                   <ResponsiveTable
                     query={transactions}
                     onChange={transactionTable.handleTableChange}
-                    scrollX={1680}
+                    scrollX={2030}
                     columns={[
                       { title: 'Invoice', dataIndex: 'invoice_number', width: 190, fixed: 'left' },
                       { title: 'Penghuni', dataIndex: ['unit', 'resident', 'name'], width: 200 },
                       { title: 'Alamat Unit', render: (_, row) => `${row.unit?.cluster?.name || ''} ${row.unit?.block || ''}/${row.unit?.lot_number || ''}`, width: 180 },
                       { title: 'Via', dataIndex: 'payment_provider', width: 110 },
+                      { title: 'Metode', dataIndex: 'payment_method', render: (value) => formatPaymentMethod(value), width: 110 },
                       { title: 'Nominal Tagihan', dataIndex: 'total', render: formatCurrency, width: 140 },
                       { title: 'Nominal Dibayar', dataIndex: 'manual_amount', render: (value) => (value ? formatCurrency(value) : '-'), width: 140 },
                       { title: 'Tgl Bayar', dataIndex: 'manual_transfer_date', render: (value) => (value ? formatDate(value) : '-'), width: 120 },
@@ -478,9 +468,9 @@ export default function PaymentsPage() {
                       {
                         title: 'Aksi',
                         fixed: 'right',
-                        width: 290,
+                        width: 400,
                         render: (_, row) => (
-                          <Space>
+                          <Space size={[8, 8]} wrap>
                             <Button size="small" onClick={() => setDetailOpen(row)}>Detail</Button>
                             {row.payment_provider === 'manual' && row.status !== 'paid' ? <Button size="small" icon={<CloudUploadOutlined />} onClick={() => setProofOpen(row)}>Upload</Button> : null}
                             <Can permission="payments.verify">
@@ -621,6 +611,7 @@ export default function PaymentsPage() {
               <Descriptions.Item label="Jenis Tagihan" span={2}>
                 {[...new Set((detailOpen.billings || []).map((billing) => billing.billing_type))].join(', ') || '-'}
               </Descriptions.Item>
+              <Descriptions.Item label="Metode">{formatPaymentMethod(detailOpen.payment_method)}</Descriptions.Item>
               <Descriptions.Item label="Nominal Tagihan">{formatCurrency(detailOpen.total)}</Descriptions.Item>
               <Descriptions.Item label="Nominal Dibayar">{detailOpen.manual_amount ? formatCurrency(detailOpen.manual_amount) : '-'}</Descriptions.Item>
               <Descriptions.Item label="Tanggal Pembayaran">{detailOpen.manual_transfer_date ? formatDate(detailOpen.manual_transfer_date) : '-'}</Descriptions.Item>

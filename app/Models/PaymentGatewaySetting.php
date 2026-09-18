@@ -42,16 +42,30 @@ class PaymentGatewaySetting extends Model
         ]);
     }
 
+    /**
+     * Bank transfer (`manual`) is always offered. Xendit/Midtrans are offered only while the
+     * gateway feature is switched on and the provider is enabled - out of the box only `manual` is.
+     */
     public function availableGateways(): array
     {
-        $gateways = $this->enabled_gateways ?: [$this->active_gateway];
+        $online = $this->is_active
+            ? collect($this->enabled_gateways ?: [$this->active_gateway])
+                ->when($this->active_gateway, fn ($items) => $items->prepend($this->active_gateway))
+                ->filter(fn ($gateway) => in_array($gateway, ['xendit', 'midtrans'], true))
+            : collect();
 
-        return collect($gateways)
-            ->filter(fn ($gateway) => in_array($gateway, ['manual', 'xendit', 'midtrans'], true))
-            ->when($this->is_active && $this->active_gateway, fn ($items) => $items->prepend($this->active_gateway))
-            ->unique()
-            ->values()
-            ->all();
+        return collect(['manual'])->merge($online)->unique()->values()->all();
+    }
+
+    /** Provider used when the caller doesn't pick one: the configured gateway if it is offered, else transfer. */
+    public function defaultGateway(): string
+    {
+        return $this->allows((string) $this->active_gateway) ? $this->active_gateway : 'manual';
+    }
+
+    public function allows(string $provider): bool
+    {
+        return in_array($provider, $this->availableGateways(), true);
     }
 
     public function publicConfig(): array

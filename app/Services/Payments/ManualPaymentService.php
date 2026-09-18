@@ -15,6 +15,7 @@ class ManualPaymentService implements PaymentGatewayInterface
 
         $transaction->forceFill([
             'payment_provider' => 'manual',
+            'payment_method' => PaymentTransaction::METHOD_BANK_TRANSFER,
             'status' => 'pending',
             'provider_payload' => [
                 'bank_name' => $setting->manual_bank_name,

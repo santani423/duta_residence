@@ -38,6 +38,18 @@ const NOTIFICATION_TYPE_LABELS = {
   payment_rejected: 'Pembayaran Ditolak',
 };
 
+const PAYMENT_METHOD_LABELS = {
+  bank_transfer: 'Transfer',
+  xendit_invoice: 'Xendit Invoice',
+  snap: 'Midtrans Snap',
+  gateway: 'Gateway',
+};
+
+export function formatPaymentMethod(value, fallback = '-') {
+  if (!value) return fallback;
+  return PAYMENT_METHOD_LABELS[value] || value;
+}
+
 export function formatNotificationType(value, fallback = '-') {
   if (!value) return fallback;
   if (NOTIFICATION_TYPE_LABELS[value]) return NOTIFICATION_TYPE_LABELS[value];

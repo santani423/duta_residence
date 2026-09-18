@@ -76,9 +76,9 @@ class PaymentGatewayController extends Controller
         ]);
 
         $setting = PaymentGatewaySetting::current();
-        $provider = $data['provider'] ?? $setting->active_gateway;
+        $provider = $data['provider'] ?? $setting->defaultGateway();
 
-        if (! $setting->is_active || ! in_array($provider, $setting->availableGateways(), true)) {
+        if (! $setting->allows($provider)) {
             throw ValidationException::withMessages(['provider' => ['Metode pembayaran sedang tidak tersedia.']]);
         }
 
@@ -152,6 +152,7 @@ class PaymentGatewayController extends Controller
             'manual_transfer_date' => $data['manual_transfer_date'],
             'manual_notes' => $data['manual_notes'] ?? null,
             'manual_proof_uploaded_at' => now(),
+            'payment_method' => PaymentTransaction::METHOD_BANK_TRANSFER,
             'status' => 'waiting_verification',
             'verification_notes' => null,
         ]);
