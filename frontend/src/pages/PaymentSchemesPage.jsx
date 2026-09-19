@@ -61,18 +61,21 @@ function SchemeItemsTable({ items }) {
   );
 }
 
-/** Drawer pengajuan: cari unit -> pilih tagihan -> isi diskon/keringanan -> lihat hitungan -> ajukan ke Admin. */
+/** Drawer pengajuan: cari unit -> pilih tagihan + isi keringanan denda per tagihan -> diskon pokok -> ringkasan -> ajukan ke Admin. */
 function SubmitDrawer({ open, onClose }) {
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
   const [unitQuery, setUnitQuery] = useState('');
   const [unitId, setUnitId] = useState(undefined);
   const [selectedIds, setSelectedIds] = useState([]);
+  // Keringanan denda per tagihan: { [billingId]: nominal }. Hanya untuk tagihan yang dicentang.
+  const [reductions, setReductions] = useState({});
   const debouncedUnitQuery = useDebounce(unitQuery);
 
   const discountType = Form.useWatch('discount_type', form) ?? 'nominal';
-  const discountValue = useDebounce(Form.useWatch('discount_value', form), 400);
-  const penaltyReduction = useDebounce(Form.useWatch('penalty_reduction', form), 400);
+  const watchedDiscount = Form.useWatch('discount_value', form);
+  const discountValue = useDebounce(watchedDiscount, 400);
+  const debouncedReductions = useDebounce(reductions, 400);
 
   const unitSearch = debouncedUnitQuery.trim();
   const unitLookup = useQuery({
@@ -106,16 +109,24 @@ function SubmitDrawer({ open, onClose }) {
     (pending.data?.data || []).forEach((scheme) => scheme.items?.forEach((item) => ids.add(item.billing_id)));
     return ids;
   }, [billings, pending.data]);
-  const selectedBillings = billings.filter((billing) => selectedIds.includes(billing.id));
-  const selectedPenalty = selectedBillings.reduce((sum, billing) => sum + Number(billing.penalty_detail?.outstanding_penalty ?? 0), 0);
+  const penaltyOf = (billing) => Number(billing.penalty_detail?.outstanding_penalty ?? 0);
 
-  const payload = {
-    unit_id: unitId,
-    billing_ids: selectedIds,
-    discount_type: discountType,
-    discount_value: Number(discountValue) || 0,
-    penalty_reduction: Number(penaltyReduction) || 0,
-  };
+  function buildPayload(discount, reductionMap) {
+    const penalty_reductions = Object.fromEntries(
+      Object.entries(reductionMap).filter(([id, value]) => selectedIds.includes(Number(id)) && Number(value) > 0).map(([id, value]) => [id, Number(value)]),
+    );
+    return {
+      unit_id: unitId,
+      billing_ids: selectedIds,
+      discount_type: discountType,
+      discount_value: Number(discount) || 0,
+      ...(Object.keys(penalty_reductions).length ? { penalty_reductions } : {}),
+    };
+  }
+  const payload = buildPayload(discountValue, debouncedReductions);
+  // Angka di layar sudah berubah tetapi hitungan server belum menyusul (debounce): jangan boleh diajukan dulu.
+  const isSettling = JSON.stringify(buildPayload(watchedDiscount, reductions)) !== JSON.stringify(payload);
+
   const preview = useQuery({
     queryKey: ['payment-scheme-preview', payload],
     queryFn: () => api.paymentSchemes.preview(payload),
@@ -125,7 +136,7 @@ function SubmitDrawer({ open, onClose }) {
   const calc = selectedIds.length ? preview.data?.data : undefined;
 
   const submit = useMutation({
-    mutationFn: (values) => api.paymentSchemes.create({ ...payload, reason: values.reason }),
+    mutationFn: (values) => api.paymentSchemes.create({ ...buildPayload(watchedDiscount, reductions), reason: values.reason }),
     onSuccess: () => {
       message.success('Skema pembayaran berhasil diajukan ke Admin');
       queryClient.invalidateQueries({ queryKey: ['payment-schemes'] });
@@ -141,6 +152,7 @@ function SubmitDrawer({ open, onClose }) {
     setUnitId(undefined);
     setUnitQuery('');
     setSelectedIds([]);
+    setReductions({});
     form.resetFields();
     onClose();
   }
@@ -148,7 +160,22 @@ function SubmitDrawer({ open, onClose }) {
   function changeUnit(value) {
     setUnitId(value);
     setSelectedIds([]);
-    form.setFieldsValue({ discount_value: undefined, penalty_reduction: undefined });
+    setReductions({});
+    form.setFieldsValue({ discount_value: undefined });
+  }
+
+  function changeSelection(keys) {
+    setSelectedIds(keys);
+    // Keringanan tagihan yang dicentang-ulang (dilepas) tidak boleh ikut terhitung.
+    setReductions((previous) => Object.fromEntries(Object.entries(previous).filter(([id]) => keys.includes(Number(id)))));
+  }
+
+  function setReduction(billingId, value) {
+    setReductions((previous) => ({ ...previous, [billingId]: value ?? 0 }));
+  }
+
+  function waiveAllPenalties() {
+    setReductions(Object.fromEntries(billings.filter((billing) => selectedIds.includes(billing.id)).map((billing) => [billing.id, penaltyOf(billing)])));
   }
 
   function confirmSubmit(values) {
@@ -162,6 +189,7 @@ function SubmitDrawer({ open, onClose }) {
   }
 
   const previewError = preview.isError ? getApiErrorMessage(preview.error) : null;
+  const hasPenalty = billings.some((billing) => selectedIds.includes(billing.id) && penaltyOf(billing) > 0);
 
   return (
     <Drawer
@@ -171,7 +199,7 @@ function SubmitDrawer({ open, onClose }) {
       width={980}
       destroyOnHidden
       extra={(
-        <Button type="primary" icon={<SendOutlined />} disabled={!calc || Boolean(previewError)} loading={submit.isPending} onClick={() => form.submit()}>
+        <Button type="primary" icon={<SendOutlined />} disabled={!calc || Boolean(previewError) || isSettling} loading={submit.isPending} onClick={() => form.submit()}>
           Ajukan ke Admin
         </Button>
       )}
@@ -181,7 +209,7 @@ function SubmitDrawer({ open, onClose }) {
           type="info"
           showIcon
           message="Diskon berlaku setelah Admin menyetujui"
-          description="Diskon diberikan atas total sisa pokok, dan keringanan denda atas denda berjalan. Semua tagihan yang dipilih digabung menjadi satu kewajiban pembayaran."
+          description="Keringanan denda diisi langsung pada tagihan yang dicentang, diskon diberikan atas total sisa pokok. Semua tagihan yang dipilih digabung menjadi satu kewajiban pembayaran."
         />
 
         <Card size="small" title="1. Pilih unit">
@@ -206,23 +234,46 @@ function SubmitDrawer({ open, onClose }) {
         </Card>
 
         {unitId ? (
-          <Card size="small" title="2. Pilih tagihan yang digabung dalam skema" loading={unit.isLoading}>
+          <Card
+            size="small"
+            title="2. Pilih tagihan, lalu isi keringanan denda per tagihan"
+            loading={unit.isLoading}
+            extra={<Button size="small" disabled={!hasPenalty} onClick={waiveAllPenalties}>Hapus seluruh denda yang dipilih</Button>}
+          >
             {unit.isError ? <Alert type="error" showIcon message={getApiErrorMessage(unit.error)} /> : (
               <ResponsiveTable
                 data={billings}
                 pagination={false}
-                scrollX={900}
+                scrollX={1000}
                 rowSelection={{
                   selectedRowKeys: selectedIds,
-                  onChange: setSelectedIds,
+                  onChange: changeSelection,
                   getCheckboxProps: (row) => ({ disabled: lockedIds.has(row.id) }),
                 }}
                 columns={[
                   { title: 'Periode', render: (_, row) => formatPeriod(row.year, row.month) },
                   { title: 'Sisa Pokok', render: (_, row) => formatCurrency(row.penalty_detail?.outstanding_principal) },
-                  { title: 'Denda', render: (_, row) => formatCurrency(row.penalty_detail?.outstanding_penalty) },
+                  { title: 'Denda', render: (_, row) => formatCurrency(penaltyOf(row)) },
+                  {
+                    title: 'Keringanan Denda',
+                    width: 240,
+                    render: (_, row) => {
+                      if (lockedIds.has(row.id)) return <Tag color="gold">Sudah dalam skema</Tag>;
+                      if (!selectedIds.includes(row.id)) return <Typography.Text type="secondary">Centang tagihan untuk mengisi</Typography.Text>;
+                      if (penaltyOf(row) <= 0) return <Typography.Text type="secondary">Tidak ada denda</Typography.Text>;
+                      return (
+                        <Space.Compact style={{ width: '100%' }}>
+                          <InputNumber {...moneyInput} max={penaltyOf(row)} value={reductions[row.id]} onChange={(value) => setReduction(row.id, value)} placeholder="0" />
+                          <Button title="Hapus seluruh denda tagihan ini" onClick={() => setReduction(row.id, penaltyOf(row))}>Hapus</Button>
+                        </Space.Compact>
+                      );
+                    },
+                  },
+                  {
+                    title: 'Denda Akhir',
+                    render: (_, row) => (selectedIds.includes(row.id) ? <strong>{formatCurrency(Math.max(0, penaltyOf(row) - Number(reductions[row.id] || 0)))}</strong> : '-'),
+                  },
                   { title: 'Sisa Tagihan', render: (_, row) => formatCurrency(row.penalty_detail?.total_outstanding) },
-                  { title: 'Skema', render: (_, row) => (lockedIds.has(row.id) ? <Tag color="gold">Sudah dalam skema</Tag> : '-') },
                 ]}
               />
             )}
@@ -231,8 +282,8 @@ function SubmitDrawer({ open, onClose }) {
 
         {selectedIds.length ? (
           <Form form={form} layout="vertical" onFinish={confirmSubmit} initialValues={{ discount_type: 'nominal' }}>
-            <Card size="small" title="3. Diskon dan keringanan denda">
-              <Form.Item label="Jenis diskon pokok" name="discount_type">
+            <Card size="small" title="3. Diskon pokok">
+              <Form.Item label="Jenis diskon" name="discount_type">
                 <Radio.Group
                   optionType="button"
                   buttonStyle="solid"
@@ -240,27 +291,16 @@ function SubmitDrawer({ open, onClose }) {
                   onChange={() => form.setFieldValue('discount_value', undefined)}
                 />
               </Form.Item>
-              <Form.Item label="Diskon atas total sisa pokok" name="discount_value">
+              <Form.Item label="Diskon atas total sisa pokok" name="discount_value" style={{ marginBottom: 0 }}>
                 {discountType === 'percentage'
                   ? <InputNumber min={0} max={100} step={0.5} precision={2} addonAfter="%" style={{ width: '100%' }} />
                   : <InputNumber {...moneyInput} max={calc?.original_principal} />}
               </Form.Item>
-              <Form.Item label={`Keringanan denda (denda berjalan ${formatCurrency(selectedPenalty)})`} name="penalty_reduction">
-                <InputNumber {...moneyInput} max={selectedPenalty} />
-              </Form.Item>
-              <Button size="small" disabled={!selectedPenalty} onClick={() => form.setFieldValue('penalty_reduction', selectedPenalty)}>
-                Bebaskan seluruh denda
-              </Button>
             </Card>
 
-            <Card size="small" title="4. Hitungan skema" style={{ marginTop: 16 }} loading={preview.isFetching && !calc}>
+            <Card size="small" title="4. Ringkasan" style={{ marginTop: 16 }} loading={preview.isFetching && !calc}>
               {previewError ? <Alert type="error" showIcon message={previewError} /> : null}
-              {calc && !previewError ? (
-                <>
-                  <SchemeAmounts scheme={calc} />
-                  <SchemeItemsTable items={calc.items} />
-                </>
-              ) : null}
+              {calc && !previewError ? <SchemeAmounts scheme={calc} /> : null}
             </Card>
 
             <Card size="small" title="5. Alasan pengajuan" style={{ marginTop: 16 }}>

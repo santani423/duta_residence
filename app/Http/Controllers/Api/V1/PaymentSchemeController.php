@@ -99,6 +99,8 @@ class PaymentSchemeController extends Controller
             'discount_type' => ['nullable', Rule::in(['percentage', 'nominal'])],
             'discount_value' => ['nullable', 'numeric', 'min:0'],
             'penalty_reduction' => ['nullable', 'numeric', 'min:0'],
+            'penalty_reductions' => ['nullable', 'array'],
+            'penalty_reductions.*' => ['nullable', 'numeric', 'min:0'],
             'reason' => [$withReason ? 'required' : 'nullable', 'string', 'max:500'],
         ]);
     }

@@ -361,4 +361,54 @@ class PaymentSchemeTest extends TestCase
         $this->assertArrayHasKey('penalty_detail', $found['billings'][0]);
         $this->assertArrayHasKey('payment_scheme_id', $found['billings'][0]);
     }
+
+    public function test_penalty_reduction_can_be_given_per_billing(): void
+    {
+        [$unit, $billings] = $this->unitWithArrears();
+        $this->as('loket');
+        $penalty = fn ($b) => app(PenaltyService::class)->calculateInvoiceTotal($b->fresh())['outstanding_penalty'];
+        [$first, $second, $third] = $billings->all();
+
+        $data = $this->postJson('/api/v1/payment-schemes/preview', $this->payload($unit, $billings, [
+            'discount_value' => 0,
+            'penalty_reduction' => null,
+            'penalty_reductions' => [$first->id => $penalty($first), $second->id => 10000],
+        ]))->assertOk()->json('data');
+
+        $byBilling = collect($data['items'])->keyBy('billing_id');
+        $this->assertEqualsWithDelta($penalty($first), $byBilling[$first->id]['penalty_reduction'], 0.001);
+        $this->assertSame(0.0, (float) $byBilling[$first->id]['final_penalty']);
+        $this->assertEqualsWithDelta(10000, $byBilling[$second->id]['penalty_reduction'], 0.001);
+        $this->assertSame(0.0, (float) $byBilling[$third->id]['penalty_reduction']);
+        $this->assertEqualsWithDelta($penalty($first) + 10000, $data['penalty_reduction'], 0.001);
+
+        // Submitting stores exactly the per-billing amounts.
+        $id = $this->postJson('/api/v1/payment-schemes', $this->payload($unit, $billings, [
+            'discount_value' => 0, 'penalty_reduction' => null, 'penalty_reductions' => [$second->id => 10000],
+        ]))->assertCreated()->json('data.id');
+        $scheme = PaymentScheme::findOrFail($id);
+        $this->assertEqualsWithDelta(10000, (float) $scheme->penalty_reduction, 0.001);
+        $this->assertEqualsWithDelta(10000, (float) $scheme->items()->where('billing_id', $second->id)->value('penalty_reduction'), 0.001);
+        $this->assertEqualsWithDelta(0, (float) $scheme->items()->where('billing_id', $first->id)->value('penalty_reduction'), 0.001);
+    }
+
+    public function test_per_billing_penalty_reduction_cannot_exceed_that_billings_penalty_or_target_unselected_bills(): void
+    {
+        [$unit, $billings] = $this->unitWithArrears();
+        $this->as('loket');
+        $other = Billing::query()->create([
+            'unit_id' => $unit->id, 'year' => now()->year, 'month' => now()->month, 'amount' => 300000,
+            'status_id' => Billing::STATUS_UNPAID, 'billing_type' => 'special', 'approved_at' => now(),
+            'created_by' => User::where('username', 'finance')->firstOrFail()->id,
+        ]);
+        $penalty = app(PenaltyService::class)->calculateInvoiceTotal($billings->first()->fresh())['outstanding_penalty'];
+
+        $this->postJson('/api/v1/payment-schemes/preview', $this->payload($unit, $billings, [
+            'penalty_reductions' => [$billings->first()->id => $penalty + 1],
+        ]))->assertStatus(422)->assertJsonValidationErrors('penalty_reductions.'.$billings->first()->id);
+
+        $this->postJson('/api/v1/payment-schemes/preview', $this->payload($unit, $billings, [
+            'penalty_reductions' => [$other->id => 1000],
+        ]))->assertStatus(422)->assertJsonValidationErrors('penalty_reductions');
+    }
 }

@@ -30,13 +30,18 @@ class PaymentSchemeService
      * Read-only calculation of a scheme against the latest billing condition. Used by the
      * preview endpoint and by submit(), so what the officer sees is what gets stored.
      *
-     * @param  array{billing_ids: array<int>, discount_type?: ?string, discount_value?: float|int|string|null, penalty_reduction?: float|int|string|null}  $data
+     * Penalty reduction is given either per billing (`penalty_reductions` = [billing_id => amount],
+     * what the loket form sends) or as one total (`penalty_reduction`) that is split in proportion
+     * to each billing's penalty.
+     *
+     * @param  array{billing_ids: array<int>, discount_type?: ?string, discount_value?: float|int|string|null, penalty_reduction?: float|int|string|null, penalty_reductions?: array<int|string, float|int|string|null>|null}  $data
      */
     public function calculate(Unit $unit, array $data, bool $lock = false): array
     {
         $billingIds = array_values(array_unique(array_map('intval', $data['billing_ids'] ?? [])));
         $type = $data['discount_type'] ?? DiscountSetting::TYPE_NOMINAL;
         $discountValue = round((float) ($data['discount_value'] ?? 0), 2);
+        $perBillReductions = $data['penalty_reductions'] ?? null;
         $penaltyReduction = round((float) ($data['penalty_reduction'] ?? 0), 2);
 
         if ($billingIds === []) {
@@ -58,14 +63,20 @@ class PaymentSchemeService
 
         $discount = $this->resolveDiscount($type, $discountValue, $totalPrincipal);
 
-        if ($penaltyReduction < 0 || $penaltyReduction > $totalPenalty + 0.001) {
-            throw ValidationException::withMessages([
-                'penalty_reduction' => ['Keringanan denda harus antara 0 dan Rp'.number_format($totalPenalty, 0, ',', '.').' (total denda berjalan).'],
-            ]);
+        if (is_array($perBillReductions) && $perBillReductions !== []) {
+            $penaltyShares = $this->perBillPenaltyShares($rows, $billingIds, $perBillReductions, $penaltyCents);
+            $penaltyReduction = array_sum($penaltyShares) / 100;
+        } else {
+            if ($penaltyReduction < 0 || $penaltyReduction > $totalPenalty + 0.001) {
+                throw ValidationException::withMessages([
+                    'penalty_reduction' => ['Keringanan denda harus antara 0 dan Rp'.number_format($totalPenalty, 0, ',', '.').' (total denda berjalan).'],
+                ]);
+            }
+
+            $penaltyShares = $this->allocate($this->cents($penaltyReduction), $penaltyCents);
         }
 
         $discountShares = $this->allocate($this->cents($discount), $principalCents);
-        $penaltyShares = $this->allocate($this->cents($penaltyReduction), $penaltyCents);
 
         $items = $rows->values()->map(function (array $row, int $i) use ($principalCents, $penaltyCents, $discountShares, $penaltyShares) {
             /** @var Billing $billing */
@@ -349,6 +360,37 @@ class PaymentSchemeService
         }
 
         return $value;
+    }
+
+    /**
+     * Per-billing penalty reductions in cents, in the same order as `$rows`. A reduction can
+     * only target a selected billing and never exceed that billing's own penalty.
+     *
+     * @param  array<int|string, mixed>  $reductions
+     * @param  array<int, int>  $penaltyCents
+     * @return array<int, int>
+     */
+    private function perBillPenaltyShares(Collection $rows, array $billingIds, array $reductions, array $penaltyCents): array
+    {
+        $unknown = array_diff(array_map('intval', array_keys($reductions)), $billingIds);
+
+        if ($unknown !== []) {
+            throw ValidationException::withMessages(['penalty_reductions' => ['Keringanan denda hanya boleh diberikan pada tagihan yang dipilih.']]);
+        }
+
+        return $rows->values()->map(function (array $row, int $i) use ($reductions, $penaltyCents) {
+            $billingId = $row['billing']->id;
+            $value = $reductions[$billingId] ?? $reductions[(string) $billingId] ?? 0;
+            $cents = $this->cents($value ?? 0);
+
+            if ($cents < 0 || $cents > $penaltyCents[$i]) {
+                throw ValidationException::withMessages([
+                    "penalty_reductions.{$billingId}" => ['Keringanan denda tagihan '.$row['calc']['period'].' harus antara 0 dan Rp'.number_format($penaltyCents[$i] / 100, 0, ',', '.').' (denda tagihan ini).'],
+                ]);
+            }
+
+            return $cents;
+        })->all();
     }
 
     /**
