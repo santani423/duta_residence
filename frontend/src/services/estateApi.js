@@ -313,6 +313,11 @@ export const api = {
     update: (payload) => http.put('/admin/watermark-settings', payload),
     uploadLogo: (formData) => http.post('/admin/watermark-settings/logo', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   },
+  discountSettings: {
+    show: () => http.get('/admin/discount-settings'),
+    update: (payload) => http.put('/admin/discount-settings', payload),
+    limit: () => http.get('/discount-limit'),
+  },
   guidedTours: {
     list: () => http.get('/guided-tours'),
     progress: (id, payload) => http.post(`/guided-tours/${id}/progress`, payload),

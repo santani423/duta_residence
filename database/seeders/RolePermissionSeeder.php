@@ -22,6 +22,7 @@ class RolePermissionSeeder extends Seeder
             'billings.waive-penalty', 'billings.approve-penalty-waiver', 'billings.set-discount',
             'penalty-config.view', 'penalty-config.create', 'penalty-config.update', 'penalty-config.delete', 'penalty-config.view-history',
             'discount-config.view', 'discount-config.create', 'discount-config.update', 'discount-config.delete',
+            'discount-settings.manage',
             'payments.view', 'payments.create', 'payments.process', 'payments.verify', 'payments.cancel', 'payments.refund',
             'balances.view', 'balances.adjust',
             'installments.view', 'installments.create',

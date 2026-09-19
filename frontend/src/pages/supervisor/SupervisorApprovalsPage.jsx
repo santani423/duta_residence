@@ -6,6 +6,7 @@ import PageHeader from '../../components/common/PageHeader.jsx';
 import FilterBar from '../../components/common/FilterBar.jsx';
 import Can from '../../components/common/Can.jsx';
 import ResponsiveTable from '../../components/tables/ResponsiveTable.jsx';
+import { useDiscountLimit } from '../../hooks/useDiscountLimit.js';
 import { useTableState } from '../../hooks/useTableState.js';
 import { api } from '../../services/estateApi.js';
 import { getApiErrorMessage, mapValidationErrors } from '../../utils/apiError.js';
@@ -31,6 +32,8 @@ export default function SupervisorApprovalsPage() {
   const [decisionForm] = Form.useForm();
   const [installmentForm] = Form.useForm();
   const [adjustmentForm] = Form.useForm();
+  const adjustmentType = Form.useWatch('adjustment_type', adjustmentForm);
+  const { maximumPercent: maxDiscountPercent } = useDiscountLimit();
   const queryClient = useQueryClient();
 
   const list = useQuery({ queryKey: ['approvals', table.params], queryFn: () => api.approvals.list(table.params) });
@@ -243,7 +246,12 @@ export default function SupervisorApprovalsPage() {
             ]}
             />
           </Form.Item>
-          <Form.Item label="Nilai Baru (Rp)" name="new_value" rules={[{ required: true, message: 'Wajib diisi' }]}>
+          <Form.Item
+            label="Nilai Baru (Rp)"
+            name="new_value"
+            extra={adjustmentType === 'discount' && maxDiscountPercent !== null ? `Batas maksimum diskon Admin: ${maxDiscountPercent}% dari pokok tagihan.` : null}
+            rules={[{ required: true, message: 'Wajib diisi' }]}
+          >
             <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item label="Alasan" name="reason" rules={[{ required: true, message: 'Alasan wajib diisi' }]}>

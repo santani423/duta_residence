@@ -18,6 +18,7 @@ import {
   LayoutOutlined,
   LinkOutlined,
   MenuOutlined,
+  PercentageOutlined,
   PictureOutlined,
   ProfileOutlined,
   QuestionCircleOutlined,
@@ -62,6 +63,7 @@ export const menuItems = [
   { key: '/admin/settings/payment-gateway', label: 'Payment Gateway', icon: SafetyCertificateOutlined, permissions: ['payment-settings.view'] },
   { key: '/admin/manual-book', label: 'Kelola Manual Book', icon: ReadOutlined, permissions: ['manual-book.manage'] },
   { key: '/admin/help-settings', label: 'Pengaturan Bantuan', icon: SettingOutlined, permissions: ['help-settings.manage'] },
+  { key: '/admin/settings/discount', label: 'Batas Diskon Admin', icon: PercentageOutlined, permissions: ['discount-settings.manage'] },
   { key: '/admin/settings/watermark', label: 'Watermark Management', icon: EyeInvisibleOutlined, permissions: ['watermark-settings.manage'] },
   {
     key: '/admin/cms',
@@ -186,6 +188,7 @@ export const permissionLabels = {
   'discount-config.create': 'Tambah aturan diskon',
   'discount-config.update': 'Edit aturan diskon',
   'discount-config.delete': 'Hapus aturan diskon',
+  'discount-settings.manage': 'Kelola batas maksimum diskon Admin',
   'payments.view': 'Lihat pembayaran',
   'payments.process': 'Proses loket',
   'payments.create': 'Buat transaksi gateway',

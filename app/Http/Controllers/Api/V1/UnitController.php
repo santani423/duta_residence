@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\Billing;
 use App\Models\Cluster;
+use App\Models\DiscountRule;
 use App\Models\Unit;
 use App\Services\AuditService;
 use App\Services\CollectorAssignmentService;
+use App\Services\DiscountService;
 use App\Services\PenaltyService;
 use App\Services\UnitCodeGeneratorService;
 use App\Services\UnitOwnershipSyncService;
@@ -231,6 +233,13 @@ class UnitController extends Controller
         ]);
 
         $this->assertLotNumberAvailable($data['cluster_id'], $data['block'], $data['lot_number'], $unit);
+
+        // Memasang aturan diskon ke unit = menerapkan diskon; Admin dibatasi maksimum diskon.
+        if (! empty($data['discount_rule_id']) && (int) $data['discount_rule_id'] !== (int) $unit?->discount_rule_id) {
+            app(DiscountService::class)->assertRuleWithinAdminLimit(
+                $request->user(), DiscountRule::query()->findOrFail($data['discount_rule_id']), 'discount_rule_id'
+            );
+        }
 
         return $data;
     }

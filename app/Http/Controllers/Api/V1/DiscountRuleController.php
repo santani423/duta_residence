@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\DiscountRule;
 use App\Services\AuditService;
+use App\Services\DiscountService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -68,10 +69,19 @@ class DiscountRuleController extends Controller
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
-        if ($data['type'] === DiscountRule::TYPE_PERCENTAGE && $data['value'] > 100) {
-            throw ValidationException::withMessages([
-                'value' => ['Persentase diskon tidak boleh lebih dari 100.'],
-            ]);
+        if ($data['type'] === DiscountRule::TYPE_PERCENTAGE) {
+            if ($data['value'] > 100) {
+                throw ValidationException::withMessages([
+                    'value' => ['Persentase diskon tidak boleh lebih dari 100.'],
+                ]);
+            }
+
+            $discountService = app(DiscountService::class);
+            $limit = $discountService->maximumPercentFor($request->user());
+
+            if ($limit !== null) {
+                $discountService->assertPercentWithinLimit((float) $data['value'], $limit, 'value');
+            }
         }
 
         return $data;

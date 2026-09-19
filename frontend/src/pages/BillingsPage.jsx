@@ -12,6 +12,7 @@ import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import { api } from '../services/estateApi.js';
 import { useTableState } from '../hooks/useTableState.js';
 import { useDebounce } from '../hooks/useDebounce.js';
+import { useDiscountLimit } from '../hooks/useDiscountLimit.js';
 import { formatCurrency, formatDateTime, formatPeriod } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
 import { downloadBlob } from '../utils/download.js';
@@ -30,6 +31,7 @@ export default function BillingsPage({ mode = 'outstanding' }) {
   const [form] = Form.useForm();
   const [approveForm] = Form.useForm();
   const [discountForm] = Form.useForm();
+  const { maximumPercent: maxDiscountPercent } = useDiscountLimit();
   const queryClient = useQueryClient();
 
   // Sinkronkan filter unit bila URL berubah (mis. dari aksi Unit) saat halaman sudah terbuka.
@@ -138,6 +140,11 @@ export default function BillingsPage({ mode = 'outstanding' }) {
       message.error(getApiErrorMessage(error));
     },
   });
+
+  // Sama seperti backend: batas dihitung dari pokok tagihan, dibulatkan ke sen.
+  const discountLimitAmount = maxDiscountPercent === null
+    ? null
+    : Math.round(Number(discountTarget?.amount || 0) * maxDiscountPercent) / 100;
 
   async function handleExport(format) {
     setExporting(format);
@@ -354,7 +361,21 @@ export default function BillingsPage({ mode = 'outstanding' }) {
           <Form.Item label="Nominal Tagihan">
             <Input value={formatCurrency(discountTarget?.amount ?? 0)} disabled />
           </Form.Item>
-          <Form.Item label="Nominal Diskon" name="discount" rules={[{ required: true, message: 'Nominal diskon wajib diisi' }]}>
+          <Form.Item
+            label="Nominal Diskon"
+            name="discount"
+            extra={maxDiscountPercent === null ? null : `Batas maksimum diskon Admin: ${maxDiscountPercent}% (${formatCurrency(discountLimitAmount)}).`}
+            rules={[
+              { required: true, message: 'Nominal diskon wajib diisi' },
+              {
+                validator: (_, value) => (
+                  maxDiscountPercent !== null && value != null && Math.round(Number(value) * 100) > Math.round(discountLimitAmount * 100)
+                    ? Promise.reject(new Error(`Diskon melebihi batas maksimum untuk Admin (${maxDiscountPercent}%). Maksimal ${formatCurrency(discountLimitAmount)}.`))
+                    : Promise.resolve()
+                ),
+              },
+            ]}
+          >
             <InputNumber min={0} max={Number(discountTarget?.amount) - Number(discountTarget?.principal_paid || 0)} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item label="Alasan" name="reason" rules={[{ required: true, message: 'Alasan diskon wajib diisi' }]}>

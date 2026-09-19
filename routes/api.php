@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\V1\CollectorTargetController;
 use App\Http\Controllers\Api\V1\CollectorVisitController;
 use App\Http\Controllers\Api\V1\CollectorVisitEvidenceController;
 use App\Http\Controllers\Api\V1\DiscountRuleController;
+use App\Http\Controllers\Api\V1\DiscountSettingController;
 use App\Http\Controllers\Api\V1\DocumentController;
 use App\Http\Controllers\Api\V1\EmergencyAlertController;
 use App\Http\Controllers\Api\V1\Cms\HeroSlideController;
@@ -269,6 +270,10 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::post('discount-rules', [DiscountRuleController::class, 'store'])->middleware('permission:discount-config.create');
     Route::put('discount-rules/{discountRule}', [DiscountRuleController::class, 'update'])->middleware('permission:discount-config.update');
     Route::delete('discount-rules/{discountRule}', [DiscountRuleController::class, 'destroy'])->middleware('permission:discount-config.delete');
+    // Cap that applies to the caller (Admin forms); the setting itself is Super Admin only.
+    Route::get('discount-limit', [DiscountSettingController::class, 'limit'])->middleware('permission:billings.set-discount|discount-config.view|billing-adjustments.submit');
+    Route::get('admin/discount-settings', [DiscountSettingController::class, 'show'])->middleware('permission:discount-settings.manage');
+    Route::put('admin/discount-settings', [DiscountSettingController::class, 'update'])->middleware('permission:discount-settings.manage');
 
     Route::get('penalty-rules', [PenaltyRuleController::class, 'index'])->middleware('permission:penalty-config.view');
     Route::post('penalty-rules', [PenaltyRuleController::class, 'store'])->middleware('permission:penalty-config.create');

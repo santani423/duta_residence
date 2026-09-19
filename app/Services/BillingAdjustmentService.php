@@ -23,6 +23,11 @@ class BillingAdjustmentService
 
     public function submit(Billing $billing, string $type, float $newValue, string $reason, int $userId): BillingAdjustment
     {
+        // Yang dibatasi adalah pengaju (Admin); saat disetujui, userId-nya adalah penyetuju.
+        if ($type === BillingAdjustment::TYPE_DISCOUNT) {
+            $this->discountService->assertManualDiscountWithinAdminLimit($userId, $billing, $newValue);
+        }
+
         $originalValue = match ($type) {
             BillingAdjustment::TYPE_DISCOUNT => (float) $billing->discount,
             BillingAdjustment::TYPE_PENALTY => (float) $billing->penalty_waived_amount,

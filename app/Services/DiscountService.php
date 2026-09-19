@@ -3,7 +3,10 @@
 namespace App\Services;
 
 use App\Models\Billing;
+use App\Models\DiscountRule;
+use App\Models\DiscountSetting;
 use App\Models\Unit;
+use App\Models\User;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -53,6 +56,8 @@ class DiscountService
             ]);
         }
 
+        $this->assertManualDiscountWithinAdminLimit($userId, $billing, $amount);
+
         $old = $billing->toArray();
 
         $billing->forceFill([
@@ -66,5 +71,64 @@ class DiscountService
         $this->auditService->log('billing_discount_set_manually', 'billings', 'DISCOUNT_SET', $billing, $old, $billing->refresh()->toArray());
 
         return $billing;
+    }
+
+    /**
+     * Batas persentase diskon yang berlaku untuk user ini, atau null kalau tidak dibatasi.
+     * Hanya role Admin (admin_estate) yang dibatasi; Super Admin/Root selalu bebas, dan
+     * batasnya dibaca dari pengaturan (bukan hardcode) setiap kali dicek.
+     */
+    public function maximumPercentFor(?User $user): ?float
+    {
+        if (! $user || ! $user->hasRole('admin_estate') || $user->hasAnyRole(['root', 'super_admin'])) {
+            return null;
+        }
+
+        return DiscountSetting::maximumAdminDiscount();
+    }
+
+    /**
+     * Diskon manual (nominal) dibandingkan sebagai persentase dari pokok tagihan. Dibandingkan
+     * dalam nominal yang dibulatkan ke sen, jadi 30% pas lolos dan 30,01% ditolak.
+     */
+    public function assertManualDiscountWithinAdminLimit(int $userId, Billing $billing, float $amount): void
+    {
+        $limit = $this->maximumPercentFor(User::query()->find($userId));
+
+        if ($limit === null) {
+            return;
+        }
+
+        $allowedAmount = round((float) $billing->amount * $limit / 100, 2);
+
+        if (round($amount, 2) > $allowedAmount) {
+            throw ValidationException::withMessages([
+                'discount' => [$this->limitMessage($limit).' Maksimal Rp'.number_format($allowedAmount, 0, ',', '.').' untuk tagihan ini.'],
+            ]);
+        }
+    }
+
+    /** Aturan diskon persentase yang dibuat/dipasang Admin tidak boleh melebihi batas. */
+    public function assertRuleWithinAdminLimit(?User $user, DiscountRule $rule, string $field): void
+    {
+        $limit = $this->maximumPercentFor($user);
+
+        if ($limit === null || $rule->type !== DiscountRule::TYPE_PERCENTAGE) {
+            return;
+        }
+
+        $this->assertPercentWithinLimit((float) $rule->value, $limit, $field);
+    }
+
+    public function assertPercentWithinLimit(float $percent, float $limit, string $field): void
+    {
+        if (round($percent, 2) > round($limit, 2)) {
+            throw ValidationException::withMessages([$field => [$this->limitMessage($limit)]]);
+        }
+    }
+
+    private function limitMessage(float $limit): string
+    {
+        return 'Diskon melebihi batas maksimum untuk Admin ('.rtrim(rtrim(number_format($limit, 2, ',', ''), '0'), ',').'%).';
     }
 }
