@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\ApprovalRequest;
 use App\Models\Billing;
 use App\Models\PaymentScheme;
+use App\Models\PaymentSchemeItem;
 use App\Models\Resident;
 use App\Models\Unit;
 use App\Models\User;
@@ -410,5 +411,334 @@ class PaymentSchemeTest extends TestCase
         $this->postJson('/api/v1/payment-schemes/preview', $this->payload($unit, $billings, [
             'penalty_reductions' => [$other->id => 1000],
         ]))->assertStatus(422)->assertJsonValidationErrors('penalty_reductions');
+    }
+
+    public function test_admin_can_change_the_loket_request_while_approving_and_both_versions_are_kept(): void
+    {
+        [$unit, $billings] = $this->unitWithArrears();
+        $scheme = $this->submit($unit, $billings, ['discount_value' => 100000, 'penalty_reduction' => 0]);
+        $requestedFinal = (float) $scheme->final_amount;
+        [$first, $second] = $billings->all();
+        // Read before approving: afterwards the penalty of an approved scheme is frozen at its final value.
+        $firstPenalty = app(PenaltyService::class)->calculateInvoiceTotal($first->fresh())['outstanding_penalty'];
+        $totalPenalty = app(PenaltyService::class)->calculateUnitOutstanding($unit->id)['total_penalty_outstanding'];
+        $expectedReduction = $firstPenalty + 5000;
+
+        $this->as('admin.estate');
+        $this->postJson("/api/v1/payment-schemes/{$scheme->id}/approve", [
+            'notes' => 'Diskon dikurangi, denda dihapus sebagian',
+            'adjustments' => [
+                'discount_type' => 'nominal',
+                'discount_value' => 60000,
+                'penalty_reductions' => [$first->id => $firstPenalty, $second->id => 5000],
+            ],
+        ])->assertOk();
+
+        $scheme->refresh();
+        $expectedFinal = 1500000 - 60000 + $totalPenalty - $expectedReduction;
+        $this->assertSame(PaymentScheme::STATUS_APPROVED, $scheme->status);
+        $this->assertEqualsWithDelta(60000, (float) $scheme->principal_discount, 0.001);
+        $this->assertEqualsWithDelta($expectedReduction, (float) $scheme->penalty_reduction, 0.001);
+        $this->assertEqualsWithDelta($expectedFinal, (float) $scheme->final_amount, 0.001);
+        // The billings carry the ADJUSTED terms, not the loket's.
+        $this->assertEqualsWithDelta(60000, (float) $billings->sum(fn ($b) => $b->fresh()->discount), 0.001);
+        $this->assertEqualsWithDelta($expectedFinal, $this->totalDue($billings), 0.001);
+        // The loket's original request is preserved for audit, and who adjusted is recorded.
+        $this->assertSame(User::where('username', 'admin.estate')->value('id'), $scheme->adjusted_by);
+        $this->assertNotNull($scheme->adjusted_at);
+        $this->assertEqualsWithDelta(100000, $scheme->requested_snapshot['principal_discount'], 0.001);
+        $this->assertEqualsWithDelta($requestedFinal, $scheme->requested_snapshot['final_amount'], 0.001);
+        $this->assertCount(3, $scheme->requested_snapshot['items']);
+        $this->assertEqualsWithDelta($expectedFinal, (float) $scheme->approvalRequest->fresh()->amount, 0.001);
+        $this->assertSame(ApprovalRequest::STATUS_APPROVED, $scheme->approvalRequest->fresh()->status);
+    }
+
+    public function test_approving_with_unchanged_terms_is_not_marked_as_adjusted(): void
+    {
+        [$unit, $billings] = $this->unitWithArrears();
+        $scheme = $this->submit($unit, $billings, ['discount_value' => 100000]);
+
+        $this->as('admin.estate');
+        $this->postJson("/api/v1/payment-schemes/{$scheme->id}/approve", [
+            'adjustments' => ['discount_type' => 'nominal', 'discount_value' => 100000],
+        ])->assertOk();
+
+        $scheme->refresh();
+        $this->assertSame(PaymentScheme::STATUS_APPROVED, $scheme->status);
+        $this->assertNull($scheme->adjusted_at);
+        $this->assertNull($scheme->requested_snapshot);
+    }
+
+    public function test_adjustment_breaking_the_admin_limit_or_the_penalty_cap_changes_nothing(): void
+    {
+        [$unit, $billings] = $this->unitWithArrears();
+        $scheme = $this->submit($unit, $billings, ['discount_value' => 100000]);
+        $penalty = app(PenaltyService::class)->calculateInvoiceTotal($billings->first()->fresh())['outstanding_penalty'];
+
+        $this->as('admin.estate');
+        // 50% is above the Admin's 30% cap -> refused and rolled back.
+        $this->postJson("/api/v1/payment-schemes/{$scheme->id}/approve", [
+            'adjustments' => ['discount_type' => 'percentage', 'discount_value' => 50],
+        ])->assertStatus(422)->assertJsonValidationErrors('discount');
+        // Reduction above that bill's own penalty -> refused.
+        $this->postJson("/api/v1/payment-schemes/{$scheme->id}/approve", [
+            'adjustments' => ['discount_type' => 'nominal', 'discount_value' => 0, 'penalty_reductions' => [$billings->first()->id => $penalty + 1]],
+        ])->assertStatus(422);
+
+        $scheme->refresh();
+        $this->assertSame(PaymentScheme::STATUS_PENDING, $scheme->status);
+        $this->assertEqualsWithDelta(100000, (float) $scheme->principal_discount, 0.001);
+        $this->assertNull($scheme->adjusted_at);
+        $this->assertSame(0.0, (float) $billings->first()->fresh()->discount);
+    }
+
+    public function test_admin_can_preview_an_adjustment_of_a_pending_scheme_but_loket_cannot(): void
+    {
+        [$unit, $billings] = $this->unitWithArrears();
+        $scheme = $this->submit($unit, $billings, ['discount_value' => 100000]);
+
+        $this->postJson("/api/v1/payment-schemes/{$scheme->id}/preview-adjustment", [
+            'adjustments' => ['discount_type' => 'nominal', 'discount_value' => 40000],
+        ])->assertForbidden();
+
+        $this->as('admin.estate');
+        $data = $this->postJson("/api/v1/payment-schemes/{$scheme->id}/preview-adjustment", [
+            'adjustments' => ['discount_type' => 'nominal', 'discount_value' => 40000],
+        ])->assertOk()->json('data');
+
+        $this->assertEqualsWithDelta(40000, $data['principal_discount'], 0.001);
+        $this->assertCount(3, $data['items']);
+        // Nothing stored.
+        $this->assertEqualsWithDelta(100000, (float) $scheme->fresh()->principal_discount, 0.001);
+    }
+
+    public function test_loket_cannot_smuggle_adjustments_through_approve(): void
+    {
+        [$unit, $billings] = $this->unitWithArrears();
+        $scheme = $this->submit($unit, $billings);
+
+        $this->as('loket');
+        $this->postJson("/api/v1/payment-schemes/{$scheme->id}/approve", ['adjustments' => ['discount_type' => 'nominal', 'discount_value' => 1500000]])->assertForbidden();
+        $this->assertSame(PaymentScheme::STATUS_PENDING, $scheme->fresh()->status);
+    }
+
+    public function test_a_stale_scheme_is_cancelled_even_when_admin_tries_to_adjust_it(): void
+    {
+        [$unit, $billings] = $this->unitWithArrears([2, 1]);
+        $scheme = $this->submit($unit, $billings);
+
+        Carbon::setTestNow(now()->addMonths(3));
+        $this->as('admin.estate');
+        $this->postJson("/api/v1/payment-schemes/{$scheme->id}/approve", ['adjustments' => ['discount_type' => 'nominal', 'discount_value' => 10000]])->assertStatus(422);
+
+        $this->assertSame(PaymentScheme::STATUS_CANCELLED, $scheme->fresh()->status);
+    }
+
+    public function test_admin_can_reject_a_single_month_and_approve_the_rest(): void
+    {
+        [$unit, $billings] = $this->unitWithArrears();
+        [$may, $june, $july] = $billings->all();
+        $scheme = $this->submit($unit, $billings, ['discount_value' => 150000]);
+        $requested = (float) $scheme->final_amount;
+        $penalty = fn ($b) => app(PenaltyService::class)->calculateInvoiceTotal($b->fresh())['outstanding_penalty'];
+        $junePenalty = $penalty($june);
+        $keptPenalty = $penalty($may) + $penalty($july);
+
+        $this->as('admin.estate');
+        $this->postJson("/api/v1/payment-schemes/{$scheme->id}/approve", [
+            'notes' => 'Bulan Juni tidak memenuhi syarat',
+            'adjustments' => ['discount_type' => 'nominal', 'discount_value' => 100000, 'rejected_billing_ids' => [$june->id]],
+        ])->assertOk();
+
+        $scheme->refresh();
+        $this->assertSame(PaymentScheme::STATUS_APPROVED, $scheme->status);
+        // Totals cover only the two remaining months.
+        $this->assertEqualsWithDelta(1000000, (float) $scheme->original_principal, 0.001);
+        $this->assertEqualsWithDelta(100000, (float) $scheme->principal_discount, 0.001);
+        $this->assertEqualsWithDelta(900000 + $keptPenalty, (float) $scheme->final_amount, 0.001);
+        $this->assertSame(PaymentSchemeItem::STATUS_REJECTED, $scheme->items()->where('billing_id', $june->id)->value('status'));
+        $this->assertSame(2, $scheme->includedItems()->count());
+        // May and July carry the scheme; June is an ordinary bill again, untouched.
+        $this->assertSame($scheme->id, $may->fresh()->payment_scheme_id);
+        $this->assertSame($scheme->id, $july->fresh()->payment_scheme_id);
+        $this->assertNull($june->fresh()->payment_scheme_id);
+        $this->assertSame(0.0, (float) $june->fresh()->discount);
+        $this->assertNull($june->fresh()->penalty_fixed);
+        $this->assertEqualsWithDelta(500000 + $junePenalty, app(PenaltyService::class)->calculateInvoiceTotal($june->fresh())['total_outstanding'], 0.001);
+        // The loket's original 3-month request is kept.
+        $this->assertEqualsWithDelta(1500000, $scheme->requested_snapshot['original_principal'], 0.001);
+        $this->assertEqualsWithDelta($requested, $scheme->requested_snapshot['final_amount'], 0.001);
+        $this->assertCount(3, $scheme->requested_snapshot['items']);
+        $this->assertEqualsWithDelta((float) $scheme->final_amount, (float) $scheme->approvalRequest->fresh()->amount, 0.001);
+
+        // June is not bound to the scheme: it can be paid alone, but May + July must go together.
+        $loket = User::where('username', 'loket')->firstOrFail();
+        try {
+            app(PaymentService::class)->process($unit, [$may->id], ['use_balance' => false], $loket->id);
+            $this->fail('May alone should be refused: it belongs to the scheme with July.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('billing_ids', $e->errors());
+        }
+        $receipt = app(PaymentService::class)->process($unit, [$june->id], ['use_balance' => false], $loket->id);
+        $this->assertEqualsWithDelta(500000 + $junePenalty, (float) $receipt->grand_total, 0.001);
+        $this->assertSame(PaymentScheme::STATUS_APPROVED, $scheme->fresh()->status);
+    }
+
+    public function test_a_rejected_month_can_be_requested_again_in_a_new_scheme(): void
+    {
+        [$unit, $billings] = $this->unitWithArrears();
+        $june = $billings[1];
+        $scheme = $this->submit($unit, $billings);
+        $this->as('admin.estate');
+        $this->postJson("/api/v1/payment-schemes/{$scheme->id}/approve", [
+            'adjustments' => ['discount_type' => 'nominal', 'discount_value' => 0, 'rejected_billing_ids' => [$june->id]],
+        ])->assertOk();
+
+        $again = $this->submit($unit, collect([$june]), ['discount_value' => 20000]);
+
+        $this->assertSame(PaymentScheme::STATUS_PENDING, $again->status);
+    }
+
+    public function test_admin_cannot_reject_every_month_or_a_month_outside_the_scheme(): void
+    {
+        [$unit, $billings] = $this->unitWithArrears();
+        $scheme = $this->submit($unit, $billings->take(2));
+        $outside = $billings->last();
+
+        $this->as('admin.estate');
+        $this->postJson("/api/v1/payment-schemes/{$scheme->id}/approve", [
+            'adjustments' => ['discount_type' => 'nominal', 'discount_value' => 0, 'rejected_billing_ids' => $billings->take(2)->pluck('id')->all()],
+        ])->assertStatus(422)->assertJsonValidationErrors('rejected_billing_ids');
+        $this->postJson("/api/v1/payment-schemes/{$scheme->id}/approve", [
+            'adjustments' => ['discount_type' => 'nominal', 'discount_value' => 0, 'rejected_billing_ids' => [$outside->id]],
+        ])->assertStatus(422)->assertJsonValidationErrors('rejected_billing_ids');
+
+        $scheme->refresh();
+        $this->assertSame(PaymentScheme::STATUS_PENDING, $scheme->status);
+        $this->assertSame(2, $scheme->includedItems()->count());
+        $this->assertNull($scheme->adjusted_at);
+    }
+
+    public function test_preview_adjustment_excludes_rejected_months_and_percentage_applies_to_the_remaining_principal(): void
+    {
+        [$unit, $billings] = $this->unitWithArrears();
+        $scheme = $this->submit($unit, $billings);
+
+        $this->as('admin.estate');
+        $data = $this->postJson("/api/v1/payment-schemes/{$scheme->id}/preview-adjustment", [
+            'adjustments' => ['discount_type' => 'percentage', 'discount_value' => 10, 'rejected_billing_ids' => [$billings[1]->id]],
+        ])->assertOk()->json('data');
+
+        $this->assertCount(2, $data['items']);
+        $this->assertEqualsWithDelta(1000000, $data['original_principal'], 0.001);
+        $this->assertEqualsWithDelta(100000, $data['principal_discount'], 0.001);
+        $this->assertNotContains($billings[1]->id, collect($data['items'])->pluck('billing_id')->all());
+        $this->assertSame(3, $scheme->fresh()->includedItems()->count());
+    }
+
+    private function overLimitScheme(): array
+    {
+        [$unit, $billings] = $this->unitWithArrears();
+        // 50% is above the default Admin cap of 30%.
+        $scheme = $this->submit($unit, $billings, ['discount_type' => 'percentage', 'discount_value' => 50]);
+
+        return [$unit, $billings, $scheme];
+    }
+
+    public function test_admin_cannot_reject_or_approve_as_is_a_scheme_above_the_admin_limit(): void
+    {
+        [, , $scheme] = $this->overLimitScheme();
+
+        $this->as('admin.estate');
+        $this->postJson("/api/v1/payment-schemes/{$scheme->id}/reject", ['notes' => 'Terlalu besar'])
+            ->assertStatus(422)->assertJsonValidationErrors('status');
+        $this->postJson("/api/v1/approval-requests/{$scheme->approvalRequest->id}/reject", ['notes' => 'Terlalu besar'])
+            ->assertStatus(422);
+        $this->postJson("/api/v1/payment-schemes/{$scheme->id}/approve", [
+            'adjustments' => ['discount_type' => 'percentage', 'discount_value' => 50],
+        ])->assertStatus(422)->assertJsonValidationErrors('discount');
+
+        $scheme->refresh();
+        $this->assertSame(PaymentScheme::STATUS_PENDING, $scheme->status);
+    }
+
+    public function test_admin_can_bring_an_over_limit_scheme_down_to_the_limit_and_approve_it(): void
+    {
+        [$unit, $billings, $scheme] = $this->overLimitScheme();
+
+        $this->as('admin.estate');
+        $this->postJson("/api/v1/payment-schemes/{$scheme->id}/approve", [
+            'adjustments' => ['discount_type' => 'percentage', 'discount_value' => 30],
+        ])->assertOk();
+
+        $scheme->refresh();
+        $this->assertSame(PaymentScheme::STATUS_APPROVED, $scheme->status);
+        $this->assertEqualsWithDelta(450000, (float) $scheme->principal_discount, 0.001); // 30% x Rp1.500.000
+        $this->assertEqualsWithDelta(750000, $scheme->requested_snapshot['principal_discount'], 0.001);
+    }
+
+    public function test_super_admin_sees_an_over_limit_scheme_right_away_and_can_approve_it_as_is(): void
+    {
+        [, , $scheme] = $this->overLimitScheme();
+
+        // No hand-over step: it is in Super Admin's list the moment the loket submits it, flagged as above the Admin limit.
+        $this->as('superadmin');
+        $row = $this->getJson('/api/v1/payment-schemes?status=pending')->assertOk()->json('data.0');
+        $this->assertSame($scheme->id, $row['id']);
+        $this->assertTrue($row['exceeds_admin_limit']);
+        $this->assertFalse($row['viewer_limited']);
+        $this->assertEquals(30, $row['admin_limit_percent']);
+
+        $this->postJson("/api/v1/payment-schemes/{$scheme->id}/approve", [
+            'adjustments' => ['discount_type' => 'percentage', 'discount_value' => 50],
+        ])->assertOk();
+
+        $scheme->refresh();
+        $this->assertSame(PaymentScheme::STATUS_APPROVED, $scheme->status);
+        $this->assertEqualsWithDelta(750000, (float) $scheme->principal_discount, 0.001);
+        $this->assertSame(User::where('username', 'superadmin')->value('id'), $scheme->decided_by);
+        $this->assertNull($scheme->adjusted_at);
+    }
+
+    public function test_super_admin_can_reject_an_over_limit_scheme(): void
+    {
+        [, , $scheme] = $this->overLimitScheme();
+
+        $this->as('superadmin');
+        $this->postJson("/api/v1/payment-schemes/{$scheme->id}/reject", ['notes' => 'Tidak disetujui'])->assertOk();
+
+        $this->assertSame(PaymentScheme::STATUS_REJECTED, $scheme->fresh()->status);
+    }
+
+    public function test_admin_can_still_reject_a_scheme_within_the_limit_and_there_is_no_forward_endpoint(): void
+    {
+        [$unit, $billings] = $this->unitWithArrears();
+        $within = $this->submit($unit, $billings, ['discount_type' => 'percentage', 'discount_value' => 10]);
+
+        $this->as('admin.estate');
+        $this->postJson("/api/v1/payment-schemes/{$within->id}/escalate")->assertStatus(404);
+        $this->postJson("/api/v1/payment-schemes/{$within->id}/reject", ['notes' => 'Tidak sesuai'])->assertOk();
+
+        $this->assertSame(PaymentScheme::STATUS_REJECTED, $within->fresh()->status);
+    }
+
+    public function test_what_counts_as_over_the_limit_follows_the_super_admin_setting(): void
+    {
+        [, , $scheme] = $this->overLimitScheme();
+
+        $this->as('admin.estate');
+        $this->getJson("/api/v1/payment-schemes/{$scheme->id}")->assertOk()
+            ->assertJsonPath('data.admin_limit_percent', 30)->assertJsonPath('data.exceeds_admin_limit', true);
+
+        // Super Admin raises the cap to 60%: the same 50% request is now within the Admin's reach.
+        \App\Models\DiscountSetting::current()->update(['maximum_admin_discount' => 60]);
+
+        $list = $this->getJson('/api/v1/payment-schemes?status=pending')->assertOk()->json('data.0');
+        $this->assertEquals(60, $list['admin_limit_percent']);
+        $this->assertFalse($list['exceeds_admin_limit']);
+        $this->postJson("/api/v1/payment-schemes/{$scheme->id}/approve", [
+            'adjustments' => ['discount_type' => 'percentage', 'discount_value' => 50],
+        ])->assertOk();
+        $this->assertSame(PaymentScheme::STATUS_APPROVED, $scheme->fresh()->status);
     }
 }

@@ -8,6 +8,7 @@ use App\Models\DiscountSetting;
 use App\Models\PaymentScheme;
 use App\Models\PaymentSchemeItem;
 use App\Models\Unit;
+use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -34,9 +35,11 @@ class PaymentSchemeService
      * what the loket form sends) or as one total (`penalty_reduction`) that is split in proportion
      * to each billing's penalty.
      *
+     * `$exceptSchemeId` lets Admin recalculate a Pending scheme without it colliding with itself.
+     *
      * @param  array{billing_ids: array<int>, discount_type?: ?string, discount_value?: float|int|string|null, penalty_reduction?: float|int|string|null, penalty_reductions?: array<int|string, float|int|string|null>|null}  $data
      */
-    public function calculate(Unit $unit, array $data, bool $lock = false): array
+    public function calculate(Unit $unit, array $data, bool $lock = false, ?int $exceptSchemeId = null): array
     {
         $billingIds = array_values(array_unique(array_map('intval', $data['billing_ids'] ?? [])));
         $type = $data['discount_type'] ?? DiscountSetting::TYPE_NOMINAL;
@@ -48,7 +51,7 @@ class PaymentSchemeService
             throw ValidationException::withMessages(['billing_ids' => ['Pilih minimal satu tagihan.']]);
         }
 
-        $billings = $this->payableBillings($unit, $billingIds, $lock);
+        $billings = $this->payableBillings($unit, $billingIds, $lock, $exceptSchemeId);
         $now = now();
 
         $rows = $billings->map(fn (Billing $billing) => [
@@ -141,15 +144,28 @@ class PaymentSchemeService
         });
     }
 
-    public function approve(PaymentScheme $scheme, int $userId, ?string $notes = null): PaymentScheme
+    /**
+     * Admin may change the loket's request while approving by passing `$adjustments` (the complete
+     * final terms: discount_type, discount_value, penalty_reductions, and optionally
+     * rejected_billing_ids to drop single months from the scheme). The scheme is then
+     * recalculated on the latest billing condition, the loket's original request is kept in
+     * `requested_snapshot`, and everything - adjustment, limit check, applying - is one transaction.
+     *
+     * @param  array{discount_type?: ?string, discount_value?: float|int|string|null, penalty_reductions?: array<int|string, mixed>|null, rejected_billing_ids?: array<int>|null}|null  $adjustments
+     */
+    public function approve(PaymentScheme $scheme, int $userId, ?string $notes = null, ?array $adjustments = null): PaymentScheme
     {
         $this->ensureFresh($scheme);
 
-        return DB::transaction(function () use ($scheme, $userId, $notes) {
+        return DB::transaction(function () use ($scheme, $userId, $notes, $adjustments) {
             $scheme = PaymentScheme::query()->lockForUpdate()->findOrFail($scheme->id);
             $this->assertPending($scheme);
 
-            $items = $scheme->items()->get();
+            if ($adjustments !== null) {
+                $this->applyAdjustments($scheme, $adjustments, $userId);
+            }
+
+            $items = $scheme->includedItems()->get();
             $billings = Billing::query()->whereIn('id', $items->pluck('billing_id'))->lockForUpdate()->get()->keyBy('id');
 
             // The approver's limit (Admin) applies to the total discount each billing ends up with.
@@ -196,9 +212,60 @@ class PaymentSchemeService
         });
     }
 
+    /**
+     * Does any included month carry more discount than the Admin limit (a % of the billing amount,
+     * counting discounts it already had) allows? Same rule DiscountService enforces at approval.
+     */
+    public function exceedsAdminLimit(PaymentScheme $scheme, ?float $limitPercent = null): bool
+    {
+        $limit = $limitPercent ?? DiscountSetting::maximumAdminDiscount();
+        $scheme->loadMissing('items.billing');
+
+        return $scheme->items
+            ->where('status', PaymentSchemeItem::STATUS_INCLUDED)
+            ->contains(function (PaymentSchemeItem $item) use ($limit) {
+                $billing = $item->billing;
+
+                return $billing && round((float) $item->previous_discount + (float) $item->principal_discount, 2) > round((float) $billing->amount * $limit / 100, 2);
+            });
+    }
+
+    /**
+     * Attach what the UI needs to enforce the Admin limit: the limit, whether the viewer is bound
+     * by it, and whether each Pending scheme is above it.
+     *
+     * @param  iterable<PaymentScheme>  $schemes
+     */
+    public function annotate(iterable $schemes, ?User $viewer): void
+    {
+        $limit = DiscountSetting::maximumAdminDiscount();
+        $limited = $this->discountService->maximumPercentFor($viewer) !== null;
+
+        foreach ($schemes as $scheme) {
+            $scheme->setAttribute('admin_limit_percent', $limit);
+            $scheme->setAttribute('viewer_limited', $limited);
+            $scheme->setAttribute('exceeds_admin_limit', $scheme->isPending() && $this->exceedsAdminLimit($scheme, $limit));
+        }
+    }
+
+    /** Dry run of what Admin's edited terms would give for a Pending scheme; nothing is stored. */
+    public function previewAdjustment(PaymentScheme $scheme, array $adjustments): array
+    {
+        $this->assertPending($scheme);
+
+        return $this->calculateAdjusted($scheme, $adjustments, false, $this->rejectedBillingIds($scheme, $adjustments));
+    }
+
     public function reject(PaymentScheme $scheme, int $userId, ?string $notes = null): PaymentScheme
     {
         $this->assertPending($scheme);
+
+        // A scheme above the Admin discount limit is Super Admin's call: Admin can only bring it down to the limit and approve it.
+        if ($this->isLimited($userId) && $this->exceedsAdminLimit($scheme)) {
+            throw ValidationException::withMessages(['status' => [
+                'Skema ini melebihi batas diskon Admin ('.$this->limitLabel().'), jadi Admin tidak dapat menolaknya. Turunkan diskon hingga batas lalu setujui, atau biarkan Super Admin yang memutuskan.',
+            ]]);
+        }
 
         $scheme->forceFill([
             'status' => PaymentScheme::STATUS_REJECTED,
@@ -241,9 +308,9 @@ class PaymentSchemeService
         $this->assertPending($scheme);
 
         $now = now();
-        $billings = Billing::query()->with('unit')->whereIn('id', $scheme->items()->pluck('billing_id'))->get()->keyBy('id');
+        $billings = Billing::query()->with('unit')->whereIn('id', $scheme->includedItems()->pluck('billing_id'))->get()->keyBy('id');
 
-        $stale = $scheme->items()->get()->contains(function (PaymentSchemeItem $item) use ($billings, $now) {
+        $stale = $scheme->includedItems()->get()->contains(function (PaymentSchemeItem $item) use ($billings, $now) {
             $billing = $billings->get($item->billing_id);
 
             if (! $billing || ! $billing->isOutstanding()) {
@@ -284,6 +351,131 @@ class PaymentSchemeService
         }
     }
 
+    /** @param  array<int>  $rejectedIds */
+    private function calculateAdjusted(PaymentScheme $scheme, array $adjustments, bool $lock, array $rejectedIds = []): array
+    {
+        return $this->calculate(Unit::query()->findOrFail($scheme->unit_id), [
+            'billing_ids' => $scheme->includedItems()->pluck('billing_id')->diff($rejectedIds)->values()->all(),
+            'discount_type' => $adjustments['discount_type'] ?? DiscountSetting::TYPE_NOMINAL,
+            'discount_value' => $adjustments['discount_value'] ?? 0,
+            'penalty_reductions' => $adjustments['penalty_reductions'] ?? null,
+        ], $lock, $scheme->id);
+    }
+
+    /**
+     * Billings Admin wants to drop from the scheme. They must belong to it, and at least one month
+     * has to stay - rejecting everything is what "Tolak" on the whole scheme is for.
+     *
+     * @return array<int>
+     */
+    private function rejectedBillingIds(PaymentScheme $scheme, array $adjustments): array
+    {
+        $rejected = array_values(array_unique(array_map('intval', $adjustments['rejected_billing_ids'] ?? [])));
+
+        if ($rejected === []) {
+            return [];
+        }
+
+        $included = $scheme->includedItems()->pluck('billing_id')->map(fn ($id) => (int) $id);
+
+        if (array_diff($rejected, $included->all()) !== []) {
+            throw ValidationException::withMessages(['rejected_billing_ids' => ['Bulan yang ditolak harus bagian dari skema ini.']]);
+        }
+
+        if ($included->diff($rejected)->isEmpty()) {
+            throw ValidationException::withMessages(['rejected_billing_ids' => ['Tidak bisa menolak semua bulan. Gunakan Tolak untuk menolak seluruh skema.']]);
+        }
+
+        return $rejected;
+    }
+
+    /**
+     * Replace the scheme's terms with Admin's: new discount/penalty amounts and/or months dropped
+     * from the scheme. Does nothing (and does not mark the scheme as adjusted) when the result is
+     * identical to what the loket requested.
+     */
+    private function applyAdjustments(PaymentScheme $scheme, array $adjustments, int $userId): void
+    {
+        $items = $scheme->items()->get()->keyBy('billing_id');
+        $rejectedIds = $this->rejectedBillingIds($scheme, $adjustments);
+        $calc = $this->calculateAdjusted($scheme, $adjustments, true, $rejectedIds);
+
+        $changed = $rejectedIds !== [] || collect($calc['items'])->contains(fn (array $row) => abs($row['principal_discount'] - (float) $items[$row['billing_id']]->principal_discount) > 0.001
+            || abs($row['penalty_reduction'] - (float) $items[$row['billing_id']]->penalty_reduction) > 0.001);
+
+        if (! $changed) {
+            return;
+        }
+
+        $snapshot = [
+            'discount_type' => $scheme->discount_type,
+            'original_principal' => (float) $scheme->original_principal,
+            'original_penalty' => (float) $scheme->original_penalty,
+            'principal_discount' => (float) $scheme->principal_discount,
+            'penalty_reduction' => (float) $scheme->penalty_reduction,
+            'final_amount' => (float) $scheme->final_amount,
+            'items' => $items->map(fn (PaymentSchemeItem $item) => [
+                'billing_id' => $item->billing_id,
+                'principal_discount' => (float) $item->principal_discount,
+                'penalty_reduction' => (float) $item->penalty_reduction,
+            ])->values()->all(),
+        ];
+
+        foreach ($calc['items'] as $row) {
+            $items[$row['billing_id']]->forceFill([
+                'principal_discount' => $row['principal_discount'],
+                'final_principal' => $row['final_principal'],
+                'penalty_reduction' => $row['penalty_reduction'],
+                'final_penalty' => $row['final_penalty'],
+            ])->save();
+        }
+
+        // A rejected month gets no scheme terms: it goes back to being an ordinary outstanding bill.
+        foreach ($rejectedIds as $billingId) {
+            $item = $items[$billingId];
+            $item->forceFill([
+                'status' => PaymentSchemeItem::STATUS_REJECTED,
+                'principal_discount' => 0,
+                'final_principal' => $item->original_principal,
+                'penalty_reduction' => 0,
+                'final_penalty' => $item->original_penalty,
+            ])->save();
+        }
+
+        $scheme->forceFill([
+            'discount_type' => $calc['discount_type'],
+            'original_principal' => $calc['original_principal'],
+            'original_penalty' => $calc['original_penalty'],
+            'principal_discount' => $calc['principal_discount'],
+            'penalty_reduction' => $calc['penalty_reduction'],
+            'final_amount' => $calc['final_amount'],
+            'requested_snapshot' => $snapshot,
+            'adjusted_by' => $userId,
+            'adjusted_at' => now(),
+        ])->save();
+
+        // Keep the Approval Center row showing the amount that will actually be approved.
+        ApprovalRequest::query()
+            ->where('requestable_type', PaymentScheme::class)
+            ->where('requestable_id', $scheme->id)
+            ->update([
+                'amount' => $calc['final_amount'],
+                'after_value' => json_encode(['principal_discount' => $calc['principal_discount'], 'penalty_reduction' => $calc['penalty_reduction'], 'final_amount' => $calc['final_amount']]),
+            ]);
+
+        $this->auditService->log('payment_scheme_adjusted', 'payment-schemes', 'ADJUST', $scheme, $snapshot, $scheme->toArray());
+    }
+
+    private function isLimited(int $userId): bool
+    {
+        return $this->discountService->maximumPercentFor(User::query()->find($userId)) !== null;
+    }
+
+    private function limitLabel(): string
+    {
+        return rtrim(rtrim(number_format(DiscountSetting::maximumAdminDiscount(), 2, ',', ''), '0'), ',').'%';
+    }
+
     private function cancel(PaymentScheme $scheme, string $reason): void
     {
         $scheme->forceFill([
@@ -308,7 +500,7 @@ class PaymentSchemeService
         }
     }
 
-    private function payableBillings(Unit $unit, array $billingIds, bool $lock): Collection
+    private function payableBillings(Unit $unit, array $billingIds, bool $lock, ?int $exceptSchemeId = null): Collection
     {
         $query = Billing::query()->with('unit')->where('unit_id', $unit->id)->whereIn('id', $billingIds);
 
@@ -329,7 +521,7 @@ class PaymentSchemeService
         $hasActiveScheme = $billings->contains(fn (Billing $b) => $b->payment_scheme_id !== null)
             || PaymentSchemeItem::query()
                 ->whereIn('billing_id', $billingIds)
-                ->whereHas('scheme', fn ($q) => $q->where('status', PaymentScheme::STATUS_PENDING))
+                ->whereHas('scheme', fn ($q) => $q->where('status', PaymentScheme::STATUS_PENDING)->when($exceptSchemeId, fn ($inner) => $inner->where('id', '!=', $exceptSchemeId)))
                 ->exists();
 
         if ($hasActiveScheme) {

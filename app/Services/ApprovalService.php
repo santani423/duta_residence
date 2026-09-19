@@ -40,7 +40,7 @@ class ApprovalService
         ]);
     }
 
-    public function approve(ApprovalRequest $approval, int $userId, ?string $notes = null): ApprovalRequest
+    public function approve(ApprovalRequest $approval, int $userId, ?string $notes = null, array $options = []): ApprovalRequest
     {
         $this->assertPending($approval);
 
@@ -49,11 +49,11 @@ class ApprovalService
             $this->paymentSchemeService->ensureFresh($approval->requestable);
         }
 
-        return DB::transaction(function () use ($approval, $userId, $notes) {
+        return DB::transaction(function () use ($approval, $userId, $notes, $options) {
             $requestable = $approval->requestable;
 
             match ($approval->type) {
-                ApprovalRequest::TYPE_PAYMENT_SCHEME => $this->paymentSchemeService->approve($requestable, $userId, $notes),
+                ApprovalRequest::TYPE_PAYMENT_SCHEME => $this->paymentSchemeService->approve($requestable, $userId, $notes, $options['adjustments'] ?? null),
                 ApprovalRequest::TYPE_REVERSAL => $this->reversalService->approve($requestable, $userId, $notes),
                 ApprovalRequest::TYPE_PENALTY_WAIVER => $this->penaltyWaiverService->approve($requestable, $userId, $notes),
                 ApprovalRequest::TYPE_INSTALLMENT_PLAN => $this->installmentPlanService->approve($requestable, $userId, $notes),

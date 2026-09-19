@@ -16,7 +16,7 @@ class PaymentScheme extends Model
 
     protected $fillable = [
         'unit_id', 'status', 'reason', 'discount_type', 'original_principal', 'principal_discount',
-        'original_penalty', 'penalty_reduction', 'final_amount', 'submitted_by', 'submitted_at',
+        'original_penalty', 'penalty_reduction', 'final_amount', 'requested_snapshot', 'adjusted_by', 'adjusted_at', 'submitted_by', 'submitted_at',
         'decided_by', 'decided_at', 'review_notes', 'cancelled_at', 'cancellation_reason',
     ];
 
@@ -26,6 +26,8 @@ class PaymentScheme extends Model
         'original_penalty' => 'decimal:2',
         'penalty_reduction' => 'decimal:2',
         'final_amount' => 'decimal:2',
+        'requested_snapshot' => 'array',
+        'adjusted_at' => 'datetime',
         'submitted_at' => 'datetime',
         'decided_at' => 'datetime',
         'cancelled_at' => 'datetime',
@@ -41,9 +43,20 @@ class PaymentScheme extends Model
         return $this->hasMany(PaymentSchemeItem::class);
     }
 
+    /** Months that are actually part of the scheme (Admin may have rejected some of the requested ones). */
+    public function includedItems()
+    {
+        return $this->items()->where('status', PaymentSchemeItem::STATUS_INCLUDED);
+    }
+
     public function submitter()
     {
         return $this->belongsTo(User::class, 'submitted_by');
+    }
+
+    public function adjuster()
+    {
+        return $this->belongsTo(User::class, 'adjusted_by');
     }
 
     public function decider()

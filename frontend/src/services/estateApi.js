@@ -236,6 +236,7 @@ export const api = {
     detail: (id) => http.get(`/payment-schemes/${id}`),
     preview: (payload) => http.post('/payment-schemes/preview', payload),
     create: (payload) => http.post('/payment-schemes', payload),
+    previewAdjustment: (id, payload) => http.post(`/payment-schemes/${id}/preview-adjustment`, payload),
     approve: (id, payload) => http.post(`/payment-schemes/${id}/approve`, payload),
     reject: (id, payload) => http.post(`/payment-schemes/${id}/reject`, payload),
   },

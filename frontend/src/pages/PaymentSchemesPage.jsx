@@ -28,12 +28,25 @@ const moneyInput = {
   style: { width: '100%' },
 };
 
+const percentFormat = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 });
+
+/** Persentase `part` terhadap `whole`, mis. "12,5%". Kosong (0%) bila tidak ada pembanding. */
+function percentOf(part, whole) {
+  const base = Number(whole) || 0;
+  return `${percentFormat.format(base > 0 ? (Number(part) / base) * 100 : 0)}%`;
+}
+
+/** Rupiah beserta persentasenya terhadap sisa pokok, mis. "Rp 100.000 (10%)". */
+function moneyWithPercent(part, whole) {
+  return `${formatCurrency(part)} (${percentOf(part, whole)})`;
+}
+
 /** Ringkasan angka skema (dipakai untuk preview pengajuan maupun detail skema yang sudah ada). */
 function SchemeAmounts({ scheme }) {
   return (
     <Space size="large" wrap className="section-row">
       <Statistic title="Pokok Awal" value={formatCurrency(scheme.original_principal)} />
-      <Statistic title="Diskon Pokok" value={formatCurrency(scheme.principal_discount)} />
+      <Statistic title="Diskon Pokok" value={formatCurrency(scheme.principal_discount)} suffix={<span style={{ fontSize: 14 }}>({percentOf(scheme.principal_discount, scheme.original_principal)})</span>} />
       <Statistic title="Denda Awal" value={formatCurrency(scheme.original_penalty)} />
       <Statistic title="Keringanan Denda" value={formatCurrency(scheme.penalty_reduction)} />
       <Statistic title="Total Dibayar" value={formatCurrency(scheme.final_amount)} styles={{ content: { color: '#389e0d' } }} />
@@ -49,9 +62,17 @@ function SchemeItemsTable({ items }) {
       scrollX={900}
       rowKey={(row) => row.billing_id}
       columns={[
-        { title: 'Periode', render: (_, row) => (row.period ? formatPeriod(...row.period.split('-')) : formatPeriod(row.billing?.year, row.billing?.month)) },
+        {
+          title: 'Periode',
+          render: (_, row) => {
+            const label = row.period ? formatPeriod(...row.period.split('-')) : formatPeriod(row.billing?.year, row.billing?.month);
+            return row.status === 'rejected'
+              ? <Space size={4}><Typography.Text delete type="secondary">{label}</Typography.Text><Tag color="red">Ditolak Admin</Tag></Space>
+              : label;
+          },
+        },
         { title: 'Pokok Awal', render: (_, row) => formatCurrency(row.original_principal) },
-        { title: 'Diskon', render: (_, row) => formatCurrency(row.principal_discount) },
+        { title: 'Diskon', render: (_, row) => moneyWithPercent(row.principal_discount, row.original_principal) },
         { title: 'Pokok Akhir', render: (_, row) => formatCurrency(row.final_principal) },
         { title: 'Denda Awal', render: (_, row) => formatCurrency(row.original_penalty) },
         { title: 'Keringanan', render: (_, row) => formatCurrency(row.penalty_reduction) },
@@ -316,10 +337,20 @@ function SubmitDrawer({ open, onClose }) {
 }
 
 function DetailDrawer({ scheme, onClose }) {
+  const rejectedMonths = (scheme?.items || []).filter((item) => item.status === 'rejected').map((item) => formatPeriod(item.billing?.year, item.billing?.month));
+
   return (
     <Drawer title={scheme ? `Skema Pembayaran #${scheme.id}` : ''} open={Boolean(scheme)} onClose={onClose} width={860} destroyOnHidden>
       {scheme ? (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          {scheme.adjusted_at && scheme.requested_snapshot ? (
+            <Alert
+              type="info"
+              showIcon
+              message={`Diubah oleh Admin ${scheme.adjuster?.name || ''} saat persetujuan (${formatDateTime(scheme.adjusted_at)})`}
+              description={`Usulan loket: diskon ${moneyWithPercent(scheme.requested_snapshot.principal_discount, scheme.requested_snapshot.original_principal ?? scheme.original_principal)}, keringanan denda ${formatCurrency(scheme.requested_snapshot.penalty_reduction)}, total ${formatCurrency(scheme.requested_snapshot.final_amount)}. Yang disetujui: diskon ${moneyWithPercent(scheme.principal_discount, scheme.original_principal)}, keringanan denda ${formatCurrency(scheme.penalty_reduction)}, total ${formatCurrency(scheme.final_amount)}.${rejectedMonths.length ? ` Bulan ditolak: ${rejectedMonths.join(', ')}.` : ''}`}
+            />
+          ) : null}
           {scheme.status === 'cancelled' ? (
             <Alert type="warning" showIcon message="Skema dibatalkan otomatis" description={`${scheme.cancellation_reason || '-'} Ajukan skema baru jika pelanggan masih membutuhkan diskon.`} />
           ) : null}
@@ -344,35 +375,291 @@ function DetailDrawer({ scheme, onClose }) {
   );
 }
 
+/** Admin meninjau usulan loket: boleh mengubah diskon dan keringanan denda per tagihan sebelum menyetujui. */
+function ApproveDrawer({ scheme, onClose, onDone }) {
+  // Jenis input awal mengikuti pengajuan loket, supaya nilai yang tampil sama persis dengan yang diajukan.
+  const [discountType, setDiscountType] = useState(scheme?.discount_type === 'percentage' ? 'percentage' : 'nominal');
+  const [discountValue, setDiscountValue] = useState(() => {
+    const discount = Number(scheme?.principal_discount) || 0;
+    const base = Number(scheme?.original_principal) || 0;
+
+    return scheme?.discount_type === 'percentage' && base > 0 ? Math.round((discount / base) * 1000000) / 10000 : discount;
+  });
+  const [reductions, setReductions] = useState(() => Object.fromEntries((scheme?.items || []).map((item) => [item.billing_id, Number(item.penalty_reduction) || 0])));
+  const [notes, setNotes] = useState('');
+  // Bulan yang ditolak Admin (dikeluarkan dari skema); sisanya tetap diproses.
+  const [rejectedIds, setRejectedIds] = useState([]);
+  const debouncedDiscount = useDebounce(discountValue, 400);
+  const debouncedReductions = useDebounce(reductions, 400);
+  const debouncedRejected = useDebounce(rejectedIds, 400);
+
+  const build = (discount, reductionMap, rejected) => ({
+    discount_type: discountType,
+    discount_value: Number(discount) || 0,
+    penalty_reductions: Object.fromEntries(
+      Object.entries(reductionMap).filter(([id, value]) => Number(value) > 0 && !rejected.includes(Number(id))).map(([id, value]) => [id, Number(value)]),
+    ),
+    ...(rejected.length ? { rejected_billing_ids: rejected } : {}),
+  });
+  const adjustments = build(debouncedDiscount, debouncedReductions, debouncedRejected);
+  // Angka di layar sudah berubah tetapi hitungan server belum menyusul (debounce).
+  const isSettling = JSON.stringify(build(discountValue, reductions, rejectedIds)) !== JSON.stringify(adjustments);
+
+  const preview = useQuery({
+    queryKey: ['payment-scheme-adjustment-preview', scheme?.id, adjustments],
+    queryFn: () => api.paymentSchemes.previewAdjustment(scheme.id, { adjustments }),
+    enabled: Boolean(scheme),
+    retry: false,
+  });
+  const calc = preview.data?.data;
+  const previewError = preview.isError ? getApiErrorMessage(preview.error) : null;
+  const changed = Boolean(calc) && (
+    rejectedIds.length > 0
+    || Math.abs(Number(calc.principal_discount) - Number(scheme?.principal_discount)) > 0.001
+    || Math.abs(Number(calc.penalty_reduction) - Number(scheme?.penalty_reduction)) > 0.001
+    || (calc.items || []).some((row) => {
+      const item = scheme.items.find((candidate) => candidate.billing_id === row.billing_id);
+      return Math.abs(Number(row.penalty_reduction) - Number(item?.penalty_reduction)) > 0.001;
+    })
+  );
+
+  // Diskon yang sedang diisi Admin, dalam Rupiah dan persen (apa pun jenis inputnya).
+  const includedItems = (scheme?.items || []).filter((item) => !rejectedIds.includes(item.billing_id));
+  const principal = includedItems.reduce((sum, item) => sum + (Number(item.original_principal) || 0), 0);
+  const currentDiscount = discountType === 'percentage' ? (principal * (Number(discountValue) || 0)) / 100 : Number(discountValue) || 0;
+  const currentPercent = principal > 0 ? (currentDiscount / principal) * 100 : 0;
+
+  // Batas diskon yang ditetapkan Super Admin hanya mengikat Admin; Super Admin bebas.
+  const limited = Boolean(scheme?.viewer_limited);
+  const limitPercent = Number(scheme?.admin_limit_percent) || 0;
+  const overLimit = limited && currentPercent > limitPercent + 0.0001;
+
+  const approve = useMutation({
+    mutationFn: () => api.paymentSchemes.approve(scheme.id, {
+      notes: notes || undefined,
+      adjustments: build(discountValue, reductions, rejectedIds),
+    }),
+    onSuccess: () => {
+      message.success(changed ? 'Skema diubah dan disetujui' : 'Skema pembayaran disetujui');
+      onDone();
+    },
+    onError: (error) => {
+      message.error(getApiErrorMessage(error));
+      // Skema bisa saja sudah dibatalkan otomatis; muat ulang supaya statusnya terbaru.
+      onDone(false);
+    },
+  });
+
+  return (
+    <Drawer
+      title={scheme ? `Tinjau & Setujui Skema #${scheme.id}` : ''}
+      open={Boolean(scheme)}
+      onClose={onClose}
+      width={980}
+      destroyOnHidden
+      extra={(
+        <Space>
+          <Button onClick={onClose}>Batal</Button>
+          <Button
+            type="primary"
+            icon={<CheckOutlined />}
+            disabled={!calc || Boolean(previewError) || isSettling || overLimit}
+            title={overLimit ? `Diskon melebihi batas Admin (${percentFormat.format(limitPercent)}%). Turunkan diskon hingga batas untuk menyetujui.` : undefined}
+            loading={approve.isPending}
+            onClick={() => approve.mutate()}
+          >
+            {changed ? 'Simpan perubahan & Setujui' : 'Setujui'}
+          </Button>
+        </Space>
+      )}
+    >
+      {scheme ? (
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          <Alert
+            type="info"
+            showIcon
+            message={`Unit ${scheme.unit_id} — ${scheme.unit?.resident?.name || '-'}`}
+            description={`Diajukan ${scheme.submitter?.name || '-'} (${formatDateTime(scheme.submitted_at)}). Alasan: ${scheme.reason || '-'}. Anda boleh mengubah diskon dan keringanan denda di bawah; usulan asli loket tetap tercatat.`}
+          />
+
+          {limited && scheme.exceeds_admin_limit ? (
+            <Alert
+              type="warning"
+              showIcon
+              message={`Usulan loket melebihi batas diskon Admin (${percentFormat.format(limitPercent)}%)`}
+              description={`Admin tidak dapat menyetujui atau menolak skema ini apa adanya. Turunkan diskon hingga maksimal ${percentFormat.format(limitPercent)}% lalu setujui. Kalau diskon tidak diturunkan, skema ini menunggu keputusan Super Admin, yang sudah menerima pengajuan ini.`}
+            />
+          ) : null}
+
+          <Card size="small" title="Tinjau per bulan: keringanan denda dan penolakan">
+            <ResponsiveTable
+              data={scheme.items || []}
+              pagination={false}
+              scrollX={1000}
+              rowKey={(row) => row.billing_id}
+              columns={[
+                {
+                  title: 'Periode',
+                  render: (_, row) => {
+                    const label = formatPeriod(row.billing?.year, row.billing?.month);
+                    return rejectedIds.includes(row.billing_id)
+                      ? <Space size={4}><Typography.Text delete type="secondary">{label}</Typography.Text><Tag color="red">Ditolak</Tag></Space>
+                      : label;
+                  },
+                },
+                { title: 'Sisa Pokok', render: (_, row) => formatCurrency(row.original_principal) },
+                { title: 'Denda', render: (_, row) => formatCurrency(row.original_penalty) },
+                { title: 'Usulan Loket', render: (_, row) => formatCurrency(row.penalty_reduction) },
+                {
+                  title: 'Keringanan Denda',
+                  width: 240,
+                  render: (_, row) => {
+                    if (rejectedIds.includes(row.billing_id)) return <Typography.Text type="secondary">Tidak diberi keringanan</Typography.Text>;
+                    if (Number(row.original_penalty) <= 0) return <Typography.Text type="secondary">Tidak ada denda</Typography.Text>;
+                    return (
+                      <Space.Compact style={{ width: '100%' }}>
+                        <InputNumber {...moneyInput} max={Number(row.original_penalty)} value={reductions[row.billing_id]} onChange={(value) => setReductions((previous) => ({ ...previous, [row.billing_id]: value ?? 0 }))} />
+                        <Button title="Hapus seluruh denda tagihan ini" onClick={() => setReductions((previous) => ({ ...previous, [row.billing_id]: Number(row.original_penalty) }))}>Hapus</Button>
+                      </Space.Compact>
+                    );
+                  },
+                },
+                {
+                  title: 'Denda Akhir',
+                  render: (_, row) => (rejectedIds.includes(row.billing_id)
+                    ? formatCurrency(row.original_penalty)
+                    : <strong>{formatCurrency(Math.max(0, Number(row.original_penalty) - Number(reductions[row.billing_id] || 0)))}</strong>),
+                },
+                {
+                  title: 'Keputusan',
+                  width: 170,
+                  fixed: 'right',
+                  render: (_, row) => (rejectedIds.includes(row.billing_id)
+                    ? <Button size="small" onClick={() => setRejectedIds((previous) => previous.filter((id) => id !== row.billing_id))}>Batalkan penolakan</Button>
+                    : (
+                      <Button
+                        size="small"
+                        danger
+                        icon={<CloseOutlined />}
+                        disabled={includedItems.length <= 1}
+                        title={includedItems.length <= 1 ? 'Minimal satu bulan harus tetap ada. Gunakan Tolak untuk menolak seluruh skema.' : 'Keluarkan bulan ini dari skema'}
+                        onClick={() => setRejectedIds((previous) => [...previous, row.billing_id])}
+                      >
+                        Tolak bulan ini
+                      </Button>
+                    )),
+                },
+              ]}
+            />
+            {rejectedIds.length ? (
+              <Alert
+                style={{ marginTop: 12 }}
+                type="warning"
+                showIcon
+                message={`${rejectedIds.length} bulan ditolak: ${(scheme.items || []).filter((item) => rejectedIds.includes(item.billing_id)).map((item) => formatPeriod(item.billing?.year, item.billing?.month)).join(', ')}`}
+                description="Bulan yang ditolak tidak mendapat diskon maupun keringanan denda dan kembali menjadi tagihan biasa. Loket dapat mengajukan skema baru untuk bulan itu."
+              />
+            ) : null}
+          </Card>
+
+          <Card size="small" title="Diskon pokok">
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+                <div>
+                  <Typography.Text>Nominal (Rp)</Typography.Text>
+                  <InputNumber
+                    {...moneyInput}
+                    max={limited ? Math.floor((principal * limitPercent) / 100) : principal}
+                    value={discountType === 'nominal' ? discountValue : Math.round(currentDiscount * 100) / 100}
+                    onChange={(value) => { setDiscountType('nominal'); setDiscountValue(value ?? 0); }}
+                  />
+                </div>
+                <div>
+                  <Typography.Text>Persentase (%)</Typography.Text>
+                  <InputNumber
+                    min={0}
+                    max={limited ? limitPercent : 100}
+                    step={0.5}
+                    precision={2}
+                    addonAfter="%"
+                    style={{ width: '100%' }}
+                    status={overLimit ? 'error' : undefined}
+                    value={discountType === 'percentage' ? discountValue : Math.round(currentPercent * 100) / 100}
+                    onChange={(value) => { setDiscountType('percentage'); setDiscountValue(value ?? 0); }}
+                  />
+                </div>
+              </div>
+              <Typography.Text strong>
+                Diskon saat ini: {formatCurrency(currentDiscount)} ({percentFormat.format(currentPercent)}% dari total sisa pokok {formatCurrency(principal)}{rejectedIds.length ? ` — hanya bulan yang tidak ditolak` : ''})
+              </Typography.Text>
+              {limited ? (
+                <Typography.Text type={overLimit ? 'danger' : 'secondary'}>
+                  {overLimit
+                    ? `Melebihi batas maksimum Admin ${percentFormat.format(limitPercent)}% yang ditetapkan Super Admin — turunkan diskon untuk dapat menyetujui.`
+                    : `Batas maksimum Admin: ${percentFormat.format(limitPercent)}% (ditetapkan Super Admin), setara ${formatCurrency(Math.floor((principal * limitPercent) / 100))}.`}
+                </Typography.Text>
+              ) : <Typography.Text type="secondary">Anda Super Admin: diskon tidak dibatasi.</Typography.Text>}
+              <Typography.Text type="secondary">Isi salah satu, yang lain terhitung otomatis. Usulan loket: {moneyWithPercent(scheme.principal_discount, scheme.original_principal)}. Batas diskon Admin tetap berlaku saat menyetujui.</Typography.Text>
+            </Space>
+          </Card>
+
+          <Card size="small" title="Ringkasan" loading={preview.isFetching && !calc}>
+            {previewError ? <Alert type="error" showIcon message={previewError} /> : null}
+            {calc && !previewError ? (
+              <>
+                <SchemeAmounts scheme={calc} />
+                {changed ? (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    message={`Berbeda dari usulan loket: total ${formatCurrency(scheme.final_amount)} menjadi ${formatCurrency(calc.final_amount)}`}
+                  />
+                ) : <Typography.Text type="secondary">Belum ada perubahan dari usulan loket.</Typography.Text>}
+              </>
+            ) : null}
+          </Card>
+
+          <Card size="small" title="Catatan Admin (opsional)">
+            <Input.TextArea rows={3} maxLength={500} showCount value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Contoh: Diskon diturunkan sesuai kebijakan" />
+          </Card>
+        </Space>
+      ) : null}
+    </Drawer>
+  );
+}
+
 export default function PaymentSchemesPage() {
   const table = useTableState();
   const queryClient = useQueryClient();
   const [submitOpen, setSubmitOpen] = useState(false);
   const [detail, setDetail] = useState(null);
-  const [decision, setDecision] = useState(null);
+  const [approving, setApproving] = useState(null);
+  const [rejecting, setRejecting] = useState(null);
   const [decisionForm] = Form.useForm();
 
   const schemes = useQuery({ queryKey: ['payment-schemes', table.params], queryFn: () => api.paymentSchemes.list(table.params) });
 
-  const decide = useMutation({
-    mutationFn: ({ id, action, notes }) => (action === 'approve'
-      ? api.paymentSchemes.approve(id, { notes })
-      : api.paymentSchemes.reject(id, { notes })),
-    onSuccess: (_, { action }) => {
-      message.success(action === 'approve' ? 'Skema pembayaran disetujui' : 'Skema pembayaran ditolak');
-      closeDecision();
+  const reject = useMutation({
+    mutationFn: ({ id, notes }) => api.paymentSchemes.reject(id, { notes }),
+    onSuccess: () => {
+      message.success('Skema pembayaran ditolak');
+      closeReject();
       queryClient.invalidateQueries({ queryKey: ['payment-schemes'] });
     },
     onError: (error) => {
       message.error(getApiErrorMessage(error));
-      // Skema bisa saja sudah dibatalkan otomatis; muat ulang supaya statusnya terbaru.
       queryClient.invalidateQueries({ queryKey: ['payment-schemes'] });
     },
   });
 
-  function closeDecision() {
-    setDecision(null);
+  function closeReject() {
+    setRejecting(null);
     decisionForm.resetFields();
+  }
+
+  function finishApproval(closeDrawer = true) {
+    if (closeDrawer) setApproving(null);
+    queryClient.invalidateQueries({ queryKey: ['payment-schemes'] });
   }
 
   return (
@@ -397,26 +684,77 @@ export default function PaymentSchemesPage() {
             { title: 'No.', dataIndex: 'id', width: 70 },
             { title: 'Unit', render: (_, row) => `${row.unit_id} — ${row.unit?.cluster?.name || ''} ${row.unit?.block || ''}/${row.unit?.lot_number || ''}` },
             { title: 'Penghuni', render: (_, row) => row.unit?.resident?.name || '-' },
-            { title: 'Tagihan', width: 90, render: (_, row) => `${row.items?.length ?? 0} bulan` },
+            {
+              title: 'Tagihan',
+              width: 120,
+              render: (_, row) => {
+                const rejected = (row.items || []).filter((item) => item.status === 'rejected').length;
+                return (
+                  <Space direction="vertical" size={0}>
+                    <span>{(row.items?.length ?? 0) - rejected} bulan</span>
+                    {rejected ? <Tag color="red">{rejected} ditolak</Tag> : null}
+                  </Space>
+                );
+              },
+            },
             { title: 'Pokok Awal', render: (_, row) => formatCurrency(row.original_principal) },
-            { title: 'Diskon', render: (_, row) => formatCurrency(row.principal_discount) },
+            {
+              title: 'Diskon',
+              render: (_, row) => (
+                <Space direction="vertical" size={0}>
+                  <span>{formatCurrency(row.principal_discount)}</span>
+                  <Tag color={Number(row.principal_discount) > 0 ? 'green' : 'default'}>{percentOf(row.principal_discount, row.original_principal)}</Tag>
+                </Space>
+              ),
+            },
             { title: 'Keringanan Denda', render: (_, row) => formatCurrency(row.penalty_reduction) },
             { title: 'Total Dibayar', render: (_, row) => <strong>{formatCurrency(row.final_amount)}</strong> },
-            { title: 'Status', dataIndex: 'status', render: (value) => <StatusBadge type="paymentScheme" value={value} /> },
+            {
+              title: 'Status',
+              dataIndex: 'status',
+              render: (value, row) => (
+                <Space size={4} wrap>
+                  <StatusBadge type="paymentScheme" value={value} />
+                  {value === 'pending' && row.exceeds_admin_limit ? <Tag color="orange">Di atas batas Admin</Tag> : null}
+                  {row.adjusted_at ? <Tag color="blue">Diubah Admin</Tag> : null}
+                </Space>
+              ),
+            },
             { title: 'Diajukan', render: (_, row) => `${row.submitter?.name || '-'} · ${formatDateTime(row.submitted_at)}` },
             {
               title: 'Aksi',
-              width: 260,
+              width: 330,
               fixed: 'right',
-              render: (_, row) => (
-                <Space>
-                  <Button size="small" icon={<EyeOutlined />} onClick={() => setDetail(row)}>Detail</Button>
-                  <Can permission="payment-schemes.approve">
-                    <Button size="small" icon={<CheckOutlined />} disabled={row.status !== 'pending'} onClick={() => setDecision({ row, action: 'approve' })}>Setujui</Button>
-                    <Button size="small" danger icon={<CloseOutlined />} disabled={row.status !== 'pending'} onClick={() => setDecision({ row, action: 'reject' })}>Tolak</Button>
-                  </Can>
-                </Space>
-              ),
+              render: (_, row) => {
+                // Admin (dibatasi) tidak boleh menolak skema di atas batas diskonnya; itu keputusan Super Admin.
+                const cannotReject = row.viewer_limited && Boolean(row.exceeds_admin_limit);
+
+                return (
+                  <Space>
+                    <Button size="small" icon={<EyeOutlined />} onClick={() => setDetail(row)}>Detail</Button>
+                    <Can permission="payment-schemes.approve">
+                      <Button
+                        size="small"
+                        icon={<CheckOutlined />}
+                        disabled={row.status !== 'pending'}
+                        onClick={() => setApproving(row)}
+                      >
+                        Tinjau & Setujui
+                      </Button>
+                      <Button
+                        size="small"
+                        danger
+                        icon={<CloseOutlined />}
+                        disabled={row.status !== 'pending' || cannotReject}
+                        title={cannotReject ? 'Di atas batas diskon Admin: hanya Super Admin yang dapat menolak' : undefined}
+                        onClick={() => setRejecting(row)}
+                      >
+                        Tolak
+                      </Button>
+                    </Can>
+                  </Space>
+                );
+              },
             },
           ]}
         />
@@ -425,24 +763,26 @@ export default function PaymentSchemesPage() {
       <SubmitDrawer open={submitOpen} onClose={() => setSubmitOpen(false)} />
       <DetailDrawer scheme={detail} onClose={() => setDetail(null)} />
 
+      {approving ? <ApproveDrawer key={approving.id} scheme={approving} onClose={() => setApproving(null)} onDone={finishApproval} /> : null}
+
       <Modal
-        open={Boolean(decision)}
-        title={decision?.action === 'approve' ? `Setujui skema #${decision?.row.id}?` : `Tolak skema #${decision?.row.id}?`}
-        okText={decision?.action === 'approve' ? 'Setujui' : 'Tolak'}
-        okButtonProps={{ danger: decision?.action === 'reject', loading: decide.isPending }}
+        open={Boolean(rejecting)}
+        title={`Tolak skema #${rejecting?.id}?`}
+        okText="Tolak"
+        okButtonProps={{ danger: true, loading: reject.isPending }}
         cancelText="Batal"
-        onCancel={closeDecision}
-        onOk={() => decisionForm.validateFields().then((values) => decide.mutate({ id: decision.row.id, action: decision.action, notes: values.notes }))}
+        onCancel={closeReject}
+        onOk={() => decisionForm.validateFields().then((values) => reject.mutate({ id: rejecting.id, notes: values.notes }))}
         destroyOnHidden
       >
-        {decision ? (
+        {rejecting ? (
           <>
             <Typography.Paragraph>
-              Unit <strong>{decision.row.unit_id}</strong> — total dibayar setelah skema <strong>{formatCurrency(decision.row.final_amount)}</strong>
-              {' '}(diskon {formatCurrency(decision.row.principal_discount)}, keringanan denda {formatCurrency(decision.row.penalty_reduction)}).
+              Unit <strong>{rejecting.unit_id}</strong> — total dibayar setelah skema <strong>{formatCurrency(rejecting.final_amount)}</strong>
+              {' '}(diskon {moneyWithPercent(rejecting.principal_discount, rejecting.original_principal)}, keringanan denda {formatCurrency(rejecting.penalty_reduction)}).
             </Typography.Paragraph>
             <Form form={decisionForm} layout="vertical">
-              <Form.Item label="Catatan" name="notes" rules={decision.action === 'reject' ? [{ required: true, message: 'Alasan penolakan wajib diisi' }] : []}>
+              <Form.Item label="Alasan penolakan" name="notes" rules={[{ required: true, message: 'Alasan penolakan wajib diisi' }]}>
                 <Input.TextArea rows={3} maxLength={500} />
               </Form.Item>
             </Form>

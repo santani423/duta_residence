@@ -6,8 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class PaymentSchemeItem extends Model
 {
+    public const STATUS_INCLUDED = 'included';
+
+    public const STATUS_REJECTED = 'rejected';
+
     protected $fillable = [
-        'payment_scheme_id', 'billing_id', 'original_principal', 'principal_discount', 'final_principal',
+        'payment_scheme_id', 'billing_id', 'status', 'original_principal', 'principal_discount', 'final_principal',
         'original_penalty', 'penalty_reduction', 'final_penalty', 'previous_discount',
     ];
 

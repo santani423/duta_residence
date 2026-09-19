@@ -17,9 +17,9 @@ class PaymentSchemeController extends Controller
 {
     use ApiResponse;
 
-    private const RELATIONS = ['unit.cluster', 'unit.resident', 'submitter', 'decider', 'items.billing', 'approvalRequest'];
+    private const RELATIONS = ['unit.cluster', 'unit.resident', 'submitter', 'adjuster', 'decider', 'items.billing', 'approvalRequest'];
 
-    public function index(Request $request)
+    public function index(Request $request, PaymentSchemeService $service)
     {
         $query = PaymentScheme::query()
             ->with(self::RELATIONS)
@@ -29,12 +29,15 @@ class PaymentSchemeController extends Controller
                 ->where('unit_id', 'like', "%{$value}%")
                 ->orWhereHas('unit.resident', fn ($r) => $r->where('name', 'like', "%{$value}%"))));
 
-        return $this->paginated($query->latest()->paginate($request->integer('per_page', 15)));
+        $paginator = $query->latest()->paginate($request->integer('per_page', 15));
+        $service->annotate($paginator->items(), $request->user());
+
+        return $this->paginated($paginator);
     }
 
-    public function show(PaymentScheme $paymentScheme)
+    public function show(Request $request, PaymentScheme $paymentScheme, PaymentSchemeService $service)
     {
-        return $this->success($paymentScheme->load(self::RELATIONS));
+        return $this->success($this->annotated($paymentScheme, $request, $service));
     }
 
     /** Dry run against the latest billing condition; nothing is stored. */
@@ -65,29 +68,58 @@ class PaymentSchemeController extends Controller
             return $scheme;
         });
 
-        return $this->success($scheme->load(self::RELATIONS), 'Pengajuan skema pembayaran berhasil dibuat.', 201);
+        return $this->success($this->annotated($scheme, $request, $service), 'Pengajuan skema pembayaran berhasil dibuat.', 201);
     }
 
-    public function approve(Request $request, PaymentScheme $paymentScheme, ApprovalService $approvalService)
+    /** What Admin's edited discount/penalty terms would give; nothing is stored. */
+    public function previewAdjustment(Request $request, PaymentScheme $paymentScheme, PaymentSchemeService $service)
+    {
+        return $this->success($service->previewAdjustment($paymentScheme, $this->adjustments($request)));
+    }
+
+    /** Approve, optionally with `adjustments` = Admin's edited final terms (see PaymentSchemeService::approve). */
+    public function approve(Request $request, PaymentScheme $paymentScheme, ApprovalService $approvalService, PaymentSchemeService $service)
     {
         $data = $request->validate(['notes' => ['nullable', 'string', 'max:500']]);
-        $approvalService->approve($this->approvalFor($paymentScheme), $request->user()->id, $data['notes'] ?? null);
+        $options = $request->has('adjustments') ? ['adjustments' => $this->adjustments($request)] : [];
+        $approvalService->approve($this->approvalFor($paymentScheme), $request->user()->id, $data['notes'] ?? null, $options);
 
-        return $this->success($paymentScheme->refresh()->load(self::RELATIONS), 'Skema pembayaran berhasil disetujui.');
+        return $this->success($this->annotated($paymentScheme->refresh(), $request, $service), 'Skema pembayaran berhasil disetujui.');
     }
 
-    public function reject(Request $request, PaymentScheme $paymentScheme, ApprovalService $approvalService)
+    public function reject(Request $request, PaymentScheme $paymentScheme, ApprovalService $approvalService, PaymentSchemeService $service)
     {
         $data = $request->validate(['notes' => ['required', 'string', 'max:500']]);
         $approvalService->reject($this->approvalFor($paymentScheme), $request->user()->id, $data['notes']);
 
-        return $this->success($paymentScheme->refresh()->load(self::RELATIONS), 'Skema pembayaran berhasil ditolak.');
+        return $this->success($this->annotated($paymentScheme->refresh(), $request, $service), 'Skema pembayaran berhasil ditolak.');
+    }
+
+    private function annotated(PaymentScheme $scheme, Request $request, PaymentSchemeService $service): PaymentScheme
+    {
+        $scheme->load(self::RELATIONS);
+        $service->annotate([$scheme], $request->user());
+
+        return $scheme;
     }
 
     /** Approve/reject always go through the Approval Center request so both stay in sync. */
     private function approvalFor(PaymentScheme $scheme): ApprovalRequest
     {
         return $scheme->approvalRequest()->firstOrFail();
+    }
+
+    private function adjustments(Request $request): array
+    {
+        return $request->validate([
+            'adjustments' => ['required', 'array'],
+            'adjustments.discount_type' => ['nullable', Rule::in(['percentage', 'nominal'])],
+            'adjustments.discount_value' => ['nullable', 'numeric', 'min:0'],
+            'adjustments.penalty_reductions' => ['nullable', 'array'],
+            'adjustments.penalty_reductions.*' => ['nullable', 'numeric', 'min:0'],
+            'adjustments.rejected_billing_ids' => ['nullable', 'array'],
+            'adjustments.rejected_billing_ids.*' => ['integer'],
+        ])['adjustments'];
     }
 
     private function validated(Request $request, bool $withReason): array

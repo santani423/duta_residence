@@ -293,6 +293,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::post('payment-schemes/preview', [PaymentSchemeController::class, 'preview'])->middleware('permission:payment-schemes.submit');
     Route::post('payment-schemes', [PaymentSchemeController::class, 'store'])->middleware('permission:payment-schemes.submit');
     Route::get('payment-schemes/{paymentScheme}', [PaymentSchemeController::class, 'show'])->middleware('permission:payment-schemes.view');
+    Route::post('payment-schemes/{paymentScheme}/preview-adjustment', [PaymentSchemeController::class, 'previewAdjustment'])->middleware('permission:payment-schemes.approve');
     Route::post('payment-schemes/{paymentScheme}/approve', [PaymentSchemeController::class, 'approve'])->middleware('permission:payment-schemes.approve');
     Route::post('payment-schemes/{paymentScheme}/reject', [PaymentSchemeController::class, 'reject'])->middleware('permission:payment-schemes.approve');
 
