@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Billing;
 use App\Models\BillingAdjustment;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -21,10 +22,12 @@ class BillingAdjustmentService
         private readonly AuditService $auditService,
     ) {}
 
-    public function submit(Billing $billing, string $type, float $newValue, string $reason, int $userId): BillingAdjustment
+    public function submit(Billing $billing, string $type, float $newValue, string $reason, int $userId, ?string $discountType = null): BillingAdjustment
     {
         // Yang dibatasi adalah pengaju (Admin); saat disetujui, userId-nya adalah penyetuju.
+        // Nilai diskon disimpan sebagai nominal apa pun tipe input pengajunya.
         if ($type === BillingAdjustment::TYPE_DISCOUNT) {
+            $newValue = $this->discountService->resolveManualDiscountAmount(User::query()->find($userId), $billing, $newValue, $discountType);
             $this->discountService->assertManualDiscountWithinAdminLimit($userId, $billing, $newValue);
         }
 

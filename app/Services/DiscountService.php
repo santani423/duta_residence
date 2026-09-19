@@ -88,6 +88,45 @@ class DiscountService
     }
 
     /**
+     * Menerjemahkan input diskon manual menjadi nominal rupiah - satu-satunya bentuk yang
+     * disimpan di billings.discount, jadi data lama tetap valid saat tipe input berubah.
+     *
+     * Admin wajib memakai tipe yang dikonfigurasi Super Admin (kalau $type dikirim dan tidak
+     * sama -> ditolak; kalau tidak dikirim -> mengikuti konfigurasi). User tanpa batas memakai
+     * tipe yang dikirim, bawaannya nominal seperti sebelumnya.
+     */
+    public function resolveManualDiscountAmount(?User $user, Billing $billing, float $value, ?string $type): float
+    {
+        $limit = $this->maximumPercentFor($user);
+        $configured = $limit !== null ? DiscountSetting::adminDiscountType() : null;
+        $type ??= $configured ?? DiscountSetting::TYPE_NOMINAL;
+
+        if (! in_array($type, [DiscountSetting::TYPE_PERCENTAGE, DiscountSetting::TYPE_NOMINAL], true)) {
+            throw ValidationException::withMessages(['discount_type' => ['Tipe diskon harus Persentase (%) atau Nominal (Rp).']]);
+        }
+
+        if ($configured !== null && $type !== $configured) {
+            $label = $configured === DiscountSetting::TYPE_PERCENTAGE ? 'Persentase (%)' : 'Nominal (Rp)';
+
+            throw ValidationException::withMessages(['discount_type' => ["Diskon Admin harus dimasukkan dalam bentuk {$label} sesuai pengaturan Super Admin."]]);
+        }
+
+        if ($type === DiscountSetting::TYPE_NOMINAL) {
+            return $value;
+        }
+
+        if ($value < 0 || $value > 100) {
+            throw ValidationException::withMessages(['discount' => ['Persentase diskon harus antara 0 dan 100.']]);
+        }
+
+        if ($limit !== null) {
+            $this->assertPercentWithinLimit($value, $limit, 'discount');
+        }
+
+        return round((float) $billing->amount * $value / 100, 2);
+    }
+
+    /**
      * Diskon manual (nominal) dibandingkan sebagai persentase dari pokok tagihan. Dibandingkan
      * dalam nominal yang dibulatkan ke sen, jadi 30% pas lolos dan 30,01% ditolak.
      */

@@ -194,10 +194,14 @@ class BillingController extends Controller
     {
         $data = $request->validate([
             'discount' => ['required', 'numeric', 'min:0'],
+            'discount_type' => ['nullable', Rule::in(['percentage', 'nominal'])],
             'reason' => ['required', 'string', 'max:200'],
         ]);
 
-        $billing = $service->applyManualDiscount($billing, (float) $data['discount'], $data['reason'], $request->user()->id);
+        // Input dibaca sebagai % atau Rp sesuai tipe (untuk Admin: tipe dari pengaturan Super
+        // Admin), lalu dikonversi ke nominal; yang tersimpan tetap nominal.
+        $amount = $service->resolveManualDiscountAmount($request->user(), $billing, (float) $data['discount'], $data['discount_type'] ?? null);
+        $billing = $service->applyManualDiscount($billing, $amount, $data['reason'], $request->user()->id);
 
         return $this->success($billing->fresh(['unit.cluster', 'unit.resident', 'status']), 'Diskon tagihan berhasil diperbarui.');
     }

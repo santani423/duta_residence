@@ -68,15 +68,16 @@ class ApprovalRequestController extends Controller
             'billing_id' => ['required', 'exists:billings,id'],
             'adjustment_type' => ['required', Rule::in(['discount', 'penalty', 'principal_correction'])],
             'new_value' => ['required', 'numeric', 'min:0'],
+            'discount_type' => ['nullable', Rule::in(['percentage', 'nominal'])],
             'reason' => ['required', 'string', 'max:500'],
         ]);
 
         $billing = Billing::query()->with('unit')->findOrFail($data['billing_id']);
-        $adjustment = $service->submit($billing, $data['adjustment_type'], (float) $data['new_value'], $data['reason'], $request->user()->id);
+        $adjustment = $service->submit($billing, $data['adjustment_type'], (float) $data['new_value'], $data['reason'], $request->user()->id, $data['discount_type'] ?? null);
 
         $approval = $approvalService->openFor($adjustment, ApprovalRequest::TYPE_BILLING_ADJUSTMENT, $request->user()->id, [
             'reason' => $data['reason'],
-            'amount' => (float) $data['new_value'],
+            'amount' => (float) $adjustment->new_value,
             'related_unit_id' => $billing->unit_id,
         ]);
 

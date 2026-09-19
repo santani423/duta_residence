@@ -7,6 +7,7 @@ import FilterBar from '../../components/common/FilterBar.jsx';
 import Can from '../../components/common/Can.jsx';
 import ResponsiveTable from '../../components/tables/ResponsiveTable.jsx';
 import { useDiscountLimit } from '../../hooks/useDiscountLimit.js';
+import { DISCOUNT_TYPE_PERCENTAGE } from '../../utils/discount.js';
 import { useTableState } from '../../hooks/useTableState.js';
 import { api } from '../../services/estateApi.js';
 import { getApiErrorMessage, mapValidationErrors } from '../../utils/apiError.js';
@@ -33,7 +34,8 @@ export default function SupervisorApprovalsPage() {
   const [installmentForm] = Form.useForm();
   const [adjustmentForm] = Form.useForm();
   const adjustmentType = Form.useWatch('adjustment_type', adjustmentForm);
-  const { maximumPercent: maxDiscountPercent } = useDiscountLimit();
+  const { maximumPercent: maxDiscountPercent, discountType } = useDiscountLimit();
+  const isPercentDiscount = adjustmentType === 'discount' && discountType === DISCOUNT_TYPE_PERCENTAGE;
   const queryClient = useQueryClient();
 
   const list = useQuery({ queryKey: ['approvals', table.params], queryFn: () => api.approvals.list(table.params) });
@@ -70,7 +72,10 @@ export default function SupervisorApprovalsPage() {
   });
 
   const submitBillingAdjustment = useMutation({
-    mutationFn: (values) => api.approvals.submitBillingAdjustment(values),
+    mutationFn: (values) => api.approvals.submitBillingAdjustment(
+      // Untuk diskon, tipe input mengikuti pengaturan (Admin: dari Super Admin; lainnya nominal).
+      values.adjustment_type === 'discount' ? { ...values, discount_type: discountType } : values
+    ),
     onSuccess: () => {
       message.success('Pengajuan penyesuaian tagihan berhasil dikirim.');
       setNewRequestModal(null);
@@ -247,12 +252,12 @@ export default function SupervisorApprovalsPage() {
             />
           </Form.Item>
           <Form.Item
-            label="Nilai Baru (Rp)"
+            label={isPercentDiscount ? 'Nilai Baru (%)' : 'Nilai Baru (Rp)'}
             name="new_value"
             extra={adjustmentType === 'discount' && maxDiscountPercent !== null ? `Batas maksimum diskon Admin: ${maxDiscountPercent}% dari pokok tagihan.` : null}
             rules={[{ required: true, message: 'Wajib diisi' }]}
           >
-            <InputNumber min={0} style={{ width: '100%' }} />
+            <InputNumber min={0} max={isPercentDiscount ? 100 : undefined} step={isPercentDiscount ? 0.01 : 1} addonAfter={isPercentDiscount ? '%' : undefined} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item label="Alasan" name="reason" rules={[{ required: true, message: 'Alasan wajib diisi' }]}>
             <Input.TextArea rows={2} />

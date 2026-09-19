@@ -8,6 +8,7 @@ use App\Models\DiscountSetting;
 use App\Services\AuditService;
 use App\Services\DiscountService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class DiscountSettingController extends Controller
 {
@@ -21,8 +22,10 @@ class DiscountSettingController extends Controller
     public function update(Request $request, AuditService $auditService)
     {
         $data = $request->validate([
-            'maximum_admin_discount' => ['required', 'numeric', 'min:0', 'max:100'],
+            'maximum_admin_discount' => ['required_without:admin_discount_type', 'numeric', 'min:0', 'max:100'],
+            'admin_discount_type' => ['required_without:maximum_admin_discount', Rule::in([DiscountSetting::TYPE_PERCENTAGE, DiscountSetting::TYPE_NOMINAL])],
         ], [
+            'admin_discount_type.in' => 'Tipe diskon Admin harus Persentase (%) atau Nominal (Rp).',
             'maximum_admin_discount.max' => 'Batas maksimum diskon Admin tidak boleh lebih dari 100%.',
             'maximum_admin_discount.min' => 'Batas maksimum diskon Admin tidak boleh kurang dari 0%.',
         ]);
@@ -47,6 +50,7 @@ class DiscountSettingController extends Controller
         return $this->success([
             'is_limited' => $limit !== null,
             'maximum_percent' => $limit,
+            'discount_type' => $limit !== null ? DiscountSetting::adminDiscountType() : null,
         ]);
     }
 }

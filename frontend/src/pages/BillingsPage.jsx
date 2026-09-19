@@ -13,6 +13,7 @@ import { api } from '../services/estateApi.js';
 import { useTableState } from '../hooks/useTableState.js';
 import { useDebounce } from '../hooks/useDebounce.js';
 import { useDiscountLimit } from '../hooks/useDiscountLimit.js';
+import { DISCOUNT_TYPE_PERCENTAGE, finalPrice, fromNominalDiscount, maxNominalFromPercent, toNominalDiscount } from '../utils/discount.js';
 import { formatCurrency, formatDateTime, formatPeriod } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
 import { downloadBlob } from '../utils/download.js';
@@ -31,7 +32,8 @@ export default function BillingsPage({ mode = 'outstanding' }) {
   const [form] = Form.useForm();
   const [approveForm] = Form.useForm();
   const [discountForm] = Form.useForm();
-  const { maximumPercent: maxDiscountPercent } = useDiscountLimit();
+  const { maximumPercent: maxDiscountPercent, discountType } = useDiscountLimit();
+  const watchedDiscount = Form.useWatch('discount', discountForm);
   const queryClient = useQueryClient();
 
   // Sinkronkan filter unit bila URL berubah (mis. dari aksi Unit) saat halaman sudah terbuka.
@@ -128,7 +130,7 @@ export default function BillingsPage({ mode = 'outstanding' }) {
   });
 
   const setDiscount = useMutation({
-    mutationFn: ({ id, discount, reason }) => api.billings.updateDiscount(id, { discount, reason }),
+    mutationFn: ({ id, discount, discount_type: type, reason }) => api.billings.updateDiscount(id, { discount, discount_type: type, reason }),
     onSuccess: () => {
       message.success('Diskon tagihan berhasil diperbarui');
       setDiscountTarget(null);
@@ -142,9 +144,10 @@ export default function BillingsPage({ mode = 'outstanding' }) {
   });
 
   // Sama seperti backend: batas dihitung dari pokok tagihan, dibulatkan ke sen.
-  const discountLimitAmount = maxDiscountPercent === null
-    ? null
-    : Math.round(Number(discountTarget?.amount || 0) * maxDiscountPercent) / 100;
+  const isPercentInput = discountType === DISCOUNT_TYPE_PERCENTAGE;
+  const discountLimitAmount = maxDiscountPercent === null ? null : maxNominalFromPercent(discountTarget?.amount, maxDiscountPercent);
+  const remainingPrincipal = Number(discountTarget?.amount || 0) - Number(discountTarget?.principal_paid || 0);
+  const nominalDiscount = toNominalDiscount(discountTarget?.amount, watchedDiscount, discountType);
 
   async function handleExport(format) {
     setExporting(format);
@@ -204,7 +207,7 @@ export default function BillingsPage({ mode = 'outstanding' }) {
               disabled={!['01', '03'].includes(row.status_id)}
               onClick={() => {
                 setDiscountTarget(row);
-                discountForm.setFieldsValue({ discount: Number(row.discount) || 0, reason: '' });
+                discountForm.setFieldsValue({ discount: fromNominalDiscount(row.amount, row.discount, discountType), reason: '' });
               }}
             >
               Set Diskon
@@ -356,27 +359,51 @@ export default function BillingsPage({ mode = 'outstanding' }) {
         <Form
           form={discountForm}
           layout="vertical"
-          onFinish={(values) => setDiscount.mutate({ id: discountTarget.id, discount: values.discount, reason: values.reason })}
+          onFinish={(values) => setDiscount.mutate({ id: discountTarget.id, discount: values.discount, discount_type: discountType, reason: values.reason })}
         >
           <Form.Item label="Nominal Tagihan">
             <Input value={formatCurrency(discountTarget?.amount ?? 0)} disabled />
           </Form.Item>
           <Form.Item
-            label="Nominal Diskon"
+            label={isPercentInput ? 'Persentase Diskon (%)' : 'Nominal Diskon (Rp)'}
             name="discount"
-            extra={maxDiscountPercent === null ? null : `Batas maksimum diskon Admin: ${maxDiscountPercent}% (${formatCurrency(discountLimitAmount)}).`}
+            extra={maxDiscountPercent === null
+              ? null
+              : `Batas maksimum diskon Admin: ${maxDiscountPercent}% (${formatCurrency(discountLimitAmount)}).${isPercentInput ? ` Setara ${formatCurrency(nominalDiscount)}.` : ''}`}
             rules={[
-              { required: true, message: 'Nominal diskon wajib diisi' },
+              { required: true, message: isPercentInput ? 'Persentase diskon wajib diisi' : 'Nominal diskon wajib diisi' },
               {
-                validator: (_, value) => (
-                  maxDiscountPercent !== null && value != null && Math.round(Number(value) * 100) > Math.round(discountLimitAmount * 100)
-                    ? Promise.reject(new Error(`Diskon melebihi batas maksimum untuk Admin (${maxDiscountPercent}%). Maksimal ${formatCurrency(discountLimitAmount)}.`))
-                    : Promise.resolve()
-                ),
+                validator: (_, value) => {
+                  if (value == null) return Promise.resolve();
+                  if (maxDiscountPercent !== null && isPercentInput && Math.round(Number(value) * 100) > Math.round(maxDiscountPercent * 100)) {
+                    return Promise.reject(new Error(`Diskon melebihi batas maksimum untuk Admin (${maxDiscountPercent}%).`));
+                  }
+                  if (maxDiscountPercent !== null && !isPercentInput && Math.round(Number(value) * 100) > Math.round(discountLimitAmount * 100)) {
+                    return Promise.reject(new Error(`Diskon melebihi batas maksimum untuk Admin (${maxDiscountPercent}%). Maksimal ${formatCurrency(discountLimitAmount)}.`));
+                  }
+                  if (nominalDiscount > remainingPrincipal) {
+                    return Promise.reject(new Error(`Diskon tidak boleh melebihi sisa pokok tagihan (${formatCurrency(remainingPrincipal)}).`));
+                  }
+                  return Promise.resolve();
+                },
               },
             ]}
           >
-            <InputNumber min={0} max={Number(discountTarget?.amount) - Number(discountTarget?.principal_paid || 0)} style={{ width: '100%' }} />
+            {isPercentInput ? (
+              <InputNumber min={0} max={100} step={0.01} precision={2} addonAfter="%" style={{ width: '100%' }} />
+            ) : (
+              <InputNumber
+                min={0}
+                max={remainingPrincipal}
+                addonBefore="Rp"
+                formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
+                parser={(value) => value?.replace(/\./g, '')}
+                style={{ width: '100%' }}
+              />
+            )}
+          </Form.Item>
+          <Form.Item label="Harga Akhir (setelah diskon)">
+            <Input value={formatCurrency(finalPrice(discountTarget?.amount, nominalDiscount))} disabled />
           </Form.Item>
           <Form.Item label="Alasan" name="reason" rules={[{ required: true, message: 'Alasan diskon wajib diisi' }]}>
             <Input.TextArea rows={3} placeholder="Contoh: Kompensasi keluhan layanan, diskon karyawan, dll." />

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\DiscountRule;
+use App\Models\DiscountSetting;
 use App\Services\AuditService;
 use App\Services\DiscountService;
 use Illuminate\Http\Request;
@@ -69,15 +70,28 @@ class DiscountRuleController extends Controller
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
+        $discountService = app(DiscountService::class);
+        $limit = $discountService->maximumPercentFor($request->user());
+
+        // Admin hanya boleh membuat aturan dengan tipe yang dikonfigurasi Super Admin.
+        if ($limit !== null) {
+            $expected = DiscountSetting::adminDiscountType() === DiscountSetting::TYPE_PERCENTAGE
+                ? DiscountRule::TYPE_PERCENTAGE
+                : DiscountRule::TYPE_FIXED;
+
+            if ($data['type'] !== $expected) {
+                throw ValidationException::withMessages([
+                    'type' => ['Admin hanya dapat membuat aturan diskon bertipe '.($expected === DiscountRule::TYPE_PERCENTAGE ? 'Persentase (%)' : 'Nominal (Rp)').' sesuai pengaturan Super Admin.'],
+                ]);
+            }
+        }
+
         if ($data['type'] === DiscountRule::TYPE_PERCENTAGE) {
             if ($data['value'] > 100) {
                 throw ValidationException::withMessages([
                     'value' => ['Persentase diskon tidak boleh lebih dari 100.'],
                 ]);
             }
-
-            $discountService = app(DiscountService::class);
-            $limit = $discountService->maximumPercentFor($request->user());
 
             if ($limit !== null) {
                 $discountService->assertPercentWithinLimit((float) $data['value'], $limit, 'value');
