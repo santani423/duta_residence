@@ -12,6 +12,12 @@ const maps = {
     pending: ['Menunggu', 'gold'],
     rejected: ['Ditolak', 'red'],
   },
+  paymentScheme: {
+    pending: ['Menunggu Admin', 'gold'],
+    approved: ['Disetujui', 'green'],
+    rejected: ['Ditolak', 'red'],
+    cancelled: ['Dibatalkan', 'default'],
+  },
   transaction: {
     pending: ['Pending', 'gold'],
     waiting_verification: ['Menunggu Verifikasi', 'blue'],

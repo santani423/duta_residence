@@ -56,6 +56,7 @@ use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PaymentGatewayController;
 use App\Http\Controllers\Api\V1\PaymentGatewaySettingController;
 use App\Http\Controllers\Api\V1\PaymentPromiseController;
+use App\Http\Controllers\Api\V1\PaymentSchemeController;
 use App\Http\Controllers\Api\V1\PenaltyRuleController;
 use App\Http\Controllers\Api\V1\PenaltyWaiverController;
 use App\Http\Controllers\Api\V1\ReceivableController;
@@ -287,6 +288,13 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::post('penalty-waivers', [PenaltyWaiverController::class, 'store'])->middleware('permission:billings.waive-penalty');
     Route::post('penalty-waivers/{penaltyWaiver}/approve', [PenaltyWaiverController::class, 'approve'])->middleware('permission:billings.approve-penalty-waiver');
     Route::post('penalty-waivers/{penaltyWaiver}/reject', [PenaltyWaiverController::class, 'reject'])->middleware('permission:billings.approve-penalty-waiver');
+
+    Route::get('payment-schemes', [PaymentSchemeController::class, 'index'])->middleware('permission:payment-schemes.view');
+    Route::post('payment-schemes/preview', [PaymentSchemeController::class, 'preview'])->middleware('permission:payment-schemes.submit');
+    Route::post('payment-schemes', [PaymentSchemeController::class, 'store'])->middleware('permission:payment-schemes.submit');
+    Route::get('payment-schemes/{paymentScheme}', [PaymentSchemeController::class, 'show'])->middleware('permission:payment-schemes.view');
+    Route::post('payment-schemes/{paymentScheme}/approve', [PaymentSchemeController::class, 'approve'])->middleware('permission:payment-schemes.approve');
+    Route::post('payment-schemes/{paymentScheme}/reject', [PaymentSchemeController::class, 'reject'])->middleware('permission:payment-schemes.approve');
 
     Route::get('payments/search', [PaymentController::class, 'search'])->middleware('permission:payments.view');
     Route::post('payments/preview', [PaymentController::class, 'preview'])->middleware('permission:payments.view');

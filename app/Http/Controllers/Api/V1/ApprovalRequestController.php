@@ -87,6 +87,7 @@ class ApprovalRequestController extends Controller
     public function approve(Request $request, ApprovalRequest $approvalRequest, ApprovalService $service)
     {
         $data = $request->validate(['notes' => ['nullable', 'string', 'max:500']]);
+        $this->authorizePaymentScheme($request, $approvalRequest);
 
         return $this->success($service->approve($approvalRequest, $request->user()->id, $data['notes'] ?? null)->load(self::RELATIONS), 'Pengajuan berhasil disetujui.');
     }
@@ -94,8 +95,19 @@ class ApprovalRequestController extends Controller
     public function reject(Request $request, ApprovalRequest $approvalRequest, ApprovalService $service)
     {
         $data = $request->validate(['notes' => ['required', 'string', 'max:500']]);
+        $this->authorizePaymentScheme($request, $approvalRequest);
 
         return $this->success($service->reject($approvalRequest, $request->user()->id, $data['notes'])->load(self::RELATIONS), 'Pengajuan berhasil ditolak.');
+    }
+
+    /** Skema pembayaran hanya boleh diputuskan Admin, bukan semua pemegang izin approvals.*. */
+    private function authorizePaymentScheme(Request $request, ApprovalRequest $approvalRequest): void
+    {
+        abort_if(
+            $approvalRequest->type === ApprovalRequest::TYPE_PAYMENT_SCHEME && ! $request->user()->can('payment-schemes.approve'),
+            403,
+            'Hanya Admin yang dapat memutuskan skema pembayaran.'
+        );
     }
 
     public function uploadDocument(Request $request, ApprovalRequest $approvalRequest)

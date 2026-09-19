@@ -231,6 +231,14 @@ export const api = {
     list: (params) => http.get('/installments', { params }),
     create: (payload) => http.post('/installments', payload),
   },
+  paymentSchemes: {
+    list: (params) => http.get('/payment-schemes', { params }),
+    detail: (id) => http.get(`/payment-schemes/${id}`),
+    preview: (payload) => http.post('/payment-schemes/preview', payload),
+    create: (payload) => http.post('/payment-schemes', payload),
+    approve: (id, payload) => http.post(`/payment-schemes/${id}/approve`, payload),
+    reject: (id, payload) => http.post(`/payment-schemes/${id}/reject`, payload),
+  },
   reversals: {
     list: (params) => http.get('/reversals', { params }),
     create: (payload) => http.post('/reversals', payload),

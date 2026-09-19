@@ -85,6 +85,11 @@ class PenaltyService
             return round((float) $billing->penalty, 2);
         }
 
+        // Denda yang dibekukan oleh skema pembayaran yang disetujui menggantikan hitungan tier.
+        if ($billing->penalty_fixed !== null) {
+            return round((float) $billing->penalty_fixed, 2);
+        }
+
         if (! $this->isPenaltyApplicable($billing)) {
             return 0.0;
         }

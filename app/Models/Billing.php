@@ -19,10 +19,15 @@ class Billing extends Model
 
     public const STATUS_CANCELLED = '04';
 
+    /** Columns whose change invalidates a pending payment scheme. */
+    public const SCHEME_TRACKED_COLUMNS = [
+        'amount', 'discount', 'principal_paid', 'penalty_paid', 'penalty_waived_amount', 'status_id',
+    ];
+
     protected $fillable = [
         'unit_id', 'year', 'month', 'amount', 'principal_paid', 'penalty', 'penalty_paid',
         'penalty_waived_amount', 'penalty_notified_tier', 'discount', 'discount_rule_id',
-        'discount_set_by', 'discount_set_at', 'discount_reason', 'status_id',
+        'discount_set_by', 'discount_set_at', 'discount_reason', 'payment_scheme_id', 'penalty_fixed', 'status_id',
         'is_penalty_eligible', 'is_discount_eligible', 'billing_type', 'approved_by',
         'approved_at', 'approval_notes', 'paid_at', 'receipt_number', 'loket_code',
         'processed_by', 'spt_print_count', 'created_by',
@@ -37,6 +42,7 @@ class Billing extends Model
         'penalty_waived_amount' => 'decimal:2',
         'penalty_notified_tier' => 'integer',
         'discount' => 'decimal:2',
+        'penalty_fixed' => 'decimal:2',
         'discount_set_at' => 'datetime',
         'is_penalty_eligible' => 'boolean',
         'is_discount_eligible' => 'boolean',
@@ -44,6 +50,23 @@ class Billing extends Model
         'paid_at' => 'datetime',
         'cancelled_at' => 'datetime',
     ];
+
+    /**
+     * Any change to what a payment scheme was calculated from (amounts, paid totals, discount,
+     * waiver, status) makes a still-pending scheme outdated, so it is cancelled automatically.
+     * Hooked on the model so every path (loket, gateway, reversal, adjustments) is covered.
+     */
+    protected static function booted(): void
+    {
+        static::updated(function (Billing $billing) {
+            if ($billing->wasChanged(self::SCHEME_TRACKED_COLUMNS)) {
+                app(\App\Services\PaymentSchemeService::class)->cancelPendingForBillings(
+                    [$billing->id],
+                    'Pembayaran atau perubahan kondisi terjadi pada tagihan terkait saat skema masih menunggu persetujuan.'
+                );
+            }
+        });
+    }
 
     public function unit()
     {
@@ -93,6 +116,11 @@ class Billing extends Model
     public function allocations()
     {
         return $this->hasMany(PaymentAllocation::class);
+    }
+
+    public function paymentScheme()
+    {
+        return $this->belongsTo(PaymentScheme::class);
     }
 
     public function penaltyWaivers()

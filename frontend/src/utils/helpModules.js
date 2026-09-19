@@ -7,6 +7,7 @@ const MODULE_ROUTES = [
   ['/clusters', 'residents'],
   ['/billings', 'billings'],
   ['/receivables', 'receivables'],
+  ['/payment-schemes', 'billings'],
   ['/installments', 'billings'],
   ['/reversals', 'payments'],
   ['/payments', 'payments'],

@@ -14,6 +14,8 @@ class ApprovalRequest extends Model
 
     public const TYPE_BILLING_ADJUSTMENT = 'billing_adjustment';
 
+    public const TYPE_PAYMENT_SCHEME = 'payment_scheme';
+
     public const STATUS_DRAFT = 'draft';
 
     public const STATUS_SUBMITTED = 'submitted';

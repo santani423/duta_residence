@@ -60,6 +60,7 @@ class RolePermissionSeeder extends Seeder
             'reports.export',
             'collector-locations.track',
             'tunggakan-analysis.view',
+            'payment-schemes.view', 'payment-schemes.submit', 'payment-schemes.approve',
         ];
 
         foreach ($permissions as $permission) {
@@ -106,6 +107,7 @@ class RolePermissionSeeder extends Seeder
                 'approvals.view', 'approvals.approve', 'approvals.reject',
                 'installment-plans.view', 'installment-plans.submit',
                 'billing-adjustments.view', 'billing-adjustments.submit',
+                'payment-schemes.view', 'payment-schemes.submit', 'payment-schemes.approve',
                 'broadcasts.view', 'broadcasts.send',
                 'supervisor-notifications.view', 'supervisor-notifications.escalate',
                 'reports.export',
@@ -126,6 +128,7 @@ class RolePermissionSeeder extends Seeder
                 'installments.view', 'installments.create',
                 'installment-plans.view', 'installment-plans.submit',
                 'billing-adjustments.view', 'billing-adjustments.submit',
+                'payment-schemes.view', 'payment-schemes.submit',
                 'reversals.view', 'reversals.submit', 'reversals.approve',
                 'reports.view', 'documents.generate',
                 'resident-documents.view', 'resident-documents.create',
@@ -140,6 +143,7 @@ class RolePermissionSeeder extends Seeder
                 'payments.view', 'payments.create', 'payments.verify', 'payments.refund',
                 'balances.view', 'balances.adjust',
                 'installments.view', 'installments.create', 'reports.view', 'documents.generate',
+                'payment-schemes.view',
                 'payment-settings.view',
                 'payment-promises.view', 'payment-promises.create', 'payment-promises.update',
                 'resident-documents.view', 'resident-documents.verify',
@@ -163,6 +167,7 @@ class RolePermissionSeeder extends Seeder
                 'installments.view', 'installments.create',
                 'installment-plans.view', 'installment-plans.submit',
                 'reversals.view', 'reversals.submit',
+                'payment-schemes.view', 'payment-schemes.submit',
                 'documents.generate',
             ],
             'cs' => [

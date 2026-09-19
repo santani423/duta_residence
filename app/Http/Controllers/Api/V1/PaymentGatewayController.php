@@ -12,6 +12,7 @@ use App\Models\PaymentGatewaySetting;
 use App\Models\PaymentTransaction;
 use App\Models\PaymentWebhookEvent;
 use App\Services\AuditService;
+use App\Services\PaymentSchemeService;
 use App\Services\PaymentService;
 use App\Services\PaymentStaffNotifier;
 use App\Services\PenaltyService;
@@ -92,6 +93,10 @@ class PaymentGatewayController extends Controller
                 ->get();
 
             abort_if($billings->count() !== count(array_unique($data['billing_ids'])), 422, 'Tagihan tidak valid untuk pembayaran.');
+
+            $schemes = app(PaymentSchemeService::class);
+            $schemes->assertSchemeBillsComplete($billings->pluck('id'));
+            $schemes->cancelPendingForBillings($billings->pluck('id'), 'Transaksi pembayaran dibuat pada tagihan terkait saat skema masih menunggu persetujuan.');
 
             $calculations = $billings->map(fn (Billing $billing) => $penaltyService->calculateInvoiceTotal($billing));
             $subtotal = $calculations->sum('outstanding_principal');

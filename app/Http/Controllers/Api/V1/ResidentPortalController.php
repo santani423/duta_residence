@@ -24,6 +24,7 @@ use App\Services\AuditService;
 use App\Services\NotificationPresenter;
 use App\Services\PaymentStaffNotifier;
 use App\Services\PaymentService;
+use App\Services\PaymentSchemeService;
 use App\Services\PenaltyService;
 use App\Services\Payments\PaymentGatewayFactory;
 use App\Services\ResidentAccountService;
@@ -329,6 +330,10 @@ class ResidentPortalController extends Controller
         }
 
         $transaction = DB::transaction(function () use ($billing, $request, $setting, $provider, $factory) {
+            $schemes = app(PaymentSchemeService::class);
+            $schemes->assertSchemeBillsComplete([$billing->id]);
+            $schemes->cancelPendingForBillings([$billing->id], 'Transaksi pembayaran dibuat pada tagihan terkait saat skema masih menunggu persetujuan.');
+
             $calc = $this->penaltyService->calculateInvoiceTotal($billing);
             $transaction = PaymentTransaction::query()->create([
                 'transaction_number' => 'TRX-'.now()->format('YmdHis').'-'.Str::upper(Str::random(6)),

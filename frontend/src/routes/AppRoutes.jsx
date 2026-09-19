@@ -25,6 +25,7 @@ const BillingsPage = lazy(() => import('../pages/BillingsPage.jsx'));
 const PaymentsPage = lazy(() => import('../pages/PaymentsPage.jsx'));
 const BalanceReconciliationPage = lazy(() => import('../pages/BalanceReconciliationPage.jsx'));
 const InstallmentsPage = lazy(() => import('../pages/InstallmentsPage.jsx'));
+const PaymentSchemesPage = lazy(() => import('../pages/PaymentSchemesPage.jsx'));
 const ReversalsPage = lazy(() => import('../pages/ReversalsPage.jsx'));
 const ReceivablesPage = lazy(() => import('../pages/ReceivablesPage.jsx'));
 const ReportsPage = lazy(() => import('../pages/ReportsPage.jsx'));
@@ -151,6 +152,7 @@ export default function AppRoutes() {
         <Route path="billings/history" element={<Protected permissions={['billings.view']}><LazyPage><BillingsPage key="history" mode="history" /></LazyPage></Protected>} />
         <Route path="payments" element={<Protected permissions={['payments.view']}><LazyPage><PaymentsPage /></LazyPage></Protected>} />
         <Route path="admin/balance-reconciliation" element={<Protected permissions={['balances.view']}><LazyPage><BalanceReconciliationPage /></LazyPage></Protected>} />
+        <Route path="payment-schemes" element={<Protected permissions={['payment-schemes.view']}><LazyPage><PaymentSchemesPage /></LazyPage></Protected>} />
         <Route path="installments" element={<Protected permissions={['installments.view']}><LazyPage><InstallmentsPage /></LazyPage></Protected>} />
         <Route path="reversals" element={<Protected permissions={['reversals.view']}><LazyPage><ReversalsPage /></LazyPage></Protected>} />
         <Route path="receivables" element={<Protected permissions={['reports.view']}><LazyPage><ReceivablesPage /></LazyPage></Protected>} />

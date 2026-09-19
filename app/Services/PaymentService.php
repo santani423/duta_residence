@@ -22,6 +22,7 @@ class PaymentService
         private readonly ReceiptService $receiptService,
         private readonly AuditService $auditService,
         private readonly UnitBalanceLedgerService $ledgerService,
+        private readonly PaymentSchemeService $paymentSchemeService,
     ) {}
 
     /**
@@ -436,6 +437,10 @@ class PaymentService
 
         if ($billingIds !== null && $billings->count() !== count(array_unique($billingIds))) {
             throw ValidationException::withMessages(['billing_ids' => ['Tagihan tidak ditemukan atau bukan milik unit ini.']]);
+        }
+
+        if ($billingIds !== null) {
+            $this->paymentSchemeService->assertSchemeBillsComplete($billings->pluck('id'));
         }
 
         if ($billings->contains(fn (Billing $billing) => ! $billing->isOutstanding())) {

@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * The single "Approval Center" gateway over 4 request types. Two (Reversal, PenaltyWaiver)
+ * The single "Approval Center" gateway over 5 request types. Two (Reversal, PenaltyWaiver)
  * already had their own pending->approved/rejected workflow before this feature - this
  * service never duplicates their money-moving logic, it only (a) opens a linked
  * ApprovalRequest row when one of those is submitted, and (b) on approve/reject, delegates
@@ -22,6 +22,7 @@ class ApprovalService
         private readonly PenaltyWaiverService $penaltyWaiverService,
         private readonly InstallmentPlanService $installmentPlanService,
         private readonly BillingAdjustmentService $billingAdjustmentService,
+        private readonly PaymentSchemeService $paymentSchemeService,
         private readonly AuditService $auditService,
     ) {}
 
@@ -43,10 +44,16 @@ class ApprovalService
     {
         $this->assertPending($approval);
 
+        // Outside the transaction on purpose: a stale scheme is cancelled and that must persist.
+        if ($approval->type === ApprovalRequest::TYPE_PAYMENT_SCHEME) {
+            $this->paymentSchemeService->ensureFresh($approval->requestable);
+        }
+
         return DB::transaction(function () use ($approval, $userId, $notes) {
             $requestable = $approval->requestable;
 
             match ($approval->type) {
+                ApprovalRequest::TYPE_PAYMENT_SCHEME => $this->paymentSchemeService->approve($requestable, $userId, $notes),
                 ApprovalRequest::TYPE_REVERSAL => $this->reversalService->approve($requestable, $userId, $notes),
                 ApprovalRequest::TYPE_PENALTY_WAIVER => $this->penaltyWaiverService->approve($requestable, $userId, $notes),
                 ApprovalRequest::TYPE_INSTALLMENT_PLAN => $this->installmentPlanService->approve($requestable, $userId, $notes),
@@ -75,6 +82,7 @@ class ApprovalService
             $requestable = $approval->requestable;
 
             match ($approval->type) {
+                ApprovalRequest::TYPE_PAYMENT_SCHEME => $this->paymentSchemeService->reject($requestable, $userId, $notes),
                 ApprovalRequest::TYPE_REVERSAL => $this->reversalService->reject($requestable, $userId, $notes),
                 ApprovalRequest::TYPE_PENALTY_WAIVER => $this->penaltyWaiverService->reject($requestable, $userId, $notes),
                 ApprovalRequest::TYPE_INSTALLMENT_PLAN => $this->installmentPlanService->reject($requestable, $userId, $notes),
