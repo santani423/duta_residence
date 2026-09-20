@@ -2,6 +2,7 @@ import { Card, Col, DatePicker, Form, Row, Statistic, Table } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import PageHeader from '../components/common/PageHeader.jsx';
+import ExportPdfButton from '../components/common/ExportPdfButton.jsx';
 import { LogoSpinner } from '../components/common/ApiState.jsx';
 import { api } from '../services/estateApi.js';
 import { formatCurrency } from '../utils/format.js';
@@ -32,7 +33,7 @@ export default function ReportsPage() {
       </Row>
       <Row gutter={[16, 16]} className="section-row">
         <Col xs={24} xl={12}>
-          <Card title="Rekap Bulanan per Cluster">
+          <Card title="Rekap Bulanan per Cluster" extra={<ExportPdfButton dataset="report-monthly" params={{ year: period.year(), month: period.month() + 1 }} filename="rekap-bulanan.pdf" permission="reports.view" />}>
             <Table rowKey="cluster_id" loading={{ spinning: monthly.isLoading, indicator: <LogoSpinner size={40} /> }} dataSource={monthly.data?.data || []} pagination={false} columns={[
               { title: 'Cluster', dataIndex: 'cluster_id' },
               { title: 'Jumlah Tagihan', dataIndex: 'billing_count' },
@@ -42,11 +43,11 @@ export default function ReportsPage() {
           </Card>
         </Col>
         <Col xs={24} xl={12}>
-          <Card title="Harian Loket">
+          <Card title="Harian Loket" extra={<ExportPdfButton dataset="report-daily" params={{ date: date.format('YYYY-MM-DD') }} filename="penerimaan-harian.pdf" permission="reports.view" />}>
             <Statistic title="Transaksi" value={daily.data?.data?.total_transactions || 0} />
             <Statistic title="Total" value={formatCurrency(daily.data?.data?.grand_total)} />
           </Card>
-          <Card title="Collector" className="section-row">
+          <Card title="Collector" className="section-row" extra={<ExportPdfButton dataset="report-cashier" params={{ date: date.format('YYYY-MM-DD') }} filename="rekap-kasir.pdf" permission="reports.view" />}>
             <Table rowKey="cashier_name" loading={{ spinning: collector.isLoading, indicator: <LogoSpinner size={40} /> }} dataSource={collector.data?.data || []} pagination={false} columns={[
               { title: 'Kasir', dataIndex: 'cashier_name' },
               { title: 'Transaksi', dataIndex: 'transaction_count' },

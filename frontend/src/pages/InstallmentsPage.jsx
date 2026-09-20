@@ -1,9 +1,10 @@
-import { Button, Card, DatePicker, Drawer, Form, Input, InputNumber, message } from 'antd';
+import { Button, Card, DatePicker, Drawer, Form, Input, InputNumber, Space, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { useState } from 'react';
 import PageHeader from '../components/common/PageHeader.jsx';
+import ExportPdfButton from '../components/common/ExportPdfButton.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
 import Can from '../components/common/Can.jsx';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
@@ -34,7 +35,7 @@ export default function InstallmentsPage() {
 
   return (
     <section>
-      <PageHeader title="Cicilan" subtitle="Pencatatan pembayaran cicilan penghuni." breadcrumbs={[{ label: 'Cicilan' }]} onRefresh={installments.refetch} extra={<Can permission="installments.create"><Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>Tambah Cicilan</Button></Can>} />
+      <PageHeader title="Cicilan" subtitle="Pencatatan pembayaran cicilan penghuni." breadcrumbs={[{ label: 'Cicilan' }]} onRefresh={installments.refetch} extra={<Space wrap><ExportPdfButton dataset="installments" params={table.filters} filename="cicilan.pdf" permission="installments.view" /><Can permission="installments.create"><Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>Tambah Cicilan</Button></Can></Space>} />
       <FilterBar>
         <Input allowClear placeholder="ID unit" value={table.filters.unit_id} onChange={(event) => table.setFilters({ ...table.filters, unit_id: event.target.value || undefined })} className="filter-input" />
       </FilterBar>

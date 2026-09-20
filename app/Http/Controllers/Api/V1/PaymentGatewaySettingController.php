@@ -38,6 +38,8 @@ class PaymentGatewaySettingController extends Controller
             'manual_account_number' => ['nullable', 'string', 'max:255'],
             'manual_account_name' => ['nullable', 'string', 'max:255'],
             'manual_instructions' => ['nullable', 'string'],
+            'va_bank_code' => ['nullable', 'string', 'max:10', 'regex:/^\d+$/'],
+            'va_company_code' => ['nullable', 'string', 'max:10', 'regex:/^\d+$/'],
             'proof_max_size_kb' => ['required', 'integer', 'min:256', 'max:20480'],
             'proof_allowed_extensions' => ['nullable', 'array', 'min:1'],
             'proof_allowed_extensions.*' => [Rule::in(['jpg', 'jpeg', 'png', 'pdf'])],
@@ -45,6 +47,9 @@ class PaymentGatewaySettingController extends Controller
             'midtrans_client_key' => ['nullable', 'string', 'max:255'],
             'callback_url' => ['nullable', 'url', 'max:255'],
             'webhook_notes' => ['nullable', 'string'],
+        ], [
+            'va_bank_code.regex' => 'Kode bank hanya boleh berisi angka.',
+            'va_company_code.regex' => 'Kode perusahaan hanya boleh berisi angka.',
         ]);
 
         $data['enabled_gateways'] = collect($data['enabled_gateways'] ?? [$data['active_gateway']])

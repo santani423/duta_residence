@@ -5,10 +5,11 @@ import { useState } from 'react';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/common/PageHeader.jsx';
+import ExportPdfButton from '../components/common/ExportPdfButton.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
 import StatusBadge from '../components/common/StatusBadge.jsx';
 import Can from '../components/common/Can.jsx';
-import UnitForm, { residentStatusOptions, propertyTypeOptions, unitOccupancyStatusOptions } from '../components/forms/UnitForm.jsx';
+import UnitForm, { VaSuffixInput, vaSuffixFromNumber, residentStatusOptions, propertyTypeOptions, unitOccupancyStatusOptions } from '../components/forms/UnitForm.jsx';
 import ResidentForm from '../components/forms/ResidentForm.jsx';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import { api } from '../services/estateApi.js';
@@ -33,6 +34,8 @@ export default function UnitsPage() {
   const units = useQuery({ queryKey: ['units', table.params], queryFn: () => api.units.list(table.params) });
   const clusters = useQuery({ queryKey: ['clusters'], queryFn: () => api.clusters.list() });
   const residents = useQuery({ queryKey: ['residents-lookup'], queryFn: () => api.residents.list({ per_page: 1000 }) });
+  const vaFormatQuery = useQuery({ queryKey: ['units-va-format'], queryFn: api.units.vaFormat });
+  const vaFormat = vaFormatQuery.data?.data;
   const districts = useQuery({ queryKey: ['lookup-districts'], queryFn: () => api.lookup.districts() });
   const detail = useQuery({
     queryKey: ['units', drawer.record?.id],
@@ -107,8 +110,8 @@ export default function UnitsPage() {
   });
 
   const handover = useMutation({
-    mutationFn: ({ unit, va_number, handover_date }) => api.units.update(unit.id, {
-      va_number,
+    mutationFn: ({ unit, va_suffix, handover_date }) => api.units.update(unit.id, {
+      va_suffix,
       resident_id: unit.resident_id ?? unit.resident?.id,
       cluster_id: unit.cluster_id,
       block: unit.block,
@@ -142,7 +145,7 @@ export default function UnitsPage() {
   function openHandover(unit) {
     handoverForm.resetFields();
     handoverForm.setFieldsValue({
-      va_number: unit.va_number || undefined,
+      va_suffix: vaSuffixFromNumber(unit.va_number, vaFormat?.prefix),
       handover_date: dayjs(),
     });
     setDrawer({ type: 'handover', record: unit });
@@ -155,7 +158,7 @@ export default function UnitsPage() {
   }
 
   function openEdit(record) {
-    form.setFieldsValue(record);
+    form.setFieldsValue({ ...record, va_suffix: vaSuffixFromNumber(record.va_number, vaFormat?.prefix) });
     setDrawer({ type: 'edit', record });
   }
 
@@ -270,7 +273,7 @@ export default function UnitsPage() {
         extra={<Space><Button onClick={() => setDrawer({ type: null, record: null })}>Batal</Button><Button type="primary" loading={save.isPending} onClick={() => form.submit()}>Simpan</Button></Space>}
         destroyOnHidden
       >
-        <UnitForm form={form} clusters={clusters.data?.data || []} residents={residents.data?.data || []} onFinish={save.mutate} loading={save.isPending} />
+        <UnitForm form={form} clusters={clusters.data?.data || []} residents={residents.data?.data || []} vaFormat={vaFormat} currentVaNumber={drawer.record?.va_number} onFinish={save.mutate} loading={save.isPending} />
       </Drawer>
 
       <Drawer title="Detail Unit" open={drawer.type === 'detail'} onClose={() => setDrawer({ type: null, record: null })} width={840}>
@@ -323,6 +326,10 @@ export default function UnitsPage() {
               key: 'billings',
               label: 'Tagihan',
               children: (
+                <>
+                <div style={{ textAlign: 'right', marginBottom: 8 }}>
+                  <ExportPdfButton request={() => api.documents.billingRecapPdf({ unit_id: detailData?.id })} filename={`tagihan-${detailData?.id}.pdf`} permission="billings.view" label="Export PDF" />
+                </div>
                 <ResponsiveTable
                   data={detailData?.billings || []}
                   pagination={false}
@@ -335,6 +342,7 @@ export default function UnitsPage() {
                     { title: 'Status', dataIndex: 'status_id', render: (value) => <StatusBadge type="billing" value={value} /> },
                   ]}
                 />
+                </>
               ),
             },
             {
@@ -409,13 +417,11 @@ export default function UnitsPage() {
           layout="vertical"
           onFinish={(values) => handover.mutate({
             unit: drawer.record,
-            va_number: values.va_number,
+            va_suffix: values.va_suffix,
             handover_date: values.handover_date.format('YYYY-MM-DD'),
           })}
         >
-          <Form.Item label="Nomor Virtual Account" name="va_number" rules={[{ required: true, message: 'Nomor virtual account wajib diisi' }]}>
-            <Input placeholder="Masukkan nomor virtual account" />
-          </Form.Item>
+          <VaSuffixInput vaFormat={vaFormat} currentVaNumber={drawer.record?.va_number} required={!drawer.record?.va_number} />
           <Form.Item label="Tanggal Serah Terima Kunci" name="handover_date" rules={[{ required: true, message: 'Pilih tanggal serah terima kunci' }]}>
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>

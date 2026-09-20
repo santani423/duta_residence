@@ -7,6 +7,7 @@ use App\Http\Responses\ApiResponse;
 use App\Models\Billing;
 use App\Models\Cluster;
 use App\Models\DiscountRule;
+use App\Models\PaymentGatewaySetting;
 use App\Models\Unit;
 use App\Services\AuditService;
 use App\Services\CollectorAssignmentService;
@@ -139,7 +140,7 @@ class UnitController extends Controller
 
         if ($activatingUnit && empty($data['va_number'] ?? $unit->va_number)) {
             throw ValidationException::withMessages([
-                'va_number' => ['Nomor virtual account wajib diisi untuk mengaktifkan unit melalui serah terima kunci.'],
+                'va_suffix' => ['Nomor virtual account wajib diisi untuk mengaktifkan unit melalui serah terima kunci.'],
             ]);
         }
 
@@ -206,10 +207,62 @@ class UnitController extends Controller
         return $this->success($unit->refresh(), 'Properti berhasil dikonversi.');
     }
 
+    /** Format nomor VA yang dipakai form unit: prefix (kode bank + kode perusahaan) + nomor unik. */
+    public function vaFormat()
+    {
+        return $this->success([
+            'prefix' => PaymentGatewaySetting::current()->vaPrefix(),
+            'suffix_length' => PaymentGatewaySetting::VA_SUFFIX_LENGTH,
+        ]);
+    }
+
+    /**
+     * Nomor VA lengkap = kode bank + kode perusahaan (Pengaturan Payment Gateway) + 9 digit yang
+     * diinput di form unit. Prefix selalu diambil dari pengaturan, bukan dari klien.
+     */
+    private function composeVaNumber(Request $request, ?Unit $unit): ?string
+    {
+        $suffix = trim((string) $request->input('va_suffix', ''));
+
+        if ($suffix === '') {
+            return null;
+        }
+
+        $length = PaymentGatewaySetting::VA_SUFFIX_LENGTH;
+
+        if (! preg_match('/^\d{'.$length.'}$/', $suffix)) {
+            throw ValidationException::withMessages(['va_suffix' => ["Nomor VA harus berupa {$length} digit angka."]]);
+        }
+
+        $prefix = PaymentGatewaySetting::current()->vaPrefix();
+
+        if ($prefix === '') {
+            throw ValidationException::withMessages([
+                'va_suffix' => ['Kode bank dan kode perusahaan VA belum diatur di Pengaturan Payment Gateway.'],
+            ]);
+        }
+
+        $vaNumber = $prefix.$suffix;
+
+        $taken = Unit::query()
+            ->where('va_number', $vaNumber)
+            ->when($unit, fn ($query) => $query->where('id', '!=', $unit->id))
+            ->exists();
+
+        if ($taken) {
+            throw ValidationException::withMessages([
+                'va_suffix' => ['Nomor virtual account ini sudah digunakan oleh unit lain. Silakan gunakan nomor lain.'],
+            ]);
+        }
+
+        return $vaNumber;
+    }
+
     private function validateUnit(Request $request, ?Unit $unit = null): array
     {
+        $vaNumber = $this->composeVaNumber($request, $unit);
+
         $data = $request->validate([
-            'va_number' => ['nullable', 'string', 'max:32', Rule::unique('units', 'va_number')->ignore($unit?->id)],
             'resident_id' => ['nullable', 'exists:residents,id'],
             'cluster_id' => ['required', 'exists:clusters,id'],
             'block' => ['required', 'string', 'max:5'],
@@ -228,9 +281,12 @@ class UnitController extends Controller
             'discount_rule_id' => ['nullable', 'exists:discount_rules,id'],
             'notes' => ['nullable', 'string'],
         ], [
-            'va_number.unique' => 'Nomor virtual account ini sudah digunakan oleh unit lain. Silakan gunakan nomor lain.',
             'lot_number.regex' => 'Nomor unit harus berupa angka, contoh: 1 (bukan 01 atau 001).',
         ]);
+
+        if ($vaNumber !== null) {
+            $data['va_number'] = $vaNumber;
+        }
 
         $this->assertLotNumberAvailable($data['cluster_id'], $data['block'], $data['lot_number'], $unit);
 

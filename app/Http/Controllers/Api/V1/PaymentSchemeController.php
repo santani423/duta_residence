@@ -17,17 +17,13 @@ class PaymentSchemeController extends Controller
 {
     use ApiResponse;
 
-    private const RELATIONS = ['unit.cluster', 'unit.resident', 'submitter', 'adjuster', 'decider', 'items.billing', 'approvalRequest'];
+    private const RELATIONS = ['unit.cluster', 'unit.resident', 'submitter', 'adjuster', 'decider', 'items.billing.unit', 'approvalRequest'];
 
     public function index(Request $request, PaymentSchemeService $service)
     {
         $query = PaymentScheme::query()
             ->with(self::RELATIONS)
-            ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value))
-            ->when($request->query('status'), fn ($q, $value) => $q->where('status', $value))
-            ->when($request->query('search'), fn ($q, $value) => $q->where(fn ($inner) => $inner
-                ->where('unit_id', 'like', "%{$value}%")
-                ->orWhereHas('unit.resident', fn ($r) => $r->where('name', 'like', "%{$value}%"))));
+            ->filter($request->only(['unit_id', 'status', 'search']));
 
         $paginator = $query->latest()->paginate($request->integer('per_page', 15));
         $service->annotate($paginator->items(), $request->user());

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class PaymentScheme extends Model
@@ -67,6 +68,17 @@ class PaymentScheme extends Model
     public function approvalRequest()
     {
         return $this->morphOne(ApprovalRequest::class, 'requestable');
+    }
+
+    /** Filters shared by the list endpoint and its PDF export, so both always show the same rows. */
+    public function scopeFilter(Builder $query, array $filters): Builder
+    {
+        return $query
+            ->when($filters['unit_id'] ?? null, fn ($q, $value) => $q->where('unit_id', $value))
+            ->when($filters['status'] ?? null, fn ($q, $value) => $q->where('status', $value))
+            ->when($filters['search'] ?? null, fn ($q, $value) => $q->where(fn ($inner) => $inner
+                ->where('unit_id', 'like', "%{$value}%")
+                ->orWhereHas('unit.resident', fn ($r) => $r->where('name', 'like', "%{$value}%"))));
     }
 
     public function isPending(): bool

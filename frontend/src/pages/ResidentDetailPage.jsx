@@ -44,6 +44,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import PageHeader from '../components/common/PageHeader.jsx';
+import ExportPdfButton from '../components/common/ExportPdfButton.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
 import Can from '../components/common/Can.jsx';
 import StatusBadge from '../components/common/StatusBadge.jsx';
@@ -407,7 +408,15 @@ function TransactionsTab({ residentId, unitId, units }) {
   return (
     <section>
       <UnitScopeNote unitId={unitId} units={units} />
-      <Card title="Transaksi Pembayaran" extra={<Button onClick={() => navigate('/payments')}>Proses Pembayaran</Button>}>
+      <Card
+        title="Transaksi Pembayaran"
+        extra={(
+          <Space wrap>
+            <ExportPdfButton request={() => api.documents.paymentTransactionsPdf({ resident_id: residentId, unit_id: unitId || undefined })} filename="transaksi-pembayaran.pdf" permission="payments.view" />
+            <Button onClick={() => navigate('/payments')}>Proses Pembayaran</Button>
+          </Space>
+        )}
+      >
         <ResponsiveTable
           query={transactions}
           onChange={table.handleTableChange}
@@ -436,7 +445,11 @@ function TransactionsTab({ residentId, unitId, units }) {
           ]}
         />
       </Card>
-      <Card className="section-row" title="Kuitansi (Loket)">
+      <Card
+        className="section-row"
+        title="Kuitansi (Loket)"
+        extra={<ExportPdfButton request={() => api.documents.paymentReceiptsPdf({ resident_id: residentId, unit_id: unitId || undefined })} filename="kuitansi-penghuni.pdf" permission="payments.view" />}
+      >
         <ResponsiveTable
           query={receipts}
           onChange={receiptTable.handleTableChange}

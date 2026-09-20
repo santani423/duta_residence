@@ -245,7 +245,40 @@ class PaymentSchemeService
             $scheme->setAttribute('admin_limit_percent', $limit);
             $scheme->setAttribute('viewer_limited', $limited);
             $scheme->setAttribute('exceeds_admin_limit', $scheme->isPending() && $this->exceedsAdminLimit($scheme, $limit));
+
+            foreach ($this->paymentProgress($scheme) as $key => $value) {
+                $scheme->setAttribute($key, $value);
+            }
         }
+    }
+
+    /**
+     * How far the customer has come in paying an approved scheme: nothing / some / all of it. Read from
+     * the scheme's own billings (the source of truth for payments), so any channel - loket, transfer,
+     * gateway - is reflected. Only approved schemes have anything to pay.
+     *
+     * @return array{payment_status: ?string, paid_amount: ?float, outstanding_amount: ?float}
+     */
+    public function paymentProgress(PaymentScheme $scheme): array
+    {
+        if ($scheme->status !== PaymentScheme::STATUS_APPROVED) {
+            return ['payment_status' => null, 'paid_amount' => null, 'outstanding_amount' => null];
+        }
+
+        $scheme->loadMissing('items.billing.unit');
+        $billings = $scheme->items
+            ->where('status', PaymentSchemeItem::STATUS_INCLUDED)
+            ->map(fn (PaymentSchemeItem $item) => $item->billing)
+            ->filter();
+
+        $outstanding = round($billings->sum(fn (Billing $billing) => $this->penaltyService->calculateInvoiceTotal($billing)['total_outstanding']), 2);
+        $paid = round($billings->sum(fn (Billing $billing) => (float) $billing->principal_paid + (float) $billing->penalty_paid), 2);
+
+        return [
+            'payment_status' => $outstanding <= 0.01 ? 'paid' : ($paid > 0 ? 'partial' : 'unpaid'),
+            'paid_amount' => $paid,
+            'outstanding_amount' => $outstanding,
+        ];
     }
 
     /** Dry run of what Admin's edited terms would give for a Pending scheme; nothing is stored. */

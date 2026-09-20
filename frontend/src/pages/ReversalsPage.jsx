@@ -3,6 +3,7 @@ import { CheckOutlined, CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import PageHeader from '../components/common/PageHeader.jsx';
+import ExportPdfButton from '../components/common/ExportPdfButton.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
 import Can from '../components/common/Can.jsx';
 import StatusBadge from '../components/common/StatusBadge.jsx';
@@ -52,7 +53,7 @@ export default function ReversalsPage() {
 
   return (
     <section>
-      <PageHeader title="Reversal" subtitle="Pengajuan dan approval pembatalan transaksi." breadcrumbs={[{ label: 'Reversal' }]} onRefresh={reversals.refetch} extra={<Can permission="reversals.submit"><Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>Ajukan Reversal</Button></Can>} />
+      <PageHeader title="Reversal" subtitle="Pengajuan dan approval pembatalan transaksi." breadcrumbs={[{ label: 'Reversal' }]} onRefresh={reversals.refetch} extra={<Space wrap><ExportPdfButton dataset="reversals" params={table.filters} filename="reversal-pembayaran.pdf" permission="reversals.view" /><Can permission="reversals.submit"><Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>Ajukan Reversal</Button></Can></Space>} />
       <FilterBar>
         <Select allowClear placeholder="Status" value={table.filters.status} onChange={(value) => table.setFilters({ ...table.filters, status: value })} className="filter-input" options={['pending', 'approved', 'rejected'].map((value) => ({ value, label: value }))} />
       </FilterBar>

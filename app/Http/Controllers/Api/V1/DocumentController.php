@@ -182,6 +182,7 @@ class DocumentController extends Controller
             ->when($request->query('provider'), fn ($q, $value) => $q->where('payment_provider', $value))
             ->when($request->query('status'), fn ($q, $value) => $q->where('status', $value))
             ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value))
+            ->when($request->query('resident_id'), fn ($q, $value) => $q->whereHas('unit', fn ($u) => $u->where('resident_id', $value)))
             ->when($request->query('date_from'), fn ($q, $value) => $q->whereDate('created_at', '>=', $value))
             ->when($request->query('date_to'), fn ($q, $value) => $q->whereDate('created_at', '<=', $value))
             ->latest();
@@ -245,6 +246,7 @@ class DocumentController extends Controller
             ->when($request->query('date_from'), fn ($q, $value) => $q->whereDate('transaction_date', '>=', $value))
             ->when($request->query('date_to'), fn ($q, $value) => $q->whereDate('transaction_date', '<=', $value))
             ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value))
+            ->when($request->query('resident_id'), fn ($q, $value) => $q->whereHas('unit', fn ($u) => $u->where('resident_id', $value)))
             ->latest('transaction_date');
     }
 

@@ -112,6 +112,7 @@ export const api = {
   },
   units: {
     list: (params) => http.get('/units', { params }),
+    vaFormat: () => http.get('/units/va-format'),
     detail: (id) => http.get(`/units/${id}`),
     create: (payload) => http.post('/units', payload),
     update: (id, payload) => http.put(`/units/${id}`, payload),
@@ -261,6 +262,7 @@ export const api = {
     billingRecapPdf: (params) => http.get('/documents/billing-recap', { params, responseType: 'blob' }),
     billingRecapExcel: (params) => http.get('/documents/billing-recap-excel', { params, responseType: 'blob' }),
     pdf: (path) => http.get(path, { responseType: 'blob' }),
+    tablePdf: (dataset, params) => http.get(`/documents/tables/${dataset}`, { params, responseType: 'blob' }),
     receiptPdf: (number) => http.get(`/documents/spt/${encodeURIComponent(number)}`, { responseType: 'blob' }),
     billingSpkPdf: (id) => http.get(`/documents/spk/${encodeURIComponent(id)}`, { responseType: 'blob' }),
     paymentTransactionPdf: (id) => http.get(`/documents/payment-transactions/${id}`, { responseType: 'blob' }),

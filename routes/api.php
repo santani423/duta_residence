@@ -69,6 +69,7 @@ use App\Http\Controllers\Api\V1\ReversalController;
 use App\Http\Controllers\Api\V1\SupervisorAssignmentController;
 use App\Http\Controllers\Api\V1\SupervisorCollectorController;
 use App\Http\Controllers\Api\V1\SupervisorController;
+use App\Http\Controllers\Api\V1\TableExportController;
 use App\Http\Controllers\Api\V1\SupervisorDashboardController;
 use App\Http\Controllers\Api\V1\SupervisorMapController;
 use App\Http\Controllers\Api\V1\SupervisorMonitoringController;
@@ -247,6 +248,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::put('occupants/{occupant}', [UnitOccupantController::class, 'update'])->middleware('permission:occupants.update');
     Route::delete('occupants/{occupant}', [UnitOccupantController::class, 'destroy'])->middleware('permission:occupants.delete');
 
+    Route::get('units/va-format', [UnitController::class, 'vaFormat'])->middleware('permission:units.view');
     Route::get('units', [UnitController::class, 'index'])->middleware('permission:units.view');
     Route::post('units', [UnitController::class, 'store'])->middleware('permission:units.create');
     Route::get('units/{unit}', [UnitController::class, 'show'])->middleware('permission:units.view');
@@ -350,6 +352,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::get('documents/payment-transactions-excel', [DocumentController::class, 'paymentTransactionsExcel'])->middleware('permission:documents.generate');
     Route::get('documents/payment-receipts', [DocumentController::class, 'paymentReceipts'])->middleware('permission:documents.generate');
     Route::get('documents/payment-receipts-excel', [DocumentController::class, 'paymentReceiptsExcel'])->middleware('permission:documents.generate');
+    Route::get('documents/tables/{dataset}', [TableExportController::class, 'show'])->middleware('permission:documents.generate');
     Route::get('documents/resident-list', [DocumentController::class, 'residentList'])->middleware('permission:documents.generate');
     Route::get('documents/cluster-recap', [DocumentController::class, 'clusterRecap'])->middleware('permission:documents.generate');
 

@@ -741,4 +741,110 @@ class PaymentSchemeTest extends TestCase
         ])->assertOk();
         $this->assertSame(PaymentScheme::STATUS_APPROVED, $scheme->fresh()->status);
     }
+
+    private function approvedScheme(array $submitOverrides = []): array
+    {
+        [$unit, $billings] = $this->unitWithArrears();
+        $scheme = $this->submit($unit, $billings, ['discount_value' => 100000, 'penalty_reduction' => 10000, ...$submitOverrides]);
+        $this->as('admin.estate');
+        $this->postJson("/api/v1/payment-schemes/{$scheme->id}/approve")->assertOk();
+
+        return [$unit, $billings, $scheme->refresh()];
+    }
+
+    private function progress(PaymentScheme $scheme): array
+    {
+        return $this->getJson("/api/v1/payment-schemes/{$scheme->id}")->assertOk()->json('data');
+    }
+
+    public function test_loket_can_pay_an_approved_scheme_in_full_and_the_scheme_shows_it_as_paid(): void
+    {
+        [$unit, $billings, $scheme] = $this->approvedScheme();
+
+        $this->as('loket');
+        $before = $this->progress($scheme);
+        $this->assertSame('unpaid', $before['payment_status']);
+        $this->assertEqualsWithDelta((float) $scheme->final_amount, $before['outstanding_amount'], 0.001);
+        $this->assertEqualsWithDelta(0, $before['paid_amount'], 0.001);
+
+        // The loket screen loads the unit's outstanding bills; those in the scheme carry its id.
+        $found = $this->getJson('/api/v1/payments/search?unit_id='.$unit->id)->assertOk()->json('data.billings');
+        $this->assertSame([$scheme->id], collect($found)->pluck('payment_scheme_id')->unique()->values()->all());
+        $this->assertEqualsWithDelta((float) $scheme->final_amount, collect($found)->sum('penalty_detail.total_outstanding'), 0.001);
+
+        $receipt = $this->postJson('/api/v1/payments/process', [
+            'unit_id' => $unit->id,
+            'billing_ids' => $billings->pluck('id')->all(),
+            'use_balance' => false,
+            'payment_method_id' => 'C',
+        ])->assertCreated()->json('data');
+
+        // The customer pays exactly the scheme's final amount.
+        $this->assertEqualsWithDelta((float) $scheme->final_amount, (float) $receipt['grand_total'], 0.001);
+        $after = $this->progress($scheme);
+        $this->assertSame('paid', $after['payment_status']);
+        $this->assertEqualsWithDelta(0, $after['outstanding_amount'], 0.001);
+        $this->assertEqualsWithDelta((float) $scheme->final_amount, $after['paid_amount'], 0.001);
+        $this->assertSame(PaymentScheme::STATUS_APPROVED, $after['status']);
+    }
+
+    public function test_paying_only_some_of_a_scheme_is_refused_and_a_partial_amount_is_shown_as_partial(): void
+    {
+        [$unit, $billings, $scheme] = $this->approvedScheme();
+
+        $this->as('loket');
+        $this->postJson('/api/v1/payments/process', [
+            'unit_id' => $unit->id, 'billing_ids' => [$billings->first()->id], 'payment_method_id' => 'C',
+        ])->assertStatus(422)->assertJsonValidationErrors('billing_ids');
+
+        // All scheme bills selected, but only part of the amount tendered.
+        $this->postJson('/api/v1/payments/process', [
+            'unit_id' => $unit->id, 'billing_ids' => $billings->pluck('id')->all(),
+            'amount' => 500000, 'use_balance' => false, 'payment_method_id' => 'C',
+        ])->assertCreated();
+
+        $mid = $this->progress($scheme);
+        $this->assertSame('partial', $mid['payment_status']);
+        $this->assertEqualsWithDelta(500000, $mid['paid_amount'], 0.001);
+        $this->assertEqualsWithDelta((float) $scheme->final_amount - 500000, $mid['outstanding_amount'], 0.001);
+
+        // The rest is paid later from what the loket screen still lists (bills already settled are not offered again).
+        $remaining = collect($this->getJson('/api/v1/payments/search?unit_id='.$unit->id)->assertOk()->json('data.billings'))->pluck('id')->all();
+        $this->assertNotEmpty($remaining);
+        $this->postJson('/api/v1/payments/process', [
+            'unit_id' => $unit->id, 'billing_ids' => $remaining, 'use_balance' => false, 'payment_method_id' => 'C',
+        ])->assertCreated();
+        $this->assertSame('paid', $this->progress($scheme)['payment_status']);
+    }
+
+    public function test_only_approved_schemes_have_a_payment_status(): void
+    {
+        [$unit, $billings] = $this->unitWithArrears();
+        $pending = $this->submit($unit, $billings);
+
+        $this->as('loket');
+        $row = $this->progress($pending);
+        $this->assertNull($row['payment_status']);
+        $this->assertNull($row['outstanding_amount']);
+    }
+
+    public function test_a_month_rejected_by_admin_is_not_part_of_the_scheme_payment_status(): void
+    {
+        [$unit, $billings] = $this->unitWithArrears();
+        [$may, $june, $july] = $billings->all();
+        $scheme = $this->submit($unit, $billings, ['discount_value' => 0]);
+        $this->as('admin.estate');
+        $this->postJson("/api/v1/payment-schemes/{$scheme->id}/approve", [
+            'adjustments' => ['discount_type' => 'nominal', 'discount_value' => 0, 'rejected_billing_ids' => [$june->id]],
+        ])->assertOk();
+
+        $this->as('loket');
+        $this->postJson('/api/v1/payments/process', [
+            'unit_id' => $unit->id, 'billing_ids' => [$may->id, $july->id], 'use_balance' => false, 'payment_method_id' => 'C',
+        ])->assertCreated();
+
+        // June is still owed, but the scheme itself is fully paid.
+        $this->assertSame('paid', $this->progress($scheme)['payment_status']);
+        $this->assertSame(Billing::STATUS_UNPAID, $june->fresh()->status_id);
+    }
 }

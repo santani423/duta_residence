@@ -18,6 +18,8 @@ const gatewayOptions = [
 export default function AdminPaymentGatewaySettingsPage() {
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
+  const vaBankCode = Form.useWatch('va_bank_code', form);
+  const vaCompanyCode = Form.useWatch('va_company_code', form);
   const query = useQuery({ queryKey: ['admin-payment-gateway-setting'], queryFn: api.adminPaymentGateway.show });
   const setting = query.data?.data;
 
@@ -109,6 +111,28 @@ export default function AdminPaymentGatewaySettingsPage() {
               <Form.Item label="Nama pemilik rekening" name="manual_account_name">
                 <Input />
               </Form.Item>
+              <Form.Item
+                label="Kode bank (Virtual Account)"
+                name="va_bank_code"
+                rules={[{ pattern: /^\d+$/, message: 'Kode bank hanya boleh berisi angka' }]}
+              >
+                <Input maxLength={10} placeholder="Contoh: 8277" inputMode="numeric" />
+              </Form.Item>
+              <Form.Item
+                label="Kode perusahaan (Virtual Account)"
+                name="va_company_code"
+                rules={[{ pattern: /^\d+$/, message: 'Kode perusahaan hanya boleh berisi angka' }]}
+              >
+                <Input maxLength={10} placeholder="Contoh: 1234" inputMode="numeric" />
+              </Form.Item>
+              <Form.Item className="full-span">
+                <Alert
+                  type="info"
+                  showIcon
+                  message="Format nomor Virtual Account"
+                  description={`Kode bank - kode perusahaan - nomor unik: ${vaBankCode || 'KODEBANK'}${vaCompanyCode || 'KODEPERUSAHAAN'}XXXXXXXXX`}
+                />
+              </Form.Item>
               <Form.Item label="Maksimal bukti transfer (KB)" name="proof_max_size_kb" rules={[{ required: true }]}>
                 <InputNumber min={256} max={20480} style={{ width: '100%' }} />
               </Form.Item>
@@ -140,6 +164,7 @@ export default function AdminPaymentGatewaySettingsPage() {
               <p>Currency: {setting.public_config?.currency}</p>
               <p>Biaya admin: {setting.public_config?.admin_fee}</p>
               <p>Batas waktu: {setting.public_config?.payment_timeout_minutes} menit</p>
+              <p>Prefix Virtual Account: <strong>{setting.public_config?.va_code?.prefix || '-'}</strong></p>
               <p>Credential Xendit: <StatusBadge type="active" value={setting.public_config?.credential_status?.xendit} /></p>
               <p>Credential Midtrans: <StatusBadge type="active" value={setting.public_config?.credential_status?.midtrans} /></p>
             </Space>

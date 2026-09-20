@@ -1,8 +1,10 @@
 import { Alert, Button, Card, Descriptions, Drawer, Form, Input, InputNumber, Modal, Radio, Select, Space, Statistic, Tag, Typography, message } from 'antd';
-import { CheckOutlined, CloseOutlined, EyeOutlined, PlusOutlined, SendOutlined } from '@ant-design/icons';
+import { CheckOutlined, CloseOutlined, EyeOutlined, PlusOutlined, SendOutlined, WalletOutlined } from '@ant-design/icons';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/common/PageHeader.jsx';
+import ExportPdfButton from '../components/common/ExportPdfButton.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
 import Can from '../components/common/Can.jsx';
 import StatusBadge from '../components/common/StatusBadge.jsx';
@@ -27,6 +29,26 @@ const moneyInput = {
   parser: (value) => value?.replace(/\./g, ''),
   style: { width: '100%' },
 };
+
+const PAYMENT_STATUS = {
+  unpaid: ['Belum dibayar', 'gold'],
+  partial: ['Dibayar sebagian', 'blue'],
+  paid: ['Lunas', 'green'],
+};
+
+/** Status pembayaran skema yang sudah disetujui, beserta sisa yang masih harus dibayar. */
+function PaymentProgress({ scheme }) {
+  const [label, color] = PAYMENT_STATUS[scheme.payment_status] || [];
+
+  if (!label) return <Typography.Text type="secondary">-</Typography.Text>;
+
+  return (
+    <Space direction="vertical" size={0}>
+      <Tag color={color}>{label}</Tag>
+      {scheme.payment_status !== 'paid' ? <Typography.Text type="secondary">Sisa {formatCurrency(scheme.outstanding_amount)}</Typography.Text> : null}
+    </Space>
+  );
+}
 
 const percentFormat = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 });
 
@@ -336,7 +358,7 @@ function SubmitDrawer({ open, onClose }) {
   );
 }
 
-function DetailDrawer({ scheme, onClose }) {
+function DetailDrawer({ scheme, onClose, onPay }) {
   const rejectedMonths = (scheme?.items || []).filter((item) => item.status === 'rejected').map((item) => formatPeriod(item.billing?.year, item.billing?.month));
 
   return (
@@ -368,6 +390,20 @@ function DetailDrawer({ scheme, onClose }) {
             ]}
           />
           <SchemeAmounts scheme={scheme} />
+          {scheme.status === 'approved' ? (
+            <Card size="small" title="Pembayaran skema">
+              <Space size="large" wrap>
+                <PaymentProgress scheme={scheme} />
+                <Statistic title="Sudah dibayar" value={formatCurrency(scheme.paid_amount)} />
+                <Statistic title="Sisa" value={formatCurrency(scheme.outstanding_amount)} />
+                {scheme.payment_status !== 'paid' ? (
+                  <Can permission="payments.process">
+                    <Button type="primary" icon={<WalletOutlined />} onClick={() => onPay(scheme)}>Bayar Skema</Button>
+                  </Can>
+                ) : null}
+              </Space>
+            </Card>
+          ) : null}
           <SchemeItemsTable items={scheme.items || []} />
         </Space>
       ) : null}
@@ -631,6 +667,7 @@ function ApproveDrawer({ scheme, onClose, onDone }) {
 export default function PaymentSchemesPage() {
   const table = useTableState();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [submitOpen, setSubmitOpen] = useState(false);
   const [detail, setDetail] = useState(null);
   const [approving, setApproving] = useState(null);
@@ -657,6 +694,11 @@ export default function PaymentSchemesPage() {
     decisionForm.resetFields();
   }
 
+  // Lanjut ke halaman Pembayaran dengan unit dan tagihan skema ini sudah terpilih.
+  function paySchema(scheme) {
+    navigate(`/payments?pay_unit=${encodeURIComponent(scheme.unit_id)}&pay_scheme=${scheme.id}`);
+  }
+
   function finishApproval(closeDrawer = true) {
     if (closeDrawer) setApproving(null);
     queryClient.invalidateQueries({ queryKey: ['payment-schemes'] });
@@ -669,7 +711,12 @@ export default function PaymentSchemesPage() {
         subtitle="Pengajuan diskon pokok dan keringanan denda atas beberapa tagihan, menunggu persetujuan Admin."
         breadcrumbs={[{ label: 'Skema Pembayaran' }]}
         onRefresh={schemes.refetch}
-        extra={<Can permission="payment-schemes.submit"><Button type="primary" icon={<PlusOutlined />} onClick={() => setSubmitOpen(true)}>Ajukan Skema</Button></Can>}
+        extra={(
+          <Space wrap>
+            <ExportPdfButton dataset="payment-schemes" params={{ ...table.filters, search: table.search || undefined }} filename="skema-pembayaran.pdf" permission="payment-schemes.view" />
+            <Can permission="payment-schemes.submit"><Button type="primary" icon={<PlusOutlined />} onClick={() => setSubmitOpen(true)}>Ajukan Skema</Button></Can>
+          </Space>
+        )}
       />
       <FilterBar>
         <Input.Search allowClear placeholder="Cari ID unit / penghuni" value={table.search} onChange={(event) => table.setSearch(event.target.value)} className="filter-input" />
@@ -679,7 +726,7 @@ export default function PaymentSchemesPage() {
         <ResponsiveTable
           query={schemes}
           onChange={table.handleTableChange}
-          scrollX={1300}
+          scrollX={1500}
           columns={[
             { title: 'No.', dataIndex: 'id', width: 70 },
             { title: 'Unit', render: (_, row) => `${row.unit_id} — ${row.unit?.cluster?.name || ''} ${row.unit?.block || ''}/${row.unit?.lot_number || ''}` },
@@ -720,10 +767,11 @@ export default function PaymentSchemesPage() {
                 </Space>
               ),
             },
+            { title: 'Pembayaran', render: (_, row) => <PaymentProgress scheme={row} /> },
             { title: 'Diajukan', render: (_, row) => `${row.submitter?.name || '-'} · ${formatDateTime(row.submitted_at)}` },
             {
               title: 'Aksi',
-              width: 330,
+              width: 420,
               fixed: 'right',
               render: (_, row) => {
                 // Admin (dibatasi) tidak boleh menolak skema di atas batas diskonnya; itu keputusan Super Admin.
@@ -732,6 +780,11 @@ export default function PaymentSchemesPage() {
                 return (
                   <Space>
                     <Button size="small" icon={<EyeOutlined />} onClick={() => setDetail(row)}>Detail</Button>
+                    {row.status === 'approved' && row.payment_status !== 'paid' ? (
+                      <Can permission="payments.process">
+                        <Button size="small" type="primary" icon={<WalletOutlined />} onClick={() => paySchema(row)}>Bayar</Button>
+                      </Can>
+                    ) : null}
                     <Can permission="payment-schemes.approve">
                       <Button
                         size="small"
@@ -761,7 +814,7 @@ export default function PaymentSchemesPage() {
       </Card>
 
       <SubmitDrawer open={submitOpen} onClose={() => setSubmitOpen(false)} />
-      <DetailDrawer scheme={detail} onClose={() => setDetail(null)} />
+      <DetailDrawer scheme={detail} onClose={() => setDetail(null)} onPay={paySchema} />
 
       {approving ? <ApproveDrawer key={approving.id} scheme={approving} onClose={() => setApproving(null)} onDone={finishApproval} /> : null}
 

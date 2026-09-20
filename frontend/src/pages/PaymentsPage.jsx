@@ -1,10 +1,11 @@
-import { Alert, Badge, Button, Card, Checkbox, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Select, Space, Statistic, Tabs, Upload, message, Typography } from 'antd';
+import { Alert, Badge, Button, Card, Checkbox, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Select, Space, Statistic, Tabs, Tag, Upload, message, Typography } from 'antd';
 import { CheckOutlined, CloudUploadOutlined, CloseOutlined, FileExcelOutlined, LinkOutlined, PrinterOutlined, SearchOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import PageHeader from '../components/common/PageHeader.jsx';
+import ExportPdfButton from '../components/common/ExportPdfButton.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
 import Can from '../components/common/Can.jsx';
 import StatusBadge from '../components/common/StatusBadge.jsx';
@@ -33,6 +34,8 @@ export default function PaymentsPage() {
   const [successReceipt, setSuccessReceipt] = useState(null);
   const [unitQuery, setUnitQuery] = useState('');
   const [unitFilters, setUnitFilters] = useState({});
+  // Rentang periode yang dipakai pada pencarian tagihan aktif, supaya PDF-nya sama dengan tabel di layar.
+  const [searchRange, setSearchRange] = useState({});
   const [exportingTransactions, setExportingTransactions] = useState(null);
   const [exportingReceipts, setExportingReceipts] = useState(null);
   const [searchForm] = Form.useForm();
@@ -70,9 +73,13 @@ export default function PaymentsPage() {
       date_from: values.billing_range?.[0]?.format('YYYY-MM-DD'),
       date_to: values.billing_range?.[1]?.format('YYYY-MM-DD'),
     }),
-    onSuccess: (response) => {
+    onSuccess: (response, variables) => {
+      const found = response.data?.billings || [];
+      // Dibuka dari "Bayar" pada skema pembayaran: hanya tagihan skema itu yang dipilih; selain itu semua tagihan.
+      const fromScheme = variables?.schemeId ? found.filter((billing) => billing.payment_scheme_id === variables.schemeId) : [];
       setUnit(response.data);
-      setSelectedBillingIds((response.data?.billings || []).map((billing) => billing.id));
+      setSearchRange({ date_from: variables?.billing_range?.[0]?.format('YYYY-MM-DD'), date_to: variables?.billing_range?.[1]?.format('YYYY-MM-DD') });
+      setSelectedBillingIds((fromScheme.length ? fromScheme : found).map((billing) => billing.id));
       setTransaction(null);
       loketForm.setFieldsValue({ amount: undefined, use_balance: true });
     },
@@ -116,6 +123,7 @@ export default function PaymentsPage() {
       resetPaymentWorkspace();
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['payment-receipts'] });
+      queryClient.invalidateQueries({ queryKey: ['payment-schemes'] });
     },
     onError: (error) => {
       loketForm.setFields(mapValidationErrors(error));
@@ -264,10 +272,44 @@ export default function PaymentsPage() {
     if ((receiptTable.filters.unit_id || undefined) !== urlUnitId) receiptTable.setFilters({ ...receiptTable.filters, unit_id: urlUnitId });
   }, [urlUnitId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Dari tombol "Bayar" di Skema Pembayaran: /payments?pay_unit=AL001&pay_scheme=7 langsung membuka unit itu.
+  const payUnit = searchParams.get('pay_unit') || undefined;
+  const paySchemeId = Number(searchParams.get('pay_scheme')) || undefined;
+  const autoOpened = useRef(false);
+  useEffect(() => {
+    if (!payUnit || autoOpened.current) return;
+    autoOpened.current = true;
+    setUnitQuery(payUnit);
+    searchForm.setFieldsValue({ unit_id: payUnit });
+    search.mutate({ unit_id: payUnit, schemeId: paySchemeId });
+    setSearchParams((previous) => {
+      previous.delete('pay_unit');
+      previous.delete('pay_scheme');
+      return previous;
+    }, { replace: true });
+  }, [payUnit]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function updateUnitFilters(patch) {
     setUnitFilters((previous) => ({ ...previous, ...patch }));
     searchForm.setFieldValue('unit_id', undefined);
     setUnitQuery('');
+  }
+
+  // Tagihan dalam satu skema pembayaran adalah satu kewajiban: dipilih dan dilepas bersamaan.
+  function changeSelection(keys) {
+    const bills = unit?.billings || [];
+    const schemeOf = (id) => bills.find((billing) => billing.id === id)?.payment_scheme_id;
+    const next = new Set(keys);
+    keys.filter((id) => !selectedBillingIds.includes(id)).forEach((id) => {
+      const scheme = schemeOf(id);
+      if (scheme) bills.filter((billing) => billing.payment_scheme_id === scheme).forEach((billing) => next.add(billing.id));
+    });
+    selectedBillingIds.filter((id) => !keys.includes(id)).forEach((id) => {
+      const scheme = schemeOf(id);
+      if (scheme) bills.filter((billing) => billing.payment_scheme_id === scheme).forEach((billing) => next.delete(billing.id));
+    });
+    setSelectedBillingIds([...next]);
+    setTransaction(null);
   }
 
   function resetPaymentWorkspace() {
@@ -299,6 +341,12 @@ export default function PaymentsPage() {
     label: `${item.id} — ${item.cluster?.name || ''} ${item.block || ''}/${item.lot_number || ''} — ${item.resident?.name || ''}`,
   }));
 
+  const schemeGroups = Object.values(unpaidBillings.reduce((groups, billing) => {
+    if (!billing.payment_scheme_id) return groups;
+    const group = groups[billing.payment_scheme_id] || { id: billing.payment_scheme_id, count: 0, total: 0 };
+    return { ...groups, [billing.payment_scheme_id]: { ...group, count: group.count + 1, total: group.total + Number(billing.penalty_detail?.total_outstanding ?? 0) } };
+  }, {}));
+
   const billingColumns = [
     { title: 'Periode', render: (_, row) => formatPeriod(row.year, row.month) },
     { title: 'Jatuh Tempo', render: (_, row) => formatDate(row.penalty_detail?.due_date) },
@@ -308,6 +356,7 @@ export default function PaymentsPage() {
     { title: 'Terbayar', render: (_, row) => formatCurrency(row.penalty_detail?.total_paid ?? 0) },
     { title: 'Sisa Tagihan', render: (_, row) => formatCurrency(row.penalty_detail?.total_outstanding ?? 0) },
     { title: 'Status', render: (_, row) => <StatusBadge type="billing" value={row.status_id} /> },
+    ...(schemeGroups.length ? [{ title: 'Skema', render: (_, row) => (row.payment_scheme_id ? <Tag color="green">Skema #{row.payment_scheme_id}</Tag> : '-') }] : []),
   ];
 
   return (
@@ -373,12 +422,31 @@ export default function PaymentsPage() {
                 </Card>
 
                 {unit ? (
-                  <Card title={`${unit.id} - ${unit.resident?.name}`} extra={unit.cluster?.name}>
+                  <Card
+                    title={`${unit.id} - ${unit.resident?.name}`}
+                    extra={(
+                      <Space>
+                        {unit.cluster?.name}
+                        <ExportPdfButton dataset="unit-outstanding" params={{ unit_id: unit.id, ...searchRange }} filename={`tagihan-${unit.id}.pdf`} permission="billings.view" label="Cetak Tagihan Unit" />
+                      </Space>
+                    )}
+                  >
                     <Space size="large" wrap className="section-row">
                       <Statistic title="Saldo Unit" value={formatCurrency(unit.deposit_balance)} />
                       <Statistic title="Total Tunggakan" value={formatCurrency(unit.total_outstanding)} />
                       <Statistic title="Tagihan Mendatang" value={formatCurrency(unit.total_upcoming)} />
                     </Space>
+
+                    {schemeGroups.map((group) => (
+                      <Alert
+                        key={group.id}
+                        className="section-row"
+                        type="success"
+                        showIcon
+                        message={`Skema Pembayaran #${group.id} — ${group.count} tagihan, total ${formatCurrency(group.total)}`}
+                        description="Diskon dan keringanan denda dari skema yang disetujui sudah diterapkan pada tagihan bertanda Skema. Tagihan dalam satu skema dibayar bersamaan."
+                      />
+                    ))}
 
                     <ResponsiveTable
                       data={unpaidBillings}
@@ -387,7 +455,7 @@ export default function PaymentsPage() {
                       scrollX={1300}
                       rowSelection={{
                         selectedRowKeys: selectedBillingIds,
-                        onChange: (keys) => { setSelectedBillingIds(keys); setTransaction(null); },
+                        onChange: changeSelection,
                       }}
                     />
                     <Typography.Text className="section-row" style={{ display: 'block' }}>

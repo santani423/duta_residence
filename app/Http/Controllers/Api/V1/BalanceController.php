@@ -59,6 +59,18 @@ class BalanceController extends Controller
      */
     public function reconciliation(Request $request)
     {
+        $rows = $this->reconciliationRows($request);
+
+        $perPage = $request->integer('per_page', 15);
+        $page = $request->integer('page', 1);
+        $paginator = new LengthAwarePaginator($rows->forPage($page, $perPage)->values(), $rows->count(), $perPage, $page);
+
+        return $this->paginated($paginator);
+    }
+
+    /** Every row of the reconciliation table after search/status filters; also used by the PDF export. */
+    public function reconciliationRows(Request $request): \Illuminate\Support\Collection
+    {
         $rows = DB::table('units')
             ->leftJoin('unit_deposits', 'unit_deposits.unit_id', '=', 'units.id')
             ->leftJoin('residents', 'residents.id', '=', 'units.resident_id')
@@ -97,17 +109,12 @@ class BalanceController extends Controller
             });
 
         $status = $request->query('status', 'all');
-        $rows = match ($status) {
+
+        return match ($status) {
             'balanced' => $rows->where('status', 'balanced')->values(),
             'mismatch' => $rows->where('status', 'mismatch')->values(),
             'negative' => $rows->where('is_negative', true)->values(),
             default => $rows,
         };
-
-        $perPage = $request->integer('per_page', 15);
-        $page = $request->integer('page', 1);
-        $paginator = new LengthAwarePaginator($rows->forPage($page, $perPage)->values(), $rows->count(), $perPage, $page);
-
-        return $this->paginated($paginator);
     }
 }

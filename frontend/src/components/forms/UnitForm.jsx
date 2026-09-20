@@ -30,7 +30,34 @@ export const unitOccupancyStatusOptions = [
   { value: 'occupied', label: 'Occupied' },
 ];
 
-export default function UnitForm({ form, clusters = [], residents = [], onFinish, loading }) {
+// Nomor VA = prefix (kode bank + kode perusahaan dari Pengaturan Payment Gateway) + nomor unik.
+// Form hanya menginput nomor unik; prefix ditambahkan backend.
+export function vaSuffixFromNumber(vaNumber, prefix) {
+  return vaNumber && prefix && vaNumber.startsWith(prefix) ? vaNumber.slice(prefix.length) : undefined;
+}
+
+export function VaSuffixInput({ vaFormat, currentVaNumber, required = false }) {
+  const prefix = vaFormat?.prefix || '';
+  const length = vaFormat?.suffix_length || 9;
+  const legacy = currentVaNumber && !vaSuffixFromNumber(currentVaNumber, prefix);
+
+  let extra;
+  if (!prefix) extra = 'Kode bank dan kode perusahaan VA belum diatur di Pengaturan Payment Gateway.';
+  else if (legacy) extra = `Nomor VA saat ini ${currentVaNumber} (format lama). Isi untuk menggantinya dengan format baru.`;
+
+  return (
+    <Form.Item
+      label="Nomor Virtual Account"
+      name="va_suffix"
+      extra={extra}
+      rules={[{ required, message: 'Nomor virtual account wajib diisi' }, { pattern: new RegExp(`^\\d{${length}}$`), message: `Harus ${length} digit angka` }]}
+    >
+      <Input addonBefore={prefix || undefined} maxLength={length} inputMode="numeric" placeholder={`${length} digit`} disabled={!prefix} />
+    </Form.Item>
+  );
+}
+
+export default function UnitForm({ form, clusters = [], residents = [], vaFormat, currentVaNumber, onFinish, loading }) {
   return (
     <Form
       form={form}
@@ -67,6 +94,7 @@ export default function UnitForm({ form, clusters = [], residents = [], onFinish
       >
         <InputNumber min={1} precision={0} placeholder="1" style={{ width: '100%' }} />
       </Form.Item>
+      <VaSuffixInput vaFormat={vaFormat} currentVaNumber={currentVaNumber} />
       <Form.Item label="Tipe Properti" name="property_type_id" rules={[{ required: true }]}>
         <Select options={propertyTypeOptions} />
       </Form.Item>

@@ -3,6 +3,7 @@ import { EyeOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import PageHeader from '../components/common/PageHeader.jsx';
+import ExportPdfButton from '../components/common/ExportPdfButton.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import { api } from '../services/estateApi.js';
@@ -31,7 +32,14 @@ function LedgerDrawer({ unitId, onClose }) {
   });
 
   return (
-    <Drawer title={`Ledger Saldo - Unit ${unitId || ''}`} open={Boolean(unitId)} onClose={onClose} width={820} destroyOnHidden>
+    <Drawer
+      title={`Ledger Saldo - Unit ${unitId || ''}`}
+      open={Boolean(unitId)}
+      onClose={onClose}
+      width={820}
+      destroyOnHidden
+      extra={unitId ? <ExportPdfButton dataset="balance-ledger" params={{ unit_id: unitId }} filename={`ledger-saldo-${unitId}.pdf`} permission="balances.view" /> : null}
+    >
       <ResponsiveTable
         query={ledger}
         onChange={table.handleTableChange}
@@ -73,6 +81,7 @@ export default function BalanceReconciliationPage() {
         breadcrumbs={[{ label: 'Rekonsiliasi Saldo' }]}
         onRefresh={() => reconciliation.refetch()}
         loading={reconciliation.isFetching}
+        extra={<ExportPdfButton dataset="balance-reconciliation" params={{ status: table.filters.status, search: table.search || undefined }} filename="rekonsiliasi-saldo.pdf" permission="balances.view" />}
       />
 
       <Space size="large" wrap className="section-row">

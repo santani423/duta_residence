@@ -1,6 +1,7 @@
 import { Alert, Card, Col, Input, Row, Select, Statistic } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import PageHeader from '../components/common/PageHeader.jsx';
+import ExportPdfButton from '../components/common/ExportPdfButton.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import StatusBadge from '../components/common/StatusBadge.jsx';
@@ -22,6 +23,7 @@ export default function ReceivablesPage() {
         subtitle="Monitoring tagihan yang belum lunas beserta denda tunggakan berjenjang: tagihan bulan berjalan tidak dikenakan denda, tunggakan 1-2 bulan dikenakan Rp15.000, dan tunggakan 3 bulan atau lebih dikenakan Rp30.000 per tagihan."
         breadcrumbs={[{ label: 'Piutang' }]}
         onRefresh={() => { receivables.refetch(); aging.refetch(); }}
+        extra={<ExportPdfButton dataset="receivables" params={table.filters} filename="piutang.pdf" permission="reports.view" />}
       />
 
       <Alert

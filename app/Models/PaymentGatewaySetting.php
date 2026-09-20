@@ -6,11 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class PaymentGatewaySetting extends Model
 {
+    /** Jumlah digit nomor unik di belakang prefix VA ("XXXXXXXXX"). */
+    public const VA_SUFFIX_LENGTH = 9;
+
     protected $fillable = [
         'active_gateway', 'enabled_gateways', 'is_active', 'mode', 'currency',
         'admin_fee', 'payment_timeout_minutes', 'manual_bank_name',
         'manual_account_number', 'manual_account_name', 'manual_instructions',
-        'proof_max_size_kb', 'proof_allowed_extensions', 'xendit_public_key',
+        'va_bank_code', 'va_company_code', 'proof_max_size_kb', 'proof_allowed_extensions', 'xendit_public_key',
         'midtrans_client_key', 'callback_url', 'webhook_notes', 'updated_by',
     ];
 
@@ -63,6 +66,12 @@ class PaymentGatewaySetting extends Model
         return $this->allows((string) $this->active_gateway) ? $this->active_gateway : 'manual';
     }
 
+    /** Fixed leading part of every virtual account number: bank code + company code. */
+    public function vaPrefix(): string
+    {
+        return $this->va_bank_code.$this->va_company_code;
+    }
+
     public function allows(string $provider): bool
     {
         return in_array($provider, $this->availableGateways(), true);
@@ -91,6 +100,11 @@ class PaymentGatewaySetting extends Model
             'public_keys' => [
                 'xendit' => in_array('xendit', $available, true) ? $this->xendit_public_key : null,
                 'midtrans' => in_array('midtrans', $available, true) ? $this->midtrans_client_key : null,
+            ],
+            'va_code' => [
+                'bank_code' => $this->va_bank_code,
+                'company_code' => $this->va_company_code,
+                'prefix' => $this->vaPrefix(),
             ],
             'credential_status' => [
                 'xendit' => filled(config('payment.xendit.secret_key')),
