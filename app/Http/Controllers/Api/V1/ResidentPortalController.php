@@ -22,6 +22,7 @@ use App\Models\Unit;
 use App\Models\UnitDeposit;
 use App\Services\AuditService;
 use App\Services\NotificationPresenter;
+use App\Services\PaymentPrintService;
 use App\Services\PaymentStaffNotifier;
 use App\Services\PaymentService;
 use App\Services\PaymentSchemeService;
@@ -472,13 +473,13 @@ class ResidentPortalController extends Controller
             ->download("Receipt-{$payment->transaction_number}.pdf");
     }
 
-    public function downloadCashReceipt(Request $request, Receipt $receipt)
+    public function downloadCashReceipt(Request $request, Receipt $receipt, PaymentPrintService $printService)
     {
         $unit = $this->unit($request);
         abort_if($receipt->unit_id !== $unit->id, 404);
-        $receipt->load(['unit.cluster', 'billings', 'paymentTransaction.allocations.billing']);
 
-        return Pdf::loadHTML(view('pdf.spt', compact('receipt'))->render())
+        return Pdf::loadHTML(view('pdf.kwitansi', ['data' => $printService->forReceipt($receipt), 'thermal' => false])->render())
+            ->setPaper('a4')
             ->download("SPT-{$receipt->number}.pdf");
     }
 

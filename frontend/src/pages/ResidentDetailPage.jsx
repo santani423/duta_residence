@@ -33,10 +33,8 @@ import {
   DownloadOutlined,
   EditOutlined,
   EnvironmentOutlined,
-  EyeOutlined,
   MoreOutlined,
   PlusOutlined,
-  PrinterOutlined,
   SendOutlined,
   UserOutlined,
 } from '@ant-design/icons';
@@ -56,7 +54,8 @@ import { api, storageUrl } from '../services/estateApi.js';
 import { useTableState } from '../hooks/useTableState.js';
 import { compactText, formatCurrency, formatDate, formatDateTime, formatPeriod } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
-import { downloadBlob, printPdf } from '../utils/download.js';
+import { downloadBlob } from '../utils/download.js';
+import PaymentPrintMenu from '../components/common/PaymentPrintMenu.jsx';
 import { useAuth } from '../state/AuthContext.jsx';
 import MoneyInput from '../components/common/MoneyInput.jsx';
 
@@ -383,28 +382,12 @@ function TransactionsTab({ residentId, unitId, units }) {
   });
 
   // Plain <a href> links to the API would 401 (the Bearer token is only attached by axios),
-  // so receipts are fetched through the api client and then opened/saved from a Blob.
-  async function viewReceipt(number) {
-    try {
-      await printPdf(() => api.documents.receiptPdf(number), `kuitansi-${number}.pdf`);
-    } catch (error) {
-      message.error(getApiErrorMessage(error, 'Gagal memuat kuitansi'));
-    }
-  }
-
+  // so receipts are fetched through the api client and then saved from a Blob.
   async function downloadReceipt(number) {
     try {
       downloadBlob(await api.documents.receiptPdf(number), `kuitansi-${number}.pdf`);
     } catch (error) {
       message.error(getApiErrorMessage(error, 'Gagal mengunduh kuitansi'));
-    }
-  }
-
-  async function printTransaction(row) {
-    try {
-      await printPdf(() => api.documents.paymentTransactionPdf(row.id), `transaksi-${row.invoice_number}.pdf`);
-    } catch (error) {
-      message.error(getApiErrorMessage(error, 'Gagal memuat bukti transaksi'));
     }
   }
 
@@ -438,10 +421,10 @@ function TransactionsTab({ residentId, unitId, units }) {
             {
               title: 'Aksi',
               fixed: 'right',
-              width: 110,
+              width: 120,
               render: (_, row) => (
                 <Can permission="documents.generate">
-                  <Button size="small" icon={<PrinterOutlined />} onClick={() => printTransaction(row)}>Cetak</Button>
+                  <PaymentPrintMenu size="small" transaction={row} />
                 </Can>
               ),
             },
@@ -471,7 +454,7 @@ function TransactionsTab({ residentId, unitId, units }) {
               render: (_, row) => (
                 <Space>
                   <Can permission="documents.generate">
-                    <Button size="small" icon={<EyeOutlined />} onClick={() => viewReceipt(row.number)}>Lihat/Cetak</Button>
+                    <PaymentPrintMenu size="small" receiptNumber={row.number} />
                     <Button size="small" icon={<DownloadOutlined />} onClick={() => downloadReceipt(row.number)}>Unduh</Button>
                   </Can>
                   <Button size="small" icon={<SendOutlined />} loading={send.isPending} onClick={() => send.mutate(row.number)}>Kirim</Button>

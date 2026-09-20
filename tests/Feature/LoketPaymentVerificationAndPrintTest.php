@@ -6,6 +6,8 @@ use App\Models\Billing;
 use App\Models\PaymentTransaction;
 use App\Models\Receipt;
 use App\Models\User;
+use App\Services\PaymentPrintService;
+use App\Support\Terbilang;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -76,6 +78,8 @@ class LoketPaymentVerificationAndPrintTest extends TestCase
     {
         return [
             'kuitansi' => ['spt/{number}'],
+            'kuitansi thermal' => ['spt/{number}?format=thermal'],
+            'kuitansi dari transaksi' => ['payment-transactions/{transaction}/receipt'],
             'bukti transaksi' => ['payment-transactions/{transaction}'],
             'daftar transaksi' => ['payment-transactions'],
             'riwayat kuitansi' => ['payment-receipts?unit_id=GA012'],
@@ -127,6 +131,40 @@ class LoketPaymentVerificationAndPrintTest extends TestCase
         Sanctum::actingAs(User::where('username', 'loket')->first());
         $this->get("/api/v1/documents/payment-transactions/{$payment->id}")->assertOk();
         $this->get('/api/v1/documents/payment-transactions/999999')->assertNotFound();
+    }
+
+    public function test_transaction_receipt_is_only_available_once_the_payment_is_paid(): void
+    {
+        $this->seed();
+        $payment = $this->waitingVerificationPayment();
+
+        Sanctum::actingAs(User::where('username', 'loket')->first());
+        $this->getJson("/api/v1/documents/payment-transactions/{$payment->id}/receipt")->assertStatus(422);
+
+        $this->postJson("/api/v1/payments/{$payment->id}/verify")->assertOk();
+        $response = $this->get("/api/v1/documents/payment-transactions/{$payment->id}/receipt?format=thermal")->assertOk();
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+    }
+
+    public function test_kuitansi_shows_amounts_from_the_stored_receipt_and_the_terbilang(): void
+    {
+        $this->seed();
+        Sanctum::actingAs(User::where('username', 'loket')->first());
+
+        $number = $this->postJson('/api/v1/payments/process', [
+            'unit_id' => 'GA012', 'payment_method_id' => 'C', 'loket_code' => 'L01', 'cashier_name' => 'Loket Kasir',
+        ])->assertCreated()->json('data.number');
+        $receipt = Receipt::findOrFail($number);
+
+        $html = view('pdf.kwitansi', [
+            'data' => app(PaymentPrintService::class)->forReceipt($receipt),
+            'thermal' => false,
+        ])->render();
+
+        $this->assertStringContainsString($number, $html);
+        $this->assertStringContainsString('Rp '.number_format((float) $receipt->grand_total, 0, ',', '.'), $html);
+        $this->assertStringContainsString(Terbilang::rupiah($receipt->grand_total), $html);
+        $this->assertStringContainsString('Sisa tagihan unit', $html);
     }
 
     public function test_customer_cannot_print_staff_documents(): void

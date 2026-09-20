@@ -8,6 +8,7 @@ use App\Models\Cluster;
 use App\Models\PaymentTransaction;
 use App\Models\Receipt;
 use App\Models\Unit;
+use App\Services\PaymentPrintService;
 use App\Services\PenaltyService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -21,12 +22,41 @@ class DocumentController extends Controller
      */
     private const LIST_PDF_MAX_ROWS = 500;
 
-    public function spt(Receipt $receipt)
+    /**
+     * Kuitansi pembayaran loket. ?format=a4 (default) atau ?format=thermal (struk 80mm).
+     */
+    public function spt(Request $request, Receipt $receipt, PaymentPrintService $printService)
     {
-        $receipt->load(['unit.cluster', 'billings', 'paymentTransaction.allocations.billing']);
+        return $this->kwitansiPdf($request, $printService->forReceipt($receipt), "SPT-{$receipt->number}.pdf");
+    }
 
-        return Pdf::loadHTML(view('pdf.spt', compact('receipt'))->render())
-            ->download("SPT-{$receipt->number}.pdf");
+    /**
+     * Kuitansi dari satu transaksi yang sudah dibayar. Transaksi loket memakai kuitansi aslinya
+     * (nomor yang sama); transfer/gateway yang sudah terverifikasi dibuatkan dari alokasi pembayarannya.
+     */
+    public function paymentTransactionReceipt(Request $request, PaymentTransaction $transaction, PaymentPrintService $printService)
+    {
+        abort_if($transaction->status !== 'paid', 422, 'Kuitansi hanya tersedia untuk transaksi yang sudah dibayar.');
+
+        $receipt = Receipt::query()->where('payment_transaction_id', $transaction->id)->first();
+        $data = $receipt ? $printService->forReceipt($receipt) : $printService->forTransaction($transaction);
+
+        return $this->kwitansiPdf($request, $data, 'Kuitansi-'.($receipt->number ?? $transaction->invoice_number).'.pdf');
+    }
+
+    private function kwitansiPdf(Request $request, array $data, string $filename)
+    {
+        $thermal = $request->query('format') === 'thermal';
+        $pdf = Pdf::loadHTML(view('pdf.kwitansi', ['data' => $data, 'thermal' => $thermal])->render());
+
+        if ($thermal) {
+            // Struk 80mm: lebar tetap, tinggi mengikuti jumlah baris agar tidak terpotong ke halaman kedua.
+            $pdf->setPaper([0, 0, 226.77, 430 + count($data['rows']) * 78]);
+        } else {
+            $pdf->setPaper('a4');
+        }
+
+        return $pdf->download($filename);
     }
 
     public function spk(Billing $billing, PenaltyService $penaltyService)
@@ -122,11 +152,12 @@ class DocumentController extends Controller
      * Bukti transaksi untuk satu transaksi pembayaran (loket, transfer manual, atau gateway),
      * apa pun statusnya - berbeda dengan kuitansi (spt) yang hanya ada untuk pembayaran loket.
      */
-    public function paymentTransaction(PaymentTransaction $transaction)
+    public function paymentTransaction(PaymentTransaction $transaction, PaymentPrintService $printService)
     {
         $transaction->load(['unit.cluster', 'unit.resident', 'billings', 'allocations.billing', 'verifier', 'creator']);
+        $print = $printService->forTransaction($transaction);
 
-        return Pdf::loadHTML(view('pdf.payment-transaction', compact('transaction'))->render())
+        return Pdf::loadHTML(view('pdf.payment-transaction', compact('transaction', 'print'))->render())
             ->download("Transaksi-{$transaction->invoice_number}.pdf");
     }
 

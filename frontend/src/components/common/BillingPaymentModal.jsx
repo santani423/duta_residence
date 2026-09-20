@@ -1,5 +1,5 @@
 import { Alert, Button, Checkbox, DatePicker, Descriptions, Form, Input, Modal, Select, Space, Spin, Statistic, Typography, Upload, message } from 'antd';
-import { CloudUploadOutlined, PrinterOutlined } from '@ant-design/icons';
+import { CloudUploadOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
@@ -8,9 +8,9 @@ import { useAuth } from '../../state/AuthContext.jsx';
 import { useDebounce } from '../../hooks/useDebounce.js';
 import { formatCurrency, formatDateTime, formatPeriod } from '../../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../../utils/apiError.js';
-import { printPdf } from '../../utils/download.js';
 import ResponsiveTable from '../tables/ResponsiveTable.jsx';
 import MoneyInput from './MoneyInput.jsx';
+import PaymentPrintMenu from './PaymentPrintMenu.jsx';
 
 // Pembayaran loket langsung dari daftar tagihan: satu unit, satu atau beberapa tagihan yang sudah disetujui.
 export default function BillingPaymentModal({ unitId, billingIds = [], open, onClose }) {
@@ -126,14 +126,6 @@ export default function BillingPaymentModal({ unitId, billingIds = [], open, onC
     else pay.mutate(values);
   }
 
-  async function printReceipt() {
-    try {
-      await printPdf(() => api.documents.receiptPdf(receipt.number), `kuitansi-${receipt.number}.pdf`);
-    } catch (error) {
-      message.error(getApiErrorMessage(error, 'Gagal memuat kuitansi'));
-    }
-  }
-
   function close() {
     setReceipt(null);
     setTransaction(null);
@@ -159,7 +151,7 @@ export default function BillingPaymentModal({ unitId, billingIds = [], open, onC
       destroyOnHidden
       footer={receipt || transferSent ? [
         <Button key="close" onClick={close}>Tutup</Button>,
-        ...(receipt ? [<Button key="print" type="primary" icon={<PrinterOutlined />} onClick={printReceipt}>Cetak Kuitansi</Button>] : []),
+        ...(receipt ? [<PaymentPrintMenu key="print" type="primary" receiptNumber={receipt.number} label="Cetak Kuitansi" />] : []),
       ] : [
         <Button key="cancel" onClick={close}>Batal</Button>,
         <Button key="pay" type="primary" loading={pay.isPending || transfer.isPending} disabled={isTransfer ? !selected.length : !summary?.amount_allocated} onClick={() => form.submit()}>{isTransfer ? 'Kirim Bukti Transfer' : 'Proses Bayar'}</Button>,

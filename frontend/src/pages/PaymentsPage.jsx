@@ -18,6 +18,7 @@ import { formatCurrency, formatDate, formatDateTime, formatPaymentMethod, format
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
 import { downloadBlob, printPdf } from '../utils/download.js';
 import MoneyInput from '../components/common/MoneyInput.jsx';
+import PaymentPrintMenu from '../components/common/PaymentPrintMenu.jsx';
 
 const PAYMENT_METHOD_LABELS = { C: 'Cash', D: 'Debit/Transfer' };
 const PROVIDER_LABELS = { manual: 'Transfer', xendit: 'Xendit', midtrans: 'Midtrans' };
@@ -31,7 +32,6 @@ export default function PaymentsPage() {
   const [proofOpen, setProofOpen] = useState(null);
   const [detailOpen, setDetailOpen] = useState(null);
   const [verifyTarget, setVerifyTarget] = useState(null);
-  const [printingTransactionId, setPrintingTransactionId] = useState(null);
   const [successReceipt, setSuccessReceipt] = useState(null);
   const [unitQuery, setUnitQuery] = useState('');
   const [unitFilters, setUnitFilters] = useState({});
@@ -198,25 +198,6 @@ export default function PaymentsPage() {
   async function submitVerify() {
     const { notes } = await verifyForm.validateFields();
     verify.mutate({ id: verifyTarget.row.id, status: verifyTarget.status, notes });
-  }
-
-  async function printReceipt(number) {
-    try {
-      await printPdf(() => api.documents.receiptPdf(number), `kuitansi-${number}.pdf`);
-    } catch (error) {
-      message.error(getApiErrorMessage(error, 'Gagal memuat kuitansi'));
-    }
-  }
-
-  async function printTransaction(row) {
-    setPrintingTransactionId(row.id);
-    try {
-      await printPdf(() => api.documents.paymentTransactionPdf(row.id), `transaksi-${row.invoice_number}.pdf`);
-    } catch (error) {
-      message.error(getApiErrorMessage(error, 'Gagal memuat bukti transaksi'));
-    } finally {
-      setPrintingTransactionId(null);
-    }
   }
 
   async function printTransactions() {
@@ -607,7 +588,7 @@ export default function PaymentsPage() {
                           <Space size={[8, 8]} wrap>
                             <Button size="small" onClick={() => setDetailOpen(row)}>Detail</Button>
                             <Can permission="documents.generate">
-                              <Button size="small" icon={<PrinterOutlined />} loading={printingTransactionId === row.id} onClick={() => printTransaction(row)}>Cetak</Button>
+                              <PaymentPrintMenu size="small" transaction={row} />
                             </Can>
                             {row.payment_provider === 'manual' && row.status !== 'paid' ? <Button size="small" icon={<CloudUploadOutlined />} onClick={() => setProofOpen(row)}>Upload</Button> : null}
                             <Can permission="payments.verify">
@@ -692,7 +673,7 @@ export default function PaymentsPage() {
                         width: 150,
                         render: (_, row) => (
                           <Can permission="documents.generate">
-                            <Button size="small" icon={<PrinterOutlined />} onClick={() => printReceipt(row.number)}>Cetak Kuitansi</Button>
+                            <PaymentPrintMenu size="small" receiptNumber={row.number} label="Cetak Kuitansi" />
                           </Can>
                         ),
                       },
@@ -748,7 +729,7 @@ export default function PaymentsPage() {
               ) : null}
             </Can>
             <Can permission="documents.generate">
-              <Button icon={<PrinterOutlined />} loading={printingTransactionId === detailOpen?.id} onClick={() => printTransaction(detailOpen)}>Cetak</Button>
+              {detailOpen ? <PaymentPrintMenu transaction={detailOpen} /> : null}
             </Can>
             <Button onClick={() => setDetailOpen(null)}>Tutup</Button>
           </Space>
@@ -841,7 +822,7 @@ export default function PaymentsPage() {
         width={520}
         footer={[
           <Button key="close" onClick={() => setSuccessReceipt(null)}>Tutup</Button>,
-          <Button key="print" type="primary" icon={<PrinterOutlined />} onClick={() => printReceipt(successReceipt.number)}>Cetak Kuitansi</Button>,
+          <PaymentPrintMenu key="print" type="primary" receiptNumber={successReceipt?.number} label="Cetak Kuitansi" />,
         ]}
         destroyOnHidden
       >
