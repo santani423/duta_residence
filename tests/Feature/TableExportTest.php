@@ -194,4 +194,39 @@ class TableExportTest extends TestCase
         $this->get('/api/v1/documents/payment-transactions?resident_id='.$unit->resident_id)->assertOk();
         $this->get('/api/v1/documents/payment-receipts?resident_id=NOPE0000')->assertOk();
     }
+
+    public function test_receipts_excel_only_contains_the_selected_numbers(): void
+    {
+        $unit = $this->unitWithScheme();
+        $this->actAs('superadmin');
+
+        foreach (['KW-SEL-1', 'KW-SEL-2', 'KW-SEL-3'] as $number) {
+            \App\Models\Receipt::create([
+                'number' => $number,
+                'unit_id' => $unit->id,
+                'transaction_date' => now(),
+                'resident_name' => 'Penghuni '.$number,
+                'cluster_name' => 'Cluster A',
+                'block' => 'A',
+                'lot_number' => '1',
+                'total_billing' => 100000,
+                'total_penalty' => 0,
+                'billing_count' => 1,
+                'billing_periods' => '2026-09',
+                'grand_total' => 100000,
+                'status' => 'success',
+            ]);
+        }
+
+        $csv = $this->get('/api/v1/documents/payment-receipts-excel?numbers[]=KW-SEL-1&numbers[]=KW-SEL-3')
+            ->assertOk()
+            ->streamedContent();
+
+        $this->assertStringContainsString('KW-SEL-1', $csv);
+        $this->assertStringContainsString('KW-SEL-3', $csv);
+        $this->assertStringNotContainsString('KW-SEL-2', $csv);
+
+        $all = $this->get('/api/v1/documents/payment-receipts-excel')->streamedContent();
+        $this->assertStringContainsString('KW-SEL-2', $all);
+    }
 }

@@ -38,6 +38,7 @@ export default function PaymentsPage() {
   const [searchRange, setSearchRange] = useState({});
   const [exportingTransactions, setExportingTransactions] = useState(null);
   const [exportingReceipts, setExportingReceipts] = useState(null);
+  const [selectedReceiptNumbers, setSelectedReceiptNumbers] = useState([]);
   const [searchForm] = Form.useForm();
   const [loketForm] = Form.useForm();
   const [proofForm] = Form.useForm();
@@ -242,8 +243,15 @@ export default function PaymentsPage() {
     }
   }
 
-  async function printReceipts() {
+  // Bila ada kuitansi yang dicentang, hanya itu yang diekspor; jika tidak, semua hasil sesuai filter.
+  function receiptExportFilters() {
+    if (selectedReceiptNumbers.length) return { numbers: selectedReceiptNumbers };
     const { page: _page, per_page: _perPage, ...filters } = receiptTable.params;
+    return filters;
+  }
+
+  async function printReceipts() {
+    const filters = receiptExportFilters();
     setExportingReceipts('pdf');
     try {
       await printPdf(() => api.documents.paymentReceiptsPdf(filters), 'riwayat-kuitansi.pdf');
@@ -257,8 +265,7 @@ export default function PaymentsPage() {
   async function exportReceiptsExcel() {
     setExportingReceipts('excel');
     try {
-      const { page: _page, per_page: _perPage, ...filters } = receiptTable.params;
-      const blob = await api.documents.paymentReceiptsExcel(filters);
+      const blob = await api.documents.paymentReceiptsExcel(receiptExportFilters());
       downloadBlob(blob, 'riwayat-kuitansi.csv');
     } catch (error) {
       message.error(getApiErrorMessage(error, 'Gagal mengunduh data kuitansi'));
@@ -624,8 +631,8 @@ export default function PaymentsPage() {
                   extra={
                     <Can permission="documents.generate">
                       <Space wrap>
-                        <Button icon={<PrinterOutlined />} loading={exportingReceipts === 'pdf'} disabled={Boolean(exportingReceipts)} onClick={printReceipts}>Cetak PDF</Button>
-                        <Button icon={<FileExcelOutlined />} loading={exportingReceipts === 'excel'} disabled={Boolean(exportingReceipts)} onClick={exportReceiptsExcel}>Export Excel</Button>
+                        <Button icon={<PrinterOutlined />} loading={exportingReceipts === 'pdf'} disabled={Boolean(exportingReceipts)} onClick={printReceipts}>{selectedReceiptNumbers.length ? `Cetak PDF (${selectedReceiptNumbers.length})` : 'Cetak PDF'}</Button>
+                        <Button icon={<FileExcelOutlined />} loading={exportingReceipts === 'excel'} disabled={Boolean(exportingReceipts)} onClick={exportReceiptsExcel}>{selectedReceiptNumbers.length ? `Export Excel (${selectedReceiptNumbers.length})` : 'Export Excel'}</Button>
                       </Space>
                     </Can>
                   }
@@ -649,12 +656,26 @@ export default function PaymentsPage() {
                     className="filter-input"
                   />
                 </FilterBar>
+                {selectedReceiptNumbers.length ? (
+                  <Alert
+                    type="info"
+                    showIcon
+                    style={{ marginBottom: 12 }}
+                    message={`${selectedReceiptNumbers.length} kuitansi dipilih — Cetak PDF dan Export Excel hanya memuat kuitansi yang dipilih.`}
+                    action={<Button size="small" onClick={() => setSelectedReceiptNumbers([])}>Hapus pilihan</Button>}
+                  />
+                ) : null}
                 <Card>
                   <ResponsiveTable
                     query={receipts}
                     onChange={receiptTable.handleTableChange}
-                    scrollX={1390}
+                    scrollX={1440}
                     rowKey="number"
+                    rowSelection={{
+                      selectedRowKeys: selectedReceiptNumbers,
+                      onChange: setSelectedReceiptNumbers,
+                      preserveSelectedRowKeys: true,
+                    }}
                     columns={[
                       { title: 'Nomor', dataIndex: 'number', width: 190, fixed: 'left' },
                       { title: 'Penghuni', dataIndex: 'resident_name', width: 220 },

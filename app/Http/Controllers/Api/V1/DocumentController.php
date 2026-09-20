@@ -248,6 +248,8 @@ class DocumentController extends Controller
             ->when($request->query('date_to'), fn ($q, $value) => $q->whereDate('transaction_date', '<=', $value))
             ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value))
             ->when($request->query('resident_id'), fn ($q, $value) => $q->whereHas('unit', fn ($u) => $u->where('resident_id', $value)))
+            // Pilihan checkbox di tab "Riwayat Kuitansi": hanya kuitansi bernomor ini yang dicetak/diekspor.
+            ->when(array_filter((array) $request->query('numbers')), fn ($q, $numbers) => $q->whereIn('number', $numbers))
             ->latest('transaction_date');
     }
 
