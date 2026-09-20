@@ -1,11 +1,12 @@
-import { Button, Card, Form, Input, InputNumber, Modal, Space, Switch, message } from 'antd';
+import { Button, Card, Form, Input, InputNumber, Modal, Select, Space, Switch, message } from 'antd';
 import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/common/PageHeader.jsx';
 import StatusBadge from '../components/common/StatusBadge.jsx';
 import Can from '../components/common/Can.jsx';
+import FilterBar from '../components/common/FilterBar.jsx';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import { api } from '../services/estateApi.js';
 import { formatCurrency } from '../utils/format.js';
@@ -16,7 +17,18 @@ export default function ClustersPage() {
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [filters, setFilters] = useState({ code: '', name: '', status: undefined });
   const clusters = useQuery({ queryKey: ['clusters'], queryFn: () => api.clusters.list() });
+
+  const filteredClusters = useMemo(() => {
+    const code = filters.code.trim().toLowerCase();
+    const name = filters.name.trim().toLowerCase();
+    return (clusters.data?.data || []).filter((item) => (
+      (!code || String(item.id).toLowerCase().includes(code))
+      && (!name || String(item.name || '').toLowerCase().includes(name))
+      && (filters.status === undefined || Boolean(item.is_active) === filters.status)
+    ));
+  }, [clusters.data, filters]);
 
   const create = useMutation({
     mutationFn: (values) => api.clusters.create(values),
@@ -83,11 +95,26 @@ export default function ClustersPage() {
         loading={clusters.isFetching}
         extra={<Can permission="clusters.create"><Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Tambah Cluster</Button></Can>}
       />
+      <FilterBar>
+        <Input allowClear placeholder="Kode" value={filters.code} onChange={(event) => setFilters({ ...filters, code: event.target.value })} className="filter-input" />
+        <Input allowClear placeholder="Nama Cluster" value={filters.name} onChange={(event) => setFilters({ ...filters, name: event.target.value })} className="filter-input" />
+        <Select
+          allowClear
+          placeholder="Status"
+          value={filters.status}
+          onChange={(value) => setFilters({ ...filters, status: value })}
+          options={[
+            { value: true, label: 'Aktif' },
+            { value: false, label: 'Nonaktif' },
+          ]}
+          className="filter-input"
+        />
+      </FilterBar>
       <Card>
         <ResponsiveTable
           query={clusters}
-          data={clusters.data?.data || []}
-          pagination={false}
+          data={filteredClusters}
+          pagination={{ defaultPageSize: 10, showSizeChanger: true, showTotal: (total) => `${total} data` }}
           scrollX={960}
           columns={[
             { title: 'Kode', dataIndex: 'id', width: 90 },
