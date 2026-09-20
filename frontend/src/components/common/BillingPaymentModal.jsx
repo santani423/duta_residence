@@ -1,8 +1,10 @@
-import { Alert, Button, Checkbox, Descriptions, Form, Input, InputNumber, Modal, Select, Space, Spin, Statistic, Typography, message } from 'antd';
-import { PrinterOutlined } from '@ant-design/icons';
+import { Alert, Button, Checkbox, DatePicker, Descriptions, Form, Input, InputNumber, Modal, Select, Space, Spin, Statistic, Typography, Upload, message } from 'antd';
+import { CloudUploadOutlined, PrinterOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
 import { api } from '../../services/estateApi.js';
+import { useAuth } from '../../state/AuthContext.jsx';
 import { useDebounce } from '../../hooks/useDebounce.js';
 import { formatCurrency, formatDateTime, formatPeriod } from '../../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../../utils/apiError.js';
@@ -13,7 +15,21 @@ import ResponsiveTable from '../tables/ResponsiveTable.jsx';
 export default function BillingPaymentModal({ unitId, billingIds = [], open, onClose }) {
   const [form] = Form.useForm();
   const [receipt, setReceipt] = useState(null);
+  const [transaction, setTransaction] = useState(null);
+  const [transferSent, setTransferSent] = useState(null);
+  const [selectedVia, setSelectedVia] = useState('loket');
   const queryClient = useQueryClient();
+  const { can, user } = useAuth();
+
+  const gatewayConfig = useQuery({ queryKey: ['payment-gateway-config'], queryFn: api.payments.gatewayConfig, enabled: open });
+  const manualInfo = gatewayConfig.data?.data?.manual_payment || {};
+  const manualAvailable = (gatewayConfig.data?.data?.available_methods || ['manual']).includes('manual');
+  const viaOptions = [
+    ...(can('payments.process') ? [{ value: 'loket', label: 'Loket' }] : []),
+    ...(can('payments.create') && manualAvailable ? [{ value: 'transfer', label: 'Bank Transfer' }] : []),
+  ];
+  const via = viaOptions.some((option) => option.value === selectedVia) ? selectedVia : viaOptions[0]?.value;
+  const isTransfer = via === 'transfer';
 
   const unitQuery = useQuery({
     queryKey: ['billing-payment', 'unit', unitId],
@@ -41,13 +57,16 @@ export default function BillingPaymentModal({ unitId, billingIds = [], open, onC
 
   // Nominal tunai bawaan = sisa tagihan setelah saldo unit (bila dipakai); petugas tetap bisa mengubahnya.
   useEffect(() => {
-    if (open && selectedIds.length) form.setFieldValue('amount', Math.max(0, total - (useBalance ? balance : 0)));
+    if (!open || !selectedIds.length) return;
+    form.setFieldValue('amount', Math.max(0, total - (useBalance ? balance : 0)));
+    // Transfer bank selalu melunasi seluruh tagihan terpilih, jadi nominal bawaannya total tagihan.
+    form.setFieldValue('manual_amount', total);
   }, [open, total, balance, useBalance]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const preview = useQuery({
     queryKey: ['billing-payment', 'preview', unitId, selectedIds, debouncedAmount, useBalance],
     queryFn: () => api.payments.preview({ unit_id: unitId, billing_ids: selectedIds, amount: Number(debouncedAmount) || 0, use_balance: useBalance }),
-    enabled: open && Boolean(unitId) && selectedIds.length > 0,
+    enabled: open && !isTransfer && Boolean(unitId) && selectedIds.length > 0,
   });
   const summary = preview.data?.data;
 
@@ -58,7 +77,7 @@ export default function BillingPaymentModal({ unitId, billingIds = [], open, onC
       amount: Number(values.amount) || 0,
       use_balance: values.use_balance ?? true,
       payment_method_id: values.payment_method_id,
-      payment_channel_id: values.payment_channel_id,
+      payment_channel_id: 'L',
       loket_code: values.loket_code,
       cashier_name: values.cashier_name,
       notes: values.notes,
@@ -74,6 +93,38 @@ export default function BillingPaymentModal({ unitId, billingIds = [], open, onC
     },
   });
 
+  // Transfer: buat transaksi manual lalu unggah bukti; menunggu verifikasi petugas berwenang.
+  // Transaksi disimpan agar bila unggah gagal, percobaan ulang tidak membuat transaksi ganda.
+  const transfer = useMutation({
+    mutationFn: async (values) => {
+      let current = transaction;
+      if (!current) {
+        current = (await api.payments.createGateway({ unit_id: unitId, billing_ids: selectedIds, provider: 'manual' })).data;
+        setTransaction(current);
+      }
+      const formData = new FormData();
+      formData.append('proof', values.proof[0].originFileObj);
+      formData.append('manual_transfer_date', values.manual_transfer_date.format('YYYY-MM-DD'));
+      if (values.manual_amount) formData.append('amount', values.manual_amount);
+      if (values.manual_notes) formData.append('manual_notes', values.manual_notes);
+      return api.payments.uploadManualProof(current.id, formData);
+    },
+    onSuccess: (response) => {
+      setTransferSent(response.data);
+      message.success('Bukti transfer berhasil diunggah');
+      ['billings', 'payment-transactions', 'dashboard'].forEach((key) => queryClient.invalidateQueries({ queryKey: [key] }));
+    },
+    onError: (error) => {
+      form.setFields(mapValidationErrors(error));
+      message.error(getApiErrorMessage(error));
+    },
+  });
+
+  function submit(values) {
+    if (isTransfer) transfer.mutate(values);
+    else pay.mutate(values);
+  }
+
   async function printReceipt() {
     try {
       await printPdf(() => api.documents.receiptPdf(receipt.number), `kuitansi-${receipt.number}.pdf`);
@@ -84,6 +135,9 @@ export default function BillingPaymentModal({ unitId, billingIds = [], open, onC
 
   function close() {
     setReceipt(null);
+    setTransaction(null);
+    setTransferSent(null);
+    setSelectedVia('loket');
     form.resetFields();
     onClose();
   }
@@ -97,20 +151,26 @@ export default function BillingPaymentModal({ unitId, billingIds = [], open, onC
 
   return (
     <Modal
-      title={receipt ? 'Pembayaran Berhasil' : `Bayar Tagihan - Unit ${unitId ?? ''}`}
+      title={receipt || transferSent ? (receipt ? 'Pembayaran Berhasil' : 'Bukti Transfer Terkirim') : `Bayar Tagihan - Unit ${unitId ?? ''}`}
       open={open}
       onCancel={close}
       width={720}
       destroyOnHidden
-      footer={receipt ? [
+      footer={receipt || transferSent ? [
         <Button key="close" onClick={close}>Tutup</Button>,
-        <Button key="print" type="primary" icon={<PrinterOutlined />} onClick={printReceipt}>Cetak Kuitansi</Button>,
+        ...(receipt ? [<Button key="print" type="primary" icon={<PrinterOutlined />} onClick={printReceipt}>Cetak Kuitansi</Button>] : []),
       ] : [
         <Button key="cancel" onClick={close}>Batal</Button>,
-        <Button key="pay" type="primary" loading={pay.isPending} disabled={!summary?.amount_allocated} onClick={() => form.submit()}>Proses Bayar</Button>,
+        <Button key="pay" type="primary" loading={pay.isPending || transfer.isPending} disabled={isTransfer ? !selected.length : !summary?.amount_allocated} onClick={() => form.submit()}>{isTransfer ? 'Kirim Bukti Transfer' : 'Proses Bayar'}</Button>,
       ]}
     >
-      {receipt ? (
+      {transferSent ? (
+        <Space direction="vertical" size={8} style={{ width: '100%' }}>
+          <Typography.Title level={4} style={{ margin: 0 }}>{transferSent.invoice_number}</Typography.Title>
+          <Typography.Text>Total transfer: <strong>{formatCurrency(transferSent.total)}</strong></Typography.Text>
+          <Alert type="info" showIcon message="Bukti transfer sudah diunggah dan menunggu verifikasi. Tagihan akan lunas setelah pembayaran diverifikasi." />
+        </Space>
+      ) : receipt ? (
         <Space direction="vertical" size={8} style={{ width: '100%' }}>
           <Typography.Title level={4} style={{ margin: 0 }}>{receipt.number}</Typography.Title>
           <Typography.Text type="secondary">{formatDateTime(receipt.transaction_date)}</Typography.Text>
@@ -134,32 +194,71 @@ export default function BillingPaymentModal({ unitId, billingIds = [], open, onC
               {selected.length === 0 ? <Alert type="warning" showIcon message="Tidak ada tagihan yang dapat dibayar. Pastikan tagihan sudah disetujui (approve)." /> : (
                 <>
                   <ResponsiveTable data={selected} columns={columns} pagination={false} scrollX={500} size="small" />
+                  <Space direction="vertical" size={4} style={{ width: '100%', marginTop: 16 }}>
+                    <Typography.Text>Via</Typography.Text>
+                    {viaOptions.length ? (
+                      <Select value={via} onChange={setSelectedVia} options={viaOptions} style={{ width: 200 }} />
+                    ) : <Alert type="warning" showIcon message="Anda tidak memiliki akses untuk memproses pembayaran." />}
+                  </Space>
                   <Form
                     form={form}
                     layout="vertical"
-                    onFinish={pay.mutate}
-                    initialValues={{ payment_method_id: 'C', loket_code: 'L01', use_balance: true }}
+                    onFinish={submit}
+                    initialValues={{ payment_method_id: 'C', loket_code: 'L01', use_balance: true, cashier_name: user?.name?.slice(0, 50), manual_transfer_date: dayjs() }}
                     style={{ marginTop: 16 }}
                   >
-                    <Form.Item label="Nominal Pembayaran (tunai)" name="amount" rules={[{ type: 'number', min: 0, message: 'Nominal tidak boleh negatif' }]}>
-                      <InputNumber min={0} step={1000} style={{ width: '100%' }} />
-                    </Form.Item>
-                    <Form.Item name="use_balance" valuePropName="checked">
-                      <Checkbox disabled={!balance}>Gunakan saldo unit ({formatCurrency(balance)})</Checkbox>
-                    </Form.Item>
-                    <Space wrap style={{ width: '100%' }} align="start">
-                      <Form.Item label="Metode" name="payment_method_id" rules={[{ required: true }]}>
-                        <Select style={{ width: 160 }} options={[{ value: 'C', label: 'Cash' }, { value: 'D', label: 'Debit/Transfer' }]} />
-                      </Form.Item>
-                      <Form.Item label="Channel" name="payment_channel_id">
-                        <Select allowClear style={{ width: 160 }} options={[{ value: 'L', label: 'Loket' }, { value: 'M', label: 'Bank Transfer' }, { value: 'Q', label: 'QRIS' }]} />
-                      </Form.Item>
-                      <Form.Item label="Kode Loket" name="loket_code"><Input style={{ width: 120 }} /></Form.Item>
-                      <Form.Item label="Nama Kasir" name="cashier_name"><Input style={{ width: 180 }} /></Form.Item>
-                    </Space>
-                    <Form.Item label="Catatan" name="notes"><Input.TextArea rows={2} /></Form.Item>
+                    {isTransfer ? (
+                      <>
+                        <Alert
+                          type="info"
+                          showIcon
+                          style={{ marginBottom: 16 }}
+                          message="Transfer melunasi seluruh tagihan yang dipilih"
+                          description={`${manualInfo.bank_name || '-'} ${manualInfo.account_number || ''} a.n. ${manualInfo.account_name || '-'}. Pembayaran menunggu verifikasi setelah bukti diunggah.`}
+                        />
+                        <Space wrap align="start" style={{ width: '100%' }}>
+                          <Form.Item label="Nominal Transfer" name="manual_amount">
+                            <InputNumber min={0} step={1000} style={{ width: 220 }} />
+                          </Form.Item>
+                          <Form.Item label="Tanggal Transfer" name="manual_transfer_date" rules={[{ required: true, message: 'Tanggal transfer wajib diisi' }]}>
+                            <DatePicker style={{ width: 220 }} />
+                          </Form.Item>
+                        </Space>
+                        <Form.Item
+                          label="Bukti Transfer"
+                          name="proof"
+                          valuePropName="fileList"
+                          getValueFromEvent={(event) => event?.fileList}
+                          rules={[{ required: true, message: 'Bukti transfer wajib diunggah' }]}
+                        >
+                          <Upload.Dragger beforeUpload={() => false} maxCount={1} accept=".jpg,.jpeg,.png,.pdf">
+                            <p className="ant-upload-drag-icon"><CloudUploadOutlined /></p>
+                            <p>Tarik file ke sini atau klik untuk memilih</p>
+                            <p className="ant-upload-hint">Format: JPG, PNG, PDF.</p>
+                          </Upload.Dragger>
+                        </Form.Item>
+                        <Form.Item label="Catatan" name="manual_notes"><Input.TextArea rows={2} /></Form.Item>
+                      </>
+                    ) : (
+                      <>
+                        <Form.Item label="Nominal Pembayaran (tunai)" name="amount" rules={[{ type: 'number', min: 0, message: 'Nominal tidak boleh negatif' }]}>
+                          <InputNumber min={0} step={1000} style={{ width: '100%' }} />
+                        </Form.Item>
+                        <Form.Item name="use_balance" valuePropName="checked">
+                          <Checkbox disabled={!balance}>Gunakan saldo unit ({formatCurrency(balance)})</Checkbox>
+                        </Form.Item>
+                        <Space wrap style={{ width: '100%' }} align="start">
+                          <Form.Item label="Metode" name="payment_method_id" rules={[{ required: true }]}>
+                            <Select style={{ width: 160 }} options={[{ value: 'C', label: 'Cash' }, { value: 'D', label: 'Debit' }]} />
+                          </Form.Item>
+                          <Form.Item label="Kode Loket" name="loket_code"><Input style={{ width: 120 }} /></Form.Item>
+                          <Form.Item label="Nama Kasir" name="cashier_name"><Input style={{ width: 220 }} /></Form.Item>
+                        </Space>
+                        <Form.Item label="Catatan" name="notes"><Input.TextArea rows={2} /></Form.Item>
+                      </>
+                    )}
                   </Form>
-                  {summary ? (
+                  {!isTransfer && summary ? (
                     <Descriptions size="small" column={2} bordered title="Ringkasan Alokasi">
                       <Descriptions.Item label="Total Tunggakan">{formatCurrency(summary.total_outstanding)}</Descriptions.Item>
                       <Descriptions.Item label="Nominal Pembayaran">{formatCurrency(summary.payment_amount)}</Descriptions.Item>
@@ -169,7 +268,7 @@ export default function BillingPaymentModal({ unitId, billingIds = [], open, onC
                       <Descriptions.Item label="Saldo Baru">{formatCurrency(summary.new_balance)}</Descriptions.Item>
                     </Descriptions>
                   ) : null}
-                  {summary?.overpayment > 0 ? <Alert style={{ marginTop: 12 }} type="success" showIcon message={`Kelebihan pembayaran +${formatCurrency(summary.overpayment)} akan ditambahkan ke saldo unit.`} /> : null}
+                  {!isTransfer && summary?.overpayment > 0 ? <Alert style={{ marginTop: 12 }} type="success" showIcon message={`Kelebihan pembayaran +${formatCurrency(summary.overpayment)} akan ditambahkan ke saldo unit.`} /> : null}
                 </>
               )}
             </>

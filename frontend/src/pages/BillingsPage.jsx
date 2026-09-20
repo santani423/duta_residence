@@ -199,7 +199,7 @@ export default function BillingsPage({ mode = 'outstanding' }) {
       width: 320,
       render: (_, row) => (
         <Space>
-          <Can permission="payments.process">
+          <Can any={['payments.process', 'payments.create']}>
             <Button
               size="small"
               type="primary"
@@ -273,7 +273,7 @@ export default function BillingsPage({ mode = 'outstanding' }) {
       <FilterBar
         extra={isHistory ? null : (
           <Space wrap>
-            <Can permission="payments.process">
+            <Can any={['payments.process', 'payments.create']}>
               {singleUnitId ? (
                 <Button type="primary" icon={<DollarOutlined />} disabled={!payableIds.length} onClick={() => setPayTarget({ unitId: singleUnitId, ids: payableIds })}>
                   Bayar Terpilih{payableIds.length ? ` (${payableIds.length})` : ''}
