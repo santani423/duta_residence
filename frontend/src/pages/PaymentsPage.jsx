@@ -428,6 +428,7 @@ export default function PaymentsPage() {
                       <Space>
                         {unit.cluster?.name}
                         <ExportPdfButton dataset="unit-outstanding" params={{ unit_id: unit.id, ...searchRange }} filename={`tagihan-${unit.id}.pdf`} permission="billings.view" label="Cetak Tagihan Unit" />
+                        <ExportPdfButton dataset="unit-billing-history" params={{ unit_id: unit.id, ...searchRange }} filename={`riwayat-tagihan-${unit.id}.pdf`} permission="billings.view" label="Cetak Riwayat Tagihan" />
                       </Space>
                     )}
                   >

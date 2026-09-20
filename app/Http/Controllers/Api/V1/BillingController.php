@@ -215,7 +215,7 @@ class BillingController extends Controller
     {
         return Billing::query()
             ->with(['unit.cluster', 'unit.resident', 'status', 'approver'])
-            ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value))
+            ->when($request->query('unit_id'), fn ($q, $value) => $q->forUnitId($value))
             ->when($request->query('resident_id'), fn ($q, $value) => $q->whereHas('unit', fn ($inner) => $inner->where('resident_id', $value)))
             ->when($request->query('year'), fn ($q, $value) => $q->where('year', $value))
             ->when($request->query('month'), fn ($q, $value) => $q->where('month', $value))
@@ -224,6 +224,7 @@ class BillingController extends Controller
             // Riwayat Tagihan tidak mengirim flag ini sehingga semua status ikut tampil.
             ->when($request->boolean('outstanding'), fn ($q) => $q->outstanding())
             ->when($request->query('cluster_id'), fn ($q, $value) => $q->whereHas('unit', fn ($inner) => $inner->where('cluster_id', $value)))
+            ->when($request->query('block'), fn ($q, $value) => $q->whereHas('unit', fn ($inner) => $inner->where('block', 'like', "%{$value}%")))
             // Umur tunggakan dihitung murni dari selisih year/month (tanpa GREATEST/MAX untuk
             // tetap kompatibel lintas driver - nilai negatif otomatis gagal filter ambang >= 0).
             ->when($request->filled('min_overdue_months'), fn ($q) => $this->whereOverdueMonths($q, $now, '>=', $request->integer('min_overdue_months')))

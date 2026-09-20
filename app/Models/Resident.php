@@ -16,11 +16,12 @@ class Resident extends Model
         'id', 'name', 'phone', 'telephone', 'id_card_address',
         'district_id', 'email', 'identity_number', 'identity_type',
         'emergency_contact_name', 'emergency_contact_phone', 'notes',
-        'unit_unlinked_at', 'created_by', 'updated_by',
+        'is_active', 'unit_unlinked_at', 'created_by', 'updated_by',
     ];
 
     protected $casts = [
         'unit_unlinked_at' => 'datetime',
+        'is_active' => 'boolean',
     ];
 
     public const UNIT_STATUS_WITH_UNIT = 'with_unit';

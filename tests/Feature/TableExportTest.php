@@ -69,6 +69,7 @@ class TableExportTest extends TestCase
             'balance-reconciliation' => [],
             'balance-ledger' => ['unit_id' => $unit->id],
             'unit-outstanding' => ['unit_id' => $unit->id],
+            'unit-billing-history' => ['unit_id' => $unit->id],
             'report-monthly' => ['year' => now()->year, 'month' => now()->month],
             'report-daily' => ['date' => now()->toDateString()],
             'report-cashier' => ['date' => now()->toDateString()],
@@ -161,6 +162,7 @@ class TableExportTest extends TestCase
         $this->actAs('superadmin');
 
         $this->getJson('/api/v1/documents/tables/unit-outstanding')->assertStatus(422)->assertJsonValidationErrors('unit_id');
+        $this->getJson('/api/v1/documents/tables/unit-billing-history')->assertStatus(422)->assertJsonValidationErrors('unit_id');
         $this->getJson('/api/v1/documents/tables/balance-ledger')->assertStatus(422)->assertJsonValidationErrors('unit_id');
         $this->getJson('/api/v1/documents/tables/tidak-ada')->assertStatus(404);
     }

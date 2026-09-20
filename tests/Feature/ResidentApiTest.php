@@ -45,6 +45,29 @@ class ResidentApiTest extends TestCase
         $this->assertTrue($user->hasRole('customer'));
     }
 
+    public function test_resident_can_be_deactivated_and_reactivated_with_login_account(): void
+    {
+        $this->seed();
+
+        Sanctum::actingAs(User::where('username', 'root')->first());
+
+        $residentId = $this->postJson('/api/v1/residents', [
+            'name' => 'Budi Santoso',
+            'phone' => '081234567890',
+            'email' => 'budi.santoso@example.com',
+        ])->assertCreated()->json('data.resident.id');
+
+        $this->patchJson("/api/v1/residents/{$residentId}/active", ['is_active' => false])
+            ->assertOk()
+            ->assertJsonPath('data.is_active', false);
+        $this->assertFalse(User::where('resident_id', $residentId)->first()->is_active);
+
+        $this->patchJson("/api/v1/residents/{$residentId}/active", ['is_active' => true])
+            ->assertOk()
+            ->assertJsonPath('data.is_active', true);
+        $this->assertTrue(User::where('resident_id', $residentId)->first()->is_active);
+    }
+
     public function test_units_index_can_filter_to_unassigned_units_by_cluster_and_block(): void
     {
         $this->seed();

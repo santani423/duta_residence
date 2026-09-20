@@ -143,6 +143,25 @@ class ResidentController extends Controller
         return $this->success($resident->refresh(), 'Penghuni berhasil diperbarui.');
     }
 
+    /**
+     * Aktifkan / nonaktifkan penghuni. Akun login penghuni ikut disinkronkan agar
+     * penghuni nonaktif tidak bisa masuk ke portal customer.
+     */
+    public function setActive(Request $request, Resident $resident, AuditService $auditService)
+    {
+        $data = $request->validate(['is_active' => ['required', 'boolean']]);
+        $old = $resident->toArray();
+
+        $resident->update(['is_active' => $data['is_active'], 'updated_by' => $request->user()->id]);
+        $resident->users()->update(['is_active' => $data['is_active']]);
+        $auditService->log('resident_updated', 'residents', 'UPDATE', $resident, $old, $resident->toArray());
+
+        return $this->success(
+            $resident->refresh(),
+            $data['is_active'] ? 'Penghuni berhasil diaktifkan.' : 'Penghuni berhasil dinonaktifkan.',
+        );
+    }
+
     public function destroy(Resident $resident, AuditService $auditService)
     {
         if ($resident->units()->exists()) {

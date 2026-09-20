@@ -61,6 +61,29 @@ class UnitBillingScopeTest extends TestCase
         $this->assertSame([$this->unit->id], collect($rows)->pluck('unit_id')->unique()->values()->all());
     }
 
+    public function test_unit_filter_ignores_letter_case_and_surrounding_spaces(): void
+    {
+        $this->seedBillings();
+        $typed = rawurlencode(' '.strtolower($this->unit->id).' ');
+
+        $rows = $this->getJson("/api/v1/billings?unit_id={$typed}&outstanding=1&per_page=50")->assertOk()->json('data');
+
+        $this->assertCount(3, $rows);
+        $this->assertSame([$this->unit->id], collect($rows)->pluck('unit_id')->unique()->values()->all());
+    }
+
+    public function test_blank_unit_filter_lists_every_unit(): void
+    {
+        $this->seedBillings();
+
+        foreach (['', '%20%20'] as $blank) {
+            $rows = $this->getJson("/api/v1/billings?unit_id={$blank}&outstanding=1&per_page=50")->assertOk()->json('data');
+
+            $this->assertCount(4, $rows);
+            $this->assertEqualsCanonicalizing([$this->unit->id, $this->other->id], collect($rows)->pluck('unit_id')->unique()->values()->all());
+        }
+    }
+
     public function test_history_list_includes_every_status_and_year_for_the_unit_only(): void
     {
         $this->seedBillings();

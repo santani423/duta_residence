@@ -17,6 +17,7 @@ import {
   Select,
   Space,
   Statistic,
+  Popconfirm,
   Table,
   Tabs,
   Tag,
@@ -133,6 +134,7 @@ function ResidentInfoTab({ resident, onEdit }) {
           <Space direction="vertical" size={0}>
             <Typography.Title level={4} style={{ margin: 0 }}>{resident.name}</Typography.Title>
             <Typography.Text type="secondary">{resident.id}</Typography.Text>
+            <StatusBadge type="active" value={resident.is_active !== false} />
           </Space>
         </Space>
       </Card>
@@ -1306,6 +1308,15 @@ export default function ResidentDetailPage() {
     },
   });
 
+  const toggleActive = useMutation({
+    mutationFn: (isActive) => api.residents.setActive(id, isActive),
+    onSuccess: (response) => {
+      message.success(response?.message || 'Status penghuni berhasil diperbarui');
+      queryClient.invalidateQueries({ queryKey: ['residents'] });
+    },
+    onError: (error) => message.error(getApiErrorMessage(error)),
+  });
+
   const sendNotification = useMutation({
     mutationFn: (values) => api.residents.sendNotification(id, values),
     onSuccess: () => {
@@ -1334,6 +1345,19 @@ export default function ResidentDetailPage() {
         extra={
           <Space wrap>
             <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/residents')}>Kembali</Button>
+            <Can permission="residents.update">
+              <Popconfirm
+                title={resident.is_active === false ? 'Aktifkan penghuni ini?' : 'Nonaktifkan penghuni ini?'}
+                description={resident.is_active === false ? 'Akun login penghuni akan diaktifkan kembali.' : 'Akun login penghuni akan ikut dinonaktifkan.'}
+                okText="Ya"
+                cancelText="Batal"
+                onConfirm={() => toggleActive.mutate(resident.is_active === false)}
+              >
+                <Button danger={resident.is_active !== false} loading={toggleActive.isPending}>
+                  {resident.is_active === false ? 'Aktifkan' : 'Nonaktifkan'}
+                </Button>
+              </Popconfirm>
+            </Can>
             <Can permission="residents.update">
               <Button icon={<BellOutlined />} onClick={() => { notifyForm.resetFields(); setNotifyOpen(true); }}>Kirim Notifikasi</Button>
             </Can>

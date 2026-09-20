@@ -148,6 +148,19 @@ class Billing extends Model
         return $query->where('status_id', self::STATUS_UNPAID);
     }
 
+    /**
+     * Filter berdasarkan ID unit tanpa peka huruf besar/kecil dan spasi di tepi, sehingga "ga012"
+     * tetap menemukan unit "GA012" apa pun collation database-nya. ID dicocokkan ke tabel units
+     * (kecil) lebih dulu agar query tagihan tetap memakai indeks unit_id.
+     */
+    public function scopeForUnitId(Builder $query, string $unitId): Builder
+    {
+        $unitId = trim($unitId);
+        $resolved = Unit::query()->whereRaw('LOWER(id) = ?', [mb_strtolower($unitId)])->value('id');
+
+        return $query->where('unit_id', $resolved ?? $unitId);
+    }
+
     public function scopeOutstanding(Builder $query): Builder
     {
         return $query->whereIn('status_id', [self::STATUS_UNPAID, self::STATUS_PARTIAL]);

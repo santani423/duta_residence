@@ -96,8 +96,9 @@ class DocumentController extends Controller
     {
         return Billing::query()
             ->with(['unit.cluster', 'unit.resident', 'status'])
-            ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value))
+            ->when($request->query('unit_id'), fn ($q, $value) => $q->forUnitId($value))
             ->when($request->query('cluster_id'), fn ($q, $value) => $q->whereHas('unit', fn ($inner) => $inner->where('cluster_id', $value)))
+            ->when($request->query('block'), fn ($q, $value) => $q->whereHas('unit', fn ($inner) => $inner->where('block', 'like', "%{$value}%")))
             ->when($request->query('year'), fn ($q, $value) => $q->where('year', $value))
             ->when($request->query('month'), fn ($q, $value) => $q->where('month', $value))
             ->when($request->query('resident_id'), fn ($q, $value) => $q->whereHas('unit', fn ($inner) => $inner->where('resident_id', $value)))

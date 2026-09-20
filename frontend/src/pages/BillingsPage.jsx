@@ -1,5 +1,5 @@
 import { Alert, Button, Card, Col, DatePicker, Drawer, Form, Input, InputNumber, Modal, Row, Select, Space, Statistic, Tabs, message } from 'antd';
-import { CheckOutlined, FileExcelOutlined, FilePdfOutlined, PercentageOutlined, PlusOutlined } from '@ant-design/icons';
+import { CheckOutlined, DollarOutlined, FileExcelOutlined, FilePdfOutlined, PercentageOutlined, PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
@@ -8,6 +8,7 @@ import PageHeader from '../components/common/PageHeader.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
 import Can from '../components/common/Can.jsx';
 import StatusBadge from '../components/common/StatusBadge.jsx';
+import BillingPaymentModal from '../components/common/BillingPaymentModal.jsx';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import { api } from '../services/estateApi.js';
 import { useTableState } from '../hooks/useTableState.js';
@@ -29,6 +30,7 @@ export default function BillingsPage({ mode = 'outstanding' }) {
   const [selected, setSelected] = useState([]);
   const [discountTarget, setDiscountTarget] = useState(null);
   const [exporting, setExporting] = useState(null);
+  const [payTarget, setPayTarget] = useState(null);
   const [form] = Form.useForm();
   const [approveForm] = Form.useForm();
   const [discountForm] = Form.useForm();
@@ -41,11 +43,19 @@ export default function BillingsPage({ mode = 'outstanding' }) {
     if ((table.filters.unit_id || undefined) !== urlUnitId) table.setFilters({ ...table.filters, unit_id: urlUnitId });
   }, [urlUnitId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const filterUnitId = table.filters.unit_id?.trim() || undefined;
   const listParams = isHistory ? table.params : { ...table.params, outstanding: 1 };
   const billings = useQuery({ queryKey: ['billings', mode, listParams], queryFn: () => api.billings.list(listParams) });
   const { page: _p, per_page: _pp, ...summaryParams } = listParams;
   const summary = useQuery({ queryKey: ['billings', 'summary', mode, summaryParams], queryFn: () => api.billings.summary(summaryParams), enabled: !isHistory });
   const clusters = useQuery({ queryKey: ['clusters'], queryFn: () => api.clusters.list() });
+  // Bila daftar hanya berisi satu unit (mis. difilter per unit), petugas bisa memilih beberapa tagihan lalu langsung membayarnya.
+  const rows = billings.data?.data || [];
+  const listUnitIds = [...new Set(rows.map((row) => row.unit_id))];
+  const singleUnitId = listUnitIds.length === 1 && (billings.data?.meta?.total ?? rows.length) <= rows.length ? listUnitIds[0] : null;
+  const selectedRows = rows.filter((row) => selected.includes(row.id));
+  const pendingApprovalIds = selectedRows.filter((row) => !row.approved_at).map((row) => row.id);
+  const payableIds = selectedRows.filter((row) => row.approved_at).map((row) => row.id);
   const selectedUnitId = Form.useWatch('unit_id', form);
   const backEnd = Form.useWatch('period_end', form);
 
@@ -186,9 +196,21 @@ export default function BillingsPage({ mode = 'outstanding' }) {
     ] : [{
       title: 'Aksi',
       fixed: 'right',
-      width: 220,
+      width: 320,
       render: (_, row) => (
         <Space>
+          <Can permission="payments.process">
+            <Button
+              size="small"
+              type="primary"
+              icon={<DollarOutlined />}
+              disabled={!row.approved_at}
+              title={row.approved_at ? undefined : 'Tagihan harus disetujui terlebih dahulu'}
+              onClick={() => setPayTarget({ unitId: row.unit_id, ids: [row.id] })}
+            >
+              Bayar
+            </Button>
+          </Can>
           <Can permission="billings.approve">
             <Button
               size="small"
@@ -223,8 +245,8 @@ export default function BillingsPage({ mode = 'outstanding' }) {
       <PageHeader
         title={isHistory ? 'Riwayat Tagihan' : 'Tagihan'}
         subtitle={isHistory
-          ? `Seluruh riwayat tagihan (belum bayar, sebagian, lunas) dari semua tahun${urlUnitId ? ` untuk unit ${urlUnitId}` : ''}.`
-          : `Seluruh tagihan yang belum lunas dari semua tahun${urlUnitId ? ` untuk unit ${urlUnitId}` : ''}. Generate, filter, dan approval tagihan estate.`}
+          ? `Seluruh riwayat tagihan (belum bayar, sebagian, lunas) dari semua tahun${filterUnitId ? ` untuk unit ${filterUnitId}` : ''}.`
+          : `Seluruh tagihan yang belum lunas dari semua tahun${filterUnitId ? ` untuk unit ${filterUnitId}` : ''}. Generate, filter, dan approval tagihan estate.`}
         breadcrumbs={[{ label: isHistory ? 'Riwayat Tagihan' : 'Tagihan' }]}
         onRefresh={() => {
           billings.refetch();
@@ -250,16 +272,26 @@ export default function BillingsPage({ mode = 'outstanding' }) {
 
       <FilterBar
         extra={isHistory ? null : (
-          <Can permission="billings.approve">
-            <Button type="primary" icon={<CheckOutlined />} disabled={!selected.length} onClick={() => approve.mutate({ ids: selected, notes: approveForm.getFieldValue('approval_notes') })}>
-              Approve Terpilih
-            </Button>
-          </Can>
+          <Space wrap>
+            <Can permission="payments.process">
+              {singleUnitId ? (
+                <Button type="primary" icon={<DollarOutlined />} disabled={!payableIds.length} onClick={() => setPayTarget({ unitId: singleUnitId, ids: payableIds })}>
+                  Bayar Terpilih{payableIds.length ? ` (${payableIds.length})` : ''}
+                </Button>
+              ) : null}
+            </Can>
+            <Can permission="billings.approve">
+              <Button icon={<CheckOutlined />} disabled={!pendingApprovalIds.length} onClick={() => approve.mutate({ ids: pendingApprovalIds, notes: approveForm.getFieldValue('approval_notes') })}>
+                Approve Terpilih
+              </Button>
+            </Can>
+          </Space>
         )}
       >
         <Input allowClear placeholder="ID unit" value={table.filters.unit_id} onChange={(event) => table.setFilters({ ...table.filters, unit_id: event.target.value || undefined })} className="filter-input" />
         <ResidentFilter value={table.filters.resident_id} onChange={(value) => table.setFilters({ ...table.filters, resident_id: value })} />
         <Select allowClear placeholder="Cluster" options={(clusters.data?.data || []).map((item) => ({ value: item.id, label: item.name }))} value={table.filters.cluster_id} onChange={(value) => table.setFilters({ ...table.filters, cluster_id: value })} className="filter-input" />
+        <Input allowClear placeholder="Blok" value={table.filters.block} onChange={(event) => table.setFilters({ ...table.filters, block: event.target.value || undefined })} className="filter-input" />
         <InputNumber placeholder="Tahun" value={table.filters.year} onChange={(value) => table.setFilters({ ...table.filters, year: value })} className="filter-input" />
         <Select allowClear placeholder="Bulan" value={table.filters.month} onChange={(value) => table.setFilters({ ...table.filters, month: value })} className="filter-input" options={Array.from({ length: 12 }, (_, index) => ({ value: index + 1, label: dayjs().month(index).format('MMMM') }))} />
         <Select allowClear placeholder="Status" value={table.filters.status_id} onChange={(value) => table.setFilters({ ...table.filters, status_id: value })} className="filter-input" options={isHistory ? [{ value: '01', label: 'Belum Bayar' }, { value: '03', label: 'Sebagian' }, { value: '02', label: 'Lunas' }, { value: '04', label: 'Dibatalkan' }] : [{ value: '01', label: 'Belum Bayar' }, { value: '03', label: 'Sebagian' }]} />
@@ -284,8 +316,8 @@ export default function BillingsPage({ mode = 'outstanding' }) {
                   query={billings}
                   columns={columns}
                   onChange={table.handleTableChange}
-                  rowSelection={isHistory ? undefined : { selectedRowKeys: selected, onChange: setSelected, getCheckboxProps: (record) => ({ disabled: Boolean(record.approved_at) }) }}
-                  scrollX={isHistory ? 2000 : 1870}
+                  rowSelection={isHistory ? undefined : { selectedRowKeys: selected, onChange: setSelected }}
+                  scrollX={isHistory ? 2000 : 1970}
                 />
               ),
             },
@@ -347,6 +379,16 @@ export default function BillingsPage({ mode = 'outstanding' }) {
           </Form>
         )}
       </Drawer>
+
+      <BillingPaymentModal
+        open={Boolean(payTarget)}
+        unitId={payTarget?.unitId}
+        billingIds={payTarget?.ids}
+        onClose={() => {
+          setPayTarget(null);
+          setSelected([]);
+        }}
+      />
 
       <Modal
         title={`Set Diskon - BIL-${discountTarget?.id ?? ''}`}

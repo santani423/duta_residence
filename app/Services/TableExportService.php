@@ -41,6 +41,7 @@ class TableExportService
         'balance-reconciliation' => 'balances.view',
         'balance-ledger' => 'balances.view',
         'unit-outstanding' => 'billings.view',
+        'unit-billing-history' => 'billings.view',
         'report-monthly' => 'reports.view',
         'report-daily' => 'reports.view',
         'report-cashier' => 'reports.view',
@@ -67,6 +68,7 @@ class TableExportService
             'balance-reconciliation' => $this->balanceReconciliation($request),
             'balance-ledger' => $this->balanceLedger($request),
             'unit-outstanding' => $this->unitOutstanding($request),
+            'unit-billing-history' => $this->unitBillingHistory($request),
             'report-monthly' => $this->reportMonthly($request),
             'report-daily' => $this->reportDaily($request),
             'report-cashier' => $this->reportCashier($request),
@@ -323,8 +325,20 @@ class TableExportService
     /** The unit's open bills as the loket sees them when taking payment (with penalty and scheme). */
     private function unitOutstanding(Request $request): array
     {
+        return $this->unitBillingTable($request, outstandingOnly: true);
+    }
+
+    /** Every approved bill of the unit - paid, partial, unpaid and cancelled - not just the open ones. */
+    private function unitBillingHistory(Request $request): array
+    {
+        return $this->unitBillingTable($request, outstandingOnly: false);
+    }
+
+    private function unitBillingTable(Request $request, bool $outstandingOnly): array
+    {
         $unit = $this->requiredUnit($request);
-        $query = Billing::query()->with('unit')->where('unit_id', $unit->id)->outstanding()->approved()
+        $query = Billing::query()->with('unit')->where('unit_id', $unit->id)->approved()
+            ->when($outstandingOnly, fn ($q) => $q->outstanding())
             ->when($request->query('date_from'), fn ($q, $value) => $q->whereRaw('(year * 100 + month) >= ?', [$this->yearMonth($value)]))
             ->when($request->query('date_to'), fn ($q, $value) => $q->whereRaw('(year * 100 + month) <= ?', [$this->yearMonth($value)]))
             ->orderBy('year')->orderBy('month');
@@ -333,8 +347,8 @@ class TableExportService
         $details = $billings->map(fn (Billing $billing) => $this->penaltyService->calculateInvoiceTotal($billing));
 
         return [
-            'title' => 'Tagihan Belum Lunas Unit '.$unit->id,
-            'filename' => "tagihan-{$unit->id}.pdf",
+            'title' => ($outstandingOnly ? 'Tagihan Belum Lunas Unit ' : 'Riwayat Tagihan Unit ').$unit->id,
+            'filename' => ($outstandingOnly ? 'tagihan-' : 'riwayat-tagihan-').$unit->id.'.pdf',
             'meta' => [
                 'Unit '.$unit->id.' - '.($unit->resident?->name ?? '-').' - '.($unit->cluster?->name ?? '').' '.($unit->block ?? '').'/'.($unit->lot_number ?? ''),
                 $billings->count().' tagihan',
@@ -352,7 +366,7 @@ class TableExportService
                 $billing->payment_scheme_id ? 'Skema #'.$billing->payment_scheme_id : '-',
             ])->all(),
             'footer' => [[
-                ['text' => 'Total sisa tagihan', 'colspan' => 2],
+                ['text' => $outstandingOnly ? 'Total sisa tagihan' : 'Total ('.$billings->count().' tagihan)', 'colspan' => 2],
                 ['text' => $this->money($details->sum('principal_amount')), 'align' => 'right'],
                 ['text' => $this->money($details->sum('penalty_amount')), 'align' => 'right'],
                 ['text' => $this->money($details->sum('total_amount')), 'align' => 'right'],

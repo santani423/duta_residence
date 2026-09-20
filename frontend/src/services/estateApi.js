@@ -62,6 +62,7 @@ export const api = {
     detail: (id) => http.get(`/residents/${id}`),
     create: (payload) => http.post('/residents', payload),
     update: (id, payload) => http.put(`/residents/${id}`, payload),
+    setActive: (id, isActive) => http.patch(`/residents/${id}/active`, { is_active: isActive }),
     remove: (id) => http.delete(`/residents/${id}`),
     checkAvailability: (params) => http.get('/residents/check-availability', { params }),
     summary: (id, params) => http.get(`/residents/${id}/summary`, { params }),

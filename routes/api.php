@@ -129,6 +129,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::get('residents/check-availability', [ResidentController::class, 'checkAvailability'])->middleware('permission:residents.create|residents.update');
     Route::get('residents/{resident}', [ResidentController::class, 'show'])->middleware('permission:residents.view');
     Route::put('residents/{resident}', [ResidentController::class, 'update'])->middleware('permission:residents.update');
+    Route::patch('residents/{resident}/active', [ResidentController::class, 'setActive'])->middleware('permission:residents.update');
     Route::delete('residents/{resident}', [ResidentController::class, 'destroy'])->middleware('permission:residents.delete');
 
     Route::get('residents/{resident}/summary', [ResidentDetailController::class, 'summary'])->middleware('permission:residents.view');
