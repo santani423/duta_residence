@@ -1,8 +1,7 @@
-import { Button, Card, DatePicker, Descriptions, Drawer, Dropdown, Form, Input, Modal, Select, Space, Tabs, Tag, message } from 'antd';
-import { CreditCardOutlined, DeleteOutlined, EditOutlined, EyeOutlined, FileTextOutlined, HistoryOutlined, KeyOutlined, MoreOutlined, PlusOutlined, SwapOutlined, UserAddOutlined, UserOutlined } from '@ant-design/icons';
+import { Button, Card, Descriptions, Drawer, Dropdown, Form, Input, Modal, Segmented, Select, Space, Tabs, Tag, message } from 'antd';
+import { CreditCardOutlined, DeleteOutlined, EditOutlined, EyeOutlined, FileTextOutlined, HistoryOutlined, MoreOutlined, PlusOutlined, SwapOutlined, UserAddOutlined, UserOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/common/PageHeader.jsx';
 import ExportPdfButton from '../components/common/ExportPdfButton.jsx';
@@ -26,7 +25,9 @@ export default function UnitsPage() {
   const [form] = Form.useForm();
   const [convertForm] = Form.useForm();
   const [residentForm] = Form.useForm();
-  const [handoverForm] = Form.useForm();
+  const [assignForm] = Form.useForm();
+  // 'new' = buat penghuni baru, 'existing' = pilih penghuni yang datanya sudah ada (hanya dari aksi unit)
+  const [residentMode, setResidentMode] = useState('new');
   const queryClient = useQueryClient();
   const { can } = useAuth();
   const siteName = useSiteIdentity();
@@ -109,47 +110,20 @@ export default function UnitsPage() {
     },
   });
 
-  const handover = useMutation({
-    mutationFn: ({ unit, va_suffix, handover_date }) => api.units.update(unit.id, {
-      va_suffix,
-      resident_id: unit.resident_id ?? unit.resident?.id,
-      cluster_id: unit.cluster_id,
-      block: unit.block,
-      lot_number: unit.lot_number,
-      property_type_id: unit.property_type_id,
-      building_area: unit.building_area,
-      land_area: unit.land_area,
-      handover_date,
-      occupancy_id: unit.occupancy_id,
-      status_id: 'AK',
-      occupancy_role: unit.occupancy_role,
-      tenancy_start_date: unit.tenancy_start_date,
-      tenancy_end_date: unit.tenancy_end_date,
-      is_penalty_eligible: unit.is_penalty_eligible,
-      is_discount_eligible: unit.is_discount_eligible,
-      discount_rule_id: unit.discount_rule_id,
-      notes: unit.notes,
-    }),
+  const assignResident = useMutation({
+    mutationFn: (values) => api.units.assignResident(drawer.record.id, values),
     onSuccess: () => {
-      message.success('Serah terima kunci berhasil, unit sekarang aktif');
+      message.success('Penghuni berhasil ditautkan ke unit');
       setDrawer({ type: null, record: null });
-      handoverForm.resetFields();
+      assignForm.resetFields();
       queryClient.invalidateQueries({ queryKey: ['units'] });
+      queryClient.invalidateQueries({ queryKey: ['residents-lookup'] });
     },
     onError: (error) => {
-      handoverForm.setFields(mapValidationErrors(error));
+      assignForm.setFields(mapValidationErrors(error));
       message.error(getApiErrorMessage(error));
     },
   });
-
-  function openHandover(unit) {
-    handoverForm.resetFields();
-    handoverForm.setFieldsValue({
-      va_suffix: vaSuffixFromNumber(unit.va_number, vaFormat?.prefix),
-      handover_date: dayjs(),
-    });
-    setDrawer({ type: 'handover', record: unit });
-  }
 
   function openCreate() {
     form.resetFields();
@@ -164,11 +138,14 @@ export default function UnitsPage() {
 
   function openAddResident(record = null) {
     residentForm.resetFields();
-    if (record) residentForm.setFieldsValue({ unit_id: record.id });
+    assignForm.resetFields();
+    setResidentMode('new');
+    if (record) residentForm.setFieldsValue({ unit_id: record.id, va_suffix: vaSuffixFromNumber(record.va_number, vaFormat?.prefix) });
     setDrawer({ type: 'add-resident', record });
   }
 
   const clusterOptions = (clusters.data?.data || []).map((item) => ({ value: item.id, label: item.name }));
+  const existingMode = residentMode === 'existing' && Boolean(drawer.record);
   const residentOptions = (residents.data?.data || []).map((item) => ({ value: item.id, label: item.name }));
   const detailData = detail.data?.data;
 
@@ -218,15 +195,11 @@ export default function UnitsPage() {
               fixed: 'right',
               width: 92,
               render: (_, record) => {
-                const canHandover = record.property_type_id === 'B' && Boolean(record.resident?.id) && record.status_id !== 'AK';
                 const items = [
                   { key: 'detail', label: 'Detail', icon: <EyeOutlined /> },
                   record.resident?.id
                     ? { key: 'resident', label: 'Detail Penghuni', icon: <UserOutlined /> }
                     : { key: 'add-resident', label: 'Masukan Penghuni', icon: <UserAddOutlined />, permission: 'residents.create' },
-                  canHandover
-                    ? { key: 'handover', label: 'Serah Terima', icon: <KeyOutlined />, permission: 'units.update' }
-                    : null,
                   { key: 'billings', label: 'Tagihan', icon: <FileTextOutlined />, permission: 'billings.view' },
                   { key: 'billing-history', label: 'Riwayat Tagihan', icon: <HistoryOutlined />, permission: 'billings.view' },
                   { key: 'payments', label: 'Pembayaran', icon: <CreditCardOutlined />, permission: 'payments.view' },
@@ -243,7 +216,6 @@ export default function UnitsPage() {
                     if (key === 'billing-history') navigate(`/billings/history?unit_id=${encodeURIComponent(record.id)}`);
                     if (key === 'payments') navigate(`/payments?unit_id=${encodeURIComponent(record.id)}`);
                     if (key === 'add-resident') openAddResident(record);
-                    if (key === 'handover') openHandover(record);
                     if (key === 'edit') openEdit(record);
                     if (key === 'convert') setDrawer({ type: 'convert', record });
                     if (key === 'delete') {
@@ -302,22 +274,11 @@ export default function UnitsPage() {
                   <Descriptions.Item label="Status Unit">
                     <StatusBadge type="unitOccupancy" value={detailData?.occupancy_status} />
                   </Descriptions.Item>
-                  <Descriptions.Item label="Status Penghuni">
-                    <Space>
-                      {detailData?.status?.name}
-                      {detailData?.property_type_id === 'B' && detailData?.resident?.id && detailData?.status_id !== 'AK' ? (
-                        <Can permission="units.update">
-                          <Button size="small" type="link" icon={<KeyOutlined />} onClick={() => openHandover(detailData)}>
-                            Serah Terima
-                          </Button>
-                        </Can>
-                      ) : null}
-                    </Space>
-                  </Descriptions.Item>
+                  <Descriptions.Item label="Status Penghuni">{detailData?.status?.name}</Descriptions.Item>
                   <Descriptions.Item label="Telepon Pemilik">{compactText(detailData?.resident?.phone)}</Descriptions.Item>
                   <Descriptions.Item label="Email Pemilik">{compactText(detailData?.resident?.email)}</Descriptions.Item>
                   <Descriptions.Item label="Luas">{compactText(detailData?.building_area)} / {compactText(detailData?.land_area)} m2</Descriptions.Item>
-                  <Descriptions.Item label="Serah Terima">{formatDate(detailData?.handover_date)}</Descriptions.Item>
+                  <Descriptions.Item label="Tanggal Aktif">{formatDate(detailData?.handover_date)}</Descriptions.Item>
                   <Descriptions.Item label="Catatan" span={2}>{compactText(detailData?.notes)}</Descriptions.Item>
                 </Descriptions>
               ),
@@ -371,16 +332,63 @@ export default function UnitsPage() {
         open={drawer.type === 'add-resident'}
         onClose={() => setDrawer({ type: null, record: null })}
         width={620}
-        extra={<Space><Button onClick={() => setDrawer({ type: null, record: null })}>Batal</Button><Button type="primary" loading={createResident.isPending} onClick={() => residentForm.submit()}>Simpan</Button></Space>}
+        extra={(
+          <Space>
+            <Button onClick={() => setDrawer({ type: null, record: null })}>Batal</Button>
+            {existingMode ? (
+              <Button type="primary" loading={assignResident.isPending} onClick={() => assignForm.submit()}>Simpan</Button>
+            ) : (
+              <Button type="primary" loading={createResident.isPending} onClick={() => residentForm.submit()}>Simpan</Button>
+            )}
+          </Space>
+        )}
         destroyOnHidden
       >
-        <ResidentForm
-          form={residentForm}
-          districts={districts.data?.data || []}
-          clusters={clusters.data?.data || []}
-          onFinish={createResident.mutate}
-          loading={createResident.isPending}
-        />
+        {drawer.record ? (
+          <Segmented
+            block
+            style={{ marginBottom: 16 }}
+            value={residentMode}
+            onChange={setResidentMode}
+            options={[{ value: 'new', label: 'Penghuni Baru' }, { value: 'existing', label: 'Penghuni yang Sudah Ada' }]}
+          />
+        ) : null}
+        {existingMode ? (
+          <Form form={assignForm} layout="vertical" onFinish={assignResident.mutate} disabled={assignResident.isPending} initialValues={{ va_suffix: vaSuffixFromNumber(drawer.record.va_number, vaFormat?.prefix) }}>
+            <Form.Item label="Unit">
+              <Input readOnly value={`${drawer.record.id} - ${drawer.record.cluster?.name || drawer.record.cluster_id} Blok ${drawer.record.block} No ${drawer.record.lot_number}`} />
+            </Form.Item>
+            <Form.Item label="Penghuni" name="resident_id" rules={[{ required: true, message: 'Penghuni wajib dipilih' }]}>
+              <Select
+                showSearch
+                optionFilterProp="label"
+                placeholder="Cari nama penghuni"
+                loading={residents.isFetching}
+                options={(residents.data?.data || []).map((item) => ({ value: item.id, label: [item.id, item.name, item.phone].filter(Boolean).join(' - ') }))}
+              />
+            </Form.Item>
+            <VaSuffixInput
+              vaFormat={vaFormat}
+              required
+              extraRules={[{
+                validator: async (_, value) => {
+                  if (!vaFormat?.prefix || !new RegExp(`^\\d{${vaFormat.suffix_length}}$`).test(value || '')) return;
+                  const response = await api.residents.checkAvailability({ field: 'va_suffix', value, exclude_id: drawer.record.id }).catch(() => null);
+                  if (response?.data?.taken) throw new Error('Nomor virtual account sudah terdaftar');
+                },
+              }]}
+            />
+          </Form>
+        ) : (
+          <ResidentForm
+            form={residentForm}
+            districts={districts.data?.data || []}
+            clusters={clusters.data?.data || []}
+            fixedUnit={drawer.record}
+            onFinish={createResident.mutate}
+            loading={createResident.isPending}
+          />
+        )}
       </Drawer>
 
       <Modal
@@ -396,34 +404,6 @@ export default function UnitsPage() {
           </Form.Item>
           <Form.Item label="Catatan" name="notes">
             <Input.TextArea rows={3} />
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      <Modal
-        title="Serah Terima"
-        open={drawer.type === 'handover'}
-        onCancel={() => setDrawer({ type: null, record: null })}
-        onOk={() => handoverForm.submit()}
-        confirmLoading={handover.isPending}
-        okText="Aktifkan Unit"
-        destroyOnHidden
-      >
-        <p>
-          Unit <strong>{drawer.record?.id}</strong> akan diaktifkan setelah serah terima kunci dan dapat mulai ditagih biaya IPL sejak tanggal serah terima.
-        </p>
-        <Form
-          form={handoverForm}
-          layout="vertical"
-          onFinish={(values) => handover.mutate({
-            unit: drawer.record,
-            va_suffix: values.va_suffix,
-            handover_date: values.handover_date.format('YYYY-MM-DD'),
-          })}
-        >
-          <VaSuffixInput vaFormat={vaFormat} currentVaNumber={drawer.record?.va_number} required={!drawer.record?.va_number} />
-          <Form.Item label="Tanggal Serah Terima Kunci" name="handover_date" rules={[{ required: true, message: 'Pilih tanggal serah terima kunci' }]}>
-            <DatePicker style={{ width: '100%' }} />
           </Form.Item>
         </Form>
       </Modal>

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\PaymentGatewaySetting;
 use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -97,7 +98,10 @@ class ResidentApiTest extends TestCase
 
         $response = $this->postJson('/api/v1/residents', [
             'name' => 'Penghuni Baru',
+            'phone' => '081234567891',
+            'email' => 'penghuni.baru@example.com',
             'unit_id' => $unitId,
+            'va_suffix' => '123456789',
         ]);
 
         $response->assertCreated();
@@ -105,10 +109,115 @@ class ResidentApiTest extends TestCase
 
         $unit = Unit::query()->find($unitId);
         $this->assertSame($residentId, $unit->resident_id);
-        $this->assertSame(Unit::OCCUPANCY_BOOKED_ID, $unit->occupancy_id);
+        $this->assertSame(PaymentGatewaySetting::current()->vaPrefix().'123456789', $unit->va_number);
+        $this->assertSame('AK', $unit->status_id);
+        $this->assertSame(Unit::OCCUPANCY_OCCUPIED_ID, $unit->occupancy_id);
+        $this->assertSame(now()->toDateString(), $unit->handover_date->toDateString());
+        $this->assertSame('occupied', $unit->occupancy_status);
 
         $user = User::where('resident_id', $residentId)->first();
         $this->assertSame($unitId, $user->unit_id);
+    }
+
+    private function createEmptyUnit(string $lot): string
+    {
+        return $this->postJson('/api/v1/units', [
+            'cluster_id' => 'GA',
+            'block' => 'Z',
+            'lot_number' => $lot,
+            'property_type_id' => 'B',
+            'occupancy_id' => '2',
+            'status_id' => 'RK',
+        ])->assertCreated()->json('data.id');
+    }
+
+    public function test_linking_resident_to_unit_requires_va_phone_and_email(): void
+    {
+        $this->seed();
+        Sanctum::actingAs(User::where('username', 'root')->first());
+
+        $this->postJson('/api/v1/residents', [
+            'name' => 'Tanpa Kontak',
+            'unit_id' => $this->createEmptyUnit('11'),
+        ])->assertStatus(422)->assertJsonValidationErrors(['va_suffix', 'phone', 'email']);
+
+        $this->assertDatabaseMissing('residents', ['name' => 'Tanpa Kontak']);
+    }
+
+    public function test_linking_resident_to_unit_rejects_va_already_used_by_another_unit(): void
+    {
+        $this->seed();
+        Sanctum::actingAs(User::where('username', 'root')->first());
+
+        $this->postJson('/api/v1/residents', [
+            'name' => 'Pertama',
+            'phone' => '081234567893',
+            'email' => 'pertama@example.com',
+            'unit_id' => $this->createEmptyUnit('12'),
+            'va_suffix' => '555555555',
+        ])->assertCreated();
+
+        $this->postJson('/api/v1/residents', [
+            'name' => 'Kedua',
+            'phone' => '081234567894',
+            'email' => 'kedua@example.com',
+            'unit_id' => $this->createEmptyUnit('13'),
+            'va_suffix' => '555555555',
+        ])->assertStatus(422)->assertJsonValidationErrors(['va_suffix']);
+
+        $this->assertDatabaseMissing('residents', ['name' => 'Kedua']);
+    }
+
+    public function test_check_availability_reports_taken_va_suffix(): void
+    {
+        $this->seed();
+        Sanctum::actingAs(User::where('username', 'root')->first());
+
+        $unitId = $this->createEmptyUnit('14');
+        $this->postJson('/api/v1/residents', [
+            'name' => 'Pemilik VA',
+            'phone' => '081234567895',
+            'email' => 'pemilikva@example.com',
+            'unit_id' => $unitId,
+            'va_suffix' => '777777777',
+        ])->assertCreated();
+
+        $this->getJson('/api/v1/residents/check-availability?field=va_suffix&value=777777777')
+            ->assertOk()->assertJsonPath('data.taken', true);
+        $this->getJson('/api/v1/residents/check-availability?field=va_suffix&value=777777777&exclude_id='.$unitId)
+            ->assertOk()->assertJsonPath('data.taken', false);
+        $this->getJson('/api/v1/residents/check-availability?field=va_suffix&value=888888888')
+            ->assertOk()->assertJsonPath('data.taken', false);
+    }
+
+    public function test_existing_resident_can_be_assigned_to_a_unit_with_unique_va(): void
+    {
+        $this->seed();
+        Sanctum::actingAs(User::where('username', 'root')->first());
+
+        $residentId = $this->postJson('/api/v1/residents', ['name' => 'Sudah Ada'])->assertCreated()->json('data.resident.id');
+        $unitId = $this->createEmptyUnit('15');
+        $otherUnitId = $this->createEmptyUnit('16');
+
+        $this->postJson("/api/v1/units/{$unitId}/assign-resident", ['resident_id' => $residentId])
+            ->assertStatus(422)->assertJsonValidationErrors(['va_suffix']);
+
+        $this->postJson("/api/v1/units/{$unitId}/assign-resident", ['resident_id' => $residentId, 'va_suffix' => '246813579'])
+            ->assertOk();
+
+        $unit = Unit::query()->find($unitId);
+        $this->assertSame($residentId, $unit->resident_id);
+        $this->assertSame('AK', $unit->status_id);
+        $this->assertSame(Unit::OCCUPANCY_OCCUPIED_ID, $unit->occupancy_id);
+        $this->assertSame(now()->toDateString(), $unit->handover_date->toDateString());
+        $this->assertSame('occupied', $unit->occupancy_status);
+        $this->assertSame(PaymentGatewaySetting::current()->vaPrefix().'246813579', $unit->va_number);
+
+        $this->postJson("/api/v1/units/{$otherUnitId}/assign-resident", ['resident_id' => $residentId, 'va_suffix' => '246813579'])
+            ->assertStatus(422)->assertJsonValidationErrors(['va_suffix']);
+
+        $this->postJson("/api/v1/units/{$unitId}/assign-resident", ['resident_id' => $residentId, 'va_suffix' => '111111111'])
+            ->assertStatus(422)->assertJsonValidationErrors(['resident_id']);
     }
 
     public function test_creating_resident_rejects_unit_that_already_has_a_resident(): void
@@ -132,6 +241,9 @@ class ResidentApiTest extends TestCase
 
         $this->postJson('/api/v1/residents', [
             'name' => 'Penghuni Gagal',
+            'phone' => '081234567892',
+            'email' => 'gagal@example.com',
+            'va_suffix' => '123456789',
             'unit_id' => $unitId,
         ])->assertStatus(422)->assertJsonValidationErrors(['unit_id']);
     }

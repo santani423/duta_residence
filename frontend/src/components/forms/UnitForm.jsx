@@ -36,7 +36,7 @@ export function vaSuffixFromNumber(vaNumber, prefix) {
   return vaNumber && prefix && vaNumber.startsWith(prefix) ? vaNumber.slice(prefix.length) : undefined;
 }
 
-export function VaSuffixInput({ vaFormat, currentVaNumber, required = false }) {
+export function VaSuffixInput({ vaFormat, currentVaNumber, required = false, extraRules = [] }) {
   const prefix = vaFormat?.prefix || '';
   const length = vaFormat?.suffix_length || 9;
   const legacy = currentVaNumber && !vaSuffixFromNumber(currentVaNumber, prefix);
@@ -50,7 +50,19 @@ export function VaSuffixInput({ vaFormat, currentVaNumber, required = false }) {
       label="Nomor Virtual Account"
       name="va_suffix"
       extra={extra}
-      rules={[{ required, message: 'Nomor virtual account wajib diisi' }, { pattern: new RegExp(`^\\d{${length}}$`), message: `Harus ${length} digit angka` }]}
+      rules={[
+        { required, message: 'Nomor virtual account wajib diisi' },
+        {
+          // Divalidasi langsung saat mengetik (bukan menunggu blur/simpan) supaya kurang digit langsung terlihat.
+          validator: (_, value) => {
+            if (!value) return Promise.resolve();
+            if (!/^\d+$/.test(value)) return Promise.reject(new Error('Nomor virtual account hanya boleh angka'));
+            if (value.length < length) return Promise.reject(new Error(`Nomor virtual account kurang ${length - value.length} digit (minimal ${length} digit, terisi ${value.length})`));
+            return Promise.resolve();
+          },
+        },
+        ...extraRules,
+      ]}
     >
       <Input addonBefore={prefix || undefined} maxLength={length} inputMode="numeric" placeholder={`${length} digit`} disabled={!prefix} />
     </Form.Item>

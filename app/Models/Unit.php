@@ -42,6 +42,25 @@ class Unit extends Model
      */
     public const OCCUPANCY_BOOKED_ID = '4';
 
+    /** occupancy_id "Dihuni" - dipasang saat unit langsung aktif begitu penghuninya ditautkan. */
+    public const OCCUPANCY_OCCUPIED_ID = '1';
+
+    /**
+     * Atribut unit yang aktif begitu penghuni ditautkan (tanpa proses serah terima terpisah):
+     * status Aktif, occupancy Dihuni, dan tanggal aktif (dasar penagihan IPL) = hari ini
+     * kecuali sudah tercatat sebelumnya.
+     *
+     * @return array{status_id: string, occupancy_id: string, handover_date: mixed}
+     */
+    public function activationAttributes(): array
+    {
+        return [
+            'status_id' => 'AK',
+            'occupancy_id' => self::OCCUPANCY_OCCUPIED_ID,
+            'handover_date' => $this->handover_date ?? now()->toDateString(),
+        ];
+    }
+
     protected $fillable = [
         'id', 'va_number', 'resident_id', 'tenant_resident_id', 'billing_payer', 'cluster_id', 'block', 'lot_number', 'property_type_id',
         'building_area', 'land_area', 'handover_date', 'occupancy_id', 'status_id',

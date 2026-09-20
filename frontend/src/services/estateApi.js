@@ -117,6 +117,7 @@ export const api = {
     create: (payload) => http.post('/units', payload),
     update: (id, payload) => http.put(`/units/${id}`, payload),
     remove: (id) => http.delete(`/units/${id}`),
+    assignResident: (id, payload) => http.post(`/units/${id}/assign-resident`, payload),
     convert: (id, payload) => http.post(`/units/${id}/convert-property`, payload),
     installments: (id) => http.get(`/units/${id}/installments`),
   },

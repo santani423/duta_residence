@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api } from '../../services/estateApi.js';
 import InfoIcon from '../help/InfoIcon.jsx';
+import { VaSuffixInput, vaSuffixFromNumber } from './UnitForm.jsx';
 
 export const identityTypeOptions = [
   { value: 'KTP', label: 'KTP' },
@@ -25,14 +26,33 @@ async function checkAvailability(field, value, excludeId, label) {
   }
 }
 
-export default function ResidentForm({ form, districts = [], clusters = [], onFinish, loading, editing = false, residentId = null }) {
+export default function ResidentForm({ form, districts = [], clusters = [], onFinish, loading, editing = false, residentId = null, fixedUnit = null }) {
   const [unitClusterFilter, setUnitClusterFilter] = useState(undefined);
   const [unitBlockFilter, setUnitBlockFilter] = useState(undefined);
+
+  const vaFormat = useQuery({ queryKey: ['units-va-format'], queryFn: api.units.vaFormat }).data?.data;
+  // Nomor VA melekat di unit; begitu penghuni ditautkan ke unit, VA + kontak (HP & email) wajib diisi.
+  const unitId = Form.useWatch('unit_id', form);
+  const linkedToUnit = !editing && Boolean(unitId);
+
+  const vaField = linkedToUnit ? (
+    <VaSuffixInput
+      vaFormat={vaFormat}
+      required
+      extraRules={[{
+        validator: async (_, value) => {
+          // Cek unik hanya untuk nomor yang sudah lengkap, supaya tidak memanggil server di setiap ketikan.
+          if (!vaFormat?.prefix || !new RegExp(`^\\d{${vaFormat.suffix_length}}$`).test(value || '')) return;
+          await checkAvailability('va_suffix', value, unitId, 'Nomor virtual account');
+        },
+      }]}
+    />
+  ) : null;
 
   const availableUnits = useQuery({
     queryKey: ['available-units', unitClusterFilter, unitBlockFilter],
     queryFn: () => api.units.list({ unassigned: 1, cluster_id: unitClusterFilter, block: unitBlockFilter, per_page: 200 }),
-    enabled: !editing,
+    enabled: !editing && !fixedUnit,
   });
 
   return (
@@ -46,7 +66,18 @@ export default function ResidentForm({ form, districts = [], clusters = [], onFi
       <Form.Item label="Nama" name="name" rules={[{ required: true, message: 'Nama wajib diisi' }]}>
         <Input placeholder="Nama pemilik atau penghuni" />
       </Form.Item>
-      {!editing ? (
+      {!editing && fixedUnit ? (
+        <>
+          <Form.Item name="unit_id" hidden>
+            <Input />
+          </Form.Item>
+          <Form.Item label="Unit" className="full-span">
+            <Input readOnly value={`${fixedUnit.id} - ${fixedUnit.cluster?.name || fixedUnit.cluster_id} Blok ${fixedUnit.block} No ${fixedUnit.lot_number}`} />
+          </Form.Item>
+          {vaField}
+        </>
+      ) : null}
+      {!editing && !fixedUnit ? (
         <>
           <Form.Item label="Filter Unit Kosong" className="full-span" tooltip="Persempit daftar unit kosong di bawah berdasarkan cluster dan blok.">
             <Space wrap>
@@ -79,6 +110,10 @@ export default function ResidentForm({ form, districts = [], clusters = [], onFi
               showSearch
               optionFilterProp="label"
               placeholder="Belum ditautkan ke unit manapun"
+              onChange={(value) => {
+                const unit = (availableUnits.data?.data || []).find((item) => item.id === value);
+                form.setFieldValue('va_suffix', vaSuffixFromNumber(unit?.va_number, vaFormat?.prefix));
+              }}
               loading={availableUnits.isFetching}
               notFoundContent={availableUnits.isFetching ? 'Memuat...' : 'Tidak ada unit kosong'}
               options={(availableUnits.data?.data || []).map((unit) => ({
@@ -87,6 +122,7 @@ export default function ResidentForm({ form, districts = [], clusters = [], onFi
               }))}
             />
           </Form.Item>
+          {vaField}
         </>
       ) : null}
       <Form.Item
@@ -94,6 +130,7 @@ export default function ResidentForm({ form, districts = [], clusters = [], onFi
         name="phone"
         validateTrigger="onBlur"
         rules={[
+          { required: linkedToUnit, message: 'Nomor HP wajib diisi' },
           { pattern: /^(\+62|62|0)8[1-9][0-9]{6,10}$/, message: 'Nomor HP tidak valid (contoh: 08123456789)' },
           { validator: (_, value) => checkAvailability('phone', value, residentId, 'Nomor HP') },
         ]}
@@ -108,6 +145,7 @@ export default function ResidentForm({ form, districts = [], clusters = [], onFi
         name="email"
         validateTrigger="onBlur"
         rules={[
+          { required: linkedToUnit, message: 'Email wajib diisi' },
           { type: 'email', message: 'Format email tidak valid' },
           { validator: (_, value) => checkAvailability('email', value, residentId, 'Email') },
         ]}

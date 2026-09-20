@@ -15,6 +15,7 @@ use App\Services\DiscountService;
 use App\Services\PenaltyService;
 use App\Services\UnitCodeGeneratorService;
 use App\Services\UnitOwnershipSyncService;
+use App\Services\UnitVaNumberService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -149,10 +150,17 @@ class UnitController extends Controller
         }
 
         // Unit baru saja ditautkan ke seorang penghuni/customer (mis. lewat field "Pemilik /
-        // Penghuni" di form edit unit) - tandai Occupancy sebagai Booked, konsisten dengan alur
-        // "Masukan Penghuni" di ResidentController::store().
+        // Penghuni" di form edit unit), konsisten dengan alur "Masukan Penghuni" di
+        // ResidentController::store(). Bila nomor VA sudah ada, unit langsung aktif (tanpa serah
+        // terima terpisah); tanpa VA tetap Booked sampai VA diisi.
         if ($unit->resident_id === null && ! empty($data['resident_id'] ?? null)) {
             $data['occupancy_id'] = Unit::OCCUPANCY_BOOKED_ID;
+
+            if (! empty($data['va_number'] ?? $unit->va_number)) {
+                $activation = $unit->activationAttributes();
+                $activation['handover_date'] = $data['handover_date'] ?? $activation['handover_date'];
+                $data = $activation + $data;
+            }
         }
 
         // Hubungan ke penghuni dilepas: status Booked hanya berlaku selama ada penghuni.
@@ -172,6 +180,36 @@ class UnitController extends Controller
         $ownershipSync->markUnlinked($releasedResidentIds);
 
         return $this->success($unit->refresh()->load(['cluster', 'status', 'resident']), 'Unit berhasil diperbarui.');
+    }
+
+    /**
+     * "Masukan Penghuni" dari aksi unit untuk penghuni yang datanya sudah ada: tautkan penghuni
+     * ke unit yang dipilih dan simpan nomor VA unit tersebut (wajib, unik). Unit langsung aktif.
+     */
+    public function assignResident(Request $request, Unit $unit, AuditService $auditService, UnitOwnershipSyncService $ownershipSync, UnitVaNumberService $vaNumbers)
+    {
+        $data = $request->validate([
+            'resident_id' => ['required', 'exists:residents,id'],
+            'va_suffix' => ['required', 'string'],
+        ], [
+            'resident_id.required' => 'Penghuni wajib dipilih.',
+            'va_suffix.required' => 'Nomor virtual account wajib diisi.',
+        ]);
+
+        if ($unit->resident_id !== null) {
+            throw ValidationException::withMessages(['resident_id' => ['Unit ini sudah memiliki penghuni.']]);
+        }
+
+        $old = $unit->toArray();
+        $unit->update([
+            'resident_id' => $data['resident_id'],
+            'va_number' => $vaNumbers->compose($data['va_suffix'], $unit),
+            'updated_by' => $request->user()->id,
+        ] + $unit->activationAttributes());
+        $auditService->log('unit_updated', 'units', 'UPDATE', $unit, $old, $unit->toArray());
+        $ownershipSync->sync($unit, $auditService);
+
+        return $this->success($unit->refresh()->load(['cluster', 'status', 'resident']), 'Penghuni berhasil ditautkan ke unit.');
     }
 
     public function destroy(Unit $unit, AuditService $auditService, UnitOwnershipSyncService $ownershipSync)
@@ -216,46 +254,12 @@ class UnitController extends Controller
         ]);
     }
 
-    /**
-     * Nomor VA lengkap = kode bank + kode perusahaan (Pengaturan Payment Gateway) + 9 digit yang
-     * diinput di form unit. Prefix selalu diambil dari pengaturan, bukan dari klien.
-     */
+    /** Nomor VA lengkap dari 9 digit input form; prefix dan keunikan dicek di UnitVaNumberService. */
     private function composeVaNumber(Request $request, ?Unit $unit): ?string
     {
         $suffix = trim((string) $request->input('va_suffix', ''));
 
-        if ($suffix === '') {
-            return null;
-        }
-
-        $length = PaymentGatewaySetting::VA_SUFFIX_LENGTH;
-
-        if (! preg_match('/^\d{'.$length.'}$/', $suffix)) {
-            throw ValidationException::withMessages(['va_suffix' => ["Nomor VA harus berupa {$length} digit angka."]]);
-        }
-
-        $prefix = PaymentGatewaySetting::current()->vaPrefix();
-
-        if ($prefix === '') {
-            throw ValidationException::withMessages([
-                'va_suffix' => ['Kode bank dan kode perusahaan VA belum diatur di Pengaturan Payment Gateway.'],
-            ]);
-        }
-
-        $vaNumber = $prefix.$suffix;
-
-        $taken = Unit::query()
-            ->where('va_number', $vaNumber)
-            ->when($unit, fn ($query) => $query->where('id', '!=', $unit->id))
-            ->exists();
-
-        if ($taken) {
-            throw ValidationException::withMessages([
-                'va_suffix' => ['Nomor virtual account ini sudah digunakan oleh unit lain. Silakan gunakan nomor lain.'],
-            ]);
-        }
-
-        return $vaNumber;
+        return $suffix === '' ? null : app(UnitVaNumberService::class)->compose($suffix, $unit);
     }
 
     private function validateUnit(Request $request, ?Unit $unit = null): array

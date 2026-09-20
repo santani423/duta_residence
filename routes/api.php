@@ -253,6 +253,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::post('units', [UnitController::class, 'store'])->middleware('permission:units.create');
     Route::get('units/{unit}', [UnitController::class, 'show'])->middleware('permission:units.view');
     Route::put('units/{unit}', [UnitController::class, 'update'])->middleware('permission:units.update');
+    Route::post('units/{unit}/assign-resident', [UnitController::class, 'assignResident'])->middleware('permission:units.update');
     Route::delete('units/{unit}', [UnitController::class, 'destroy'])->middleware('permission:units.delete');
     Route::post('units/{unit}/convert-property', [UnitController::class, 'convertProperty'])->middleware('permission:units.convert-property');
     Route::get('units/{unit}/installments', [InstallmentController::class, 'byUnit'])->middleware('permission:installments.view');

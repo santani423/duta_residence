@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
+use App\Models\PaymentGatewaySetting;
 use App\Models\Resident;
 use App\Models\Unit;
 use App\Models\User;
@@ -11,6 +12,7 @@ use App\Services\AuditService;
 use App\Services\CollectorAssignmentService;
 use App\Services\ResidentAccountService;
 use App\Services\UnitOwnershipSyncService;
+use App\Services\UnitVaNumberService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -44,7 +46,7 @@ class ResidentController extends Controller
     public function checkAvailability(Request $request)
     {
         $data = $request->validate([
-            'field' => ['required', Rule::in(['email', 'phone', 'username'])],
+            'field' => ['required', Rule::in(['email', 'phone', 'username', 'va_suffix'])],
             'value' => ['required', 'string'],
             'exclude_id' => ['nullable', 'string'],
         ]);
@@ -52,6 +54,14 @@ class ResidentController extends Controller
         if ($data['field'] === 'username') {
             return $this->success([
                 'taken' => User::query()->where('username', $data['value'])->exists(),
+            ]);
+        }
+
+        if ($data['field'] === 'va_suffix') {
+            $vaNumber = PaymentGatewaySetting::current()->vaPrefix().$data['value'];
+
+            return $this->success([
+                'taken' => app(UnitVaNumberService::class)->isTaken($vaNumber, $data['exclude_id'] ?? null),
             ]);
         }
 
@@ -66,11 +76,15 @@ class ResidentController extends Controller
         ]);
     }
 
-    public function store(Request $request, AuditService $auditService, ResidentAccountService $accounts, UnitOwnershipSyncService $ownershipSync)
+    public function store(Request $request, AuditService $auditService, ResidentAccountService $accounts, UnitOwnershipSyncService $ownershipSync, UnitVaNumberService $vaNumbers)
     {
         $data = $this->validateResident($request);
         $unitId = $data['unit_id'] ?? null;
-        unset($data['unit_id']);
+        $vaSuffix = $data['va_suffix'] ?? null;
+        unset($data['unit_id'], $data['va_suffix']);
+
+        // Dicek sebelum penghuni dibuat agar VA yang tidak valid/duplikat tidak meninggalkan penghuni tanpa unit.
+        $vaNumber = $unitId ? $vaNumbers->compose($vaSuffix, Unit::query()->find($unitId)) : null;
         $username = $data['username'] ?? null;
         unset($data['username']);
         $data['id'] = $accounts->generateResidentId();
@@ -86,7 +100,7 @@ class ResidentController extends Controller
             // request lain yang menautkan unit yang sama secara bersamaan.
             $unit = Unit::query()->whereNull('resident_id')->findOrFail($unitId);
             $oldUnit = $unit->toArray();
-            $unit->update(['resident_id' => $resident->id, 'occupancy_id' => Unit::OCCUPANCY_BOOKED_ID, 'updated_by' => $request->user()->id]);
+            $unit->update(['resident_id' => $resident->id, 'va_number' => $vaNumber, 'updated_by' => $request->user()->id] + $unit->activationAttributes());
             $auditService->log('unit_updated', 'units', 'UPDATE', $unit, $oldUnit, $unit->toArray());
             $ownershipSync->sync($unit, $auditService);
         }
@@ -147,7 +161,7 @@ class ResidentController extends Controller
         return $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'phone' => [
-                'nullable', 'string', 'max:20',
+                $resident ? 'sometimes' : 'required_with:unit_id', 'nullable', 'string', 'max:20',
                 'regex:/^(\+62|62|0)8[1-9][0-9]{6,10}$/',
                 Rule::unique('residents', 'phone')->ignore($resident?->id),
             ],
@@ -155,7 +169,7 @@ class ResidentController extends Controller
             'id_card_address' => ['nullable', 'string', 'max:200'],
             'district_id' => ['nullable', 'exists:districts,id'],
             'email' => [
-                'nullable', 'email', 'max:100',
+                $resident ? 'sometimes' : 'required_with:unit_id', 'nullable', 'email', 'max:100',
                 Rule::unique('residents', 'email')->ignore($resident?->id),
             ],
             'identity_number' => ['nullable', 'string', 'max:30'],
@@ -168,6 +182,8 @@ class ResidentController extends Controller
                 'regex:/^[a-zA-Z0-9._-]+$/',
                 Rule::unique('users', 'username'),
             ],
+            // Nomor VA melekat di unit, jadi wajib diisi (9 digit) begitu penghuni ditautkan ke unit.
+            'va_suffix' => $resident ? ['sometimes'] : ['required_with:unit_id', 'nullable', 'string'],
             'unit_id' => $resident ? ['sometimes'] : [
                 'nullable',
                 Rule::exists('units', 'id')->whereNull('resident_id'),
@@ -175,6 +191,9 @@ class ResidentController extends Controller
         ], [
             'phone.regex' => 'Nomor HP tidak valid.',
             'username.regex' => 'Username hanya boleh huruf, angka, titik, - dan _.',
+            'phone.required_with' => 'Nomor HP wajib diisi saat penghuni ditautkan ke unit.',
+            'email.required_with' => 'Email wajib diisi saat penghuni ditautkan ke unit.',
+            'va_suffix.required_with' => 'Nomor virtual account wajib diisi saat penghuni ditautkan ke unit.',
             'unit_id.exists' => 'Unit tidak ditemukan atau sudah memiliki penghuni.',
         ]);
     }
