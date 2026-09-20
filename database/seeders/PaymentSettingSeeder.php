@@ -10,7 +10,7 @@ class PaymentSettingSeeder extends Seeder
 {
     public function run(): void
     {
-        PaymentGatewaySetting::updateOrCreate(['id' => 1], [
+        $setting = PaymentGatewaySetting::updateOrCreate(['id' => 1], [
             'active_gateway' => 'manual',
             'enabled_gateways' => ['manual'],
             'is_active' => true,
@@ -29,6 +29,13 @@ class PaymentSettingSeeder extends Seeder
             'callback_url' => url('/api/v1/payments/webhooks/manual-demo'),
             'webhook_notes' => 'Seeder hanya memakai data sandbox. Secret key disimpan di environment.',
             'updated_by' => User::where('username', 'superadmin')->value('id'),
+        ]);
+
+        // Kode VA hanya diisi bila belum diatur, supaya seeding ulang tidak menimpa
+        // kode yang sudah diubah admin di halaman Pengaturan Payment Gateway.
+        $setting->update([
+            'va_bank_code' => $setting->va_bank_code ?: '62315',
+            'va_company_code' => $setting->va_company_code ?: '888',
         ]);
     }
 }

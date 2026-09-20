@@ -107,4 +107,16 @@ class PaymentGatewayVaCodeTest extends TestCase
         $this->postJson('/api/v1/units', $this->unitPayload(['va_suffix' => '123']))
             ->assertUnprocessable()->assertJsonValidationErrors('va_suffix');
     }
+
+    public function test_seeder_sets_default_va_codes_without_overwriting_admin_changes(): void
+    {
+        $this->seed();
+
+        $this->assertSame('62315888', PaymentGatewaySetting::current()->vaPrefix());
+
+        PaymentGatewaySetting::current()->update(['va_bank_code' => '8277', 'va_company_code' => '1234']);
+        $this->seed(\Database\Seeders\PaymentSettingSeeder::class);
+
+        $this->assertSame('82771234', PaymentGatewaySetting::current()->vaPrefix());
+    }
 }
