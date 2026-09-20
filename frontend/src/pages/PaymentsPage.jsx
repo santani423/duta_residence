@@ -1,4 +1,4 @@
-import { Alert, Badge, Button, Card, Checkbox, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Select, Space, Statistic, Tabs, Tag, Upload, message, Typography } from 'antd';
+import { Alert, Badge, Button, Card, Checkbox, DatePicker, Descriptions, Drawer, Form, Input, Modal, Select, Space, Statistic, Tabs, Tag, Upload, message, Typography } from 'antd';
 import { CheckOutlined, CloudUploadOutlined, CloseOutlined, FileExcelOutlined, LinkOutlined, PrinterOutlined, SearchOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
@@ -17,6 +17,7 @@ import { usePendingPaymentVerificationCount } from '../hooks/usePendingPaymentVe
 import { formatCurrency, formatDate, formatDateTime, formatPaymentMethod, formatPeriod } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
 import { downloadBlob, printPdf } from '../utils/download.js';
+import MoneyInput from '../components/common/MoneyInput.jsx';
 
 const PAYMENT_METHOD_LABELS = { C: 'Cash', D: 'Debit/Transfer' };
 const PROVIDER_LABELS = { manual: 'Transfer', xendit: 'Xendit', midtrans: 'Midtrans' };
@@ -478,7 +479,7 @@ export default function PaymentsPage() {
                             <Can permission="payments.process" fallback={<Alert type="warning" showIcon message="Anda tidak memiliki akses proses loket." />}>
                               <Form form={loketForm} layout="vertical" onFinish={processLoket.mutate} initialValues={{ payment_method_id: 'C', loket_code: 'L01', use_balance: true }} className="responsive-form">
                                 <Form.Item label="Nominal Pembayaran (tunai)" name="amount" rules={[{ type: 'number', min: 0, message: 'Nominal tidak boleh negatif' }]}>
-                                  <InputNumber min={0} step={1000} style={{ width: '100%' }} placeholder="0" />
+                                  <MoneyInput step={1000} placeholder="0" />
                                 </Form.Item>
                                 <Form.Item name="use_balance" valuePropName="checked" className="full-span">
                                   <Checkbox disabled={!unit.deposit_balance}>Gunakan saldo unit ({formatCurrency(unit.deposit_balance)})</Checkbox>
@@ -708,7 +709,7 @@ export default function PaymentsPage() {
         <Alert type="info" showIcon message={proofOpen?.invoice_number} description={`Total transfer: ${formatCurrency(proofOpen?.total)}`} />
         <Form form={proofForm} layout="vertical" className="section-row" onFinish={uploadProof.mutate} initialValues={{ manual_transfer_date: dayjs() }}>
           <Form.Item label="Nominal Dibayar" name="amount">
-            <InputNumber min={0} step={1000} style={{ width: '100%' }} placeholder={proofOpen?.total} />
+            <MoneyInput step={1000} placeholder={proofOpen?.total} />
           </Form.Item>
           <Form.Item label="Tanggal Transfer" name="manual_transfer_date" rules={[{ required: true }]}>
             <DatePicker style={{ width: '100%' }} />

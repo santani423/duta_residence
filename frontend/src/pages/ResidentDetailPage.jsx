@@ -58,6 +58,7 @@ import { compactText, formatCurrency, formatDate, formatDateTime, formatPeriod }
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
 import { downloadBlob, printPdf } from '../utils/download.js';
 import { useAuth } from '../state/AuthContext.jsx';
+import MoneyInput from '../components/common/MoneyInput.jsx';
 
 const vehicleTypeOptions = [
   { value: 'mobil', label: 'Mobil' },
@@ -355,7 +356,7 @@ function BillingsTab({ residentId, unitId, units }) {
             <DatePicker picker="month" style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item label="Nominal" name="amount" rules={[{ required: true }]}>
-            <InputNumber min={0} style={{ width: '100%' }} />
+            <MoneyInput />
           </Form.Item>
         </Form>
       </Drawer>
@@ -599,7 +600,7 @@ function BalanceTab({ unitId, units }) {
             <Select options={[{ value: 'credit', label: 'Tambah Saldo (Kredit)' }, { value: 'debit', label: 'Kurangi Saldo (Debit)' }]} />
           </Form.Item>
           <Form.Item label="Nominal" name="amount" rules={[{ required: true, type: 'number', min: 0.01, message: 'Nominal wajib diisi' }]}>
-            <InputNumber min={0} step={1000} style={{ width: '100%' }} />
+            <MoneyInput step={1000} />
           </Form.Item>
           <Form.Item label="Alasan" name="reason" rules={[{ required: true, message: 'Alasan wajib diisi' }, { max: 200 }]}>
             <Input />
@@ -903,7 +904,7 @@ function PaymentPromisesTab({ residentId, unitId, units }) {
               <Select options={units.map((unit) => ({ value: unit.id, label: unitLabel(unit) }))} />
             </Form.Item>
           ) : null}
-          <Form.Item label="Nominal Dijanjikan" name="promised_amount" rules={[{ required: true }]}><InputNumber min={0} style={{ width: '100%' }} /></Form.Item>
+          <Form.Item label="Nominal Dijanjikan" name="promised_amount" rules={[{ required: true }]}><MoneyInput /></Form.Item>
           <Form.Item label="Tanggal Janji" name="promised_date" rules={[{ required: true }]}><DatePicker style={{ width: '100%' }} /></Form.Item>
           <Form.Item label="Metode Pembayaran" name="payment_method"><Input placeholder="Transfer, Cash, dst" /></Form.Item>
           <Form.Item label="Alasan Penundaan" name="reason"><Input.TextArea rows={2} /></Form.Item>

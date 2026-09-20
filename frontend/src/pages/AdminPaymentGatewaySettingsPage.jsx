@@ -8,6 +8,7 @@ import { ErrorState, LoadingState } from '../components/common/ApiState.jsx';
 import StatusBadge from '../components/common/StatusBadge.jsx';
 import { api } from '../services/estateApi.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
+import MoneyInput from '../components/common/MoneyInput.jsx';
 
 const gatewayOptions = [
   { value: 'xendit', label: 'Xendit' },
@@ -85,7 +86,7 @@ export default function AdminPaymentGatewaySettingsPage() {
                 <Input maxLength={3} />
               </Form.Item>
               <Form.Item label="Biaya administrasi" name="admin_fee" rules={[{ required: true }]}>
-                <InputNumber min={0} style={{ width: '100%' }} />
+                <MoneyInput />
               </Form.Item>
               <Form.Item label="Batas waktu pembayaran (menit)" name="payment_timeout_minutes" rules={[{ required: true }]}>
                 <InputNumber min={5} max={10080} style={{ width: '100%' }} />

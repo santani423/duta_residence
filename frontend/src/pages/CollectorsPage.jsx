@@ -1,4 +1,4 @@
-import { Button, Card, DatePicker, Drawer, Dropdown, Form, Image, Input, InputNumber, Modal, Select, Space, Upload, message } from 'antd';
+import { Button, Card, DatePicker, Drawer, Dropdown, Form, Image, Input, Modal, Select, Space, Upload, message } from 'antd';
 import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, PlusOutlined, StopOutlined, UploadOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -13,6 +13,7 @@ import { api, storageUrl } from '../services/estateApi.js';
 import { useTableState } from '../hooks/useTableState.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
 import { useAuth } from '../state/AuthContext.jsx';
+import MoneyInput from '../components/common/MoneyInput.jsx';
 
 const ACCOUNT_STATUS_OPTIONS = [
   { value: 'active', label: 'Aktif' },
@@ -296,7 +297,7 @@ export default function CollectorsPage() {
           </Form.Item>
           {drawer.type !== 'edit' && (
             <Form.Item label="Target Penagihan Bulanan Awal (Rp, opsional)" name="initial_monthly_target">
-              <InputNumber min={0} style={{ width: '100%' }} />
+              <MoneyInput />
             </Form.Item>
           )}
           <Form.Item label="Catatan Admin" name="admin_notes">

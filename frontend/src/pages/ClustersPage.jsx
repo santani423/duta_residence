@@ -1,4 +1,4 @@
-import { Button, Card, Form, Input, InputNumber, Modal, Select, Space, Switch, message } from 'antd';
+import { Button, Card, Form, Input, Modal, Select, Space, Switch, message } from 'antd';
 import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
@@ -11,6 +11,7 @@ import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import { api } from '../services/estateApi.js';
 import { formatCurrency } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
+import MoneyInput from '../components/common/MoneyInput.jsx';
 
 export default function ClustersPage() {
   const [modal, setModal] = useState({ mode: null, record: null });
@@ -160,7 +161,7 @@ export default function ClustersPage() {
             </>
           )}
           <Form.Item label="Tarif Bulanan" name="monthly_rate" rules={[{ required: true }]}>
-            <InputNumber min={0} style={{ width: '100%' }} />
+            <MoneyInput />
           </Form.Item>
           <Form.Item label="Deskripsi" name="description">
             <Input.TextArea rows={3} />

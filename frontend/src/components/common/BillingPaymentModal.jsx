@@ -1,4 +1,4 @@
-import { Alert, Button, Checkbox, DatePicker, Descriptions, Form, Input, InputNumber, Modal, Select, Space, Spin, Statistic, Typography, Upload, message } from 'antd';
+import { Alert, Button, Checkbox, DatePicker, Descriptions, Form, Input, Modal, Select, Space, Spin, Statistic, Typography, Upload, message } from 'antd';
 import { CloudUploadOutlined, PrinterOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
@@ -10,6 +10,7 @@ import { formatCurrency, formatDateTime, formatPeriod } from '../../utils/format
 import { getApiErrorMessage, mapValidationErrors } from '../../utils/apiError.js';
 import { printPdf } from '../../utils/download.js';
 import ResponsiveTable from '../tables/ResponsiveTable.jsx';
+import MoneyInput from './MoneyInput.jsx';
 
 // Pembayaran loket langsung dari daftar tagihan: satu unit, satu atau beberapa tagihan yang sudah disetujui.
 export default function BillingPaymentModal({ unitId, billingIds = [], open, onClose }) {
@@ -218,7 +219,7 @@ export default function BillingPaymentModal({ unitId, billingIds = [], open, onC
                         />
                         <Space wrap align="start" style={{ width: '100%' }}>
                           <Form.Item label="Nominal Transfer" name="manual_amount">
-                            <InputNumber min={0} step={1000} style={{ width: 220 }} />
+                            <MoneyInput step={1000} style={{ width: 260 }} />
                           </Form.Item>
                           <Form.Item label="Tanggal Transfer" name="manual_transfer_date" rules={[{ required: true, message: 'Tanggal transfer wajib diisi' }]}>
                             <DatePicker style={{ width: 220 }} />
@@ -242,7 +243,7 @@ export default function BillingPaymentModal({ unitId, billingIds = [], open, onC
                     ) : (
                       <>
                         <Form.Item label="Nominal Pembayaran (tunai)" name="amount" rules={[{ type: 'number', min: 0, message: 'Nominal tidak boleh negatif' }]}>
-                          <InputNumber min={0} step={1000} style={{ width: '100%' }} />
+                          <MoneyInput step={1000} />
                         </Form.Item>
                         <Form.Item name="use_balance" valuePropName="checked">
                           <Checkbox disabled={!balance}>Gunakan saldo unit ({formatCurrency(balance)})</Checkbox>

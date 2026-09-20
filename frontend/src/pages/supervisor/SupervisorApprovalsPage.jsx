@@ -12,6 +12,7 @@ import { useTableState } from '../../hooks/useTableState.js';
 import { api } from '../../services/estateApi.js';
 import { getApiErrorMessage, mapValidationErrors } from '../../utils/apiError.js';
 import { formatCurrency, formatDateTime } from '../../utils/format.js';
+import MoneyInput from '../../components/common/MoneyInput.jsx';
 
 const TYPE_LABELS = {
   reversal: 'Pembatalan Transaksi/Pembayaran',
@@ -217,7 +218,7 @@ export default function SupervisorApprovalsPage() {
             <Input />
           </Form.Item>
           <Form.Item label="Total Tunggakan (Rp)" name="total_outstanding" rules={[{ required: true, message: 'Wajib diisi' }]}>
-            <InputNumber min={1} style={{ width: '100%' }} />
+            <MoneyInput min={1} />
           </Form.Item>
           <Form.Item label="Jumlah Cicilan" name="number_of_installments" rules={[{ required: true, message: 'Wajib diisi' }]}>
             <InputNumber min={2} max={24} style={{ width: '100%' }} />
@@ -257,7 +258,9 @@ export default function SupervisorApprovalsPage() {
             extra={adjustmentType === 'discount' && maxDiscountPercent !== null ? `Batas maksimum diskon Admin: ${maxDiscountPercent}% dari pokok tagihan.` : null}
             rules={[{ required: true, message: 'Wajib diisi' }]}
           >
-            <InputNumber min={0} max={isPercentDiscount ? 100 : undefined} step={isPercentDiscount ? 0.01 : 1} addonAfter={isPercentDiscount ? '%' : undefined} style={{ width: '100%' }} />
+            {isPercentDiscount
+              ? <InputNumber min={0} max={100} step={0.01} addonAfter="%" style={{ width: '100%' }} />
+              : <MoneyInput />}
           </Form.Item>
           <Form.Item label="Alasan" name="reason" rules={[{ required: true, message: 'Alasan wajib diisi' }]}>
             <Input.TextArea rows={2} />

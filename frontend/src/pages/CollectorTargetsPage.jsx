@@ -11,6 +11,7 @@ import { useTableState } from '../hooks/useTableState.js';
 import { api } from '../services/estateApi.js';
 import { formatCurrency } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
+import MoneyInput from '../components/common/MoneyInput.jsx';
 
 const PERIOD_LABELS = { daily: 'Harian', weekly: 'Mingguan', monthly: 'Bulanan' };
 
@@ -154,7 +155,7 @@ export default function CollectorTargetsPage() {
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item label="Target Nominal (Rp)" name="target_amount" rules={[{ required: true, message: 'Isi target nominal' }]}>
-            <InputNumber min={0} style={{ width: '100%' }} />
+            <MoneyInput />
           </Form.Item>
           <Form.Item label="Target Jumlah Kunjungan (opsional)" name="target_visit_count">
             <InputNumber min={0} style={{ width: '100%' }} />

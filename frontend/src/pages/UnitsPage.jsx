@@ -160,7 +160,6 @@ export default function UnitsPage() {
         extra={
           <Space wrap>
             <Can permission="units.create"><Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Tambah Unit</Button></Can>
-            <Can permission="residents.create"><Button icon={<UserAddOutlined />} onClick={() => openAddResident()}>Masukan Penghuni</Button></Can>
           </Space>
         }
       />

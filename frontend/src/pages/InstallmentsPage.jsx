@@ -1,4 +1,4 @@
-import { Button, Card, DatePicker, Drawer, Form, Input, InputNumber, Space, message } from 'antd';
+import { Button, Card, DatePicker, Drawer, Form, Input, Space, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
@@ -12,6 +12,7 @@ import { api } from '../services/estateApi.js';
 import { useTableState } from '../hooks/useTableState.js';
 import { formatCurrency, formatDate } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
+import MoneyInput from '../components/common/MoneyInput.jsx';
 
 export default function InstallmentsPage() {
   const table = useTableState();
@@ -56,7 +57,7 @@ export default function InstallmentsPage() {
       <Drawer title="Tambah Cicilan" open={open} onClose={() => setOpen(false)} width={520} extra={<Button type="primary" loading={create.isPending} onClick={() => form.submit()}>Simpan</Button>} destroyOnHidden>
         <Form form={form} layout="vertical" onFinish={create.mutate} initialValues={{ payment_date: dayjs() }}>
           <Form.Item label="ID Unit" name="unit_id" rules={[{ required: true }]}><Input placeholder="GA001" /></Form.Item>
-          <Form.Item label="Nominal" name="amount" rules={[{ required: true }]}><InputNumber min={1} style={{ width: '100%' }} /></Form.Item>
+          <Form.Item label="Nominal" name="amount" rules={[{ required: true }]}><MoneyInput min={1} /></Form.Item>
           <Form.Item label="Tanggal Bayar" name="payment_date" rules={[{ required: true }]}><DatePicker style={{ width: '100%' }} /></Form.Item>
           <Form.Item label="Alokasi" name="allocated_to"><Input placeholder="Jan 2026, Feb 2026" /></Form.Item>
           <Form.Item label="Catatan" name="notes"><Input.TextArea rows={3} /></Form.Item>

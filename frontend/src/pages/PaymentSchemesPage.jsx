@@ -7,6 +7,7 @@ import PageHeader from '../components/common/PageHeader.jsx';
 import ExportPdfButton from '../components/common/ExportPdfButton.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
 import Can from '../components/common/Can.jsx';
+import MoneyInput from '../components/common/MoneyInput.jsx';
 import StatusBadge from '../components/common/StatusBadge.jsx';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import { api } from '../services/estateApi.js';
@@ -21,14 +22,6 @@ const STATUS_OPTIONS = [
   { value: 'rejected', label: 'Ditolak' },
   { value: 'cancelled', label: 'Dibatalkan' },
 ];
-
-const moneyInput = {
-  min: 0,
-  addonBefore: 'Rp',
-  formatter: (value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.'),
-  parser: (value) => value?.replace(/\./g, ''),
-  style: { width: '100%' },
-};
 
 const PAYMENT_STATUS = {
   unpaid: ['Belum dibayar', 'gold'],
@@ -306,7 +299,7 @@ function SubmitDrawer({ open, onClose }) {
                       if (penaltyOf(row) <= 0) return <Typography.Text type="secondary">Tidak ada denda</Typography.Text>;
                       return (
                         <Space.Compact style={{ width: '100%' }}>
-                          <InputNumber {...moneyInput} max={penaltyOf(row)} value={reductions[row.id]} onChange={(value) => setReduction(row.id, value)} placeholder="0" />
+                          <MoneyInput max={penaltyOf(row)} value={reductions[row.id]} onChange={(value) => setReduction(row.id, value)} placeholder="0" />
                           <Button title="Hapus seluruh denda tagihan ini" onClick={() => setReduction(row.id, penaltyOf(row))}>Hapus</Button>
                         </Space.Compact>
                       );
@@ -337,7 +330,7 @@ function SubmitDrawer({ open, onClose }) {
               <Form.Item label="Diskon atas total sisa pokok" name="discount_value" style={{ marginBottom: 0 }}>
                 {discountType === 'percentage'
                   ? <InputNumber min={0} max={100} step={0.5} precision={2} addonAfter="%" style={{ width: '100%' }} />
-                  : <InputNumber {...moneyInput} max={calc?.original_principal} />}
+                  : <MoneyInput max={calc?.original_principal} />}
               </Form.Item>
             </Card>
 
@@ -554,7 +547,7 @@ function ApproveDrawer({ scheme, onClose, onDone }) {
                     if (Number(row.original_penalty) <= 0) return <Typography.Text type="secondary">Tidak ada denda</Typography.Text>;
                     return (
                       <Space.Compact style={{ width: '100%' }}>
-                        <InputNumber {...moneyInput} max={Number(row.original_penalty)} value={reductions[row.billing_id]} onChange={(value) => setReductions((previous) => ({ ...previous, [row.billing_id]: value ?? 0 }))} />
+                        <MoneyInput max={Number(row.original_penalty)} value={reductions[row.billing_id]} onChange={(value) => setReductions((previous) => ({ ...previous, [row.billing_id]: value ?? 0 }))} />
                         <Button title="Hapus seluruh denda tagihan ini" onClick={() => setReductions((previous) => ({ ...previous, [row.billing_id]: Number(row.original_penalty) }))}>Hapus</Button>
                       </Space.Compact>
                     );
@@ -603,8 +596,7 @@ function ApproveDrawer({ scheme, onClose, onDone }) {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
                 <div>
                   <Typography.Text>Nominal (Rp)</Typography.Text>
-                  <InputNumber
-                    {...moneyInput}
+                  <MoneyInput
                     max={limited ? Math.floor((principal * limitPercent) / 100) : principal}
                     value={discountType === 'nominal' ? discountValue : Math.round(currentDiscount * 100) / 100}
                     onChange={(value) => { setDiscountType('nominal'); setDiscountValue(value ?? 0); }}

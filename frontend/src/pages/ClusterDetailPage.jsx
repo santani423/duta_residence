@@ -1,4 +1,4 @@
-import { Button, Card, Col, DatePicker, Descriptions, Drawer, Dropdown, Empty, Form, Input, InputNumber, Modal, Row, Select, Space, Statistic, Switch, Tag, message } from 'antd';
+import { Button, Card, Col, DatePicker, Descriptions, Drawer, Dropdown, Empty, Form, Input, Modal, Row, Select, Space, Statistic, Switch, Tag, message } from 'antd';
 import { DeleteOutlined, EditOutlined, EnvironmentOutlined, MoreOutlined, PlusOutlined, PrinterOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -16,6 +16,7 @@ import { formatCurrency, formatDate, formatDateTime, formatPeriod } from '../uti
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
 import StatusBadge from '../components/common/StatusBadge.jsx';
 import { propertyTypeOptions, residentStatusOptions, unitOccupancyStatusOptions } from '../components/forms/UnitForm.jsx';
+import MoneyInput from '../components/common/MoneyInput.jsx';
 
 const DONUT_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100'];
 const MONTHLY_RATE_MONTHS_PAST = 6;
@@ -353,7 +354,7 @@ export default function ClusterDetailPage() {
           })}
         >
           <Form.Item label="Nominal Tarif" name="rate" rules={[{ required: true, message: 'Nominal wajib diisi' }]}>
-            <InputNumber min={0} style={{ width: '100%' }} addonBefore="Rp" />
+            <MoneyInput />
           </Form.Item>
           <Form.Item label="Tanggal Mulai Berlaku" name="effective_date" rules={[{ required: true, message: 'Tanggal wajib diisi' }]}>
             <DatePicker style={{ width: '100%' }} />

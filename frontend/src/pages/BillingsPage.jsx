@@ -18,6 +18,7 @@ import { DISCOUNT_TYPE_PERCENTAGE, finalPrice, fromNominalDiscount, maxNominalFr
 import { formatCurrency, formatDateTime, formatPeriod } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
 import { downloadBlob } from '../utils/download.js';
+import MoneyInput from '../components/common/MoneyInput.jsx';
 
 // mode 'outstanding' = halaman Tagihan (semua tagihan belum lunas, lintas tahun);
 // mode 'history' = Riwayat Tagihan (semua status, lintas tahun). Tidak ada filter tahun bawaan.
@@ -342,7 +343,7 @@ export default function BillingsPage({ mode = 'outstanding' }) {
             <Form.Item label="Periode" name="period" rules={[{ required: true }]}>
               <DatePicker picker="month" style={{ width: '100%' }} />
             </Form.Item>
-            <Form.Item label="Nominal" name="amount" rules={[{ required: true }]}><InputNumber min={0} style={{ width: '100%' }} /></Form.Item>
+            <Form.Item label="Nominal" name="amount" rules={[{ required: true }]}><MoneyInput /></Form.Item>
           </Form>
         ) : (
           <Form form={form} layout="vertical" onFinish={back.mutate}>
@@ -434,14 +435,7 @@ export default function BillingsPage({ mode = 'outstanding' }) {
             {isPercentInput ? (
               <InputNumber min={0} max={100} step={0.01} precision={2} addonAfter="%" style={{ width: '100%' }} />
             ) : (
-              <InputNumber
-                min={0}
-                max={remainingPrincipal}
-                addonBefore="Rp"
-                formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
-                parser={(value) => value?.replace(/\./g, '')}
-                style={{ width: '100%' }}
-              />
+              <MoneyInput max={remainingPrincipal} />
             )}
           </Form.Item>
           <Form.Item label="Harga Akhir (setelah diskon)">

@@ -50,6 +50,7 @@ import { compactText, formatCurrency, formatDate, formatDateTime, formatNotifica
 import { getApiErrorMessage, mapValidationErrors } from '../../utils/apiError.js';
 import { downloadBlob } from '../../utils/download.js';
 import { useThemeMode } from '../../state/ThemeContext.jsx';
+import MoneyInput from '../../components/common/MoneyInput.jsx';
 
 // Download errors used to surface as unhandled promise rejections (the button just did nothing).
 async function saveDownload(request, filename) {
@@ -232,7 +233,7 @@ function ManualProofDrawer({ payment, open, onClose }) {
         <Form.Item label="Nama pengirim" name="sender_name" rules={[{ required: true }]}><Input /></Form.Item>
         <Form.Item label="Bank pengirim" name="sender_bank" rules={[{ required: true }]}><Input /></Form.Item>
         <Form.Item label="Nomor rekening pengirim" name="sender_account_number" rules={[{ required: true }]}><Input /></Form.Item>
-        <Form.Item label="Nominal transfer" name="amount" rules={[{ required: true }]}><Input type="number" /></Form.Item>
+        <Form.Item label="Nominal transfer" name="amount" rules={[{ required: true }]}><MoneyInput /></Form.Item>
         <Form.Item label="Tanggal transfer" name="manual_transfer_date" rules={[{ required: true }]}><DatePicker style={{ width: '100%' }} /></Form.Item>
         <Form.Item
           label="Bukti pembayaran"
