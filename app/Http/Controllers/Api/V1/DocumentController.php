@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Billing;
 use App\Models\Cluster;
+use App\Models\PaymentScheme;
 use App\Models\PaymentTransaction;
 use App\Models\Receipt;
 use App\Models\Unit;
 use App\Services\PaymentPrintService;
+use App\Services\PaymentSchemeService;
 use App\Services\PenaltyService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -159,6 +161,17 @@ class DocumentController extends Controller
 
         return Pdf::loadHTML(view('pdf.payment-transaction', compact('transaction', 'print'))->render())
             ->download("Transaksi-{$transaction->invoice_number}.pdf");
+    }
+
+    /** Detail lengkap satu skema pembayaran (dipakai dari tombol "Cetak PDF" di drawer detail skema). */
+    public function paymentScheme(Request $request, PaymentScheme $paymentScheme, PaymentSchemeService $service, PaymentPrintService $printService)
+    {
+        $paymentScheme->load(['unit.cluster', 'unit.resident', 'submitter', 'adjuster', 'decider', 'items.billing']);
+        $service->annotate([$paymentScheme], $request->user());
+        $company = $printService->company();
+
+        return Pdf::loadHTML(view('pdf.payment-scheme', compact('paymentScheme', 'company'))->render())
+            ->download("Skema-Pembayaran-{$paymentScheme->id}.pdf");
     }
 
     /**

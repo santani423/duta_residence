@@ -102,11 +102,15 @@ function SubmitDrawer({ open, onClose }) {
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
   const [unitQuery, setUnitQuery] = useState('');
+  const [unitFilters, setUnitFilters] = useState({});
   const [unitId, setUnitId] = useState(undefined);
   const [selectedIds, setSelectedIds] = useState([]);
   // Keringanan denda per tagihan: { [billingId]: nominal }. Hanya untuk tagihan yang dicentang.
   const [reductions, setReductions] = useState({});
   const debouncedUnitQuery = useDebounce(unitQuery);
+
+  const clusters = useQuery({ queryKey: ['clusters'], queryFn: () => api.clusters.list(), enabled: open });
+  const clusterOptions = (clusters.data?.data || []).map((item) => ({ value: item.id, label: item.name }));
 
   const discountType = Form.useWatch('discount_type', form) ?? 'nominal';
   const watchedDiscount = Form.useWatch('discount_value', form);
@@ -115,8 +119,13 @@ function SubmitDrawer({ open, onClose }) {
 
   const unitSearch = debouncedUnitQuery.trim();
   const unitLookup = useQuery({
-    queryKey: ['units', 'scheme-search', unitSearch],
-    queryFn: () => api.units.list({ search: unitSearch || undefined, per_page: 20 }),
+    queryKey: ['units', 'scheme-search', unitSearch, unitFilters],
+    queryFn: () => api.units.list({
+      search: unitSearch || undefined,
+      cluster_id: unitFilters.cluster_id,
+      block: unitFilters.block || undefined,
+      per_page: 20,
+    }),
     enabled: open,
     // Hasil pencarian sebelumnya tetap tampil selama pencarian baru dimuat, supaya daftar tidak
     // "hilang" (mis. saat server lambat) setiap kali user mengetik.
@@ -187,10 +196,16 @@ function SubmitDrawer({ open, onClose }) {
   function close() {
     setUnitId(undefined);
     setUnitQuery('');
+    setUnitFilters({});
     setSelectedIds([]);
     setReductions({});
     form.resetFields();
     onClose();
+  }
+
+  function updateUnitFilters(patch) {
+    setUnitFilters((previous) => ({ ...previous, ...patch }));
+    changeUnit(undefined);
   }
 
   function changeUnit(value) {
@@ -249,6 +264,10 @@ function SubmitDrawer({ open, onClose }) {
         />
 
         <Card size="small" title="1. Pilih unit">
+          <FilterBar>
+            <Select allowClear showSearch placeholder="Cluster" value={unitFilters.cluster_id} onChange={(value) => updateUnitFilters({ cluster_id: value })} options={clusterOptions} optionFilterProp="label" loading={clusters.isFetching} className="filter-input" />
+            <Input allowClear placeholder="Blok" value={unitFilters.block} onChange={(event) => updateUnitFilters({ block: event.target.value || undefined })} className="filter-input" />
+          </FilterBar>
           <Select
             showSearch
             allowClear
@@ -262,7 +281,7 @@ function SubmitDrawer({ open, onClose }) {
               ? <Typography.Text type="danger">Gagal memuat unit: {getApiErrorMessage(unitLookup.error)}</Typography.Text>
               : (unitLookup.isFetching ? 'Mencari...' : 'Unit tidak ditemukan')}
             placeholder="Cari ID unit, alamat (cluster/blok/kavling), atau nama penghuni"
-            style={{ width: '100%' }}
+            style={{ width: '100%', marginTop: 12 }}
           />
           {unitLookup.isError ? (
             <Alert style={{ marginTop: 12 }} type="error" showIcon message={`Daftar unit gagal dimuat: ${getApiErrorMessage(unitLookup.error)}`} action={<Button size="small" onClick={() => unitLookup.refetch()}>Coba lagi</Button>} />
@@ -355,7 +374,21 @@ function DetailDrawer({ scheme, onClose, onPay }) {
   const rejectedMonths = (scheme?.items || []).filter((item) => item.status === 'rejected').map((item) => formatPeriod(item.billing?.year, item.billing?.month));
 
   return (
-    <Drawer title={scheme ? `Skema Pembayaran #${scheme.id}` : ''} open={Boolean(scheme)} onClose={onClose} width={860} destroyOnHidden>
+    <Drawer
+      title={scheme ? `Skema Pembayaran #${scheme.id}` : ''}
+      open={Boolean(scheme)}
+      onClose={onClose}
+      width={860}
+      destroyOnHidden
+      extra={scheme ? (
+        <ExportPdfButton
+          request={() => api.documents.paymentSchemePdf(scheme.id)}
+          filename={`Skema-Pembayaran-${scheme.id}.pdf`}
+          permission="payment-schemes.view"
+          label="Cetak PDF"
+        />
+      ) : null}
+    >
       {scheme ? (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           {scheme.adjusted_at && scheme.requested_snapshot ? (
@@ -488,6 +521,12 @@ function ApproveDrawer({ scheme, onClose, onDone }) {
       destroyOnHidden
       extra={(
         <Space>
+          <ExportPdfButton
+            request={() => api.documents.paymentSchemePdf(scheme.id)}
+            filename={`Skema-Pembayaran-${scheme.id}.pdf`}
+            permission="payment-schemes.view"
+            label="Cetak PDF"
+          />
           <Button onClick={onClose}>Batal</Button>
           <Button
             type="primary"

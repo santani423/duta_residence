@@ -267,6 +267,7 @@ export const api = {
     tablePdf: (dataset, params) => http.get(`/documents/tables/${dataset}`, { params, responseType: 'blob' }),
     receiptPdf: (number, format = 'a4') => http.get(`/documents/spt/${encodeURIComponent(number)}`, { params: { format }, responseType: 'blob' }),
     paymentTransactionReceiptPdf: (id, format = 'a4') => http.get(`/documents/payment-transactions/${id}/receipt`, { params: { format }, responseType: 'blob' }),
+    paymentSchemePdf: (id) => http.get(`/documents/payment-schemes/${id}`, { responseType: 'blob' }),
     billingSpkPdf: (id) => http.get(`/documents/spk/${encodeURIComponent(id)}`, { responseType: 'blob' }),
     paymentTransactionPdf: (id) => http.get(`/documents/payment-transactions/${id}`, { responseType: 'blob' }),
     paymentTransactionsPdf: (params) => http.get('/documents/payment-transactions', { params, responseType: 'blob' }),
