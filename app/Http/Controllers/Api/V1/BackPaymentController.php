@@ -20,8 +20,10 @@ class BackPaymentController extends Controller
             'billing_ids.*' => ['integer', 'exists:billings,id'],
             'payment_method_id' => ['required', 'exists:payment_methods,id'],
             'loket_code' => ['nullable', 'string', 'max:20'],
-            'cashier_name' => ['nullable', 'string', 'max:50'],
         ]);
+
+        // Kasir selalu tercatat sebagai petugas yang login, tidak pernah dari input klien.
+        $data['cashier_name'] = $request->user()->name;
 
         $receipt = $service->process(Unit::findOrFail($data['unit_id']), $data['billing_ids'], $data, $request->user()->id);
 

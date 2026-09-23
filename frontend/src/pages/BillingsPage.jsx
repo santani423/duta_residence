@@ -246,7 +246,7 @@ export default function BillingsPage({ mode = 'outstanding' }) {
       <PageHeader
         title={isHistory ? 'Riwayat Tagihan' : 'Tagihan'}
         subtitle={isHistory
-          ? `Seluruh riwayat tagihan (belum bayar, sebagian, lunas) dari semua tahun${filterUnitId ? ` untuk unit ${filterUnitId}` : ''}.`
+          ? `Seluruh riwayat tagihan (belum bayar, sudah bayar, lunas) dari semua tahun${filterUnitId ? ` untuk unit ${filterUnitId}` : ''}.`
           : `Seluruh tagihan yang belum lunas dari semua tahun${filterUnitId ? ` untuk unit ${filterUnitId}` : ''}. Generate, filter, dan approval tagihan estate.`}
         breadcrumbs={[{ label: isHistory ? 'Riwayat Tagihan' : 'Tagihan' }]}
         onRefresh={() => {
@@ -295,7 +295,7 @@ export default function BillingsPage({ mode = 'outstanding' }) {
         <Input allowClear placeholder="Blok" value={table.filters.block} onChange={(event) => table.setFilters({ ...table.filters, block: event.target.value || undefined })} className="filter-input" />
         <InputNumber placeholder="Tahun" value={table.filters.year} onChange={(value) => table.setFilters({ ...table.filters, year: value })} className="filter-input" />
         <Select allowClear placeholder="Bulan" value={table.filters.month} onChange={(value) => table.setFilters({ ...table.filters, month: value })} className="filter-input" options={Array.from({ length: 12 }, (_, index) => ({ value: index + 1, label: dayjs().month(index).format('MMMM') }))} />
-        <Select allowClear placeholder="Status" value={table.filters.status_id} onChange={(value) => table.setFilters({ ...table.filters, status_id: value })} className="filter-input" options={isHistory ? [{ value: '01', label: 'Belum Bayar' }, { value: '03', label: 'Sebagian' }, { value: '02', label: 'Lunas' }, { value: '04', label: 'Dibatalkan' }] : [{ value: '01', label: 'Belum Bayar' }, { value: '03', label: 'Sebagian' }]} />
+        <Select allowClear placeholder="Status" value={table.filters.status_id} onChange={(value) => table.setFilters({ ...table.filters, status_id: value })} className="filter-input" options={isHistory ? [{ value: '01', label: 'Belum Bayar' }, { value: '03', label: 'Sudah Bayar' }, { value: '02', label: 'Lunas' }, { value: '04', label: 'Dibatalkan' }] : [{ value: '01', label: 'Belum Bayar' }, { value: '03', label: 'Sudah Bayar' }]} />
       </FilterBar>
 
       {isHistory ? null : (

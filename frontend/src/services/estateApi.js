@@ -237,6 +237,7 @@ export const api = {
   paymentSchemes: {
     list: (params) => http.get('/payment-schemes', { params }),
     detail: (id) => http.get(`/payment-schemes/${id}`),
+    payments: (id) => http.get(`/payment-schemes/${id}/payments`),
     preview: (payload) => http.post('/payment-schemes/preview', payload),
     create: (payload) => http.post('/payment-schemes', payload),
     previewAdjustment: (id, payload) => http.post(`/payment-schemes/${id}/preview-adjustment`, payload),

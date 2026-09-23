@@ -1,20 +1,27 @@
-import { Alert, Button, Card, Descriptions, Drawer, Form, Input, InputNumber, Modal, Radio, Select, Space, Statistic, Tag, Typography, message } from 'antd';
-import { CheckOutlined, CloseOutlined, EyeOutlined, PlusOutlined, SendOutlined, WalletOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Checkbox, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Radio, Select, Space, Statistic, Tag, Typography, Upload, message } from 'antd';
+import { CheckOutlined, CloseOutlined, CloudUploadOutlined, EyeOutlined, LinkOutlined, PlusOutlined, SendOutlined, WalletOutlined } from '@ant-design/icons';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import dayjs from 'dayjs';
 import PageHeader from '../components/common/PageHeader.jsx';
 import ExportPdfButton from '../components/common/ExportPdfButton.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
 import Can from '../components/common/Can.jsx';
 import MoneyInput from '../components/common/MoneyInput.jsx';
 import StatusBadge from '../components/common/StatusBadge.jsx';
+import PaymentPrintMenu from '../components/common/PaymentPrintMenu.jsx';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import { api } from '../services/estateApi.js';
 import { useTableState } from '../hooks/useTableState.js';
 import { useDebounce } from '../hooks/useDebounce.js';
 import { formatCurrency, formatDateTime, formatPeriod } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
+import { useAuth } from '../state/AuthContext.jsx';
+
+const PAYMENT_METHOD_LABELS = { C: 'Cash', D: 'Debit/Transfer' };
+const PAYMENT_CHANNEL_LABELS = { L: 'Loket', M: 'Bank Transfer', Q: 'QRIS' };
+const PROVIDER_LABELS = { manual: 'Transfer', xendit: 'Xendit', midtrans: 'Midtrans' };
 
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Menunggu Admin' },
@@ -695,17 +702,388 @@ function ApproveDrawer({ scheme, onClose, onDone }) {
   );
 }
 
+/**
+ * Drawer "Bayar Skema": UI pembayaran yang sudah dipersempit ke tagihan-tagihan skema yang disetujui
+ * saja (tidak seperti halaman Pembayaran umum, di sini tagihan tidak bisa dipilih ulang).
+ */
+function PaySchemeDrawer({ scheme, onClose }) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [via, setVia] = useState('loket');
+  const [transaction, setTransaction] = useState(null);
+  const [proofOpen, setProofOpen] = useState(false);
+  const [successReceipt, setSuccessReceipt] = useState(null);
+  const [loketForm] = Form.useForm();
+  const [proofForm] = Form.useForm();
+
+  const config = useQuery({ queryKey: ['payment-gateway-config'], queryFn: api.payments.gatewayConfig, enabled: Boolean(scheme) });
+  const unitQuery = useQuery({
+    queryKey: ['payment-scheme-pay-unit', scheme?.unit_id],
+    queryFn: () => api.payments.search({ unit_id: scheme.unit_id }),
+    enabled: Boolean(scheme),
+  });
+  const unit = unitQuery.data?.data;
+  // Hanya tagihan milik skema ini yang boleh dibayar dari drawer ini, tidak seperti workspace Pembayaran umum.
+  const billings = useMemo(() => (unit?.billings || []).filter((billing) => billing.payment_scheme_id === scheme?.id), [unit, scheme]);
+  const billingIds = useMemo(() => billings.map((billing) => billing.id), [billings]);
+
+  const paymentsHistory = useQuery({
+    queryKey: ['payment-scheme-payments', scheme?.id],
+    queryFn: () => api.paymentSchemes.payments(scheme.id),
+    enabled: Boolean(scheme),
+  });
+  const paymentRows = paymentsHistory.data?.data || [];
+
+  const watchedAmount = Form.useWatch('amount', loketForm);
+  const watchedUseBalance = Form.useWatch('use_balance', loketForm);
+  const debouncedAmount = useDebounce(watchedAmount, 400);
+  const balance = Number(unit?.deposit_balance ?? 0);
+  const useBalance = watchedUseBalance ?? true;
+  const outstanding = Number(scheme?.outstanding_amount ?? 0);
+  // Nominal tunai tidak boleh kurang dari sisa tagihan skema setelah saldo unit (bila dipakai); lebih dari itu boleh.
+  const cashMin = Math.max(0, outstanding - (useBalance ? balance : 0));
+
+  // Nominal tunai bawaan = sisa tagihan skema setelah saldo unit (bila dipakai); petugas tetap bisa menambah lebih.
+  useEffect(() => {
+    if (!scheme || !billingIds.length) return;
+    loketForm.setFieldValue('amount', cashMin);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scheme?.id, billingIds, balance, useBalance, outstanding]);
+
+  const previewQuery = useQuery({
+    queryKey: ['payment-scheme-pay-preview', scheme?.id, billingIds, debouncedAmount, watchedUseBalance ?? true],
+    queryFn: () => api.payments.preview({
+      unit_id: scheme.unit_id,
+      billing_ids: billingIds,
+      amount: Number(debouncedAmount) || 0,
+      use_balance: watchedUseBalance ?? true,
+    }),
+    enabled: Boolean(scheme) && billingIds.length > 0,
+  });
+  const preview = previewQuery.data?.data;
+
+  const processLoket = useMutation({
+    mutationFn: (values) => api.payments.process({
+      unit_id: scheme.unit_id,
+      billing_ids: billingIds,
+      amount: Number(values.amount) || 0,
+      use_balance: values.use_balance ?? true,
+      payment_method_id: values.payment_method_id,
+      payment_channel_id: values.payment_channel_id,
+      loket_code: values.loket_code,
+      cashier_name: values.cashier_name,
+      notes: values.notes,
+    }),
+    onSuccess: (response) => {
+      const depositAmount = Number(response.data?.deposit_amount || 0);
+      message.success(depositAmount > 0
+        ? `Pembayaran skema berhasil diproses. Kelebihan ${formatCurrency(depositAmount)} dicatat sebagai saldo unit.`
+        : 'Pembayaran skema berhasil diproses');
+      setSuccessReceipt(response.data);
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['payment-receipts'] });
+      queryClient.invalidateQueries({ queryKey: ['payment-schemes'] });
+      queryClient.invalidateQueries({ queryKey: ['payment-scheme-payments', scheme.id] });
+    },
+    onError: (error) => {
+      loketForm.setFields(mapValidationErrors(error));
+      message.error(getApiErrorMessage(error));
+    },
+  });
+
+  const createGateway = useMutation({
+    mutationFn: () => api.payments.createGateway({ provider: via, unit_id: scheme.unit_id, billing_ids: billingIds }),
+    onSuccess: (response) => {
+      message.success('Transaksi gateway berhasil dibuat');
+      setTransaction(response.data);
+      queryClient.invalidateQueries({ queryKey: ['payment-transactions'] });
+    },
+    onError: (error) => message.error(getApiErrorMessage(error)),
+  });
+
+  const uploadProof = useMutation({
+    mutationFn: (values) => {
+      const formData = new FormData();
+      formData.append('proof', values.proof[0].originFileObj);
+      formData.append('manual_transfer_date', values.manual_transfer_date.format('YYYY-MM-DD'));
+      if (values.amount) formData.append('amount', values.amount);
+      if (values.manual_notes) formData.append('manual_notes', values.manual_notes);
+      return api.payments.uploadManualProof(transaction.id, formData);
+    },
+    onSuccess: () => {
+      message.success('Bukti pembayaran berhasil diunggah');
+      setProofOpen(false);
+      proofForm.resetFields();
+      queryClient.invalidateQueries({ queryKey: ['payment-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['payment-schemes'] });
+    },
+    onError: (error) => {
+      proofForm.setFields(mapValidationErrors(error));
+      message.error(getApiErrorMessage(error));
+    },
+  });
+
+  function close() {
+    setVia('loket');
+    setTransaction(null);
+    setProofOpen(false);
+    setSuccessReceipt(null);
+    loketForm.resetFields();
+    proofForm.resetFields();
+    onClose();
+  }
+
+  const availableGateways = config.data?.data?.available_methods || ['manual'];
+  const viaOptions = [
+    { value: 'loket', label: 'Loket' },
+    { value: 'manual', label: 'Transfer' },
+    ...['xendit', 'midtrans'].filter((value) => availableGateways.includes(value)).map((value) => ({ value, label: PROVIDER_LABELS[value] })),
+  ];
+  const viaLabel = viaOptions.find((option) => option.value === via)?.label;
+  const manualInfo = config.data?.data?.manual_payment || {};
+
+  const billingColumns = [
+    { title: 'Periode', render: (_, row) => formatPeriod(row.year, row.month) },
+    { title: 'Pokok', render: (_, row) => formatCurrency(row.penalty_detail?.principal_amount ?? row.amount) },
+    { title: 'Denda', render: (_, row) => formatCurrency(row.penalty_detail?.penalty_amount ?? 0) },
+    { title: 'Terbayar', render: (_, row) => formatCurrency(row.penalty_detail?.total_paid ?? 0) },
+    { title: 'Sisa Tagihan', render: (_, row) => formatCurrency(row.penalty_detail?.total_outstanding ?? 0) },
+    { title: 'Status', render: (_, row) => <StatusBadge type="billing" value={row.status_id} /> },
+  ];
+
+  return (
+    <>
+      <Drawer title={scheme ? `Bayar Skema #${scheme.id}` : ''} open={Boolean(scheme)} onClose={close} width={860} destroyOnHidden>
+        {scheme ? (
+          <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <Alert
+              type="info"
+              showIcon
+              message={`Unit ${scheme.unit_id} — ${unit?.resident?.name || '-'}`}
+              description={`${unit?.cluster?.name || ''} ${unit?.block || ''}/${unit?.lot_number || ''} — hanya tagihan pada skema ini yang dibayarkan di sini.`}
+            />
+
+            <Space size="large" wrap className="section-row">
+              <Statistic title="Saldo Unit" value={formatCurrency(unit?.deposit_balance)} />
+            </Space>
+
+            <Card size="small" title="Ringkasan Perhitungan Skema">
+              <Descriptions size="small" column={2} bordered>
+                <Descriptions.Item label="Pokok IPL (Akumulasi)">{formatCurrency(scheme.accumulated_principal)}</Descriptions.Item>
+                <Descriptions.Item label="Pokok Skema (Basis Diskon)">{formatCurrency(scheme.original_principal)}</Descriptions.Item>
+                <Descriptions.Item label="Denda">{formatCurrency(scheme.original_penalty)}</Descriptions.Item>
+                <Descriptions.Item label="Keringanan Denda">- {formatCurrency(scheme.penalty_reduction)}</Descriptions.Item>
+                <Descriptions.Item label="Denda Bersih">{formatCurrency(scheme.net_penalty)}</Descriptions.Item>
+                <Descriptions.Item label="Diskon %">{percentOf(scheme.principal_discount, scheme.original_principal)}</Descriptions.Item>
+                <Descriptions.Item label="Diskon">- {formatCurrency(scheme.principal_discount)}</Descriptions.Item>
+                <Descriptions.Item label="Status">
+                  {PAYMENT_STATUS[scheme.payment_status]
+                    ? <Tag color={PAYMENT_STATUS[scheme.payment_status][1]}>{PAYMENT_STATUS[scheme.payment_status][0]}</Tag>
+                    : '-'}
+                </Descriptions.Item>
+                <Descriptions.Item label="Total Tagihan">{formatCurrency(scheme.final_amount)}</Descriptions.Item>
+                <Descriptions.Item label="Total Dibayar">{formatCurrency(scheme.paid_amount)}</Descriptions.Item>
+                <Descriptions.Item label="Sisa Tagihan">{formatCurrency(scheme.outstanding_amount)}</Descriptions.Item>
+              </Descriptions>
+            </Card>
+
+            <Card size="small" title="Tagihan yang Dibayar (Saat Ini)">
+              <ResponsiveTable data={billings} columns={billingColumns} pagination={false} scrollX={800} loading={unitQuery.isLoading} rowKey="id" />
+            </Card>
+
+            {paymentRows.length ? (
+              <Card size="small" title="Riwayat Pembayaran">
+                <ResponsiveTable
+                  data={paymentRows}
+                  pagination={false}
+                  scrollX={700}
+                  rowKey="payment_transaction_id"
+                  loading={paymentsHistory.isLoading}
+                  columns={[
+                    { title: 'Tanggal', render: (_, row) => formatDateTime(row.paid_at) },
+                    { title: 'Kuitansi', render: (_, row) => row.receipt_number || row.invoice_number },
+                    { title: 'Pokok', render: (_, row) => formatCurrency(row.principal_amount) },
+                    { title: 'Denda', render: (_, row) => formatCurrency(row.penalty_amount) },
+                    { title: 'Total', render: (_, row) => formatCurrency(row.total_amount) },
+                    { title: 'Kasir', render: (_, row) => row.cashier_name || '-' },
+                  ]}
+                />
+              </Card>
+            ) : null}
+
+            {successReceipt ? (
+              <Card size="small" title="Pembayaran Berhasil">
+                <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                  <div>
+                    <Typography.Title level={5} style={{ margin: 0 }}>{successReceipt.number}</Typography.Title>
+                    <Typography.Text type="secondary">{formatDateTime(successReceipt.transaction_date)}</Typography.Text>
+                  </div>
+                  <Typography.Text>Total Tagihan: {formatCurrency(successReceipt.total_billing)}</Typography.Text><br />
+                  <Typography.Text strong>Grand Total: {formatCurrency(successReceipt.grand_total)}</Typography.Text>
+                  {Number(successReceipt.balance_used) > 0 ? (
+                    <Alert type="info" showIcon message={`Saldo unit digunakan: ${formatCurrency(successReceipt.balance_used)}`} />
+                  ) : null}
+                  {Number(successReceipt.deposit_amount) > 0 ? (
+                    <Alert type="success" showIcon message={`Kelebihan pembayaran ${formatCurrency(successReceipt.deposit_amount)} dicatat sebagai saldo unit.`} />
+                  ) : null}
+                  <div>
+                    <Typography.Text>Metode: {PAYMENT_METHOD_LABELS[successReceipt.payment_method_id] || successReceipt.payment_method_id}</Typography.Text><br />
+                    {successReceipt.payment_channel_id ? <><Typography.Text>Channel: {PAYMENT_CHANNEL_LABELS[successReceipt.payment_channel_id] || successReceipt.payment_channel_id}</Typography.Text><br /></> : null}
+                    {successReceipt.cashier_name ? <Typography.Text>Kasir: {successReceipt.cashier_name}</Typography.Text> : null}
+                  </div>
+                  <Space>
+                    <PaymentPrintMenu type="primary" receiptNumber={successReceipt.number} label="Cetak Kuitansi" />
+                    <Button onClick={close}>Tutup</Button>
+                  </Space>
+                </Space>
+              </Card>
+            ) : (
+              <>
+                <Space direction="vertical" className="section-row" style={{ width: '100%' }}>
+                  <Typography.Text strong>Via</Typography.Text>
+                  <Select value={via} onChange={(value) => { setVia(value); setTransaction(null); }} options={viaOptions} style={{ width: '100%', maxWidth: 320 }} />
+                </Space>
+
+                {via === 'loket' ? (
+                  <Can permission="payments.process" fallback={<Alert type="warning" showIcon message="Anda tidak memiliki akses proses loket." />}>
+                    <Form form={loketForm} layout="vertical" onFinish={processLoket.mutate} initialValues={{ payment_method_id: 'C', loket_code: 'L01', use_balance: true, cashier_name: user?.name }} className="responsive-form">
+                      <Form.Item label="Nominal Pembayaran (tunai)" name="amount" rules={[{ type: 'number', min: cashMin, message: `Nominal minimal ${formatCurrency(cashMin)}` }]}>
+                        <MoneyInput step={1000} min={cashMin} />
+                      </Form.Item>
+                      <Form.Item name="use_balance" valuePropName="checked" className="full-span">
+                        <Checkbox disabled={!unit?.deposit_balance}>Gunakan saldo unit ({formatCurrency(unit?.deposit_balance)})</Checkbox>
+                      </Form.Item>
+                      <Form.Item label="Metode" name="payment_method_id" rules={[{ required: true }]}>
+                        <Select options={[{ value: 'C', label: 'Cash' }, { value: 'D', label: 'Debit/Transfer' }]} />
+                      </Form.Item>
+                      <Form.Item label="Channel" name="payment_channel_id">
+                        <Select allowClear options={[{ value: 'L', label: 'Loket' }, { value: 'M', label: 'Bank Transfer' }, { value: 'Q', label: 'QRIS' }]} />
+                      </Form.Item>
+                      <Form.Item label="Kode Loket" name="loket_code"><Input /></Form.Item>
+                      <Form.Item label="Nama Kasir" name="cashier_name" tooltip="Otomatis sesuai akun yang login, tidak dapat diubah.">
+                        <Input disabled />
+                      </Form.Item>
+                      <Form.Item label="Catatan" name="notes" className="full-span"><Input.TextArea rows={2} /></Form.Item>
+
+                      {preview ? (
+                        <Card size="small" type="inner" title="Ringkasan Alokasi" className="full-span">
+                          <Descriptions size="small" column={2} bordered>
+                            <Descriptions.Item label="Total Tunggakan">{formatCurrency(preview.total_outstanding)}</Descriptions.Item>
+                            <Descriptions.Item label="Nominal Pembayaran">{formatCurrency(preview.payment_amount)}</Descriptions.Item>
+                            <Descriptions.Item label="Saldo Digunakan">{formatCurrency(preview.balance_used)}</Descriptions.Item>
+                            <Descriptions.Item label="Teralokasi">{formatCurrency(preview.amount_allocated)}</Descriptions.Item>
+                            <Descriptions.Item label="Sisa Tunggakan">{formatCurrency(preview.remaining_outstanding)}</Descriptions.Item>
+                            <Descriptions.Item label="Saldo Baru">{formatCurrency(preview.new_balance)}</Descriptions.Item>
+                          </Descriptions>
+                          {preview.overpayment > 0 ? (
+                            <Alert style={{ marginTop: 12 }} type="success" showIcon message={`Kelebihan pembayaran +${formatCurrency(preview.overpayment)} akan ditambahkan ke saldo unit.`} />
+                          ) : null}
+                        </Card>
+                      ) : null}
+
+                      <Form.Item className="full-span">
+                        <Button type="primary" htmlType="submit" disabled={!preview?.amount_allocated} loading={processLoket.isPending}>Proses Bayar Skema</Button>
+                      </Form.Item>
+                    </Form>
+                  </Can>
+                ) : (
+                  <Can permission="payments.create" fallback={<Alert type="warning" showIcon message="Anda tidak memiliki akses membuat transaksi gateway." />}>
+                    <Alert
+                      type="info"
+                      showIcon
+                      message={`Via: ${viaLabel}`}
+                      description={via === 'manual' ? `${manualInfo.bank_name || '-'} ${manualInfo.account_number || ''} a.n. ${manualInfo.account_name || '-'}` : 'Transaksi akan menghasilkan payment URL. Transaksi gateway melunasi seluruh tagihan skema ini.'}
+                    />
+                    <Button className="section-row" type="primary" disabled={!billingIds.length} loading={createGateway.isPending} onClick={() => createGateway.mutate()}>Buat Transaksi</Button>
+                    {transaction ? (
+                      <Card className="section-row" title={transaction.invoice_number}>
+                        <Space direction="vertical">
+                          <StatusBadge type="transaction" value={transaction.status} />
+                          <Typography.Text>Total: {formatCurrency(transaction.total)}</Typography.Text>
+                          {transaction.payment_url ? <Button icon={<LinkOutlined />} href={transaction.payment_url} target="_blank">Buka Payment URL</Button> : null}
+                          {transaction.payment_provider === 'manual' ? <Button icon={<CloudUploadOutlined />} onClick={() => setProofOpen(true)}>Upload Bukti Transfer</Button> : null}
+                        </Space>
+                      </Card>
+                    ) : null}
+                  </Can>
+                )}
+              </>
+            )}
+          </Space>
+        ) : null}
+      </Drawer>
+
+      <Drawer
+        title="Upload Bukti Pembayaran Manual"
+        open={proofOpen}
+        onClose={() => setProofOpen(false)}
+        width={520}
+        extra={<Button type="primary" onClick={() => proofForm.submit()} loading={uploadProof.isPending}>Upload</Button>}
+        destroyOnHidden
+      >
+        <Alert type="info" showIcon message={transaction?.invoice_number} description={`Total transfer: ${formatCurrency(transaction?.total)}`} />
+        <Form form={proofForm} layout="vertical" className="section-row" onFinish={uploadProof.mutate} initialValues={{ manual_transfer_date: dayjs(), amount: transaction?.total }}>
+          <Form.Item label="Nominal Dibayar" name="amount" rules={[{ type: 'number', min: Number(transaction?.total) || 0, message: `Nominal minimal ${formatCurrency(transaction?.total)}` }]}>
+            <MoneyInput step={1000} min={Number(transaction?.total) || 0} />
+          </Form.Item>
+          <Form.Item label="Tanggal Transfer" name="manual_transfer_date" rules={[{ required: true }]}>
+            <DatePicker style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item
+            label="Bukti Pembayaran"
+            name="proof"
+            valuePropName="fileList"
+            getValueFromEvent={(event) => event?.fileList}
+            rules={[{ required: true, message: 'Bukti pembayaran wajib diunggah' }]}
+          >
+            <Upload.Dragger beforeUpload={() => false} maxCount={1} accept=".jpg,.jpeg,.png,.pdf">
+              <p className="ant-upload-drag-icon"><CloudUploadOutlined /></p>
+              <p>Tarik file ke sini atau klik untuk memilih</p>
+              <p className="ant-upload-hint">Format: JPG, PNG, PDF. Maksimal mengikuti konfigurasi backend.</p>
+            </Upload.Dragger>
+          </Form.Item>
+          <Form.Item label="Catatan" name="manual_notes">
+            <Input.TextArea rows={3} />
+          </Form.Item>
+        </Form>
+      </Drawer>
+    </>
+  );
+}
+
 export default function PaymentSchemesPage() {
   const table = useTableState();
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [submitOpen, setSubmitOpen] = useState(false);
   const [detail, setDetail] = useState(null);
   const [approving, setApproving] = useState(null);
   const [rejecting, setRejecting] = useState(null);
+  const [paying, setPaying] = useState(null);
   const [decisionForm] = Form.useForm();
 
   const schemes = useQuery({ queryKey: ['payment-schemes', table.params], queryFn: () => api.paymentSchemes.list(table.params) });
+
+  // Membuka detail langsung dari notifikasi (mis. "Skema Pembayaran #12 disetujui"), tanpa
+  // bergantung pada skema itu ada di halaman daftar yang sedang tampil.
+  const openId = searchParams.get('openId');
+  const openedScheme = useQuery({
+    queryKey: ['payment-schemes', 'open', openId],
+    queryFn: () => api.paymentSchemes.detail(openId),
+    enabled: Boolean(openId),
+    retry: false,
+  });
+  const activeDetail = detail || (openId ? openedScheme.data?.data : undefined) || null;
+
+  function clearOpenId() {
+    if (!openId) return;
+    setSearchParams((params) => { params.delete('openId'); return params; }, { replace: true });
+  }
+
+  function closeDetail() {
+    setDetail(null);
+    clearOpenId();
+  }
 
   const reject = useMutation({
     mutationFn: ({ id, notes }) => api.paymentSchemes.reject(id, { notes }),
@@ -725,9 +1103,9 @@ export default function PaymentSchemesPage() {
     decisionForm.resetFields();
   }
 
-  // Lanjut ke halaman Pembayaran dengan unit dan tagihan skema ini sudah terpilih.
   function paySchema(scheme) {
-    navigate(`/payments?pay_unit=${encodeURIComponent(scheme.unit_id)}&pay_scheme=${scheme.id}`);
+    closeDetail();
+    setPaying(scheme);
   }
 
   function finishApproval(closeDrawer = true) {
@@ -749,6 +1127,16 @@ export default function PaymentSchemesPage() {
           </Space>
         )}
       />
+      {openId && openedScheme.isError ? (
+        <Alert
+          type="error"
+          showIcon
+          closable
+          onClose={clearOpenId}
+          style={{ marginBottom: 16 }}
+          message={`Skema pembayaran #${openId} gagal dibuka: ${getApiErrorMessage(openedScheme.error)}`}
+        />
+      ) : null}
       <FilterBar>
         <Input.Search allowClear placeholder="Cari ID unit / penghuni" value={table.search} onChange={(event) => table.setSearch(event.target.value)} className="filter-input" />
         <Select allowClear placeholder="Status" value={table.filters.status} onChange={(value) => table.setFilters({ ...table.filters, status: value })} className="filter-input" options={STATUS_OPTIONS} />
@@ -845,7 +1233,8 @@ export default function PaymentSchemesPage() {
       </Card>
 
       <SubmitDrawer open={submitOpen} onClose={() => setSubmitOpen(false)} />
-      <DetailDrawer scheme={detail} onClose={() => setDetail(null)} onPay={paySchema} />
+      <DetailDrawer scheme={activeDetail} onClose={closeDetail} onPay={paySchema} />
+      {paying ? <PaySchemeDrawer key={paying.id} scheme={paying} onClose={() => setPaying(null)} /> : null}
 
       {approving ? <ApproveDrawer key={approving.id} scheme={approving} onClose={() => setApproving(null)} onDone={finishApproval} /> : null}
 

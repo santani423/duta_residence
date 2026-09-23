@@ -847,4 +847,55 @@ class PaymentSchemeTest extends TestCase
         $this->assertSame('paid', $this->progress($scheme)['payment_status']);
         $this->assertSame(Billing::STATUS_UNPAID, $june->fresh()->status_id);
     }
+
+    public function test_accumulated_principal_and_net_penalty_are_independent_of_discount_and_payment(): void
+    {
+        [$unit, $billings, $scheme] = $this->approvedScheme();
+        $this->as('loket');
+
+        $before = $this->progress($scheme);
+        // Accumulated principal is the raw sum of the original monthly amounts (3 x Rp500.000),
+        // never net of the scheme's discount.
+        $this->assertEqualsWithDelta(1500000, $before['accumulated_principal'], 0.001);
+        $this->assertEqualsWithDelta((float) $scheme->original_penalty - (float) $scheme->penalty_reduction, $before['net_penalty'], 0.001);
+
+        // A partial payment describes progress, not the scheme's terms - neither figure should move.
+        $this->postJson('/api/v1/payments/process', [
+            'unit_id' => $unit->id, 'billing_ids' => $billings->pluck('id')->all(),
+            'amount' => 500000, 'use_balance' => false, 'payment_method_id' => 'C',
+        ])->assertCreated();
+
+        $after = $this->progress($scheme);
+        $this->assertEqualsWithDelta(1500000, $after['accumulated_principal'], 0.001);
+        $this->assertEqualsWithDelta($before['net_penalty'], $after['net_penalty'], 0.001);
+    }
+
+    public function test_payment_history_endpoint_lists_one_row_per_transaction(): void
+    {
+        [$unit, $billings, $scheme] = $this->approvedScheme();
+        $this->as('loket');
+
+        $first = $this->postJson('/api/v1/payments/process', [
+            'unit_id' => $unit->id, 'billing_ids' => $billings->pluck('id')->all(),
+            'amount' => 500000, 'use_balance' => false, 'payment_method_id' => 'C',
+        ])->assertCreated()->json('data');
+
+        $remaining = collect($this->getJson('/api/v1/payments/search?unit_id='.$unit->id)->assertOk()->json('data.billings'))->pluck('id')->all();
+        $second = $this->postJson('/api/v1/payments/process', [
+            'unit_id' => $unit->id, 'billing_ids' => $remaining, 'use_balance' => false, 'payment_method_id' => 'C',
+        ])->assertCreated()->json('data');
+
+        $rows = $this->getJson("/api/v1/payment-schemes/{$scheme->id}/payments")->assertOk()->json('data');
+
+        $this->assertCount(2, $rows);
+        $this->assertEqualsWithDelta(500000, $rows[0]['total_amount'], 0.001);
+        $this->assertSame($first['number'], $rows[0]['receipt_number']);
+        $this->assertSame($second['number'], $rows[1]['receipt_number']);
+        $this->assertEqualsWithDelta((float) $scheme->final_amount, collect($rows)->sum('total_amount'), 0.001);
+        $this->assertEqualsWithDelta(
+            (float) $scheme->final_amount,
+            collect($rows)->sum('principal_amount') + collect($rows)->sum('penalty_amount'),
+            0.001,
+        );
+    }
 }

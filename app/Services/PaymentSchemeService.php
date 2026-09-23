@@ -25,6 +25,7 @@ class PaymentSchemeService
         private readonly PenaltyService $penaltyService,
         private readonly DiscountService $discountService,
         private readonly AuditService $auditService,
+        private readonly PaymentSchemeNotifier $notifier,
     ) {}
 
     /**
@@ -139,6 +140,7 @@ class PaymentSchemeService
             }
 
             $this->auditService->log('payment_scheme_submitted', 'payment-schemes', 'CREATE', $scheme, [], $scheme->load('items')->toArray());
+            $this->notifier->submitted($scheme, User::query()->findOrFail($userId));
 
             return $scheme;
         });
@@ -207,6 +209,7 @@ class PaymentSchemeService
             }
 
             $this->auditService->log('payment_scheme_approved', 'payment-schemes', 'APPROVE', $scheme, [], $scheme->toArray(), 'success', $notes);
+            $this->notifier->approved($scheme, User::query()->findOrFail($userId));
 
             return $scheme->refresh();
         });
@@ -245,11 +248,29 @@ class PaymentSchemeService
             $scheme->setAttribute('admin_limit_percent', $limit);
             $scheme->setAttribute('viewer_limited', $limited);
             $scheme->setAttribute('exceeds_admin_limit', $scheme->isPending() && $this->exceedsAdminLimit($scheme, $limit));
+            $scheme->setAttribute('accumulated_principal', $this->accumulatedPrincipal($scheme));
+            $scheme->setAttribute('net_penalty', round((float) $scheme->original_penalty - (float) $scheme->penalty_reduction, 2));
 
             foreach ($this->paymentProgress($scheme) as $key => $value) {
                 $scheme->setAttribute($key, $value);
             }
         }
+    }
+
+    /**
+     * Sum of the original, untouched monthly IPL principal (`billing.amount`) across the scheme's
+     * included periods - independent of discount, penalty, reduction, or payments already made.
+     */
+    private function accumulatedPrincipal(PaymentScheme $scheme): float
+    {
+        $scheme->loadMissing('items.billing');
+
+        return round(
+            $scheme->items
+                ->where('status', PaymentSchemeItem::STATUS_INCLUDED)
+                ->sum(fn (PaymentSchemeItem $item) => (float) ($item->billing->amount ?? 0)),
+            2,
+        );
     }
 
     /**
@@ -308,6 +329,7 @@ class PaymentSchemeService
         ])->save();
 
         $this->auditService->log('payment_scheme_rejected', 'payment-schemes', 'REJECT', $scheme, [], $scheme->toArray(), 'success', $notes);
+        $this->notifier->rejected($scheme, User::query()->findOrFail($userId), $notes);
 
         return $scheme->refresh();
     }
@@ -524,6 +546,7 @@ class PaymentSchemeService
             ->update(['status' => ApprovalRequest::STATUS_CANCELLED, 'supervisor_notes' => $reason, 'decided_at' => now()]);
 
         $this->auditService->log('payment_scheme_cancelled', 'payment-schemes', 'CANCEL', $scheme, [], $scheme->toArray(), 'success', $reason);
+        $this->notifier->cancelled($scheme, $reason);
     }
 
     private function assertPending(PaymentScheme $scheme): void

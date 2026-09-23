@@ -323,7 +323,7 @@ function BillingsTab({ residentId, unitId, units }) {
         <InputNumber placeholder="Tahun" value={table.filters.year} onChange={(value) => table.setFilters({ ...table.filters, year: value })} className="filter-input" />
         <Select allowClear placeholder="Bulan" value={table.filters.month} onChange={(value) => table.setFilters({ ...table.filters, month: value })} className="filter-input" options={Array.from({ length: 12 }, (_, index) => ({ value: index + 1, label: dayjs().month(index).format('MMMM') }))} />
         <Select allowClear placeholder="Jenis Tagihan" value={table.filters.billing_type} onChange={(value) => table.setFilters({ ...table.filters, billing_type: value })} className="filter-input" options={[{ value: 'regular', label: 'Reguler' }, { value: 'special', label: 'Khusus' }, { value: 'back', label: 'Mundur' }]} />
-        <Select allowClear placeholder="Status" value={table.filters.status_id} onChange={(value) => table.setFilters({ ...table.filters, status_id: value })} className="filter-input" options={[{ value: '01', label: 'Belum Bayar' }, { value: '02', label: 'Lunas' }, { value: '03', label: 'Sebagian' }, { value: '04', label: 'Dibatalkan' }]} />
+        <Select allowClear placeholder="Status" value={table.filters.status_id} onChange={(value) => table.setFilters({ ...table.filters, status_id: value })} className="filter-input" options={[{ value: '01', label: 'Belum Bayar' }, { value: '02', label: 'Lunas' }, { value: '03', label: 'Sudah Bayar' }, { value: '04', label: 'Dibatalkan' }]} />
       </FilterBar>
       <Card>
         <ResponsiveTable

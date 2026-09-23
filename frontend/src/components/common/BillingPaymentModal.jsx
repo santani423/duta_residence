@@ -55,11 +55,13 @@ export default function BillingPaymentModal({ unitId, billingIds = [], open, onC
   const watchedUseBalance = Form.useWatch('use_balance', form);
   const debouncedAmount = useDebounce(watchedAmount, 400);
   const useBalance = watchedUseBalance ?? true;
+  // Nominal tunai tidak boleh kurang dari sisa tagihan setelah saldo unit (bila dipakai); lebih dari itu boleh (kelebihan jadi saldo).
+  const cashMin = Math.max(0, total - (useBalance ? balance : 0));
 
-  // Nominal tunai bawaan = sisa tagihan setelah saldo unit (bila dipakai); petugas tetap bisa mengubahnya.
+  // Nominal tunai bawaan = sisa tagihan setelah saldo unit (bila dipakai); petugas tetap bisa menambah lebih.
   useEffect(() => {
     if (!open || !selectedIds.length) return;
-    form.setFieldValue('amount', Math.max(0, total - (useBalance ? balance : 0)));
+    form.setFieldValue('amount', cashMin);
     // Transfer bank selalu melunasi seluruh tagihan terpilih, jadi nominal bawaannya total tagihan.
     form.setFieldValue('manual_amount', total);
   }, [open, total, balance, useBalance]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -210,8 +212,8 @@ export default function BillingPaymentModal({ unitId, billingIds = [], open, onC
                           description={`${manualInfo.bank_name || '-'} ${manualInfo.account_number || ''} a.n. ${manualInfo.account_name || '-'}. Pembayaran menunggu verifikasi setelah bukti diunggah.`}
                         />
                         <Space wrap align="start" style={{ width: '100%' }}>
-                          <Form.Item label="Nominal Transfer" name="manual_amount">
-                            <MoneyInput step={1000} style={{ width: 260 }} />
+                          <Form.Item label="Nominal Transfer" name="manual_amount" rules={[{ type: 'number', min: total, message: `Nominal minimal ${formatCurrency(total)}` }]}>
+                            <MoneyInput step={1000} min={total} style={{ width: 260 }} />
                           </Form.Item>
                           <Form.Item label="Tanggal Transfer" name="manual_transfer_date" rules={[{ required: true, message: 'Tanggal transfer wajib diisi' }]}>
                             <DatePicker style={{ width: 220 }} />
@@ -234,8 +236,8 @@ export default function BillingPaymentModal({ unitId, billingIds = [], open, onC
                       </>
                     ) : (
                       <>
-                        <Form.Item label="Nominal Pembayaran (tunai)" name="amount" rules={[{ type: 'number', min: 0, message: 'Nominal tidak boleh negatif' }]}>
-                          <MoneyInput step={1000} />
+                        <Form.Item label="Nominal Pembayaran (tunai)" name="amount" rules={[{ type: 'number', min: cashMin, message: `Nominal minimal ${formatCurrency(cashMin)}` }]}>
+                          <MoneyInput step={1000} min={cashMin} />
                         </Form.Item>
                         <Form.Item name="use_balance" valuePropName="checked">
                           <Checkbox disabled={!balance}>Gunakan saldo unit ({formatCurrency(balance)})</Checkbox>
@@ -245,7 +247,9 @@ export default function BillingPaymentModal({ unitId, billingIds = [], open, onC
                             <Select style={{ width: 160 }} options={[{ value: 'C', label: 'Cash' }, { value: 'D', label: 'Debit' }]} />
                           </Form.Item>
                           <Form.Item label="Kode Loket" name="loket_code"><Input style={{ width: 120 }} /></Form.Item>
-                          <Form.Item label="Nama Kasir" name="cashier_name"><Input style={{ width: 220 }} /></Form.Item>
+                          <Form.Item label="Nama Kasir" name="cashier_name" tooltip="Otomatis sesuai akun yang login, tidak dapat diubah.">
+                            <Input style={{ width: 220 }} disabled />
+                          </Form.Item>
                         </Space>
                         <Form.Item label="Catatan" name="notes"><Input.TextArea rows={2} /></Form.Item>
                       </>

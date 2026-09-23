@@ -233,7 +233,9 @@ function ManualProofDrawer({ payment, open, onClose }) {
         <Form.Item label="Nama pengirim" name="sender_name" rules={[{ required: true }]}><Input /></Form.Item>
         <Form.Item label="Bank pengirim" name="sender_bank" rules={[{ required: true }]}><Input /></Form.Item>
         <Form.Item label="Nomor rekening pengirim" name="sender_account_number" rules={[{ required: true }]}><Input /></Form.Item>
-        <Form.Item label="Nominal transfer" name="amount" rules={[{ required: true }]}><MoneyInput /></Form.Item>
+        <Form.Item label="Nominal transfer" name="amount" rules={[{ required: true, type: 'number', min: Number(payment?.total) || 0, message: `Nominal minimal ${formatCurrency(payment?.total)}` }]}>
+          <MoneyInput min={Number(payment?.total) || 0} />
+        </Form.Item>
         <Form.Item label="Tanggal transfer" name="manual_transfer_date" rules={[{ required: true }]}><DatePicker style={{ width: '100%' }} /></Form.Item>
         <Form.Item
           label="Bukti pembayaran"

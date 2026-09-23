@@ -75,6 +75,11 @@ class PaymentTransaction extends Model
         return $this->hasMany(PaymentAllocation::class);
     }
 
+    public function receipt()
+    {
+        return $this->hasOne(Receipt::class);
+    }
+
     public function unit()
     {
         return $this->belongsTo(Unit::class);

@@ -1,7 +1,7 @@
 import { Alert, Badge, Button, Card, Checkbox, DatePicker, Descriptions, Drawer, Form, Input, Modal, Select, Space, Statistic, Tabs, Tag, Upload, message, Typography } from 'antd';
 import { CheckOutlined, CloudUploadOutlined, CloseOutlined, FileExcelOutlined, LinkOutlined, PrinterOutlined, SearchOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import PageHeader from '../components/common/PageHeader.jsx';
@@ -19,12 +19,14 @@ import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
 import { downloadBlob, printPdf } from '../utils/download.js';
 import MoneyInput from '../components/common/MoneyInput.jsx';
 import PaymentPrintMenu from '../components/common/PaymentPrintMenu.jsx';
+import { useAuth } from '../state/AuthContext.jsx';
 
 const PAYMENT_METHOD_LABELS = { C: 'Cash', D: 'Debit/Transfer' };
 const PROVIDER_LABELS = { manual: 'Transfer', xendit: 'Xendit', midtrans: 'Midtrans' };
 const PAYMENT_CHANNEL_LABELS = { L: 'Loket', M: 'Bank Transfer', Q: 'QRIS' };
 
 export default function PaymentsPage() {
+  const { user } = useAuth();
   const [unit, setUnit] = useState(null);
   const [selectedBillingIds, setSelectedBillingIds] = useState([]);
   const [transaction, setTransaction] = useState(null);
@@ -77,11 +79,9 @@ export default function PaymentsPage() {
     }),
     onSuccess: (response, variables) => {
       const found = response.data?.billings || [];
-      // Dibuka dari "Bayar" pada skema pembayaran: hanya tagihan skema itu yang dipilih; selain itu semua tagihan.
-      const fromScheme = variables?.schemeId ? found.filter((billing) => billing.payment_scheme_id === variables.schemeId) : [];
       setUnit(response.data);
       setSearchRange({ date_from: variables?.billing_range?.[0]?.format('YYYY-MM-DD'), date_to: variables?.billing_range?.[1]?.format('YYYY-MM-DD') });
-      setSelectedBillingIds((fromScheme.length ? fromScheme : found).map((billing) => billing.id));
+      setSelectedBillingIds(found.map((billing) => billing.id));
       setTransaction(null);
       loketForm.setFieldsValue({ amount: undefined, use_balance: true });
     },
@@ -261,23 +261,6 @@ export default function PaymentsPage() {
     if ((receiptTable.filters.unit_id || undefined) !== urlUnitId) receiptTable.setFilters({ ...receiptTable.filters, unit_id: urlUnitId });
   }, [urlUnitId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Dari tombol "Bayar" di Skema Pembayaran: /payments?pay_unit=AL001&pay_scheme=7 langsung membuka unit itu.
-  const payUnit = searchParams.get('pay_unit') || undefined;
-  const paySchemeId = Number(searchParams.get('pay_scheme')) || undefined;
-  const autoOpened = useRef(false);
-  useEffect(() => {
-    if (!payUnit || autoOpened.current) return;
-    autoOpened.current = true;
-    setUnitQuery(payUnit);
-    searchForm.setFieldsValue({ unit_id: payUnit });
-    search.mutate({ unit_id: payUnit, schemeId: paySchemeId });
-    setSearchParams((previous) => {
-      previous.delete('pay_unit');
-      previous.delete('pay_scheme');
-      return previous;
-    }, { replace: true });
-  }, [payUnit]); // eslint-disable-line react-hooks/exhaustive-deps
-
   function updateUnitFilters(patch) {
     setUnitFilters((previous) => ({ ...previous, ...patch }));
     searchForm.setFieldValue('unit_id', undefined);
@@ -315,6 +298,18 @@ export default function PaymentsPage() {
   const selectedTotal = unpaidBillings
     .filter((billing) => selectedBillingIds.includes(billing.id))
     .reduce((sum, billing) => sum + Number(billing.penalty_detail?.total_outstanding ?? 0), 0);
+  const balance = Number(unit?.deposit_balance ?? 0);
+  const useBalance = watchedUseBalance ?? true;
+  // Nominal tunai tidak boleh kurang dari sisa tagihan setelah saldo unit (bila dipakai); lebih dari itu boleh (kelebihan jadi saldo).
+  const cashMin = Math.max(0, selectedTotal - (useBalance ? balance : 0));
+
+  // Nominal tunai bawaan = sisa tagihan setelah saldo unit (bila dipakai); petugas tetap bisa menambah lebih.
+  useEffect(() => {
+    if (!unit || !selectedBillingIds.length) return;
+    loketForm.setFieldValue('amount', cashMin);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unit?.id, selectedBillingIds, balance, useBalance]);
+
   // Loket and Transfer are always offered; Xendit/Midtrans only when the backend reports them enabled.
   const availableGateways = config.data?.data?.available_methods || ['manual'];
   const viaOptions = [
@@ -458,9 +453,9 @@ export default function PaymentsPage() {
                     </Space>
                     {via === 'loket' ? (
                             <Can permission="payments.process" fallback={<Alert type="warning" showIcon message="Anda tidak memiliki akses proses loket." />}>
-                              <Form form={loketForm} layout="vertical" onFinish={processLoket.mutate} initialValues={{ payment_method_id: 'C', loket_code: 'L01', use_balance: true }} className="responsive-form">
-                                <Form.Item label="Nominal Pembayaran (tunai)" name="amount" rules={[{ type: 'number', min: 0, message: 'Nominal tidak boleh negatif' }]}>
-                                  <MoneyInput step={1000} placeholder="0" />
+                              <Form form={loketForm} layout="vertical" onFinish={processLoket.mutate} initialValues={{ payment_method_id: 'C', loket_code: 'L01', use_balance: true, cashier_name: user?.name }} className="responsive-form">
+                                <Form.Item label="Nominal Pembayaran (tunai)" name="amount" rules={[{ type: 'number', min: cashMin, message: `Nominal minimal ${formatCurrency(cashMin)}` }]}>
+                                  <MoneyInput step={1000} min={cashMin} />
                                 </Form.Item>
                                 <Form.Item name="use_balance" valuePropName="checked" className="full-span">
                                   <Checkbox disabled={!unit.deposit_balance}>Gunakan saldo unit ({formatCurrency(unit.deposit_balance)})</Checkbox>
@@ -472,7 +467,9 @@ export default function PaymentsPage() {
                                   <Select allowClear options={[{ value: 'L', label: 'Loket' }, { value: 'M', label: 'Bank Transfer' }, { value: 'Q', label: 'QRIS' }]} />
                                 </Form.Item>
                                 <Form.Item label="Kode Loket" name="loket_code"><Input /></Form.Item>
-                                <Form.Item label="Nama Kasir" name="cashier_name"><Input /></Form.Item>
+                                <Form.Item label="Nama Kasir" name="cashier_name" tooltip="Otomatis sesuai akun yang login, tidak dapat diubah.">
+                                  <Input disabled />
+                                </Form.Item>
                                 <Form.Item label="Catatan" name="notes" className="full-span"><Input.TextArea rows={2} /></Form.Item>
 
                                 {preview ? (
@@ -688,9 +685,9 @@ export default function PaymentsPage() {
 
       <Drawer title="Upload Bukti Pembayaran Manual" open={Boolean(proofOpen)} onClose={() => setProofOpen(null)} width={520} extra={<Button type="primary" onClick={() => proofForm.submit()} loading={uploadProof.isPending}>Upload</Button>} destroyOnHidden>
         <Alert type="info" showIcon message={proofOpen?.invoice_number} description={`Total transfer: ${formatCurrency(proofOpen?.total)}`} />
-        <Form form={proofForm} layout="vertical" className="section-row" onFinish={uploadProof.mutate} initialValues={{ manual_transfer_date: dayjs() }}>
-          <Form.Item label="Nominal Dibayar" name="amount">
-            <MoneyInput step={1000} placeholder={proofOpen?.total} />
+        <Form form={proofForm} layout="vertical" className="section-row" onFinish={uploadProof.mutate} initialValues={{ manual_transfer_date: dayjs(), amount: proofOpen?.total }}>
+          <Form.Item label="Nominal Dibayar" name="amount" rules={[{ type: 'number', min: Number(proofOpen?.total) || 0, message: `Nominal minimal ${formatCurrency(proofOpen?.total)}` }]}>
+            <MoneyInput step={1000} min={Number(proofOpen?.total) || 0} />
           </Form.Item>
           <Form.Item label="Tanggal Transfer" name="manual_transfer_date" rules={[{ required: true }]}>
             <DatePicker style={{ width: '100%' }} />

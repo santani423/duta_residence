@@ -57,7 +57,7 @@ export default function ReceivablesPage() {
           className="filter-input"
           options={[
             { value: '01', label: 'Belum Bayar' },
-            { value: '03', label: 'Sebagian' },
+            { value: '03', label: 'Sudah Bayar' },
             { value: '02', label: 'Lunas' },
             { value: '04', label: 'Dibatalkan' },
           ]}

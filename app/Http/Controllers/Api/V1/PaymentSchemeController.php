@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\ApprovalRequest;
+use App\Models\PaymentAllocation;
 use App\Models\PaymentScheme;
 use App\Models\Unit;
 use App\Services\ApprovalService;
@@ -34,6 +35,41 @@ class PaymentSchemeController extends Controller
     public function show(Request $request, PaymentScheme $paymentScheme, PaymentSchemeService $service)
     {
         return $this->success($this->annotated($paymentScheme, $request, $service));
+    }
+
+    /**
+     * Riwayat pembayaran atas tagihan-tagihan skema ini, dari snapshot beku PaymentAllocation
+     * (bukan hitungan ulang) - satu baris per transaksi, digabung bila satu transaksi mencakup
+     * lebih dari satu tagihan skema.
+     */
+    public function payments(PaymentScheme $paymentScheme)
+    {
+        $billingIds = $paymentScheme->items()->pluck('billing_id');
+
+        $rows = PaymentAllocation::query()
+            ->whereIn('billing_id', $billingIds)
+            ->with('paymentTransaction.receipt')
+            ->orderBy('calculated_at')
+            ->get()
+            ->groupBy('payment_transaction_id')
+            ->map(function ($group) {
+                $transaction = $group->first()->paymentTransaction;
+
+                return [
+                    'payment_transaction_id' => $transaction->id,
+                    'invoice_number' => $transaction->invoice_number,
+                    'receipt_number' => $transaction->receipt?->number,
+                    'paid_at' => $transaction->paid_at,
+                    'payment_provider' => $transaction->payment_provider,
+                    'cashier_name' => $transaction->receipt?->cashier_name,
+                    'principal_amount' => round((float) $group->sum('principal_amount'), 2),
+                    'penalty_amount' => round((float) $group->sum('penalty_amount'), 2),
+                    'total_amount' => round((float) $group->sum('total_amount'), 2),
+                ];
+            })
+            ->values();
+
+        return $this->success($rows);
     }
 
     /** Dry run against the latest billing condition; nothing is stored. */

@@ -10,6 +10,7 @@ use App\Models\EmergencyAlert;
 use App\Models\MaintenanceRequest;
 use App\Models\NotificationQueue;
 use App\Models\PaymentPromise;
+use App\Models\PaymentScheme;
 use App\Models\PaymentTransaction;
 use App\Models\Receipt;
 use App\Models\ResidentComplaint;
@@ -39,6 +40,7 @@ class NotificationPresenter
         PaymentPromise::class => 'payment_promise',
         ApprovalRequest::class => 'approval',
         CollectorProfile::class => 'collector',
+        PaymentScheme::class => 'payment_scheme',
     ];
 
     private const RESOURCE_LABELS = [
@@ -52,6 +54,7 @@ class NotificationPresenter
         'payment_promise' => 'Janji Bayar',
         'approval' => 'Permintaan Persetujuan',
         'collector' => 'Kolektor',
+        'payment_scheme' => 'Skema Pembayaran',
     ];
 
     /** type => [category, label] */
@@ -83,6 +86,10 @@ class NotificationPresenter
         'cluster_rate_activated' => ['system', 'Tarif Cluster Berubah'],
         'account_changed' => ['system', 'Perubahan Akun'],
         'internal_task' => ['system', 'Tugas Internal'],
+        'payment_scheme_submitted' => ['payment_scheme', 'Pengajuan Skema Pembayaran'],
+        'payment_scheme_approved' => ['payment_scheme', 'Skema Pembayaran Disetujui'],
+        'payment_scheme_rejected' => ['payment_scheme', 'Skema Pembayaran Ditolak'],
+        'payment_scheme_cancelled' => ['payment_scheme', 'Skema Pembayaran Dibatalkan'],
     ];
 
     /** Payload for a NotificationQueue row. Extends the raw attributes so existing clients keep working. */
@@ -168,6 +175,7 @@ class NotificationPresenter
             'maintenance' => 'Perawatan',
             'emergency' => 'Darurat',
             'announcement' => 'Pengumuman',
+            'payment_scheme' => 'Skema Pembayaran',
             default => 'Sistem',
         };
     }

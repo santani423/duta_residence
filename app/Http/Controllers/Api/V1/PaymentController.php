@@ -99,13 +99,15 @@ class PaymentController extends Controller
             'payment_method_id' => ['required', 'exists:payment_methods,id'],
             'payment_channel_id' => ['nullable', 'exists:payment_channels,id'],
             'loket_code' => ['nullable', 'string', 'max:20'],
-            'cashier_name' => ['nullable', 'string', 'max:50'],
             'notes' => ['nullable', 'string'],
         ]);
 
         if ($request->user()->hasRole('collector')) {
             $assignmentService->assertUnitAssigned($request->user(), $data['unit_id']);
         }
+
+        // Kasir selalu tercatat sebagai petugas yang login, tidak pernah dari input klien.
+        $data['cashier_name'] = $request->user()->name;
 
         $receipt = $service->process(Unit::findOrFail($data['unit_id']), $data['billing_ids'] ?? null, $data, $request->user()->id);
 

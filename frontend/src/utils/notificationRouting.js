@@ -11,6 +11,7 @@ const ROUTES = {
     invoice: { to: () => '/billings', permission: 'billings.view' },
     cluster_rate_schedule: { to: () => '/clusters', permission: 'clusters.view' },
     approval: { to: () => '/supervisor/approvals', permission: 'approvals.view' },
+    payment_scheme: { to: (ref) => `/payment-schemes?openId=${ref.id}`, permission: 'payment-schemes.view' },
   },
   resident: {
     payment: { to: (ref) => `/resident/payments/${ref.id}` },

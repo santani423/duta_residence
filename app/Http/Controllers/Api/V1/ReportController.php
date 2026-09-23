@@ -80,13 +80,18 @@ class ReportController extends Controller
         $month = $request->integer('month', now()->month);
         $billings = Billing::query()->where('year', $year)->where('month', $month);
 
+        // Dihitung per baris (bukan SUM di SQL) supaya pakai floor non-negatif yang sama dengan
+        // PenaltyService::calculateInvoiceTotal(), bukan rumus SUM terpisah yang bisa minus.
+        $outstandingPrincipal = (clone $billings)->outstanding()->get(['amount', 'discount', 'principal_paid'])
+            ->sum(fn (Billing $billing) => max(0.0, (float) $billing->amount - (float) $billing->discount - (float) $billing->principal_paid));
+
         return $this->success([
             'period' => sprintf('%04d-%02d', $year, $month),
             'total_billing' => (clone $billings)->sum('amount'),
             'total_paid' => (clone $billings)->sum(DB::raw('principal_paid + penalty_paid')),
             // Pokok yang belum tertagih saja (belum termasuk denda berjalan) - untuk total
             // tunggakan termasuk denda dinamis, lihat BillingController::summary().
-            'total_outstanding_principal' => (clone $billings)->outstanding()->sum(DB::raw('amount - discount - principal_paid')),
+            'total_outstanding_principal' => round($outstandingPrincipal, 2),
         ]);
     }
 

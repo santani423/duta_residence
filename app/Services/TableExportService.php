@@ -26,7 +26,7 @@ class TableExportService
     /** DomPDF needs roughly 0.2MB per table row; the same cap the other list PDFs use. */
     public const MAX_ROWS = 500;
 
-    private const BILLING_STATUS = ['01' => 'Belum Bayar', '02' => 'Lunas', '03' => 'Sebagian', '04' => 'Dibatalkan'];
+    private const BILLING_STATUS = ['01' => 'Belum Bayar', '02' => 'Lunas', '03' => 'Sudah Bayar', '04' => 'Dibatalkan'];
 
     private const SCHEME_STATUS = ['pending' => 'Menunggu Admin', 'approved' => 'Disetujui', 'rejected' => 'Ditolak', 'cancelled' => 'Dibatalkan'];
 
