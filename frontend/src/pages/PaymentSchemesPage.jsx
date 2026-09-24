@@ -318,16 +318,16 @@ function SubmitDrawer({ open, onClose }) {
                   { title: 'Denda', render: (_, row) => formatCurrency(penaltyOf(row)) },
                   {
                     title: 'Keringanan Denda',
-                    width: 240,
+                    width: 320,
                     render: (_, row) => {
                       if (lockedIds.has(row.id)) return <Tag color="gold">Sudah dalam skema</Tag>;
                       if (!selectedIds.includes(row.id)) return <Typography.Text type="secondary">Centang tagihan untuk mengisi</Typography.Text>;
                       if (penaltyOf(row) <= 0) return <Typography.Text type="secondary">Tidak ada denda</Typography.Text>;
                       return (
-                        <Space.Compact style={{ width: '100%' }}>
+                        <Space style={{ width: '100%' }}>
                           <MoneyInput max={penaltyOf(row)} value={reductions[row.id]} onChange={(value) => setReduction(row.id, value)} placeholder="0" />
                           <Button title="Hapus seluruh denda tagihan ini" onClick={() => setReduction(row.id, penaltyOf(row))}>Hapus</Button>
-                        </Space.Compact>
+                        </Space>
                       );
                     },
                   },
@@ -587,15 +587,15 @@ function ApproveDrawer({ scheme, onClose, onDone }) {
                 { title: 'Usulan Loket', render: (_, row) => formatCurrency(row.penalty_reduction) },
                 {
                   title: 'Keringanan Denda',
-                  width: 240,
+                  width: 320,
                   render: (_, row) => {
                     if (rejectedIds.includes(row.billing_id)) return <Typography.Text type="secondary">Tidak diberi keringanan</Typography.Text>;
                     if (Number(row.original_penalty) <= 0) return <Typography.Text type="secondary">Tidak ada denda</Typography.Text>;
                     return (
-                      <Space.Compact style={{ width: '100%' }}>
+                      <Space style={{ width: '100%' }}>
                         <MoneyInput max={Number(row.original_penalty)} value={reductions[row.billing_id]} onChange={(value) => setReductions((previous) => ({ ...previous, [row.billing_id]: value ?? 0 }))} />
                         <Button title="Hapus seluruh denda tagihan ini" onClick={() => setReductions((previous) => ({ ...previous, [row.billing_id]: Number(row.original_penalty) }))}>Hapus</Button>
-                      </Space.Compact>
+                      </Space>
                     );
                   },
                 },
@@ -844,7 +844,8 @@ function PaySchemeDrawer({ scheme, onClose }) {
 
   const billingColumns = [
     { title: 'Periode', render: (_, row) => formatPeriod(row.year, row.month) },
-    { title: 'Pokok', render: (_, row) => formatCurrency(row.penalty_detail?.principal_amount ?? row.amount) },
+    { title: 'Pokok', render: (_, row) => formatCurrency(row.amount) },
+    { title: 'Diskon', render: (_, row) => (Number(row.discount) > 0 ? `- ${formatCurrency(row.discount)}` : formatCurrency(0)) },
     { title: 'Denda', render: (_, row) => formatCurrency(row.penalty_detail?.penalty_amount ?? 0) },
     { title: 'Terbayar', render: (_, row) => formatCurrency(row.penalty_detail?.total_paid ?? 0) },
     { title: 'Sisa Tagihan', render: (_, row) => formatCurrency(row.penalty_detail?.total_outstanding ?? 0) },
@@ -888,7 +889,7 @@ function PaySchemeDrawer({ scheme, onClose }) {
             </Card>
 
             <Card size="small" title="Tagihan yang Dibayar (Saat Ini)">
-              <ResponsiveTable data={billings} columns={billingColumns} pagination={false} scrollX={800} loading={unitQuery.isLoading} rowKey="id" />
+              <ResponsiveTable data={billings} columns={billingColumns} pagination={false} scrollX={900} loading={unitQuery.isLoading} rowKey="id" />
             </Card>
 
             {paymentRows.length ? (
