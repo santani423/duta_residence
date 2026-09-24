@@ -105,6 +105,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::get('clusters/{cluster}', [ClusterController::class, 'show'])->middleware('permission:clusters.view');
     Route::put('clusters/{cluster}', [ClusterController::class, 'update'])->middleware('permission:clusters.update-rate');
     Route::delete('clusters/{cluster}', [ClusterController::class, 'destroy'])->middleware('permission:clusters.delete');
+    Route::get('clusters/{cluster}/income-statistics', [ClusterController::class, 'incomeStatistics'])->middleware('permission:clusters.view');
 
     Route::get('clusters/{cluster}/rate-schedules', [ClusterRateScheduleController::class, 'index'])->middleware('permission:clusters.view');
     Route::post('clusters/{cluster}/rate-schedules', [ClusterRateScheduleController::class, 'store'])->middleware('permission:clusters.update-rate');

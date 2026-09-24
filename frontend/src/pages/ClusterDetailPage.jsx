@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import PageHeader from '../components/common/PageHeader.jsx';
 import Can from '../components/common/Can.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
@@ -21,6 +21,57 @@ import MoneyInput from '../components/common/MoneyInput.jsx';
 const DONUT_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100'];
 const MONTHLY_RATE_MONTHS_PAST = 6;
 const MONTHLY_RATE_MONTHS_FUTURE = 6;
+const INCOME_LINE_COLOR = '#2563eb';
+const ID_MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+function shortMonthLabel(month) {
+  const [year, monthNumber] = String(month).split('-').map(Number);
+  return `${ID_MONTHS_SHORT[(monthNumber || 1) - 1]} ${year}`;
+}
+
+function IncomeTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0].payload;
+  return (
+    <div className="income-chart-tooltip">
+      <div className="income-chart-tooltip__label">{row.label}</div>
+      <div className="income-chart-tooltip__value">{formatCurrency(row.income)}</div>
+    </div>
+  );
+}
+
+function ClusterIncomeChart({ query }) {
+  const payload = query.data?.data;
+  const monthlyIncome = (payload?.monthly_income || []).map((row) => ({ ...row, shortLabel: shortMonthLabel(row.month) }));
+  const hasIncome = monthlyIncome.some((row) => Number(row.income) > 0);
+
+  return (
+    <Card
+      className="section-row"
+      title="Penghasilan Cluster"
+      loading={query.isLoading}
+      extra={payload ? <Statistic title="Total 12 Bulan Terakhir" value={formatCurrency(payload.total_income)} valueStyle={{ fontSize: 18 }} /> : null}
+    >
+      {query.isError ? (
+        <ErrorState error={query.error} onRetry={query.refetch} />
+      ) : !hasIncome ? (
+        <Empty description="Belum ada transaksi penghasilan yang tercatat." image={Empty.PRESENTED_IMAGE_SIMPLE} />
+      ) : (
+        <div className="chart-box">
+          <ResponsiveContainer>
+            <LineChart data={monthlyIncome} margin={{ top: 8, right: 16, left: 8, bottom: 24 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="shortLabel" tick={{ fontSize: 12 }} angle={-35} textAnchor="end" height={56} />
+              <YAxis tickFormatter={(value) => `${(Number(value) / 1000000).toLocaleString('id-ID')} jt`} width={70} tick={{ fontSize: 12 }} />
+              <Tooltip content={<IncomeTooltip />} />
+              <Line type="monotone" dataKey="income" name="Penghasilan" stroke={INCOME_LINE_COLOR} strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </Card>
+  );
+}
 
 // Mirrors ClusterRateScheduleService::rateForPeriod on the backend: the rate for a month
 // is whichever active schedule has the latest effective_date on/before that month.
@@ -98,6 +149,7 @@ export default function ClusterDetailPage() {
   }
 
   const detail = useQuery({ queryKey: ['clusters', id], queryFn: () => api.clusters.detail(id) });
+  const incomeStatistics = useQuery({ queryKey: ['clusters', id, 'income-statistics'], queryFn: () => api.clusters.incomeStatistics(id) });
   const schedules = useQuery({ queryKey: ['clusters', id, 'rate-schedules'], queryFn: () => api.clusters.rateSchedules(id) });
   const units = useQuery({
     queryKey: ['clusters', id, 'units', unitsTable.params],
@@ -184,7 +236,7 @@ export default function ClusterDetailPage() {
         title={cluster.name || 'Detail Cluster'}
         subtitle="Detail cluster dan penjadwalan perubahan tarif."
         breadcrumbs={[{ label: 'Cluster', to: '/clusters' }, { label: cluster.name }]}
-        onRefresh={() => { detail.refetch(); schedules.refetch(); unitsAll.refetch(); }}
+        onRefresh={() => { detail.refetch(); incomeStatistics.refetch(); schedules.refetch(); unitsAll.refetch(); }}
         loading={detail.isFetching || schedules.isFetching}
         extra={(
           <Space>
@@ -228,6 +280,8 @@ export default function ClusterDetailPage() {
           </Card>
         </Col>
       </Row>
+
+      <ClusterIncomeChart query={incomeStatistics} />
 
       <Card className="section-row" title="Riwayat Biaya IPL Bulanan">
         <ResponsiveTable

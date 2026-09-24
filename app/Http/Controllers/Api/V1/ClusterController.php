@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
+use App\Models\Billing;
 use App\Models\Cluster;
 use App\Models\ClusterRateSchedule;
 use App\Models\Unit;
@@ -82,6 +83,52 @@ class ClusterController extends Controller
         $auditService->log('cluster_updated', 'clusters', 'UPDATE', $cluster, $old, $cluster->toArray());
 
         return $this->success($cluster->refresh(), 'Tarif klaster berhasil diperbarui.');
+    }
+
+    /**
+     * Penghasilan cluster per bulan untuk 12 bulan terakhir (bergeser otomatis mengikuti bulan
+     * berjalan). Hanya menghitung billing yang benar-benar lunas (STATUS_PAID) berdasarkan
+     * tanggal pelunasan (paid_at) - bukan periode tagihan (year/month) - dan dijumlahkan dari
+     * principal_paid + penalty_paid per baris billing sehingga tidak ada double counting
+     * meskipun satu billing dibayar lewat beberapa transaksi/cicilan.
+     */
+    public function incomeStatistics(Request $request, Cluster $cluster, CollectorAssignmentService $assignmentService)
+    {
+        if ($request->user()->hasRole('collector')) {
+            $clusterIds = Unit::query()->whereIn('id', $assignmentService->unitIdsFor($request->user()))->pluck('cluster_id')->unique();
+            abort_unless($clusterIds->contains($cluster->id), 403, 'Cluster ini tidak ditugaskan kepada Anda.');
+        }
+
+        $end = now()->startOfMonth();
+        $start = $end->copy()->subMonths(11);
+
+        $monthlyIncome = collect();
+        for ($cursor = $start->copy(); $cursor->lte($end); $cursor->addMonth()) {
+            $income = Billing::query()
+                ->join('units', 'units.id', '=', 'billings.unit_id')
+                ->where('units.cluster_id', $cluster->id)
+                ->where('billings.status_id', Billing::STATUS_PAID)
+                ->whereYear('billings.paid_at', $cursor->year)
+                ->whereMonth('billings.paid_at', $cursor->month)
+                ->selectRaw('COALESCE(SUM(billings.principal_paid + billings.penalty_paid), 0) as income')
+                ->value('income');
+
+            $monthlyIncome->push([
+                'month' => $cursor->format('Y-m'),
+                'label' => $cursor->copy()->locale('id')->translatedFormat('F Y'),
+                'income' => round((float) $income, 2),
+            ]);
+        }
+
+        return $this->success([
+            'cluster_id' => $cluster->id,
+            'period' => [
+                'start' => $start->toDateString(),
+                'end' => $end->copy()->endOfMonth()->toDateString(),
+            ],
+            'monthly_income' => $monthlyIncome->values(),
+            'total_income' => round($monthlyIncome->sum('income'), 2),
+        ]);
     }
 
     public function destroy(Cluster $cluster, AuditService $auditService)

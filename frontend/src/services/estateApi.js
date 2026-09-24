@@ -33,6 +33,7 @@ export const api = {
     create: (payload) => http.post('/clusters', payload),
     update: (id, payload) => http.put(`/clusters/${id}`, payload),
     remove: (id) => http.delete(`/clusters/${id}`),
+    incomeStatistics: (clusterId) => http.get(`/clusters/${clusterId}/income-statistics`),
     rateSchedules: (clusterId) => http.get(`/clusters/${clusterId}/rate-schedules`),
     createRateSchedule: (clusterId, payload) => http.post(`/clusters/${clusterId}/rate-schedules`, payload),
     updateRateSchedule: (id, payload) => http.put(`/rate-schedules/${id}`, payload),

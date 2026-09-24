@@ -261,6 +261,25 @@ a {
   height: 320px;
 }
 
+.income-chart-tooltip {
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  padding: 8px 12px;
+}
+
+.income-chart-tooltip__label {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.income-chart-tooltip__value {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.88);
+}
+
 .action-row {
   margin-top: 16px;
   margin-bottom: 16px;
