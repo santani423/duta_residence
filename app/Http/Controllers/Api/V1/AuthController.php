@@ -6,8 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\User;
 use App\Services\AuditService;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -62,6 +66,71 @@ class AuthController extends Controller
             'expires_in' => 28800,
             'user' => $this->userPayload($user),
         ], 'Login berhasil');
+    }
+
+    /**
+     * Always responds with the same neutral message regardless of whether the
+     * email is registered - the caller must not be able to enumerate accounts
+     * from this endpoint.
+     */
+    public function forgotPassword(Request $request, AuditService $auditService)
+    {
+        $data = $request->validate([
+            'email' => ['required', 'string', 'email'],
+        ]);
+
+        $status = Password::sendResetLink($data);
+
+        $auditService->log('password_reset_requested', 'auth', 'FORGOT_PASSWORD', null, [], ['email' => $data['email']], $status === Password::RESET_LINK_SENT ? 'success' : 'failed');
+
+        return $this->success(null, 'Jika alamat email terdaftar, instruksi untuk mengatur ulang kata sandi akan dikirim.');
+    }
+
+    /**
+     * Lets the frontend show "tautan tidak valid" before rendering the form,
+     * without consuming the token (Password::reset() below does that).
+     */
+    public function validateResetToken(Request $request)
+    {
+        $data = $request->validate([
+            'email' => ['required', 'string', 'email'],
+            'token' => ['required', 'string'],
+        ]);
+
+        $record = DB::table(config('auth.passwords.users.table'))->where('email', $data['email'])->first();
+        $expireMinutes = config('auth.passwords.users.expire', 60);
+
+        $valid = $record
+            && Hash::check($data['token'], $record->token)
+            && ! Carbon::parse($record->created_at)->addMinutes($expireMinutes)->isPast();
+
+        return $this->success(['valid' => (bool) $valid], $valid ? 'Token valid.' : 'Tautan reset tidak valid atau sudah kedaluwarsa.');
+    }
+
+    public function resetPassword(Request $request, AuditService $auditService)
+    {
+        $data = $request->validate([
+            'email' => ['required', 'string', 'email'],
+            'token' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:12', 'confirmed'],
+        ]);
+
+        $status = Password::reset($data, function (User $user, string $password) {
+            $user->forceFill(['password' => Hash::make($password)])->save();
+            $user->tokens()->delete();
+            event(new PasswordReset($user));
+        });
+
+        if ($status !== Password::PASSWORD_RESET) {
+            throw ValidationException::withMessages([
+                'token' => ['Tautan reset tidak valid, sudah kedaluwarsa, atau sudah digunakan. Silakan minta tautan baru.'],
+            ]);
+        }
+
+        $user = User::where('email', $data['email'])->first();
+        $auditService->log('password_reset_completed', 'auth', 'RESET_PASSWORD', $user);
+
+        return $this->success(null, 'Password berhasil direset. Silakan masuk dengan password baru Anda.');
     }
 
     public function logout(Request $request, AuditService $auditService)

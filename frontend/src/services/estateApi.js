@@ -21,6 +21,9 @@ export const api = {
     logout: () => http.post('/auth/logout'),
     me: () => http.get('/auth/me'),
     changePassword: (payload) => http.post('/auth/change-password', payload),
+    forgotPassword: (payload) => http.post('/auth/forgot-password', payload),
+    validateResetToken: (payload) => http.post('/auth/reset-password/validate', payload),
+    resetPassword: (payload) => http.post('/auth/reset-password', payload),
   },
   dashboard: {
     summary: () => http.get('/reports/dashboard'),

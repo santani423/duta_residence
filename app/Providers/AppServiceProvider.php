@@ -30,5 +30,17 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('login', function (Request $request) {
             return Limit::perMinute(5)->by($request->input('username').'|'.$request->ip());
         });
+
+        // Keyed by email+IP so one spammed address can't be used to lock out a shared IP
+        // (e.g. an office NAT) from requesting resets for other accounts.
+        RateLimiter::for('password-reset-request', function (Request $request) {
+            return Limit::perMinute(3)->by($request->input('email').'|'.$request->ip());
+        });
+
+        // Confirm/validate steps carry the token itself, so IP alone is enough to slow
+        // down brute-forcing a guessed token.
+        RateLimiter::for('password-reset-confirm', function (Request $request) {
+            return Limit::perMinute(10)->by($request->ip());
+        });
     }
 }

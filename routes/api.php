@@ -84,6 +84,9 @@ use App\Http\Controllers\Api\V1\WatermarkSettingController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
+Route::post('auth/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:password-reset-request');
+Route::post('auth/reset-password/validate', [AuthController::class, 'validateResetToken'])->middleware('throttle:password-reset-confirm');
+Route::post('auth/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:password-reset-confirm');
 
 Route::post('payments/webhooks/xendit', [PaymentGatewayController::class, 'xenditWebhook']);
 Route::post('payments/webhooks/midtrans', [PaymentGatewayController::class, 'midtransWebhook']);
