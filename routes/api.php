@@ -489,6 +489,7 @@ Route::middleware(['auth:sanctum', 'audit', 'role:customer', 'single-session'])-
     Route::get('invoices/{billing}', [ResidentPortalController::class, 'invoice']);
     Route::get('invoices/{billing}/download', [ResidentPortalController::class, 'downloadInvoice']);
     Route::post('invoices/{billing}/payments', [ResidentPortalController::class, 'createPayment']);
+    Route::post('payments', [ResidentPortalController::class, 'createBulkPayment']);
     Route::get('payment-config', [ResidentPortalController::class, 'paymentConfig']);
     Route::get('payment-methods', [ResidentPortalController::class, 'paymentConfig']);
     Route::get('balance', [ResidentPortalController::class, 'balance']);

@@ -45,13 +45,12 @@ class BillingSeeder extends Seeder
 
             return $rateCache[$key] ??= $rateScheduleService->rateForPeriod($cluster, $year, $month);
         };
-        $types = ['regular', 'security', 'cleaning', 'water', 'common-electricity', 'parking', 'maintenance', 'facility', 'special'];
         $skipUnits = ['AL005'];
 
         Unit::with(['cluster', 'discountRule'])
             ->where('status_id', '!=', 'RK')
             ->orderBy('id')
-            ->chunk(100, function ($units) use ($finance, $penaltyService, $discountService, $resolveRate, $types, $skipUnits) {
+            ->chunk(100, function ($units) use ($finance, $penaltyService, $discountService, $resolveRate, $skipUnits) {
                 foreach ($units as $unit) {
                     if (in_array($unit->id, $skipUnits, true)) {
                         continue;
@@ -146,7 +145,7 @@ class BillingSeeder extends Seeder
                                 'status_id' => $status,
                                 'is_penalty_eligible' => $unit->is_penalty_eligible,
                                 'is_discount_eligible' => $unit->is_discount_eligible,
-                                'billing_type' => $types[($offset + ord($unit->id[0])) % count($types)],
+                                'billing_type' => 'regular',
                                 'approved_by' => $approvedAt ? $finance?->id : null,
                                 'approved_at' => $approvedAt,
                                 'approval_notes' => $notes,

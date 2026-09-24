@@ -32,6 +32,7 @@ use App\Services\ResidentAccountService;
 use App\Services\UnitBalanceLedgerService;
 use App\Services\UnitOwnershipSyncService;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -201,18 +202,22 @@ class ResidentPortalController extends Controller
                 $q->where('year', $year)->when($month, fn (Builder $inner) => $inner->where('month', (int) $month));
             });
 
-        if ($status = $request->query('status')) {
-            $query = $query->latest()->get()->filter(fn (Billing $billing) => $this->penaltyService->invoiceStatus($billing) === $status)->values();
+        $nextPayableId = $this->nextPayableBilling($unit)?->id;
 
-            return $this->success($query->map(fn (Billing $billing) => $this->invoicePayload($billing))->values(), 'Data berhasil ditemukan.', 200, $billingSummary);
+        if ($status = $request->query('status')) {
+            $query = $query->orderBy('year')->orderBy('month')->get()->filter(fn (Billing $billing) => $this->penaltyService->invoiceStatus($billing) === $status)->values();
+
+            return $this->success($query->map(fn (Billing $billing) => $this->invoicePayload($billing, $nextPayableId))->values(), 'Data berhasil ditemukan.', 200, $billingSummary);
         }
 
+        // Tagihan tertua ditampilkan paling atas: penghuni wajib melunasi tagihan
+        // terlama sebelum tagihan yang lebih baru dapat dibayar (lihat createPayment()).
         $paginator = $query
-            ->when($request->query('sort') === 'due_date', fn (Builder $q) => $q->orderBy('year')->orderBy('month'))
-            ->latest()
+            ->orderBy('year')
+            ->orderBy('month')
             ->paginate($request->integer('per_page', 15));
 
-        $paginator->setCollection($paginator->getCollection()->map(fn (Billing $billing) => $this->invoicePayload($billing)));
+        $paginator->setCollection($paginator->getCollection()->map(fn (Billing $billing) => $this->invoicePayload($billing, $nextPayableId)));
 
         return $this->paginated($paginator, 'Data berhasil ditemukan.', $billingSummary);
     }
@@ -222,7 +227,7 @@ class ResidentPortalController extends Controller
         $billing = $this->ownedBilling($request, $billing);
 
         return $this->success([
-            ...$this->invoicePayload($billing),
+            ...$this->invoicePayload($billing, $this->nextPayableBilling($billing->unit)?->id),
             'resident' => $this->unitProfile($billing->unit, $request->user()),
             'estate' => ['name' => $this->estateName()],
             'unit' => $this->propertyPayload($billing->unit),
@@ -315,7 +320,29 @@ class ResidentPortalController extends Controller
     public function createPayment(Request $request, Billing $billing, PaymentGatewayFactory $factory)
     {
         $billing = $this->ownedBilling($request, $billing);
-        $this->assertIsDesignatedPayer($request, $billing->unit);
+
+        return $this->processResidentPayment($request, $billing->unit, [$billing->id], $factory);
+    }
+
+    /**
+     * Lets a resident settle several of their oldest unpaid months in a single transaction
+     * (e.g. "bayar Januari-Maret sekaligus") instead of one invoice at a time. The selection
+     * must still be the unbroken oldest-first run — see assertSequentialSelection().
+     */
+    public function createBulkPayment(Request $request, PaymentGatewayFactory $factory)
+    {
+        $unit = $this->unit($request);
+        $data = $request->validate([
+            'billing_ids' => ['required', 'array', 'min:1'],
+            'billing_ids.*' => ['integer', 'distinct'],
+        ]);
+
+        return $this->processResidentPayment($request, $unit, $data['billing_ids'], $factory);
+    }
+
+    private function processResidentPayment(Request $request, Unit $unit, array $billingIds, PaymentGatewayFactory $factory)
+    {
+        $this->assertIsDesignatedPayer($request, $unit);
         $setting = PaymentGatewaySetting::current();
         $data = $request->validate([
             'provider' => ['nullable', Rule::in(['manual', 'xendit', 'midtrans'])],
@@ -326,35 +353,75 @@ class ResidentPortalController extends Controller
             throw ValidationException::withMessages(['provider' => ['Metode pembayaran sedang tidak tersedia.']]);
         }
 
-        if (! $billing->isOutstanding() || blank($billing->approved_at)) {
-            throw ValidationException::withMessages(['billing' => ['Invoice tidak dapat dibayar.']]);
+        $billings = $this->billingBaseQuery($unit)->whereIn('id', $billingIds)->get();
+        if ($billings->count() !== count($billingIds)) {
+            throw ValidationException::withMessages(['billing' => ['Tagihan tidak ditemukan.']]);
         }
 
-        $transaction = DB::transaction(function () use ($billing, $request, $setting, $provider, $factory) {
-            $schemes = app(PaymentSchemeService::class);
-            $schemes->assertSchemeBillsComplete([$billing->id]);
-            $schemes->cancelPendingForBillings([$billing->id], 'Transaksi pembayaran dibuat pada tagihan terkait saat skema masih menunggu persetujuan.');
+        foreach ($billings as $eachBilling) {
+            if (! $eachBilling->isOutstanding() || blank($eachBilling->approved_at)) {
+                throw ValidationException::withMessages(['billing' => ['Invoice tidak dapat dibayar.']]);
+            }
+        }
 
-            $calc = $this->penaltyService->calculateInvoiceTotal($billing);
+        $this->assertSequentialSelection($unit, $billings);
+
+        $transaction = DB::transaction(function () use ($billings, $request, $setting, $provider, $factory, $unit) {
+            $ids = $billings->pluck('id')->all();
+            $schemes = app(PaymentSchemeService::class);
+            $schemes->assertSchemeBillsComplete($ids);
+            $schemes->cancelPendingForBillings($ids, 'Transaksi pembayaran dibuat pada tagihan terkait saat skema masih menunggu persetujuan.');
+
+            $subtotal = 0;
+            $totalOutstanding = 0;
+            foreach ($billings as $eachBilling) {
+                $calc = $this->penaltyService->calculateInvoiceTotal($eachBilling);
+                $subtotal += $calc['outstanding_principal'];
+                $totalOutstanding += $calc['total_outstanding'];
+            }
+
             $transaction = PaymentTransaction::query()->create([
                 'transaction_number' => 'TRX-'.now()->format('YmdHis').'-'.Str::upper(Str::random(6)),
                 'invoice_number' => 'INV-'.now()->format('YmdHis').'-'.Str::upper(Str::random(6)),
-                'unit_id' => $billing->unit_id,
-                'subtotal' => $calc['outstanding_principal'],
+                'unit_id' => $unit->id,
+                'subtotal' => $subtotal,
                 'tax' => 0,
                 'admin_fee' => (float) $setting->admin_fee,
-                'total' => $calc['total_outstanding'] + (float) $setting->admin_fee,
+                'total' => $totalOutstanding + (float) $setting->admin_fee,
                 'currency' => $setting->currency,
                 'payment_provider' => $provider,
                 'status' => 'pending',
                 'created_by' => $request->user()->id,
             ]);
-            $transaction->billings()->sync([$billing->id]);
+            $transaction->billings()->sync($ids);
 
             return $factory->make($provider)->create($transaction);
         });
 
         return $this->success($this->paymentPayload($transaction->load('billings')), 'Transaksi pembayaran berhasil dibuat.', 201);
+    }
+
+    /**
+     * The chosen billings must be exactly the N oldest outstanding+approved billings for the
+     * unit (a contiguous run from the earliest unpaid month) - residents can pay through
+     * whichever month they like, but can't skip an older unpaid month to pay a newer one.
+     */
+    private function assertSequentialSelection(Unit $unit, \Illuminate\Support\Collection $billings): void
+    {
+        $outstanding = $this->billingBaseQuery($unit)->outstanding()->approved()->orderBy('year')->orderBy('month')->get();
+        $expectedIds = $outstanding->take($billings->count())->pluck('id')->sort()->values()->all();
+        $selectedIds = $billings->pluck('id')->sort()->values()->all();
+
+        if ($expectedIds === $selectedIds) {
+            return;
+        }
+
+        $missing = $outstanding->first(fn (Billing $candidate) => ! in_array($candidate->id, $selectedIds, true));
+        $message = $missing
+            ? 'Anda harus melunasi tagihan '.Carbon::create((int) $missing->year, (int) $missing->month, 1)->locale('id')->translatedFormat('F Y').' terlebih dahulu sebelum membayar tagihan ini.'
+            : 'Tagihan harus dibayar berurutan dari yang paling lama.';
+
+        throw ValidationException::withMessages(['billing' => [$message]]);
     }
 
     public function payments(Request $request)
@@ -1030,6 +1097,21 @@ class ResidentPortalController extends Controller
             ->where('unit_id', $unit->id);
     }
 
+    /**
+     * The oldest outstanding+approved billing for the unit — the one the resident must
+     * pay first. Billings still awaiting admin approval aren't payable at all, so they're
+     * skipped rather than blocking payment of an already-approved, more recent invoice.
+     */
+    private function nextPayableBilling(Unit $unit): ?Billing
+    {
+        return $this->billingBaseQuery($unit)
+            ->outstanding()
+            ->approved()
+            ->orderBy('year')
+            ->orderBy('month')
+            ->first();
+    }
+
     private function ownedBilling(Request $request, Billing $billing): Billing
     {
         $unit = $this->unit($request);
@@ -1043,7 +1125,7 @@ class ResidentPortalController extends Controller
         $unit = $this->unit($request);
         abort_if($payment->unit_id !== $unit->id, 404);
 
-        return $payment->load(['unit.cluster', 'billings', 'verifier']);
+        return $payment->load(['unit.cluster', 'billings', 'allocations', 'verifier']);
     }
 
     private function assertIsDesignatedPayer(Request $request, Unit $unit): void
@@ -1122,7 +1204,7 @@ class ResidentPortalController extends Controller
         ];
     }
 
-    private function invoicePayload(Billing $billing): array
+    private function invoicePayload(Billing $billing, ?int $nextPayableBillingId = null): array
     {
         $calc = $this->penaltyService->calculateInvoiceTotal($billing);
 
@@ -1154,6 +1236,7 @@ class ResidentPortalController extends Controller
             'status' => $calc['status'],
             'approved_at' => $billing->approved_at,
             'paid_at' => $billing->paid_at,
+            'is_next_payable' => $nextPayableBillingId === null ? true : $billing->id === $nextPayableBillingId,
         ];
     }
 
@@ -1164,14 +1247,31 @@ class ResidentPortalController extends Controller
             'transaction_number' => $transaction->transaction_number,
             'invoice_number' => $transaction->invoice_number,
             'billing_invoice_numbers' => $transaction->billings->map(fn (Billing $billing) => 'BIL-'.$billing->id)->values(),
-            'billings' => $transaction->billings->map(fn (Billing $billing) => [
-                'id' => $billing->id,
-                'invoice_number' => 'BIL-'.$billing->id,
-                'year' => $billing->year,
-                'month' => $billing->month,
-                'billing_type' => $billing->billing_type,
-                'due_date' => $this->penaltyService->dueDate($billing),
-            ])->values(),
+            'billings' => $transaction->billings->map(function (Billing $billing) use ($transaction) {
+                // Setelah settlement, pakai nominal yang dibekukan di PaymentAllocation saat itu
+                // (bukan hitung ulang) - billing yang sudah lunas tidak lagi punya sisa tunggakan.
+                $allocation = $transaction->allocations->firstWhere('billing_id', $billing->id);
+                if ($allocation) {
+                    $principal = (float) $allocation->principal_amount;
+                    $penalty = (float) $allocation->penalty_amount;
+                } else {
+                    $calc = $this->penaltyService->calculateInvoiceTotal($billing);
+                    $principal = (float) $calc['outstanding_principal'];
+                    $penalty = (float) $calc['outstanding_penalty'];
+                }
+
+                return [
+                    'id' => $billing->id,
+                    'invoice_number' => 'BIL-'.$billing->id,
+                    'year' => $billing->year,
+                    'month' => $billing->month,
+                    'billing_type' => $billing->billing_type,
+                    'due_date' => $this->penaltyService->dueDate($billing),
+                    'principal_amount' => $principal,
+                    'penalty_amount' => $penalty,
+                    'total_amount' => round($principal + $penalty, 2),
+                ];
+            })->values(),
             'payment_gateway' => $transaction->payment_provider,
             'payment_method' => $transaction->payment_method,
             'payment_method_label' => $transaction->payment_method_label,

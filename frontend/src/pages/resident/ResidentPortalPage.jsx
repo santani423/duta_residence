@@ -8,6 +8,7 @@ import {
   Drawer,
   Form,
   Grid,
+  Image,
   Input,
   Modal,
   Popconfirm,
@@ -164,15 +165,21 @@ function ManualProofPreview({ file }) {
   const url = useMemo(() => (originFile ? URL.createObjectURL(originFile) : null), [originFile]);
   useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
 
-  if (!originFile) return null;
+  if (!originFile || !url) return null;
   const isImage = originFile.type?.startsWith('image/');
+  const isPdf = originFile.type === 'application/pdf';
 
   return (
     <div style={{ marginTop: 8 }}>
+      <Typography.Text type="secondary">Pratinjau bukti pembayaran</Typography.Text>
       {isImage ? (
-        <img src={url} alt="Pratinjau bukti pembayaran" style={{ maxWidth: '100%', maxHeight: 260, borderRadius: 8, border: '1px solid #d9d9d9' }} />
+        <Image src={url} alt="Pratinjau bukti pembayaran" style={{ display: 'block', maxWidth: '100%', maxHeight: 260, marginTop: 4, borderRadius: 8, border: '1px solid #d9d9d9' }} />
+      ) : isPdf ? (
+        <div style={{ marginTop: 4 }}>
+          <iframe title="Pratinjau bukti pembayaran" src={url} style={{ width: '100%', height: 320, border: '1px solid #d9d9d9', borderRadius: 8 }} />
+        </div>
       ) : (
-        <Alert type="info" showIcon message={originFile.name} description="Berkas PDF siap dikirim." />
+        <Alert style={{ marginTop: 4 }} type="info" showIcon message={originFile.name} description="Berkas siap dikirim." />
       )}
     </div>
   );
@@ -225,6 +232,7 @@ function ManualProofDrawer({ payment, open, onClose }) {
           {asList(payment.billings).map((billing) => (
             <Descriptions.Item key={billing.id} label={billing.invoice_number}>
               Periode {formatPeriod(billing.year, billing.month)} · {billing.billing_type} · Jatuh tempo {formatDate(billing.due_date)}
+              <br />Pokok {formatCurrency(billing.principal_amount)} · Denda {formatCurrency(billing.penalty_amount)}
             </Descriptions.Item>
           ))}
         </Descriptions>
@@ -262,7 +270,12 @@ function useResidentPaymentActions() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ invoiceId, provider }) => api.resident.createPayment(invoiceId, { provider }),
+    mutationFn: ({ invoiceId, invoiceIds, provider }) => {
+      const ids = invoiceIds || (invoiceId ? [invoiceId] : []);
+      return ids.length > 1
+        ? api.resident.createBulkPayment(ids, { provider })
+        : api.resident.createPayment(ids[0], { provider });
+    },
     onSuccess: (response) => {
       const payment = response.data;
       queryClient.invalidateQueries({ queryKey: ['resident-dashboard'] });
@@ -454,8 +467,22 @@ function ResidentProperty() {
   );
 }
 
-function InvoiceTable({ query, data, onChange, onPay, payDisabledReason }) {
+function InvoiceTable({ query, data, onChange, onPay, payDisabledReason, selectedIds, onSelectionChange }) {
   const navigate = useNavigate();
+  const items = data || query?.data?.data || [];
+  const payableIds = items.filter((row) => ['unpaid', 'overdue'].includes(row.status)).map((row) => row.id);
+
+  const rowSelection = onSelectionChange ? {
+    selectedRowKeys: selectedIds,
+    getCheckboxProps: (row) => ({ disabled: !['unpaid', 'overdue'].includes(row.status) || Boolean(payDisabledReason) }),
+    onSelect: (row, selected) => {
+      const index = payableIds.indexOf(row.id);
+      if (index === -1) return;
+      onSelectionChange(selected ? payableIds.slice(0, index + 1) : payableIds.slice(0, index));
+    },
+    onSelectAll: (selected) => onSelectionChange(selected ? payableIds : []),
+  } : undefined;
+
   return (
     <Card>
       <ResponsiveTable
@@ -463,6 +490,7 @@ function InvoiceTable({ query, data, onChange, onPay, payDisabledReason }) {
         data={data}
         onChange={onChange}
         scrollX={1280}
+        rowSelection={rowSelection}
         columns={[
           { title: 'Invoice', dataIndex: 'invoice_number', width: 150, fixed: 'left' },
           { title: 'Jenis', dataIndex: 'billing_type', width: 130 },
@@ -480,11 +508,11 @@ function InvoiceTable({ query, data, onChange, onPay, payDisabledReason }) {
             render: (_, row) => (
               <Space>
                 <Button size="small" icon={<EyeOutlined />} onClick={() => navigate(`/resident/invoices/${row.id}`)}>Detail</Button>
-                <Tooltip title={payDisabledReason}>
+                <Tooltip title={payDisabledReason || (row.is_next_payable === false ? 'Lunasi tagihan yang lebih lama terlebih dahulu.' : undefined)}>
                   <Button
                     size="small"
                     type="primary"
-                    disabled={!['unpaid', 'overdue'].includes(row.status) || Boolean(payDisabledReason)}
+                    disabled={!['unpaid', 'overdue'].includes(row.status) || Boolean(payDisabledReason) || row.is_next_payable === false}
                     onClick={() => onPay?.(row)}
                   >
                     Bayar
@@ -507,16 +535,29 @@ function ResidentBills() {
   const tenantQuery = useQuery({ queryKey: ['resident-tenant'], queryFn: api.resident.tenantInfo, ...OWNERSHIP_SENSITIVE_QUERY_OPTIONS });
   const createPayment = useResidentPaymentActions();
   const [paying, setPaying] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
   const configData = unwrapQuery(config);
   const tenantData = unwrapQuery(tenantQuery) || {};
+  const rows = query.data?.data || [];
   const canPay = tenantData.has_tenant
     ? (tenantData.is_owner ? tenantData.billing_payer !== 'penyewa' : tenantData.billing_payer === 'penyewa')
     : true;
   const payDisabledReason = canPay ? undefined : `Pembayaran unit ini hanya dapat dilakukan oleh ${tenantData.billing_payer === 'penyewa' ? 'penyewa' : 'pemilik'} sesuai pengaturan penanggung jawab tagihan.`;
+  const selectedRows = rows.filter((row) => selectedIds.includes(row.id));
+  const selectedTotal = selectedRows.reduce((sum, row) => sum + Number(row.total || 0), 0);
+
+  function payRow(row) {
+    setPaying({ invoiceIds: [row.id], invoice_number: row.invoice_number, total: row.total });
+  }
+
+  function paySelected() {
+    setPaying({ invoiceIds: selectedIds, invoice_number: `${selectedIds.length} tagihan`, total: selectedTotal });
+  }
 
   function pay(provider) {
-    createPayment.mutate({ invoiceId: paying.id, provider });
+    createPayment.mutate({ invoiceIds: paying.invoiceIds, provider });
     setPaying(null);
+    setSelectedIds([]);
   }
 
   return (
@@ -530,9 +571,18 @@ function ResidentBills() {
         <Input allowClear placeholder="Cari invoice atau jenis" value={table.search} onChange={(event) => table.setSearch(event.target.value)} className="filter-input" />
         <Select allowClear placeholder="Status" value={table.filters.status} onChange={(value) => table.setFilters({ ...table.filters, status: value })} options={invoiceStatuses.map((value) => ({ value, label: value }))} className="filter-input" />
         <Input placeholder="Periode YYYY-MM" value={table.filters.period} onChange={(event) => table.setFilters({ ...table.filters, period: event.target.value || undefined })} className="filter-input" />
-        <Select allowClear placeholder="Sorting" value={table.filters.sort} onChange={(value) => table.setFilters({ ...table.filters, sort: value })} options={[{ value: 'due_date', label: 'Jatuh Tempo' }]} className="filter-input" />
       </FilterBar>
-      <InvoiceTable query={query} onChange={table.handleTableChange} onPay={setPaying} payDisabledReason={payDisabledReason} />
+      {selectedIds.length > 0 ? (
+        <Alert
+          className="section-row"
+          type="info"
+          showIcon
+          message={`${selectedIds.length} tagihan dipilih · Total ${formatCurrency(selectedTotal)}`}
+          description="Pilih tagihan mulai dari yang paling lama secara berurutan, tanpa melompati bulan yang belum dibayar."
+          action={<Button type="primary" disabled={Boolean(payDisabledReason)} onClick={paySelected}>Bayar Tagihan Terpilih</Button>}
+        />
+      ) : null}
+      <InvoiceTable query={query} onChange={table.handleTableChange} onPay={payRow} payDisabledReason={payDisabledReason} selectedIds={selectedIds} onSelectionChange={setSelectedIds} />
       <Modal title="Pilih Metode Pembayaran" open={Boolean(paying)} onCancel={() => setPaying(null)} footer={null}>
         <PaymentConfigCard config={configData} total={paying?.total} invoiceNumber={paying?.invoice_number} onProvider={pay} />
       </Modal>
@@ -667,7 +717,10 @@ function ResidentInvoiceDetail() {
   const canPay = tenantData.has_tenant
     ? (tenantData.is_owner ? tenantData.billing_payer !== 'penyewa' : tenantData.billing_payer === 'penyewa')
     : true;
-  const payDisabledReason = canPay ? undefined : `Pembayaran unit ini hanya dapat dilakukan oleh ${tenantData.billing_payer === 'penyewa' ? 'penyewa' : 'pemilik'} sesuai pengaturan penanggung jawab tagihan.`;
+  const payDisabledReason = canPay
+    ? (data.is_next_payable === false ? 'Lunasi tagihan yang lebih lama terlebih dahulu.' : undefined)
+    : `Pembayaran unit ini hanya dapat dilakukan oleh ${tenantData.billing_payer === 'penyewa' ? 'penyewa' : 'pemilik'} sesuai pengaturan penanggung jawab tagihan.`;
+  const canPayInvoice = ['unpaid', 'overdue'].includes(data.status) && !payDisabledReason;
 
   return (
     <section>
@@ -696,7 +749,7 @@ function ResidentInvoiceDetail() {
               <Tooltip title={payDisabledReason}>
                 <Button
                   type="primary"
-                  disabled={!['unpaid', 'overdue'].includes(data.status) || Boolean(payDisabledReason)}
+                  disabled={!canPayInvoice}
                   onClick={() => createPayment.mutate({ invoiceId: data.id, provider: configData?.active_gateway })}
                 >
                   Bayar Sekarang
@@ -704,7 +757,7 @@ function ResidentInvoiceDetail() {
               </Tooltip>
             </Space>
           </Card>
-          <PaymentConfigCard config={configData} total={data.total} invoiceNumber={data.invoice_number} vaNumber={data.unit?.va_number} onProvider={(provider) => createPayment.mutate({ invoiceId: data.id, provider })} />
+          <PaymentConfigCard config={configData} total={data.total} invoiceNumber={data.invoice_number} vaNumber={data.unit?.va_number} onProvider={canPayInvoice ? (provider) => createPayment.mutate({ invoiceId: data.id, provider }) : undefined} />
           <Card title="Riwayat Pembayaran" className="resident-wide"><PaymentTable data={data.payment_history} /></Card>
         </div>
       )}
@@ -783,6 +836,7 @@ function ResidentPayments() {
 
 function ResidentPaymentDetail() {
   const { paymentId } = useParams();
+  const navigate = useNavigate();
   const query = useQuery({ queryKey: ['resident-payment', paymentId], queryFn: () => api.resident.payment(paymentId), enabled: Boolean(paymentId) });
   const [proofOpen, setProofOpen] = useState(false);
   const data = unwrapQuery(query) || {};
@@ -812,9 +866,10 @@ function ResidentPaymentDetail() {
               'Bukti pembayaran': data.manual_proof_path ? <a href={storageUrl(data.manual_proof_path)} target="_blank" rel="noreferrer">Lihat Bukti</a> : undefined,
             }} />
             {data.manual_proof_path && /\.(jpe?g|png)$/i.test(data.manual_proof_path) ? (
-              <a href={storageUrl(data.manual_proof_path)} target="_blank" rel="noreferrer">
-                <img src={storageUrl(data.manual_proof_path)} alt="Bukti pembayaran" style={{ maxWidth: '100%', maxHeight: 320, marginTop: 12, borderRadius: 8, border: '1px solid #d9d9d9' }} />
-              </a>
+              <Image src={storageUrl(data.manual_proof_path)} alt="Bukti pembayaran" style={{ maxWidth: '100%', maxHeight: 320, marginTop: 12, borderRadius: 8, border: '1px solid #d9d9d9' }} />
+            ) : null}
+            {data.manual_proof_path && /\.pdf$/i.test(data.manual_proof_path) ? (
+              <iframe title="Bukti pembayaran" src={storageUrl(data.manual_proof_path)} style={{ width: '100%', height: 320, marginTop: 12, border: '1px solid #d9d9d9', borderRadius: 8 }} />
             ) : null}
             <Space className="action-row" wrap>
               {data.status === 'paid' ? <Button icon={<DownloadOutlined />} onClick={() => saveDownload(() => api.resident.downloadPaymentReceipt(data.id), `${data.transaction_number}.pdf`)}>Download Receipt</Button> : null}
@@ -824,6 +879,23 @@ function ResidentPaymentDetail() {
           </Card>
           <Card title="Riwayat Status">
             <Timeline items={asList(data.status_history).map((item) => ({ children: <span><StatusBadge type="transaction" value={item.status} /> {formatDateTime(item.changed_at)}{item.verified_by ? ` · ${item.verified_by}` : ''}<br />{item.notes}</span> }))} />
+          </Card>
+          <Card title={`Tagihan (${asList(data.billings).length})`} className="resident-wide">
+            {asList(data.billings).length ? (
+              <Descriptions bordered column={1} size="small">
+                {asList(data.billings).map((billing) => (
+                  <Descriptions.Item key={billing.id} label={billing.invoice_number}>
+                    <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                      <Space wrap style={{ justifyContent: 'space-between', width: '100%' }}>
+                        <span>Periode {formatPeriod(billing.year, billing.month)} · {billing.billing_type} · Jatuh tempo {formatDate(billing.due_date)}</span>
+                        <Button size="small" icon={<EyeOutlined />} onClick={() => navigate(`/resident/invoices/${billing.id}`)}>Detail</Button>
+                      </Space>
+                      <span>Pokok {formatCurrency(billing.principal_amount)} · Denda {formatCurrency(billing.penalty_amount)} · Total {formatCurrency(billing.total_amount)}</span>
+                    </Space>
+                  </Descriptions.Item>
+                ))}
+              </Descriptions>
+            ) : <EmptyData />}
           </Card>
         </div>
       )}

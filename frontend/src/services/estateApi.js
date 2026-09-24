@@ -176,6 +176,7 @@ export const api = {
     invoice: (id) => http.get(`/resident/invoices/${id}`),
     downloadInvoice: (id) => http.get(`/resident/invoices/${id}/download`, { responseType: 'blob' }),
     createPayment: (invoiceId, payload) => http.post(`/resident/invoices/${invoiceId}/payments`, payload),
+    createBulkPayment: (billingIds, payload) => http.post('/resident/payments', { ...payload, billing_ids: billingIds }),
     paymentConfig: () => http.get('/resident/payment-config'),
     paymentMethods: () => http.get('/resident/payment-methods'),
     balance: () => http.get('/resident/balance'),
