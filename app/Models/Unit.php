@@ -17,7 +17,7 @@ class Unit extends Model
      * menentukan apakah unit kosong berlabel "Ready Stock" (Bangunan/Ruko) atau
      * "Tanah Kosong" (Kavling) - lihat getOccupancyStatusAttribute().
      */
-    public const LAND_PROPERTY_TYPES = ['K', 'P'];
+    public const LAND_PROPERTY_TYPES = [PropertyType::KAVLING];
 
     public const OCCUPANCY_STATUS_READY_STOCK = 'ready_stock';
 
@@ -199,7 +199,7 @@ class Unit extends Model
     }
 
     /**
-     * Apakah unit ini bertipe lahan (Kavling Developer/Penghuni) dan bukan bangunan/ruko.
+     * Apakah unit ini bertipe lahan (Kavling) dan bukan bangunan/ruko.
      */
     public function isLandType(): bool
     {

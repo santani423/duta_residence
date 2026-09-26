@@ -22,7 +22,7 @@ class UnitSeeder extends Seeder
             ['type' => 'B', 'building' => 45, 'land' => 90],
             ['type' => 'B', 'building' => 60, 'land' => 120],
             ['type' => 'B', 'building' => 90, 'land' => 160],
-            ['type' => 'P', 'building' => 120, 'land' => 200],
+            ['type' => 'K', 'building' => 120, 'land' => 200],
         ];
 
         foreach (EstateSeeder::CLUSTERS as $clusterIndex => $cluster) {

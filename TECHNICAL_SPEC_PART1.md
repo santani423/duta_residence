@@ -447,7 +447,7 @@ users ──────────────── roles (via model_has_role
   ├── customers (created_by, updated_by)
   │     │
   │     ├── cluster_id ──────► clusters
-  │     ├── property_type_id ► property_types (B/K/P)
+  │     ├── property_type_id ► property_types (B/K/R)
   │     ├── occupancy_id ─────► occupancy_statuses
   │     ├── status_id ────────► customer_statuses (AK/RK/TA)
   │     ├── district_id ──────► districts
@@ -520,15 +520,15 @@ CREATE TABLE clusters (
 
 ```sql
 CREATE TABLE property_types (
-    id              CHAR(1) PRIMARY KEY,            -- B, K, P
+    id              CHAR(1) PRIMARY KEY,            -- B, K, R
     name            VARCHAR(30) NOT NULL,
     description     VARCHAR(100) NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Seed data:
 -- B = Bangunan (Building)
--- K = Kavling Developer (Developer Lot)
--- P = Kavling Pelanggan (Customer Lot)
+-- K = Kavling (Lot)
+-- R = Ruko (Shophouse)
 ```
 
 #### Tabel: `occupancy_statuses`

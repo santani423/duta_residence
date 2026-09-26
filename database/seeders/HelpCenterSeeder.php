@@ -185,7 +185,7 @@ class HelpCenterSeeder extends Seeder
                 'steps' => [
                     ['title' => 'Tambah unit', 'description' => 'Isi ID unit, pilih Pemilik (penghuni), Cluster, Blok, Kavling, dan tipe properti, lalu Simpan.'],
                     ['title' => 'Ubah pemilik unit', 'description' => 'Buka Edit pada unit, ganti field Pemilik ke penghuni yang benar, lalu Simpan.'],
-                    ['title' => 'Konversi properti', 'description' => 'Kavling developer dapat dikonversi menjadi bangunan lewat tombol Konversi Properti setelah serah terima.'],
+                    ['title' => 'Konversi properti', 'description' => 'Unit kavling dapat dikonversi menjadi bangunan lewat tombol Konversi Properti setelah serah terima.'],
                 ],
                 'tips' => ['Setelah pemilik unit diubah, data tagihan/pembayaran/komplain di portal penghuni ikut menyesuaikan otomatis tanpa perlu langkah tambahan.'],
                 'warnings' => ['Pastikan memilih penghuni yang benar sebelum menyimpan — riwayat transaksi unit tetap mengikuti unit tersebut, bukan pemiliknya.'],

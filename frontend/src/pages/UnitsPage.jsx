@@ -8,7 +8,7 @@ import ExportPdfButton from '../components/common/ExportPdfButton.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
 import StatusBadge from '../components/common/StatusBadge.jsx';
 import Can from '../components/common/Can.jsx';
-import UnitForm, { VaSuffixInput, vaSuffixFromNumber, residentStatusOptions, unitOccupancyStatusOptions } from '../components/forms/UnitForm.jsx';
+import UnitForm, { VaSuffixInput, propertyTypeOptions, vaSuffixFromNumber, residentStatusOptions, unitOccupancyStatusOptions } from '../components/forms/UnitForm.jsx';
 import ResidentForm from '../components/forms/ResidentForm.jsx';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import { api } from '../services/estateApi.js';
@@ -17,12 +17,6 @@ import { useSiteIdentity } from '../hooks/useSiteIdentity.js';
 import { compactText, formatCurrency, formatDate, formatDateTime, formatPeriod } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
 import { useAuth } from '../state/AuthContext.jsx';
-
-const unitTypeFilterOptions = [
-  { value: 'B', label: 'Bangunan' },
-  { value: 'K,P', label: 'Kavling' },
-  { value: 'R', label: 'Ruko' },
-];
 
 export default function UnitsPage() {
   const navigate = useNavigate();
@@ -177,7 +171,7 @@ export default function UnitsPage() {
         <Input allowClear placeholder="Blok" value={table.filters.block} onChange={(event) => table.setFilters({ ...table.filters, block: event.target.value || undefined })} className="filter-input" />
         <Select allowClear placeholder="Status Unit" options={unitOccupancyStatusOptions} value={table.filters.occupancy_status} onChange={(value) => table.setFilters({ ...table.filters, occupancy_status: value })} className="filter-input" />
         <Select allowClear placeholder="Status Penghuni" options={residentStatusOptions} value={table.filters.status_id} onChange={(value) => table.setFilters({ ...table.filters, status_id: value })} className="filter-input" />
-        <Select allowClear placeholder="Tipe" options={unitTypeFilterOptions} value={table.filters.property_type_id} onChange={(value) => table.setFilters({ ...table.filters, property_type_id: value })} className="filter-input" />
+        <Select allowClear placeholder="Tipe" options={propertyTypeOptions} value={table.filters.property_type_id} onChange={(value) => table.setFilters({ ...table.filters, property_type_id: value })} className="filter-input" />
       </FilterBar>
 
       <Card>
@@ -250,7 +244,7 @@ export default function UnitsPage() {
         extra={<Space><Button onClick={() => setDrawer({ type: null, record: null })}>Batal</Button><Button type="primary" loading={save.isPending} onClick={() => form.submit()}>Simpan</Button></Space>}
         destroyOnHidden
       >
-        <UnitForm form={form} clusters={clusters.data?.data || []} residents={residents.data?.data || []} vaFormat={vaFormat} currentVaNumber={drawer.record?.va_number} onFinish={save.mutate} loading={save.isPending} />
+        <UnitForm form={form} clusters={clusters.data?.data || []} residents={residents.data?.data || []} vaFormat={vaFormat} currentVaNumber={drawer.record?.va_number} onFinish={save.mutate} loading={save.isPending} isEdit={drawer.type === 'edit'} />
       </Drawer>
 
       <Drawer title="Detail Unit" open={drawer.type === 'detail'} onClose={() => setDrawer({ type: null, record: null })} width={840}>
@@ -397,7 +391,7 @@ export default function UnitsPage() {
       </Drawer>
 
       <Modal
-        title="Konversi Kavling Developer"
+        title="Konversi Kavling"
         open={drawer.type === 'convert'}
         onCancel={() => setDrawer({ type: null, record: null })}
         onOk={() => convertForm.submit()}

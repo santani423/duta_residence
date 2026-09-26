@@ -55,7 +55,7 @@ class UnitOccupancyStatusTest extends TestCase
 
     public function test_kavling_dengan_penghuni_aktif_is_occupied(): void
     {
-        $unit = Unit::factory()->create(['property_type_id' => 'P', 'status_id' => 'AK']);
+        $unit = Unit::factory()->create(['property_type_id' => 'K', 'status_id' => 'AK']);
 
         $this->assertSame('occupied', $unit->occupancy_status);
     }
@@ -175,7 +175,7 @@ class UnitOccupancyStatusTest extends TestCase
         Unit::factory()->create(['property_type_id' => 'B', 'resident_id' => null, 'status_id' => 'TA']);
         Unit::factory()->create(['property_type_id' => 'K', 'resident_id' => null, 'status_id' => 'RK']);
         Unit::factory()->create(['property_type_id' => 'B', 'status_id' => 'AK']);
-        Unit::factory()->create(['property_type_id' => 'P', 'status_id' => 'AK']);
+        Unit::factory()->create(['property_type_id' => 'K', 'status_id' => 'AK']);
         Unit::factory()->inactive()->create(['property_type_id' => 'R']);
         Unit::factory()->create(['property_type_id' => 'B', 'status_id' => 'TA', 'occupancy_id' => Unit::OCCUPANCY_BOOKED_ID]);
 

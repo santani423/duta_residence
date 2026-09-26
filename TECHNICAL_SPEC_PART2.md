@@ -954,7 +954,7 @@ class StoreCustomerRequest extends FormRequest
             'cluster_id'            => ['required', 'string', 'size:2', 'exists:clusters,id'],
             'block'                 => ['required', 'string', 'max:5'],
             'lot_number'            => ['required', 'string', 'max:10'],
-            'property_type_id'      => ['required', 'string', 'in:B,K,P'],
+            'property_type_id'      => ['required', 'string', 'in:B,K,R'],
             'phone'                 => ['nullable', 'string', 'max:20'],
             'telephone'             => ['nullable', 'string', 'max:20'],
             'email'                 => ['nullable', 'email', 'max:100'],
@@ -980,7 +980,7 @@ class StoreCustomerRequest extends FormRequest
             'name.required'         => 'Nama pelanggan wajib diisi.',
             'cluster_id.required'   => 'Klaster wajib dipilih.',
             'cluster_id.exists'     => 'Klaster tidak ditemukan.',
-            'property_type_id.in'   => 'Tipe properti harus B (Bangunan), K (Kavling Dev), atau P (Kavling Pelanggan).',
+            'property_type_id.in'   => 'Tipe properti harus B (Bangunan), K (Kavling), atau R (Ruko).',
         ];
     }
 }

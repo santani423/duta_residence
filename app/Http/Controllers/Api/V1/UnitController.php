@@ -8,6 +8,7 @@ use App\Models\Billing;
 use App\Models\Cluster;
 use App\Models\DiscountRule;
 use App\Models\PaymentGatewaySetting;
+use App\Models\PropertyType;
 use App\Models\Unit;
 use App\Services\AuditService;
 use App\Services\CollectorAssignmentService;
@@ -34,7 +35,10 @@ class UnitController extends Controller
             ->when($request->query('cluster_id'), fn ($q, $value) => $q->where('cluster_id', $value))
             ->when($request->query('status_id'), fn ($q, $value) => $q->where('status_id', $value))
             ->when($request->query('property_type_id'), function ($q, $value) {
-                $ids = is_array($value) ? $value : explode(',', $value);
+                $ids = array_values(array_unique(array_map(
+                    fn ($id) => PropertyType::normalizeId($id),
+                    is_array($value) ? $value : explode(',', $value),
+                )));
 
                 return count($ids) > 1 ? $q->whereIn('property_type_id', $ids) : $q->where('property_type_id', $ids[0]);
             })
@@ -229,12 +233,12 @@ class UnitController extends Controller
     public function convertProperty(Request $request, Unit $unit, AuditService $auditService)
     {
         $data = $request->validate([
-            'property_type_id' => ['required', Rule::in(['B'])],
+            'property_type_id' => ['required', Rule::in([PropertyType::BANGUNAN])],
             'notes' => ['nullable', 'string', 'max:200'],
         ]);
 
-        if ($unit->property_type_id !== 'K') {
-            return $this->error('Hanya kavling developer yang dapat dikonversi menjadi bangunan.', 422);
+        if ($unit->property_type_id !== PropertyType::KAVLING) {
+            return $this->error('Hanya unit kavling yang dapat dikonversi menjadi bangunan.', 422);
         }
 
         $old = $unit->toArray();
@@ -270,12 +274,16 @@ class UnitController extends Controller
     {
         $vaNumber = $this->composeVaNumber($request, $unit);
 
+        if ($request->has('property_type_id')) {
+            $request->merge(['property_type_id' => PropertyType::normalizeId($request->input('property_type_id'))]);
+        }
+
         $data = $request->validate([
             'resident_id' => ['nullable', 'exists:residents,id'],
             'cluster_id' => ['required', 'exists:clusters,id'],
             'block' => ['required', 'string', 'max:5'],
             'lot_number' => ['required', 'regex:/^[0-9]{1,10}$/'],
-            'property_type_id' => ['required', 'exists:property_types,id'],
+            'property_type_id' => ['required', Rule::in([PropertyType::BANGUNAN, PropertyType::KAVLING, PropertyType::RUKO])],
             'building_area' => ['nullable', 'numeric', 'min:0'],
             'land_area' => ['nullable', 'numeric', 'min:0'],
             'handover_date' => ['nullable', 'date'],

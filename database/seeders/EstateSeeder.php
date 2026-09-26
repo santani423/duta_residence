@@ -38,8 +38,7 @@ class EstateSeeder extends Seeder
     {
         collect([
             ['id' => 'B', 'name' => 'Bangunan', 'description' => 'Unit bangunan siap huni'],
-            ['id' => 'K', 'name' => 'Kavling Developer', 'description' => 'Kavling milik developer'],
-            ['id' => 'P', 'name' => 'Kavling Penghuni', 'description' => 'Kavling milik penghuni'],
+            ['id' => 'K', 'name' => 'Kavling', 'description' => 'Kavling / lahan tanpa bangunan'],
             ['id' => 'R', 'name' => 'Ruko', 'description' => 'Rumah toko'],
         ])->each(fn ($row) => PropertyType::updateOrCreate(['id' => $row['id']], $row));
 

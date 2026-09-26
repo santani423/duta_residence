@@ -285,7 +285,7 @@ curl -X PUT https://api.grandduta.com/api/v1/clusters/DO \
 | `per_page` | integer | — | Item per halaman (default: 20, max: 100) |
 | `cluster_id` | string | — | Filter per klaster (contoh: `DO`) |
 | `status_id` | string | — | Filter status: `AK`, `RK`, `TA` |
-| `property_type_id` | string | — | Filter tipe: `B`, `K`, `P` |
+| `property_type_id` | string | — | Filter tipe: `B`, `K`, `R` |
 | `block` | string | — | Filter per blok |
 | `search` | string | — | Cari nama/ID pelanggan |
 
@@ -357,7 +357,7 @@ GET /customers?cluster_id=DO&status_id=AK&page=1&per_page=20
 - `cluster_id`: wajib, harus ada di tabel clusters
 - `block`: wajib
 - `lot_number`: wajib
-- `property_type_id`: wajib, nilai: `B`, `K`, `P`
+- `property_type_id`: wajib, nilai: `B`, `K`, `R`
 - Kombinasi `cluster_id + block + lot_number` harus unik
 
 **Response 201:**
@@ -460,7 +460,7 @@ GET /customers?cluster_id=DO&status_id=AK&page=1&per_page=20
 
 #### `POST /customers/{id}/convert-property`
 
-**Deskripsi:** Konversi tipe properti dari Kavling Developer (K) ke Bangunan (B).  
+**Deskripsi:** Konversi tipe properti dari Kavling (K) ke Bangunan (B).  
 **Akses:** root, back_office
 
 **Request Body:**
@@ -472,7 +472,7 @@ GET /customers?cluster_id=DO&status_id=AK&page=1&per_page=20
 
 **Validasi:**
 - Customer harus ada dan aktif
-- Tipe properti saat ini harus `K` (Kavling Developer)
+- Tipe properti saat ini harus `K` (Kavling)
 
 **Response 200:**
 ```json
@@ -491,7 +491,7 @@ GET /customers?cluster_id=DO&status_id=AK&page=1&per_page=20
 ```json
 {
     "success": false,
-    "message": "Properti ini bukan bertipe Kavling Developer, tidak dapat dikonversi.",
+    "message": "Properti ini bukan bertipe Kavling, tidak dapat dikonversi.",
     "error_code": "ERR_PROPERTY_CONVERSION"
 }
 ```

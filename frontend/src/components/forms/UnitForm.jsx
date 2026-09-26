@@ -2,8 +2,7 @@ import { Form, Input, InputNumber, Select } from 'antd';
 
 export const propertyTypeOptions = [
   { value: 'B', label: 'Bangunan' },
-  { value: 'K', label: 'Kavling Developer' },
-  { value: 'P', label: 'Kavling Penghuni' },
+  { value: 'K', label: 'Kavling' },
   { value: 'R', label: 'Ruko' },
 ];
 
@@ -69,7 +68,7 @@ export function VaSuffixInput({ vaFormat, currentVaNumber, required = false, ext
   );
 }
 
-export default function UnitForm({ form, clusters = [], residents = [], vaFormat, currentVaNumber, onFinish, loading }) {
+export default function UnitForm({ form, clusters = [], residents = [], vaFormat, currentVaNumber, onFinish, loading, isEdit = false }) {
   return (
     <Form
       form={form}
@@ -85,13 +84,16 @@ export default function UnitForm({ form, clusters = [], residents = [], vaFormat
       }}
       disabled={loading}
     >
-      <Form.Item
-        label="Pemilik / Penghuni"
-        name="resident_id"
-        tooltip="Opsional. Unit dapat dibuat terlebih dahulu tanpa penghuni, lalu ditambahkan kemudian melalui menu Edit."
-      >
-        <Select allowClear showSearch optionFilterProp="label" placeholder="Belum ada penghuni" options={residents.map((item) => ({ value: item.id, label: `${item.id} - ${item.name}` }))} />
-      </Form.Item>
+      {/* Penghuni & nomor VA diisi belakangan lewat "Masukan Penghuni", jadi hanya tampil saat edit. */}
+      {isEdit && (
+        <Form.Item
+          label="Pemilik / Penghuni"
+          name="resident_id"
+          tooltip="Opsional. Unit dapat dibuat terlebih dahulu tanpa penghuni, lalu ditambahkan kemudian melalui menu Edit."
+        >
+          <Select allowClear showSearch optionFilterProp="label" placeholder="Belum ada penghuni" options={residents.map((item) => ({ value: item.id, label: `${item.id} - ${item.name}` }))} />
+        </Form.Item>
+      )}
       <Form.Item label="Cluster" name="cluster_id" rules={[{ required: true }]}>
         <Select showSearch optionFilterProp="label" options={clusters.map((item) => ({ value: item.id, label: `${item.id} - ${item.name}` }))} />
       </Form.Item>
@@ -106,7 +108,7 @@ export default function UnitForm({ form, clusters = [], residents = [], vaFormat
       >
         <InputNumber min={1} precision={0} placeholder="1" style={{ width: '100%' }} />
       </Form.Item>
-      <VaSuffixInput vaFormat={vaFormat} currentVaNumber={currentVaNumber} />
+      {isEdit && <VaSuffixInput vaFormat={vaFormat} currentVaNumber={currentVaNumber} />}
       <Form.Item label="Tipe Properti" name="property_type_id" rules={[{ required: true }]}>
         <Select options={propertyTypeOptions} />
       </Form.Item>

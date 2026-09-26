@@ -79,6 +79,14 @@ class AuthController extends Controller
             'email' => ['required', 'string', 'email'],
         ]);
 
+        // Only reveal whether the email is registered while debugging locally; in
+        // production this stays silent so the endpoint can't be used to enumerate accounts.
+        if (config('app.debug') && ! User::query()->where('email', $data['email'])->exists()) {
+            throw ValidationException::withMessages([
+                'email' => 'Email tidak terdaftar.',
+            ]);
+        }
+
         $status = Password::sendResetLink($data);
 
         $auditService->log('password_reset_requested', 'auth', 'FORGOT_PASSWORD', null, [], ['email' => $data['email']], $status === Password::RESET_LINK_SENT ? 'success' : 'failed');

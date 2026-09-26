@@ -48,6 +48,8 @@ components:
           type: string
         property_type_id:
           type: string
+          enum: [B, K, R]
+          description: "B = Bangunan, K = Kavling, R = Ruko. Kode lama P (Kavling Penghuni) masih diterima dan dinormalisasi menjadi K."
         occupancy_id:
           type: string
         status_id:
@@ -168,7 +170,7 @@ paths:
           description: Pelanggan dibuat
   /customers/{id}/convert-property:
     post:
-      summary: Konversi kavling developer menjadi bangunan
+      summary: Konversi kavling menjadi bangunan
       parameters:
         - in: path
           name: id
