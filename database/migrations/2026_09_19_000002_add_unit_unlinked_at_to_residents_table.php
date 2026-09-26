@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::table('residents', function (Blueprint $table) {
             // Diisi saat penghuni yang sebelumnya terhubung ke suatu unit kehilangan hubungan
             // itu (unit dilepas/dihapus) dan tidak punya unit lain; dikosongkan lagi begitu
-            // penghuni terhubung ke unit. Membedakan "Penghuni Tanpa Unit" dari penghuni baru
+            // penghuni terhubung ke unit. Membedakan "Unit Tanpa Penghuni" dari penghuni baru
             // yang memang belum pernah dihubungkan ke unit mana pun.
             $table->timestamp('unit_unlinked_at')->nullable()->after('notes');
         });

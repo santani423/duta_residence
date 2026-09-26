@@ -305,7 +305,7 @@ class ResidentApiTest extends TestCase
         $ids = collect($this->getJson('/api/v1/residents?unit_status=without_unit')->assertOk()->json('data'))->pluck('id');
         $this->assertSame([$residentId], $ids->all());
 
-        // Terhubung lagi ke unit -> bukan lagi Penghuni Tanpa Unit.
+        // Terhubung lagi ke unit -> bukan lagi Unit Tanpa Penghunis.
         $this->putJson("/api/v1/units/{$unit['id']}", $unitPayload + ['resident_id' => $residentId])->assertOk();
         $this->getJson("/api/v1/residents/{$residentId}")
             ->assertJsonPath('data.unit_status', 'with_unit')

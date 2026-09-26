@@ -88,7 +88,7 @@ class Resident extends Model
     }
 
     /**
-     * Penghuni Tanpa Unit: sebelumnya sudah terhubung ke suatu unit, lalu hubungan itu
+     * Unit Tanpa Penghuni: sebelumnya sudah terhubung ke suatu unit, lalu hubungan itu
      * dibatalkan (unit dilepas/dihapus) dan tidak ada unit lain (sebagai pemilik maupun
      * penyewa). Penghuni yang belum pernah dihubungkan ke unit mana pun bukan kategori ini.
      */

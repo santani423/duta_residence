@@ -56,7 +56,7 @@ class UnitOwnershipSyncService
     }
 
     /**
-     * Tandai penghuni sebagai "Penghuni Tanpa Unit" bila hubungannya ke Unit baru saja
+     * Tandai penghuni sebagai "Unit Tanpa Penghuni" bila hubungannya ke Unit baru saja
      * dibatalkan (unit dilepas/dihapus) dan ia tidak punya unit lain sebagai pemilik maupun
      * penyewa. Dipanggil SETELAH perubahan unit disimpan, supaya pengecekan unit lain akurat.
      *

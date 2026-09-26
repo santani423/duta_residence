@@ -109,7 +109,7 @@ export default function ResidentsPage() {
           onChange={(value) => table.setFilters({ ...table.filters, unit_status: value })}
           options={[
             { value: 'with_unit', label: 'Punya Unit' },
-            { value: 'without_unit', label: 'Penghuni Tanpa Unit' },
+            { value: 'without_unit', label: 'Unit Tanpa Penghuni' },
             { value: 'never_linked', label: 'Belum Ada Unit' },
           ]}
           className="filter-input"

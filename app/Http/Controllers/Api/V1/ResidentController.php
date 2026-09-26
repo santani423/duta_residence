@@ -83,7 +83,7 @@ class ResidentController extends Controller
         $vaSuffix = $data['va_suffix'] ?? null;
         unset($data['unit_id'], $data['va_suffix']);
 
-        // Dicek sebelum penghuni dibuat agar VA yang tidak valid/duplikat tidak meninggalkan penghuni tanpa unit.
+        // Dicek sebelum penghuni dibuat agar VA yang tidak valid/duplikat tidak meninggalkan unit tanpa penghuni.
         $vaNumber = $unitId ? $vaNumbers->compose($vaSuffix, Unit::query()->find($unitId)) : null;
         $username = $data['username'] ?? null;
         unset($data['username']);
