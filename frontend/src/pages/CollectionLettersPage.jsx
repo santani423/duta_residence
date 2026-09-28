@@ -4,10 +4,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import dayjs from 'dayjs';
 import PageHeader from '../components/common/PageHeader.jsx';
+import FilterBar from '../components/common/FilterBar.jsx';
+import { UnitFilterFields, UnitPicker } from '../components/common/UnitFilters.jsx';
 import Can from '../components/common/Can.jsx';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import { useTableState } from '../hooks/useTableState.js';
-import { useDebounce } from '../hooks/useDebounce.js';
 import { useAuth } from '../state/AuthContext.jsx';
 import { api } from '../services/estateApi.js';
 import { downloadBlob } from '../utils/download.js';
@@ -62,6 +63,11 @@ export default function CollectionLettersPage() {
         }
       />
 
+      <FilterBar>
+        <UnitFilterFields value={table.filters} onChange={table.setFilters} />
+        <Select allowClear placeholder="Jenis Surat" value={table.filters.letter_type} onChange={(value) => table.setFilters({ ...table.filters, letter_type: value })} className="filter-input" options={Object.entries(LETTER_TYPE_LABELS).map(([value, label]) => ({ value, label }))} />
+      </FilterBar>
+
       <Card>
         <ResponsiveTable
           query={list}
@@ -69,6 +75,7 @@ export default function CollectionLettersPage() {
           columns={[
             { title: 'Penghuni', dataIndex: ['resident', 'name'] },
             { title: 'Unit', dataIndex: 'unit_id' },
+            { title: 'Cluster', dataIndex: ['unit', 'cluster', 'name'] },
             { title: 'Jenis Surat', render: (_, record) => <Tag>{LETTER_TYPE_LABELS[record.letter_type]}</Tag> },
             { title: 'Dibuat Oleh', dataIndex: ['generated_by', 'name'] },
             { title: 'Tanggal', dataIndex: 'generated_at', render: (value) => dayjs(value).format('DD MMM YYYY HH:mm') },
@@ -95,7 +102,9 @@ export default function CollectionLettersPage() {
         destroyOnHidden
       >
         <Form form={form} layout="vertical" onFinish={create.mutate}>
-          <RemoteUnitField />
+          <Form.Item label="Unit" name="unit_id" rules={[{ required: true, message: 'Pilih unit' }]}>
+            <UnitPicker />
+          </Form.Item>
           <Form.Item label="Jenis Surat" name="letter_type" rules={[{ required: true, message: 'Pilih jenis surat' }]}>
             <Select options={Object.entries(LETTER_TYPE_LABELS).map(([value, label]) => ({ value, label }))} />
           </Form.Item>
@@ -105,18 +114,5 @@ export default function CollectionLettersPage() {
         </Form>
       </Modal>
     </section>
-  );
-}
-
-function RemoteUnitField() {
-  const [search, setSearch] = useState('');
-  const debounced = useDebounce(search);
-  const units = useQuery({ queryKey: ['units', 'search', debounced], queryFn: () => api.units.list({ search: debounced || undefined, per_page: 20 }) });
-  const options = (units.data?.data || []).map((unit) => ({ value: unit.id, label: `${unit.id} — ${unit.resident?.name || ''}` }));
-
-  return (
-    <Form.Item label="Unit" name="unit_id" rules={[{ required: true, message: 'Pilih unit' }]}>
-      <Select showSearch filterOption={false} onSearch={setSearch} options={options} loading={units.isFetching} notFoundContent={units.isFetching ? 'Mencari...' : 'Tidak ditemukan'} />
-    </Form.Item>
   );
 }

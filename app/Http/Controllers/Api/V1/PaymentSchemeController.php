@@ -10,6 +10,7 @@ use App\Models\PaymentScheme;
 use App\Models\Unit;
 use App\Services\ApprovalService;
 use App\Services\PaymentSchemeService;
+use App\Support\UnitFilters;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -24,7 +25,7 @@ class PaymentSchemeController extends Controller
     {
         $query = PaymentScheme::query()
             ->with(self::RELATIONS)
-            ->filter($request->only(['unit_id', 'status', 'search']));
+            ->filter($request->only([...UnitFilters::KEYS, 'status', 'search']));
 
         $paginator = $query->latest()->paginate($request->integer('per_page', 15));
         $service->annotate($paginator->items(), $request->user());

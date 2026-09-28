@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/common/PageHeader.jsx';
 import ExportPdfButton from '../components/common/ExportPdfButton.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
+import { UnitFilterFields } from '../components/common/UnitFilters.jsx';
 import StatusBadge from '../components/common/StatusBadge.jsx';
 import Can from '../components/common/Can.jsx';
 import UnitForm, { VaSuffixInput, propertyTypeOptions, vaSuffixFromNumber, residentStatusOptions, unitOccupancyStatusOptions } from '../components/forms/UnitForm.jsx';
@@ -144,7 +145,6 @@ export default function UnitsPage() {
     setDrawer({ type: 'add-resident', record });
   }
 
-  const clusterOptions = (clusters.data?.data || []).map((item) => ({ value: item.id, label: item.name }));
   const existingMode = residentMode === 'existing' && Boolean(drawer.record);
   const residentOptions = (residents.data?.data || []).map((item) => ({ value: item.id, label: item.name }));
   const detailData = detail.data?.data;
@@ -166,9 +166,7 @@ export default function UnitsPage() {
 
       <FilterBar>
         <Input allowClear placeholder="Cari ID, blok, nama pemilik" value={table.search} onChange={(event) => table.setSearch(event.target.value)} className="filter-input" />
-        <Select allowClear placeholder="Cluster" options={clusterOptions} value={table.filters.cluster_id} onChange={(value) => table.setFilters({ ...table.filters, cluster_id: value })} className="filter-input" />
-        <Input allowClear placeholder="No Unit" value={table.filters.lot_number} onChange={(event) => table.setFilters({ ...table.filters, lot_number: event.target.value || undefined })} className="filter-input" />
-        <Input allowClear placeholder="Blok" value={table.filters.block} onChange={(event) => table.setFilters({ ...table.filters, block: event.target.value || undefined })} className="filter-input" />
+        <UnitFilterFields value={table.filters} onChange={table.setFilters} />
         <Select allowClear placeholder="Status Unit" options={unitOccupancyStatusOptions} value={table.filters.occupancy_status} onChange={(value) => table.setFilters({ ...table.filters, occupancy_status: value })} className="filter-input" />
         <Select allowClear placeholder="Status Penghuni" options={residentStatusOptions} value={table.filters.status_id} onChange={(value) => table.setFilters({ ...table.filters, status_id: value })} className="filter-input" />
         <Select allowClear placeholder="Tipe" options={propertyTypeOptions} value={table.filters.property_type_id} onChange={(value) => table.setFilters({ ...table.filters, property_type_id: value })} className="filter-input" />

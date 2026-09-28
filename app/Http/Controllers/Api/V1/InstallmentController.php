@@ -7,6 +7,7 @@ use App\Http\Responses\ApiResponse;
 use App\Models\Installment;
 use App\Models\Unit;
 use App\Services\AuditService;
+use App\Support\UnitFilters;
 use Illuminate\Http\Request;
 
 class InstallmentController extends Controller
@@ -17,7 +18,7 @@ class InstallmentController extends Controller
     {
         $query = Installment::query()
             ->with(['unit.cluster', 'unit.resident'])
-            ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value));
+            ->tap(fn ($q) => UnitFilters::apply($q, $request));
 
         return $this->paginated($query->latest('payment_date')->paginate($request->integer('per_page', 15)));
     }

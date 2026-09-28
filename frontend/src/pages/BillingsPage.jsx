@@ -6,13 +6,13 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import PageHeader from '../components/common/PageHeader.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
+import { UnitFilterFields, UnitPicker } from '../components/common/UnitFilters.jsx';
 import Can from '../components/common/Can.jsx';
 import StatusBadge from '../components/common/StatusBadge.jsx';
 import BillingPaymentModal from '../components/common/BillingPaymentModal.jsx';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import { api } from '../services/estateApi.js';
 import { useTableState } from '../hooks/useTableState.js';
-import { useDebounce } from '../hooks/useDebounce.js';
 import { useDiscountLimit } from '../hooks/useDiscountLimit.js';
 import { DISCOUNT_TYPE_PERCENTAGE, finalPrice, fromNominalDiscount, maxNominalFromPercent, toNominalDiscount } from '../utils/discount.js';
 import { formatCurrency, formatDateTime, formatPeriod } from '../utils/format.js';
@@ -49,7 +49,6 @@ export default function BillingsPage({ mode = 'outstanding' }) {
   const billings = useQuery({ queryKey: ['billings', mode, listParams], queryFn: () => api.billings.list(listParams) });
   const { page: _p, per_page: _pp, ...summaryParams } = listParams;
   const summary = useQuery({ queryKey: ['billings', 'summary', mode, summaryParams], queryFn: () => api.billings.summary(summaryParams), enabled: !isHistory });
-  const clusters = useQuery({ queryKey: ['clusters'], queryFn: () => api.clusters.list() });
   // Bila daftar hanya berisi satu unit (mis. difilter per unit), petugas bisa memilih beberapa tagihan lalu langsung membayarnya.
   const rows = billings.data?.data || [];
   const listUnitIds = [...new Set(rows.map((row) => row.unit_id))];
@@ -289,10 +288,7 @@ export default function BillingsPage({ mode = 'outstanding' }) {
           </Space>
         )}
       >
-        <Input allowClear placeholder="ID unit" value={table.filters.unit_id} onChange={(event) => table.setFilters({ ...table.filters, unit_id: event.target.value || undefined })} className="filter-input" />
-        <ResidentFilter value={table.filters.resident_id} onChange={(value) => table.setFilters({ ...table.filters, resident_id: value })} />
-        <Select allowClear placeholder="Cluster" options={(clusters.data?.data || []).map((item) => ({ value: item.id, label: item.name }))} value={table.filters.cluster_id} onChange={(value) => table.setFilters({ ...table.filters, cluster_id: value })} className="filter-input" />
-        <Input allowClear placeholder="Blok" value={table.filters.block} onChange={(event) => table.setFilters({ ...table.filters, block: event.target.value || undefined })} className="filter-input" />
+        <UnitFilterFields value={table.filters} onChange={table.setFilters} />
         <InputNumber placeholder="Tahun" value={table.filters.year} onChange={(value) => table.setFilters({ ...table.filters, year: value })} className="filter-input" />
         <Select allowClear placeholder="Bulan" value={table.filters.month} onChange={(value) => table.setFilters({ ...table.filters, month: value })} className="filter-input" options={Array.from({ length: 12 }, (_, index) => ({ value: index + 1, label: dayjs().month(index).format('MMMM') }))} />
         <Select allowClear placeholder="Status" value={table.filters.status_id} onChange={(value) => table.setFilters({ ...table.filters, status_id: value })} className="filter-input" options={isHistory ? [{ value: '01', label: 'Belum Bayar' }, { value: '03', label: 'Sudah Bayar' }, { value: '02', label: 'Lunas' }, { value: '04', label: 'Dibatalkan' }] : [{ value: '01', label: 'Belum Bayar' }, { value: '03', label: 'Sudah Bayar' }]} />
@@ -338,7 +334,7 @@ export default function BillingsPage({ mode = 'outstanding' }) {
         {drawer === 'special' ? (
           <Form form={form} layout="vertical" onFinish={special.mutate}>
             <Form.Item label="Unit" name="unit_id" rules={[{ required: true, message: 'Pilih unit' }]}>
-              <UnitPicker clusters={clusters.data?.data || []} />
+              <UnitPicker />
             </Form.Item>
             <Form.Item label="Periode" name="period" rules={[{ required: true }]}>
               <DatePicker picker="month" style={{ width: '100%' }} />
@@ -348,7 +344,7 @@ export default function BillingsPage({ mode = 'outstanding' }) {
         ) : (
           <Form form={form} layout="vertical" onFinish={back.mutate}>
             <Form.Item label="Unit" name="unit_id" rules={[{ required: true, message: 'Pilih unit' }]}>
-              <UnitPicker clusters={clusters.data?.data || []} statusId="AK" />
+              <UnitPicker statusId="AK" />
             </Form.Item>
             <p className="ant-form-text" style={{ marginBottom: 12 }}>
               Nominal IPL diambil otomatis dari nominal IPL yang berlaku pada tiap periode (atau periode terakhir
@@ -450,51 +446,6 @@ export default function BillingsPage({ mode = 'outstanding' }) {
   );
 }
 
-function UnitPicker({ value, onChange, clusters = [], statusId }) {
-  const [clusterId, setClusterId] = useState(undefined);
-  const [search, setSearch] = useState('');
-  const debounced = useDebounce(search);
-  const units = useQuery({
-    queryKey: ['units', 'picker', clusterId, debounced, statusId],
-    queryFn: () => api.units.list({ cluster_id: clusterId, status_id: statusId, search: debounced || undefined, per_page: 20 }),
-  });
-
-  const clusterOptions = clusters.map((item) => ({ value: item.id, label: item.name }));
-  const unitOptions = (units.data?.data || []).map((item) => ({
-    value: item.id,
-    label: `${item.id} - ${item.resident?.name || 'Belum ada penghuni'} (${item.cluster?.name || item.cluster_id})`,
-  }));
-
-  return (
-    <Space.Compact style={{ width: '100%' }}>
-      <Select
-        allowClear
-        placeholder="Cluster"
-        value={clusterId}
-        onChange={(next) => {
-          setClusterId(next);
-          onChange?.(undefined);
-        }}
-        options={clusterOptions}
-        style={{ width: '35%' }}
-      />
-      <Select
-        showSearch
-        allowClear
-        placeholder="Cari unit atau nama customer"
-        value={value}
-        onChange={onChange}
-        onSearch={setSearch}
-        filterOption={false}
-        options={unitOptions}
-        loading={units.isFetching}
-        notFoundContent={units.isFetching ? 'Mencari...' : 'Tidak ditemukan'}
-        style={{ width: '65%' }}
-      />
-    </Space.Compact>
-  );
-}
-
 function monthsInRange(start, end) {
   if (!start || !end) return [];
 
@@ -563,28 +514,5 @@ function BackPeriodsPreview({ unitId, start, end }) {
         )}
       </div>
     </>
-  );
-}
-
-function ResidentFilter({ value, onChange }) {
-  const [search, setSearch] = useState('');
-  const debounced = useDebounce(search);
-  const residents = useQuery({ queryKey: ['residents', 'search', debounced], queryFn: () => api.residents.list({ search: debounced || undefined, per_page: 20 }) });
-  const options = (residents.data?.data || []).map((resident) => ({ value: resident.id, label: resident.name }));
-
-  return (
-    <Select
-      allowClear
-      showSearch
-      placeholder="Penghuni"
-      value={value}
-      onChange={onChange}
-      onSearch={setSearch}
-      filterOption={false}
-      options={options}
-      loading={residents.isFetching}
-      notFoundContent={residents.isFetching ? 'Mencari...' : 'Tidak ditemukan'}
-      className="filter-input"
-    />
   );
 }

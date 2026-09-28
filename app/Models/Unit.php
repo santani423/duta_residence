@@ -298,4 +298,33 @@ class Unit extends Model
                     ->orWhere('phone', 'like', "%{$search}%"));
         }));
     }
+
+    /**
+     * Filter bersama Cluster/Blok/Unit/Customer/Alamat (lihat App\Support\UnitFilters). Blok dan
+     * ID unit dicocokkan persis tanpa peka huruf besar/kecil (dipilih dari dropdown, jadi "A" tidak
+     * boleh ikut menampilkan blok "AA"); Customer dan Alamat berupa pencarian teks bebas.
+     */
+    public function scopeMatchingFilters(Builder $query, array $filters): Builder
+    {
+        return $query
+            ->when($filters['cluster_id'] ?? null, fn (Builder $q, $value) => $q->where('units.cluster_id', $value))
+            ->when($filters['block'] ?? null, fn (Builder $q, $value) => $q->whereRaw('LOWER(units.block) = ?', [mb_strtolower(trim($value))]))
+            ->when($filters['unit_id'] ?? null, fn (Builder $q, $value) => $q->whereRaw('LOWER(units.id) = ?', [mb_strtolower(trim($value))]))
+            ->when($filters['resident_id'] ?? null, fn (Builder $q, $value) => $q->where('units.resident_id', $value))
+            ->when($filters['customer'] ?? null, fn (Builder $q, $value) => $q->where(fn (Builder $inner) => $inner
+                ->whereHas('resident', fn (Builder $r) => $r->where('name', 'like', "%{$value}%"))
+                ->orWhereHas('tenantResident', fn (Builder $r) => $r->where('name', 'like', "%{$value}%"))))
+            ->when($filters['address'] ?? null, function (Builder $q, $value) {
+                // "A/12", "A-12" atau "A 12" dibaca sebagai Blok A nomor 12.
+                $parts = preg_split('/[\s\/\-]+/', trim($value), -1, PREG_SPLIT_NO_EMPTY);
+
+                return $q->where(fn (Builder $inner) => $inner
+                    ->where('units.block', 'like', "%{$value}%")
+                    ->orWhere('units.lot_number', 'like', "%{$value}%")
+                    ->orWhereHas('cluster', fn (Builder $c) => $c->where('name', 'like', "%{$value}%"))
+                    ->when(count($parts) === 2, fn (Builder $combo) => $combo->orWhere(fn (Builder $pair) => $pair
+                        ->where('units.block', 'like', "%{$parts[0]}%")
+                        ->where('units.lot_number', 'like', "%{$parts[1]}%"))));
+            });
+    }
 }

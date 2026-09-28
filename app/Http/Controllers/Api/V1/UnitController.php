@@ -17,6 +17,7 @@ use App\Services\PenaltyService;
 use App\Services\UnitCodeGeneratorService;
 use App\Services\UnitOwnershipSyncService;
 use App\Services\UnitVaNumberService;
+use App\Support\UnitFilters;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -32,7 +33,7 @@ class UnitController extends Controller
         $query = Unit::query()
             ->with(['cluster', 'propertyType', 'status', 'occupancy', 'resident'])
             ->search($request->query('search'))
-            ->when($request->query('cluster_id'), fn ($q, $value) => $q->where('cluster_id', $value))
+            ->matchingFilters(UnitFilters::from($request))
             ->when($request->query('status_id'), fn ($q, $value) => $q->where('status_id', $value))
             ->when($request->query('property_type_id'), function ($q, $value) {
                 $ids = array_values(array_unique(array_map(
@@ -43,20 +44,38 @@ class UnitController extends Controller
                 return count($ids) > 1 ? $q->whereIn('property_type_id', $ids) : $q->where('property_type_id', $ids[0]);
             })
             ->occupancyStatus($request->query('occupancy_status'))
-            ->when($request->query('resident_id'), fn ($q, $value) => $q->where('resident_id', $value))
-            ->when($request->query('block'), fn ($q, $value) => $q->where('block', 'like', "%{$value}%"))
             ->when($request->query('lot_number'), fn ($q, $value) => $q->where('lot_number', 'like', "%{$value}%"))
-            ->when($request->boolean('unassigned'), fn ($q) => $q->whereNull('resident_id'))
-            ->when($request->query('customer'), fn ($q, $value) => $q->whereHas('resident', fn ($r) => $r->where('name', 'like', "%{$value}%")))
-            ->when($request->query('address'), fn ($q, $value) => $q->where(fn ($inner) => $inner
-                ->where('block', 'like', "%{$value}%")
-                ->orWhere('lot_number', 'like', "%{$value}%")));
+            ->when($request->boolean('unassigned'), fn ($q) => $q->whereNull('resident_id'));
 
         if ($request->user()->hasRole('collector')) {
             $query->whereIn('id', $assignmentService->unitIdsFor($request->user()));
         }
 
         return $this->paginated($query->orderBy('cluster_id')->orderBy('block')->paginate($request->integer('per_page', 15)));
+    }
+
+    /**
+     * Daftar blok (unik, terurut) untuk dropdown filter Blok yang bergantung pada Cluster.
+     * Kolektor hanya melihat blok dari unit yang ditugaskan kepadanya, sama seperti index().
+     */
+    public function blocks(Request $request, CollectorAssignmentService $assignmentService)
+    {
+        $query = Unit::query()
+            ->whereNotNull('block')
+            ->where('block', '!=', '')
+            ->when($request->query('cluster_id'), fn ($q, $value) => $q->where('cluster_id', $value));
+
+        if ($request->user()->hasRole('collector')) {
+            $query->whereIn('id', $assignmentService->unitIdsFor($request->user()));
+        }
+
+        $blocks = $query->distinct()->pluck('block')
+            ->map(fn ($block) => trim($block))
+            ->unique(fn ($block) => mb_strtolower($block))
+            ->sort(SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
+
+        return $this->success($blocks);
     }
 
     public function store(Request $request, AuditService $auditService, UnitOwnershipSyncService $ownershipSync, UnitCodeGeneratorService $codeGenerator)

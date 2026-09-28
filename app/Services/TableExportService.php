@@ -11,8 +11,9 @@ use App\Models\Receipt;
 use App\Models\Reversal;
 use App\Models\Unit;
 use App\Models\UnitDeposit;
+use App\Support\UnitFilters;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -85,7 +86,7 @@ class TableExportService
     {
         $query = PaymentScheme::query()
             ->with(['unit.cluster', 'unit.resident', 'submitter', 'decider', 'items.billing.unit'])
-            ->filter($request->only(['unit_id', 'status', 'search']))
+            ->filter($request->only([...UnitFilters::KEYS, 'status', 'search']))
             ->latest();
         $this->guardRows($query, 'skema pembayaran');
         $schemes = $query->get();
@@ -126,7 +127,7 @@ class TableExportService
             'filename' => 'skema-pembayaran.pdf',
             'meta' => $this->filterLines([
                 'Status' => $request->query('status') ? (self::SCHEME_STATUS[$request->query('status')] ?? $request->query('status')) : null,
-                'Unit' => $request->query('unit_id'),
+                ...UnitFilters::describe($request),
                 'Pencarian' => $request->query('search'),
             ], $schemes->count(), 'skema'),
             'columns' => $this->columns([
@@ -176,7 +177,7 @@ class TableExportService
     private function installments(Request $request): array
     {
         $query = Installment::query()->with(['unit.cluster', 'unit.resident'])
-            ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value))
+            ->tap(fn ($q) => UnitFilters::apply($q, $request))
             ->latest('payment_date');
         $this->guardRows($query, 'cicilan');
         $installments = $query->get();
@@ -184,7 +185,7 @@ class TableExportService
         return [
             'title' => 'Cicilan',
             'filename' => 'cicilan.pdf',
-            'meta' => $this->filterLines(['Unit' => $request->query('unit_id')], $installments->count(), 'cicilan'),
+            'meta' => $this->filterLines(UnitFilters::describe($request), $installments->count(), 'cicilan'),
             'columns' => $this->columns(['No.', 'Tanggal', 'Unit', 'Penghuni', 'Cluster', ['Nominal', 'right'], 'Alokasi', 'Catatan']),
             'rows' => $installments->values()->map(fn (Installment $installment, int $i) => [
                 $i + 1,
@@ -207,8 +208,7 @@ class TableExportService
     private function receivables(Request $request): array
     {
         $query = Billing::query()->with(['unit.cluster', 'unit.resident'])
-            ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value))
-            ->when($request->query('cluster_id'), fn ($q, $value) => $q->whereHas('unit', fn ($inner) => $inner->where('cluster_id', $value)))
+            ->tap(fn ($q) => UnitFilters::apply($q, $request))
             ->when($request->query('status_id'), fn ($q, $value) => $q->where('status_id', $value), fn ($q) => $q->outstanding())
             ->orderBy('year')->orderBy('month');
         $this->guardRows($query, 'piutang');
@@ -220,8 +220,7 @@ class TableExportService
             'title' => 'Piutang',
             'filename' => 'piutang.pdf',
             'meta' => $this->filterLines([
-                'Unit' => $request->query('unit_id'),
-                'Cluster' => $request->query('cluster_id') ? (Cluster::query()->find($request->query('cluster_id'))?->name ?? $request->query('cluster_id')) : null,
+                ...UnitFilters::describe($request),
                 'Status' => $request->query('status_id') ? (self::BILLING_STATUS[$request->query('status_id')] ?? null) : 'Belum lunas',
             ], $billings->count(), 'tagihan'),
             'columns' => $this->columns([
@@ -263,6 +262,7 @@ class TableExportService
             'filename' => 'rekonsiliasi-saldo.pdf',
             'meta' => $this->filterLines([
                 'Status' => $status !== 'all' ? ['balanced' => 'Sesuai', 'mismatch' => 'Selisih', 'negative' => 'Saldo negatif'][$status] ?? $status : null,
+                ...UnitFilters::describe($request),
                 'Pencarian' => $request->query('search'),
             ], $rows->count(), 'unit'),
             'columns' => $this->columns(['No.', 'Unit', 'Penghuni', 'Alamat', ['Saldo Tercatat', 'right'], ['Saldo Terhitung', 'right'], ['Selisih', 'right'], 'Status', 'Transaksi Terakhir']),
@@ -529,7 +529,7 @@ class TableExportService
 
     private function dateTime($value): string
     {
-        return $value ? \Illuminate\Support\Carbon::parse($value)->format('d-m-Y H:i') : '-';
+        return $value ? Carbon::parse($value)->format('d-m-Y H:i') : '-';
     }
 
     private function period(int|string $year, int|string $month): string

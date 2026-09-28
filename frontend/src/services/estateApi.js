@@ -118,6 +118,7 @@ export const api = {
   units: {
     list: (params) => http.get('/units', { params }),
     vaFormat: () => http.get('/units/va-format'),
+    blocks: (params) => http.get('/units/blocks', { params }),
     detail: (id) => http.get(`/units/${id}`),
     create: (payload) => http.post('/units', payload),
     update: (id, payload) => http.put(`/units/${id}`, payload),
@@ -257,7 +258,7 @@ export const api = {
   },
   receivables: {
     list: (params) => http.get('/receivables', { params }),
-    aging: () => http.get('/receivables/aging'),
+    aging: (params) => http.get('/receivables/aging', { params }),
   },
   reports: {
     monthly: (params) => http.get('/reports/monthly', { params }),

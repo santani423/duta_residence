@@ -8,6 +8,7 @@ use App\Models\CollectionLetter;
 use App\Models\Unit;
 use App\Services\AuditService;
 use App\Services\CollectorAssignmentService;
+use App\Support\UnitFilters;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -27,7 +28,7 @@ class CollectionLetterController extends Controller
     {
         $query = CollectionLetter::query()
             ->with(['unit.cluster', 'resident', 'billing', 'generatedBy'])
-            ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value))
+            ->tap(fn ($q) => UnitFilters::apply($q, $request, except: ['resident_id']))
             ->when($request->query('resident_id'), fn ($q, $value) => $q->where('resident_id', $value))
             ->when($request->query('letter_type'), fn ($q, $value) => $q->where('letter_type', $value));
 

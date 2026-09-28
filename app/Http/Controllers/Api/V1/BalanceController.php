@@ -8,8 +8,10 @@ use App\Models\Unit;
 use App\Models\UnitDeposit;
 use App\Services\AuditService;
 use App\Services\UnitBalanceLedgerService;
+use App\Support\UnitFilters;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
@@ -69,7 +71,7 @@ class BalanceController extends Controller
     }
 
     /** Every row of the reconciliation table after search/status filters; also used by the PDF export. */
-    public function reconciliationRows(Request $request): \Illuminate\Support\Collection
+    public function reconciliationRows(Request $request): Collection
     {
         $rows = DB::table('units')
             ->leftJoin('unit_deposits', 'unit_deposits.unit_id', '=', 'units.id')
@@ -87,6 +89,7 @@ class BalanceController extends Controller
             ->when($request->query('search'), fn ($q, $value) => $q->where(fn ($inner) => $inner
                 ->where('units.id', 'like', "%{$value}%")
                 ->orWhere('residents.name', 'like', "%{$value}%")))
+            ->tap(fn ($q) => UnitFilters::apply($q, $request, 'units.id'))
             ->groupBy('units.id', 'units.block', 'units.lot_number', 'units.balance', 'residents.name')
             ->get()
             ->map(function ($row) {

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\UnitFilters;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -74,7 +75,7 @@ class PaymentScheme extends Model
     public function scopeFilter(Builder $query, array $filters): Builder
     {
         return $query
-            ->when($filters['unit_id'] ?? null, fn ($q, $value) => $q->where('unit_id', $value))
+            ->tap(fn ($q) => UnitFilters::apply($q, $filters))
             ->when($filters['status'] ?? null, fn ($q, $value) => $q->where('status', $value))
             ->when($filters['search'] ?? null, fn ($q, $value) => $q->where(fn ($inner) => $inner
                 ->where('unit_id', 'like', "%{$value}%")

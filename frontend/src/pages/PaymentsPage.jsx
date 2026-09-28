@@ -7,6 +7,8 @@ import dayjs from 'dayjs';
 import PageHeader from '../components/common/PageHeader.jsx';
 import ExportPdfButton from '../components/common/ExportPdfButton.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
+import { UnitFilterFields } from '../components/common/UnitFilters.jsx';
+import { unitOptionLabel } from '../hooks/useUnitLookups.js';
 import Can from '../components/common/Can.jsx';
 import StatusBadge from '../components/common/StatusBadge.jsx';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
@@ -56,7 +58,6 @@ export default function PaymentsPage() {
   const debouncedUnitQuery = useDebounce(unitQuery);
 
   const config = useQuery({ queryKey: ['payment-gateway-config'], queryFn: api.payments.gatewayConfig });
-  const clusters = useQuery({ queryKey: ['clusters'], queryFn: () => api.clusters.list() });
   const transactions = useQuery({ queryKey: ['payment-transactions', transactionTable.params], queryFn: () => api.payments.gatewayTransactions(transactionTable.params) });
   const receipts = useQuery({ queryKey: ['payment-receipts', receiptTable.params], queryFn: () => api.payments.receipts(receiptTable.params) });
   const unitLookup = useQuery({
@@ -64,12 +65,12 @@ export default function PaymentsPage() {
     queryFn: () => api.units.list({
       search: debouncedUnitQuery || undefined,
       cluster_id: unitFilters.cluster_id,
-      customer: unitFilters.customer || undefined,
-      address: unitFilters.address || undefined,
+      block: unitFilters.block,
+      customer: unitFilters.customer,
+      address: unitFilters.address,
       per_page: 20,
     }),
   });
-  const clusterOptions = (clusters.data?.data || []).map((item) => ({ value: item.id, label: item.name }));
 
   const search = useMutation({
     mutationFn: (values) => api.payments.search({
@@ -261,8 +262,8 @@ export default function PaymentsPage() {
     if ((receiptTable.filters.unit_id || undefined) !== urlUnitId) receiptTable.setFilters({ ...receiptTable.filters, unit_id: urlUnitId });
   }, [urlUnitId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function updateUnitFilters(patch) {
-    setUnitFilters((previous) => ({ ...previous, ...patch }));
+  function updateUnitFilters(next) {
+    setUnitFilters(next);
     searchForm.setFieldValue('unit_id', undefined);
     setUnitQuery('');
   }
@@ -320,10 +321,7 @@ export default function PaymentsPage() {
   const via = viaOptions.some((option) => option.value === selectedVia) ? selectedVia : 'loket';
   const viaLabel = viaOptions.find((option) => option.value === via)?.label;
   const manualInfo = config.data?.data?.manual_payment || {};
-  const unitOptions = (unitLookup.data?.data || []).map((item) => ({
-    value: item.id,
-    label: `${item.id} — ${item.cluster?.name || ''} ${item.block || ''}/${item.lot_number || ''} — ${item.resident?.name || ''}`,
-  }));
+  const unitOptions = (unitLookup.data?.data || []).map((item) => ({ value: item.id, label: unitOptionLabel(item) }));
 
   const schemeGroups = Object.values(unpaidBillings.reduce((groups, billing) => {
     if (!billing.payment_scheme_id) return groups;
@@ -375,9 +373,7 @@ export default function PaymentsPage() {
             children: (
               <div className="stack">
                 <FilterBar>
-                  <Select allowClear showSearch placeholder="Cluster" value={unitFilters.cluster_id} onChange={(value) => updateUnitFilters({ cluster_id: value })} options={clusterOptions} optionFilterProp="label" loading={clusters.isFetching} className="filter-input" />
-                  <Input allowClear placeholder="Nama customer" value={unitFilters.customer} onChange={(event) => updateUnitFilters({ customer: event.target.value || undefined })} className="filter-input" />
-                  <Input allowClear placeholder="Alamat (blok/kavling)" value={unitFilters.address} onChange={(event) => updateUnitFilters({ address: event.target.value || undefined })} className="filter-input" />
+                  <UnitFilterFields value={unitFilters} onChange={updateUnitFilters} hide={['unit_id']} />
                 </FilterBar>
 
                 <Card>
@@ -540,9 +536,7 @@ export default function PaymentsPage() {
                   }
                 >
                   <Input allowClear placeholder="Cari invoice, transaksi, penghuni" value={transactionTable.search} onChange={(event) => transactionTable.setSearch(event.target.value)} className="filter-input" />
-                  <Select allowClear showSearch placeholder="Cluster" value={transactionTable.filters.cluster_id} onChange={(value) => transactionTable.setFilters({ ...transactionTable.filters, cluster_id: value })} className="filter-input" options={clusterOptions} optionFilterProp="label" loading={clusters.isFetching} />
-                  <Input allowClear placeholder="Nama penghuni/customer" value={transactionTable.filters.customer} onChange={(event) => transactionTable.setFilters({ ...transactionTable.filters, customer: event.target.value || undefined })} className="filter-input" />
-                  <Input allowClear placeholder="Alamat unit (cluster/blok/kavling)" value={transactionTable.filters.address} onChange={(event) => transactionTable.setFilters({ ...transactionTable.filters, address: event.target.value || undefined })} className="filter-input" />
+                  <UnitFilterFields value={transactionTable.filters} onChange={transactionTable.setFilters} />
                   <Select allowClear placeholder="Via" value={transactionTable.filters.provider} onChange={(value) => transactionTable.setFilters({ ...transactionTable.filters, provider: value })} className="filter-input" options={viaOptions.filter((option) => option.value !== 'loket')} />
                   <Select allowClear placeholder="Status" value={transactionTable.filters.status} onChange={(value) => transactionTable.setFilters({ ...transactionTable.filters, status: value })} className="filter-input" options={['pending', 'waiting_verification', 'paid', 'rejected', 'failed', 'expired'].map((value) => ({ value, label: value }))} />
                   <DatePicker.RangePicker
@@ -617,9 +611,7 @@ export default function PaymentsPage() {
                   }
                 >
                   <Input allowClear placeholder="Cari nomor kuitansi, penghuni, ID unit" value={receiptTable.search} onChange={(event) => receiptTable.setSearch(event.target.value)} className="filter-input" />
-                  <Select allowClear showSearch placeholder="Cluster" value={receiptTable.filters.cluster_id} onChange={(value) => receiptTable.setFilters({ ...receiptTable.filters, cluster_id: value })} className="filter-input" options={clusterOptions} optionFilterProp="label" loading={clusters.isFetching} />
-                  <Input allowClear placeholder="Nama penghuni/customer" value={receiptTable.filters.customer} onChange={(event) => receiptTable.setFilters({ ...receiptTable.filters, customer: event.target.value || undefined })} className="filter-input" />
-                  <Input allowClear placeholder="Alamat unit (cluster/blok/kavling)" value={receiptTable.filters.address} onChange={(event) => receiptTable.setFilters({ ...receiptTable.filters, address: event.target.value || undefined })} className="filter-input" />
+                  <UnitFilterFields value={receiptTable.filters} onChange={receiptTable.setFilters} />
                   <DatePicker.RangePicker
                     allowClear
                     placeholder={['Tanggal awal', 'Tanggal akhir']}

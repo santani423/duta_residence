@@ -7,6 +7,8 @@ import dayjs from 'dayjs';
 import PageHeader from '../components/common/PageHeader.jsx';
 import ExportPdfButton from '../components/common/ExportPdfButton.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
+import { UnitFilterFields } from '../components/common/UnitFilters.jsx';
+import { unitOptionLabel } from '../hooks/useUnitLookups.js';
 import Can from '../components/common/Can.jsx';
 import MoneyInput from '../components/common/MoneyInput.jsx';
 import StatusBadge from '../components/common/StatusBadge.jsx';
@@ -116,8 +118,6 @@ function SubmitDrawer({ open, onClose }) {
   const [reductions, setReductions] = useState({});
   const debouncedUnitQuery = useDebounce(unitQuery);
 
-  const clusters = useQuery({ queryKey: ['clusters'], queryFn: () => api.clusters.list(), enabled: open });
-  const clusterOptions = (clusters.data?.data || []).map((item) => ({ value: item.id, label: item.name }));
 
   const discountType = Form.useWatch('discount_type', form) ?? 'nominal';
   const watchedDiscount = Form.useWatch('discount_value', form);
@@ -130,7 +130,9 @@ function SubmitDrawer({ open, onClose }) {
     queryFn: () => api.units.list({
       search: unitSearch || undefined,
       cluster_id: unitFilters.cluster_id,
-      block: unitFilters.block || undefined,
+      block: unitFilters.block,
+      customer: unitFilters.customer,
+      address: unitFilters.address,
       per_page: 20,
     }),
     enabled: open,
@@ -138,10 +140,7 @@ function SubmitDrawer({ open, onClose }) {
     // "hilang" (mis. saat server lambat) setiap kali user mengetik.
     placeholderData: keepPreviousData,
   });
-  const unitOptions = (unitLookup.data?.data || []).map((item) => ({
-    value: item.id,
-    label: `${item.id} — ${item.cluster?.name || ''} ${item.block || ''}/${item.lot_number || ''} — ${item.resident?.name || ''}`,
-  }));
+  const unitOptions = (unitLookup.data?.data || []).map((item) => ({ value: item.id, label: unitOptionLabel(item) }));
 
   const unit = useQuery({
     queryKey: ['payment-scheme-unit', unitId],
@@ -272,8 +271,7 @@ function SubmitDrawer({ open, onClose }) {
 
         <Card size="small" title="1. Pilih unit">
           <FilterBar>
-            <Select allowClear showSearch placeholder="Cluster" value={unitFilters.cluster_id} onChange={(value) => updateUnitFilters({ cluster_id: value })} options={clusterOptions} optionFilterProp="label" loading={clusters.isFetching} className="filter-input" />
-            <Input allowClear placeholder="Blok" value={unitFilters.block} onChange={(event) => updateUnitFilters({ block: event.target.value || undefined })} className="filter-input" />
+            <UnitFilterFields value={unitFilters} onChange={updateUnitFilters} hide={['unit_id']} />
           </FilterBar>
           <Select
             showSearch
@@ -1140,6 +1138,7 @@ export default function PaymentSchemesPage() {
       ) : null}
       <FilterBar>
         <Input.Search allowClear placeholder="Cari ID unit / penghuni" value={table.search} onChange={(event) => table.setSearch(event.target.value)} className="filter-input" />
+        <UnitFilterFields value={table.filters} onChange={table.setFilters} />
         <Select allowClear placeholder="Status" value={table.filters.status} onChange={(value) => table.setFilters({ ...table.filters, status: value })} className="filter-input" options={STATUS_OPTIONS} />
       </FilterBar>
       <Card>

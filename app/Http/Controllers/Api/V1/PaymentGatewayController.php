@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Services\NotificationPresenter;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\Billing;
@@ -12,11 +11,13 @@ use App\Models\PaymentGatewaySetting;
 use App\Models\PaymentTransaction;
 use App\Models\PaymentWebhookEvent;
 use App\Services\AuditService;
+use App\Services\NotificationPresenter;
+use App\Services\Payments\PaymentGatewayFactory;
 use App\Services\PaymentSchemeService;
 use App\Services\PaymentService;
 use App\Services\PaymentStaffNotifier;
 use App\Services\PenaltyService;
-use App\Services\Payments\PaymentGatewayFactory;
+use App\Support\UnitFilters;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -45,15 +46,9 @@ class PaymentGatewayController extends Controller
                     ->orWhere('lot_number', 'like', "%{$value}%")
                     ->orWhereHas('cluster', fn ($c) => $c->where('name', 'like', "%{$value}%"))
                     ->orWhereHas('resident', fn ($r) => $r->where('name', 'like', "%{$value}%")))))
-            ->when($request->query('address'), fn ($q, $value) => $q->whereHas('unit', fn ($u) => $u
-                ->where('block', 'like', "%{$value}%")
-                ->orWhere('lot_number', 'like', "%{$value}%")
-                ->orWhereHas('cluster', fn ($c) => $c->where('name', 'like', "%{$value}%"))))
-            ->when($request->query('cluster_id'), fn ($q, $value) => $q->whereHas('unit', fn ($u) => $u->where('cluster_id', $value)))
-            ->when($request->query('customer'), fn ($q, $value) => $q->whereHas('unit.resident', fn ($r) => $r->where('name', 'like', "%{$value}%")))
+            ->tap(fn ($q) => UnitFilters::apply($q, $request))
             ->when($request->query('provider'), fn ($q, $value) => $q->where('payment_provider', $value))
             ->when($request->query('status'), fn ($q, $value) => $q->where('status', $value))
-            ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value))
             ->when($request->query('date_from'), fn ($q, $value) => $q->whereDate('created_at', '>=', $value))
             ->when($request->query('date_to'), fn ($q, $value) => $q->whereDate('created_at', '<=', $value));
 

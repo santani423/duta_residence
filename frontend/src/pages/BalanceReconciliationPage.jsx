@@ -5,6 +5,7 @@ import { useState } from 'react';
 import PageHeader from '../components/common/PageHeader.jsx';
 import ExportPdfButton from '../components/common/ExportPdfButton.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
+import { UnitFilterFields } from '../components/common/UnitFilters.jsx';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import { api } from '../services/estateApi.js';
 import { useTableState } from '../hooks/useTableState.js';
@@ -81,7 +82,7 @@ export default function BalanceReconciliationPage() {
         breadcrumbs={[{ label: 'Rekonsiliasi Saldo' }]}
         onRefresh={() => reconciliation.refetch()}
         loading={reconciliation.isFetching}
-        extra={<ExportPdfButton dataset="balance-reconciliation" params={{ status: table.filters.status, search: table.search || undefined }} filename="rekonsiliasi-saldo.pdf" permission="balances.view" />}
+        extra={<ExportPdfButton dataset="balance-reconciliation" params={{ ...table.filters, search: table.search || undefined }} filename="rekonsiliasi-saldo.pdf" permission="balances.view" />}
       />
 
       <Space size="large" wrap className="section-row">
@@ -99,6 +100,7 @@ export default function BalanceReconciliationPage() {
 
       <FilterBar>
         <Input allowClear placeholder="Cari ID unit atau nama penghuni" value={table.search} onChange={(event) => table.setSearch(event.target.value)} className="filter-input" />
+        <UnitFilterFields value={table.filters} onChange={table.setFilters} />
         <Select
           value={status}
           onChange={(value) => table.setFilters({ ...table.filters, status: value === 'all' ? undefined : value })}

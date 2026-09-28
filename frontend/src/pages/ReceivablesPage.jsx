@@ -1,8 +1,10 @@
-import { Alert, Card, Col, Input, Row, Select, Statistic } from 'antd';
+import { Alert, Card, Col, Row, Select, Statistic } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import PageHeader from '../components/common/PageHeader.jsx';
 import ExportPdfButton from '../components/common/ExportPdfButton.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
+import { UnitFilterFields } from '../components/common/UnitFilters.jsx';
+import { UNIT_FILTER_KEYS } from '../hooks/useUnitLookups.js';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import StatusBadge from '../components/common/StatusBadge.jsx';
 import { api } from '../services/estateApi.js';
@@ -12,7 +14,9 @@ import { formatCurrency, formatPeriod } from '../utils/format.js';
 export default function ReceivablesPage() {
   const table = useTableState();
   const receivables = useQuery({ queryKey: ['receivables', table.params], queryFn: () => api.receivables.list(table.params) });
-  const aging = useQuery({ queryKey: ['receivables-aging'], queryFn: api.receivables.aging });
+  // Kartu umur piutang mengikuti filter unit yang sama dengan tabel.
+  const agingParams = Object.fromEntries(UNIT_FILTER_KEYS.map((key) => [key, table.filters[key]]).filter(([, value]) => value));
+  const aging = useQuery({ queryKey: ['receivables-aging', agingParams], queryFn: () => api.receivables.aging(agingParams) });
   const dayBuckets = aging.data?.data?.day_buckets || {};
   const tierBuckets = aging.data?.data?.penalty_tier_buckets || {};
 
@@ -34,21 +38,8 @@ export default function ReceivablesPage() {
         description="Denda dihitung per tagihan berdasarkan umur tunggakannya, bukan akumulasi tiap bulan: 0 bulan (berjalan) = Rp0, 1-2 bulan = Rp15.000, 3 bulan atau lebih = Rp30.000 (nilainya tetap meski tunggakan lebih dari 3 bulan)."
       />
 
-      <Row gutter={[16, 16]} className="section-row">
-        <Col xs={24} md={8}><Card><Statistic title="Bulan Berjalan" value={formatCurrency(tierBuckets.current)} /></Card></Col>
-        <Col xs={24} md={8}><Card><Statistic title="Tunggakan 1-2 Bulan" value={formatCurrency(tierBuckets.tier_1_2_months)} valueStyle={{ color: '#d48806' }} /></Card></Col>
-        <Col xs={24} md={8}><Card><Statistic title="Tunggakan 3 Bulan+" value={formatCurrency(tierBuckets.tier_3_plus_months)} valueStyle={{ color: '#cf1322' }} /></Card></Col>
-      </Row>
-
-      <Row gutter={[16, 16]} className="section-row">
-        <Col xs={24} md={6}><Card><Statistic title="< 30 hari" value={formatCurrency(dayBuckets.lt_30)} /></Card></Col>
-        <Col xs={24} md={6}><Card><Statistic title="30-60 hari" value={formatCurrency(dayBuckets.d30_60)} /></Card></Col>
-        <Col xs={24} md={6}><Card><Statistic title="60-90 hari" value={formatCurrency(dayBuckets.d60_90)} /></Card></Col>
-        <Col xs={24} md={6}><Card><Statistic title="> 90 hari" value={formatCurrency(dayBuckets.gt_90)} /></Card></Col>
-      </Row>
-
       <FilterBar>
-        <Input allowClear placeholder="ID unit" value={table.filters.unit_id} onChange={(event) => table.setFilters({ ...table.filters, unit_id: event.target.value || undefined })} className="filter-input" />
+        <UnitFilterFields value={table.filters} onChange={table.setFilters} />
         <Select
           allowClear
           placeholder="Status (default: belum lunas)"
@@ -63,6 +54,20 @@ export default function ReceivablesPage() {
           ]}
         />
       </FilterBar>
+
+      <Row gutter={[16, 16]} className="section-row">
+        <Col xs={24} md={8}><Card><Statistic title="Bulan Berjalan" value={formatCurrency(tierBuckets.current)} /></Card></Col>
+        <Col xs={24} md={8}><Card><Statistic title="Tunggakan 1-2 Bulan" value={formatCurrency(tierBuckets.tier_1_2_months)} valueStyle={{ color: '#d48806' }} /></Card></Col>
+        <Col xs={24} md={8}><Card><Statistic title="Tunggakan 3 Bulan+" value={formatCurrency(tierBuckets.tier_3_plus_months)} valueStyle={{ color: '#cf1322' }} /></Card></Col>
+      </Row>
+
+      <Row gutter={[16, 16]} className="section-row">
+        <Col xs={24} md={6}><Card><Statistic title="< 30 hari" value={formatCurrency(dayBuckets.lt_30)} /></Card></Col>
+        <Col xs={24} md={6}><Card><Statistic title="30-60 hari" value={formatCurrency(dayBuckets.d30_60)} /></Card></Col>
+        <Col xs={24} md={6}><Card><Statistic title="60-90 hari" value={formatCurrency(dayBuckets.d60_90)} /></Card></Col>
+        <Col xs={24} md={6}><Card><Statistic title="> 90 hari" value={formatCurrency(dayBuckets.gt_90)} /></Card></Col>
+      </Row>
+
       <Card>
         <ResponsiveTable
           query={receivables}

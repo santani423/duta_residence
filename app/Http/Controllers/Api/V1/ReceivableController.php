@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\Billing;
 use App\Services\PenaltyService;
+use App\Support\UnitFilters;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -24,8 +25,7 @@ class ReceivableController extends Controller
         $now = now();
         $query = Billing::query()
             ->with(['unit.cluster', 'unit.resident'])
-            ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value))
-            ->when($request->query('cluster_id'), fn ($q, $value) => $q->whereHas('unit', fn ($inner) => $inner->where('cluster_id', $value)))
+            ->tap(fn ($q) => UnitFilters::apply($q, $request))
             ->when(
                 $request->query('status_id'),
                 fn ($q, $value) => $q->where('status_id', $value),
@@ -41,10 +41,11 @@ class ReceivableController extends Controller
         return $this->paginated($paginator);
     }
 
-    public function aging(PenaltyService $penaltyService)
+    public function aging(Request $request, PenaltyService $penaltyService)
     {
         $today = now();
-        $outstanding = Billing::query()->with('unit')->outstanding()->get();
+        // Kartu umur piutang mengikuti filter Cluster/Blok/Unit/Customer/Alamat yang sama dengan tabel.
+        $outstanding = UnitFilters::apply(Billing::query()->with('unit')->outstanding(), $request)->get();
 
         $dayBuckets = ['lt_30' => 0, 'd30_60' => 0, 'd60_90' => 0, 'gt_90' => 0];
         // Tier tunggakan sesuai aturan denda: 0 bulan (berjalan), 1-2 bulan, 3 bulan atau lebih.

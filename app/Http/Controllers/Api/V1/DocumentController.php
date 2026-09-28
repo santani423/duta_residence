@@ -12,6 +12,7 @@ use App\Models\Unit;
 use App\Services\PaymentPrintService;
 use App\Services\PaymentSchemeService;
 use App\Services\PenaltyService;
+use App\Support\UnitFilters;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 
@@ -128,12 +129,9 @@ class DocumentController extends Controller
     {
         return Billing::query()
             ->with(['unit.cluster', 'unit.resident', 'status'])
-            ->when($request->query('unit_id'), fn ($q, $value) => $q->forUnitId($value))
-            ->when($request->query('cluster_id'), fn ($q, $value) => $q->whereHas('unit', fn ($inner) => $inner->where('cluster_id', $value)))
-            ->when($request->query('block'), fn ($q, $value) => $q->whereHas('unit', fn ($inner) => $inner->where('block', 'like', "%{$value}%")))
+            ->tap(fn ($q) => UnitFilters::apply($q, $request))
             ->when($request->query('year'), fn ($q, $value) => $q->where('year', $value))
             ->when($request->query('month'), fn ($q, $value) => $q->where('month', $value))
-            ->when($request->query('resident_id'), fn ($q, $value) => $q->whereHas('unit', fn ($inner) => $inner->where('resident_id', $value)))
             ->when($request->query('status_id'), fn ($q, $value) => $q->where('status_id', $value))
             ->when($request->boolean('outstanding'), fn ($q) => $q->outstanding())
             ->orderBy('year')->orderBy('month');
@@ -218,16 +216,9 @@ class DocumentController extends Controller
                     ->orWhere('lot_number', 'like', "%{$value}%")
                     ->orWhereHas('cluster', fn ($c) => $c->where('name', 'like', "%{$value}%"))
                     ->orWhereHas('resident', fn ($r) => $r->where('name', 'like', "%{$value}%")))))
-            ->when($request->query('address'), fn ($q, $value) => $q->whereHas('unit', fn ($u) => $u
-                ->where('block', 'like', "%{$value}%")
-                ->orWhere('lot_number', 'like', "%{$value}%")
-                ->orWhereHas('cluster', fn ($c) => $c->where('name', 'like', "%{$value}%"))))
-            ->when($request->query('cluster_id'), fn ($q, $value) => $q->whereHas('unit', fn ($u) => $u->where('cluster_id', $value)))
-            ->when($request->query('customer'), fn ($q, $value) => $q->whereHas('unit.resident', fn ($r) => $r->where('name', 'like', "%{$value}%")))
+            ->tap(fn ($q) => UnitFilters::apply($q, $request))
             ->when($request->query('provider'), fn ($q, $value) => $q->where('payment_provider', $value))
             ->when($request->query('status'), fn ($q, $value) => $q->where('status', $value))
-            ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value))
-            ->when($request->query('resident_id'), fn ($q, $value) => $q->whereHas('unit', fn ($u) => $u->where('resident_id', $value)))
             ->when($request->query('date_from'), fn ($q, $value) => $q->whereDate('created_at', '>=', $value))
             ->when($request->query('date_to'), fn ($q, $value) => $q->whereDate('created_at', '<=', $value))
             ->latest();
@@ -286,12 +277,11 @@ class DocumentController extends Controller
                 ->where('cluster_name', 'like', "%{$value}%")
                 ->orWhere('block', 'like', "%{$value}%")
                 ->orWhere('lot_number', 'like', "%{$value}%")))
-            ->when($request->query('cluster_id'), fn ($q, $value) => $q->whereHas('unit', fn ($u) => $u->where('cluster_id', $value)))
             ->when($request->query('customer'), fn ($q, $value) => $q->where('resident_name', 'like', "%{$value}%"))
+            // Customer & Alamat dicocokkan ke snapshot di kuitansi (nama/alamat saat transaksi).
+            ->tap(fn ($q) => UnitFilters::apply($q, $request, except: ['customer', 'address']))
             ->when($request->query('date_from'), fn ($q, $value) => $q->whereDate('transaction_date', '>=', $value))
             ->when($request->query('date_to'), fn ($q, $value) => $q->whereDate('transaction_date', '<=', $value))
-            ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value))
-            ->when($request->query('resident_id'), fn ($q, $value) => $q->whereHas('unit', fn ($u) => $u->where('resident_id', $value)))
             // Pilihan checkbox di tab "Riwayat Kuitansi": hanya kuitansi bernomor ini yang dicetak/diekspor.
             ->when(array_filter((array) $request->query('numbers')), fn ($q, $numbers) => $q->whereIn('number', $numbers))
             ->latest('transaction_date');

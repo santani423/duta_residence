@@ -254,6 +254,7 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::delete('occupants/{occupant}', [UnitOccupantController::class, 'destroy'])->middleware('permission:occupants.delete');
 
     Route::get('units/va-format', [UnitController::class, 'vaFormat'])->middleware('permission:units.view');
+    Route::get('units/blocks', [UnitController::class, 'blocks'])->middleware('permission:units.view');
     Route::get('units', [UnitController::class, 'index'])->middleware('permission:units.view');
     Route::post('units', [UnitController::class, 'store'])->middleware('permission:units.create');
     Route::get('units/{unit}', [UnitController::class, 'show'])->middleware('permission:units.view');

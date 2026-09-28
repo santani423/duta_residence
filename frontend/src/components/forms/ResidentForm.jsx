@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api } from '../../services/estateApi.js';
 import InfoIcon from '../help/InfoIcon.jsx';
+import { useBlockOptions } from '../../hooks/useUnitLookups.js';
 import { VaSuffixInput, vaSuffixFromNumber } from './UnitForm.jsx';
 
 export const identityTypeOptions = [
@@ -49,6 +50,7 @@ export default function ResidentForm({ form, districts = [], clusters = [], onFi
     />
   ) : null;
 
+  const blockOptions = useBlockOptions(unitClusterFilter);
   const availableUnits = useQuery({
     queryKey: ['available-units', unitClusterFilter, unitBlockFilter],
     queryFn: () => api.units.list({ unassigned: 1, cluster_id: unitClusterFilter, block: unitBlockFilter, per_page: 200 }),
@@ -88,15 +90,22 @@ export default function ResidentForm({ form, districts = [], clusters = [], onFi
                 placeholder="Cluster"
                 style={{ width: 180 }}
                 value={unitClusterFilter}
-                onChange={setUnitClusterFilter}
+                onChange={(value) => {
+                  setUnitClusterFilter(value);
+                  setUnitBlockFilter(undefined);
+                }}
                 options={clusters.map((item) => ({ value: item.id, label: `${item.id} - ${item.name}` }))}
               />
-              <Input
+              <Select
                 allowClear
+                showSearch
+                optionFilterProp="label"
                 placeholder="Blok"
-                style={{ width: 120 }}
+                style={{ width: 140 }}
                 value={unitBlockFilter}
-                onChange={(event) => setUnitBlockFilter(event.target.value || undefined)}
+                onChange={setUnitBlockFilter}
+                options={blockOptions.options}
+                loading={blockOptions.loading}
               />
             </Space>
           </Form.Item>

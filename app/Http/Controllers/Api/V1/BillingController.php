@@ -11,6 +11,7 @@ use App\Services\BillingService;
 use App\Services\ClusterRateScheduleService;
 use App\Services\DiscountService;
 use App\Services\PenaltyService;
+use App\Support\UnitFilters;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -215,16 +216,13 @@ class BillingController extends Controller
     {
         return Billing::query()
             ->with(['unit.cluster', 'unit.resident', 'status', 'approver'])
-            ->when($request->query('unit_id'), fn ($q, $value) => $q->forUnitId($value))
-            ->when($request->query('resident_id'), fn ($q, $value) => $q->whereHas('unit', fn ($inner) => $inner->where('resident_id', $value)))
+            ->tap(fn ($q) => UnitFilters::apply($q, $request))
             ->when($request->query('year'), fn ($q, $value) => $q->where('year', $value))
             ->when($request->query('month'), fn ($q, $value) => $q->where('month', $value))
             ->when($request->query('status_id'), fn ($q, $value) => $q->where('status_id', $value))
             // Halaman "Tagihan": hanya yang belum lunas (Belum Bayar + Sudah Bayar sebagian) dari SEMUA tahun.
             // Riwayat Tagihan tidak mengirim flag ini sehingga semua status ikut tampil.
             ->when($request->boolean('outstanding'), fn ($q) => $q->outstanding())
-            ->when($request->query('cluster_id'), fn ($q, $value) => $q->whereHas('unit', fn ($inner) => $inner->where('cluster_id', $value)))
-            ->when($request->query('block'), fn ($q, $value) => $q->whereHas('unit', fn ($inner) => $inner->where('block', 'like', "%{$value}%")))
             // Umur tunggakan dihitung murni dari selisih year/month (tanpa GREATEST/MAX untuk
             // tetap kompatibel lintas driver - nilai negatif otomatis gagal filter ambang >= 0).
             ->when($request->filled('min_overdue_months'), fn ($q) => $this->whereOverdueMonths($q, $now, '>=', $request->integer('min_overdue_months')))
