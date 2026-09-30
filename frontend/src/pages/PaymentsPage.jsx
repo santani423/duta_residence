@@ -18,6 +18,7 @@ import { useDebounce } from '../hooks/useDebounce.js';
 import { usePendingPaymentVerificationCount } from '../hooks/usePendingPaymentVerificationCount.js';
 import { formatCurrency, formatDate, formatDateTime, formatPaymentMethod, formatPeriod } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
+import { invalidatePaymentQueries } from '../utils/queryInvalidation.js';
 import { downloadBlob, printPdf } from '../utils/download.js';
 import MoneyInput from '../components/common/MoneyInput.jsx';
 import PaymentPrintMenu from '../components/common/PaymentPrintMenu.jsx';
@@ -124,9 +125,7 @@ export default function PaymentsPage() {
         : 'Pembayaran loket berhasil diproses');
       setSuccessReceipt(response.data);
       resetPaymentWorkspace();
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['payment-receipts'] });
-      queryClient.invalidateQueries({ queryKey: ['payment-schemes'] });
+      invalidatePaymentQueries(queryClient);
     },
     onError: (error) => {
       loketForm.setFields(mapValidationErrors(error));
@@ -179,8 +178,7 @@ export default function PaymentsPage() {
       message.success(status === 'paid' ? 'Pembayaran berhasil diverifikasi' : 'Pembayaran ditolak');
       closeVerifyModal();
       setDetailOpen(null);
-      queryClient.invalidateQueries({ queryKey: ['payment-transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      invalidatePaymentQueries(queryClient);
     },
     onError: (error) => {
       verifyForm.setFields(mapValidationErrors(error));

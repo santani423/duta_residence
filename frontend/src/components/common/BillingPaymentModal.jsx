@@ -8,6 +8,7 @@ import { useAuth } from '../../state/AuthContext.jsx';
 import { useDebounce } from '../../hooks/useDebounce.js';
 import { formatCurrency, formatDateTime, formatPeriod } from '../../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../../utils/apiError.js';
+import { invalidatePaymentQueries } from '../../utils/queryInvalidation.js';
 import ResponsiveTable from '../tables/ResponsiveTable.jsx';
 import MoneyInput from './MoneyInput.jsx';
 import PaymentPrintMenu from './PaymentPrintMenu.jsx';
@@ -88,7 +89,7 @@ export default function BillingPaymentModal({ unitId, billingIds = [], open, onC
     onSuccess: (response) => {
       setReceipt(response.data);
       message.success('Pembayaran berhasil diproses');
-      ['billings', 'dashboard', 'payment-receipts', 'payment-schemes', 'units'].forEach((key) => queryClient.invalidateQueries({ queryKey: [key] }));
+      invalidatePaymentQueries(queryClient);
     },
     onError: (error) => {
       form.setFields(mapValidationErrors(error));
@@ -115,7 +116,7 @@ export default function BillingPaymentModal({ unitId, billingIds = [], open, onC
     onSuccess: (response) => {
       setTransferSent(response.data);
       message.success('Bukti transfer berhasil diunggah');
-      ['billings', 'payment-transactions', 'dashboard'].forEach((key) => queryClient.invalidateQueries({ queryKey: [key] }));
+      invalidatePaymentQueries(queryClient);
     },
     onError: (error) => {
       form.setFields(mapValidationErrors(error));

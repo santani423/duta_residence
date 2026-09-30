@@ -29,6 +29,8 @@ export function useBlockOptions(clusterId) {
   return {
     options: (blocks.data?.data || []).map((block) => ({ value: block, label: `Blok ${block}` })),
     loading: blocks.isFetching,
+    // Jangan samarkan request gagal sebagai "Tidak ada data".
+    notFoundContent: blocks.isError ? 'Gagal memuat daftar blok' : undefined,
   };
 }
 

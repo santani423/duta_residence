@@ -1,0 +1,1 @@
+const s=["billings","dashboard","payment-receipts","payment-schemes","payment-scheme-payments","payment-transactions","units","residents","receivables","receivables-aging"];function i(e){s.forEach(a=>e.invalidateQueries({queryKey:[a]}))}export{i};

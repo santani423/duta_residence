@@ -60,6 +60,7 @@ export function UnitFilterFields({ value = {}, onChange, hide = [] }) {
           onChange={(next) => update({ block: next, unit_id: undefined })}
           options={blocks.options}
           loading={blocks.loading}
+          notFoundContent={blocks.notFoundContent}
           className="filter-input"
         />
       ) : null}
@@ -129,6 +130,7 @@ export function UnitPicker({ value, onChange, statusId, placeholder = 'Cari ID u
         }}
         options={blocks.options}
         loading={blocks.loading}
+        notFoundContent={blocks.notFoundContent}
         style={{ width: '22%' }}
       />
       <Select

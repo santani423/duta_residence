@@ -19,6 +19,7 @@ import { useTableState } from '../hooks/useTableState.js';
 import { useDebounce } from '../hooks/useDebounce.js';
 import { formatCurrency, formatDateTime, formatPeriod } from '../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../utils/apiError.js';
+import { invalidatePaymentQueries } from '../utils/queryInvalidation.js';
 import { useAuth } from '../state/AuthContext.jsx';
 
 const PAYMENT_METHOD_LABELS = { C: 'Cash', D: 'Debit/Transfer' };
@@ -778,10 +779,7 @@ function PaySchemeDrawer({ scheme, onClose }) {
         ? `Pembayaran skema berhasil diproses. Kelebihan ${formatCurrency(depositAmount)} dicatat sebagai saldo unit.`
         : 'Pembayaran skema berhasil diproses');
       setSuccessReceipt(response.data);
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['payment-receipts'] });
-      queryClient.invalidateQueries({ queryKey: ['payment-schemes'] });
-      queryClient.invalidateQueries({ queryKey: ['payment-scheme-payments', scheme.id] });
+      invalidatePaymentQueries(queryClient);
     },
     onError: (error) => {
       loketForm.setFields(mapValidationErrors(error));
@@ -1109,7 +1107,8 @@ export default function PaymentSchemesPage() {
 
   function finishApproval(closeDrawer = true) {
     if (closeDrawer) setApproving(null);
-    queryClient.invalidateQueries({ queryKey: ['payment-schemes'] });
+    // Persetujuan skema mengubah diskon/denda tagihan terkait.
+    invalidatePaymentQueries(queryClient);
   }
 
   return (
