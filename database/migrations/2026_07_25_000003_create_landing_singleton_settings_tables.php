@@ -69,7 +69,7 @@ return new class extends Migration
 
         Schema::create('site_settings', function (Blueprint $table) {
             $table->id();
-            $table->string('site_name', 150)->default('Grand Duta Estate Management');
+            $table->string('site_name', 150)->default('Duta Indah Residences');
             $table->foreignId('logo_media_id')->nullable()->constrained('media_assets')->nullOnDelete();
             $table->string('default_theme', 10)->default('system'); // light | dark | system
             $table->string('primary_color', 20)->default('#0f766e');

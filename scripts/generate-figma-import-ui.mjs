@@ -707,7 +707,7 @@ function draw() {
   customerBills(1600, 3200);
   customerServices(3120, 3200);
   mobileSample(4170, 3240);
-  text(80, 40, 'Grand Duta Estate Management - Figma Import Canvas', { size: 28, weight: 800 });
+  text(80, 40, 'Duta Indah Residences - Figma Import Canvas', { size: 28, weight: 800 });
   text(80, 66, 'Generated from frontend React source. Import this SVG into Figma if MCP write calls are rate-limited.', { size: 13, fill: C.muted });
 }
 
@@ -745,7 +745,7 @@ const html = `<!doctype html>
 </head>
 <body>
   <div class="toolbar">
-    <strong>Grand Duta Estate Management UI</strong>
+    <strong>Duta Indah Residences UI</strong>
     <span>Preview of docs/grand-duta-figma-ui.svg. Import the SVG into Figma when MCP writes are available.</span>
   </div>
   <img class="canvas" src="./grand-duta-figma-ui.svg" alt="Grand Duta UI canvas">

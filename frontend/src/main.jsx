@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConfigProvider, theme } from 'antd';
 import idID from 'antd/locale/id_ID';
 import { BrowserRouter } from 'react-router-dom';
+import { useSiteFavicon } from './hooks/useSiteIdentity.js';
 import { AuthProvider } from './state/AuthContext.jsx';
 import { ThemeProvider, useThemeMode } from './state/ThemeContext.jsx';
 import AppRoutes from './routes/AppRoutes.jsx';
@@ -23,6 +24,7 @@ const queryClient = new QueryClient({
 function ThemedApp() {
   const { effectiveMode } = useThemeMode();
   const isDark = effectiveMode === 'dark';
+  useSiteFavicon();
 
   return (
     <ConfigProvider

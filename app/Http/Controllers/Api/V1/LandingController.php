@@ -113,13 +113,18 @@ class LandingController extends Controller
     }
 
     /**
-     * Lightweight public identity lookup (name only) for surfaces that don't
-     * need the full landing aggregate above - the authenticated app shell,
-     * the login screen, and the mobile app.
+     * Lightweight public identity lookup (name + favicon) for surfaces that
+     * don't need the full landing aggregate above - the authenticated app
+     * shell, the login screen, and the mobile app. The favicon follows the
+     * CMS: the SEO favicon when set, otherwise the header logo; null means
+     * "keep the bundled default icon".
      */
     public function identity()
     {
-        return $this->success(['site_name' => SiteSetting::current()->site_name]);
+        return $this->success([
+            'site_name' => SiteSetting::current()->site_name,
+            'favicon' => LandingSeoSetting::current()->favicon ?? LandingHeaderSetting::current()->logo,
+        ]);
     }
 
     private function resolveStatisticValue(array $statistic): float
