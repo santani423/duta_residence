@@ -64,6 +64,37 @@ class AuthApiTest extends TestCase
         ])->assertUnprocessable();
     }
 
+    public function test_repeated_successful_logins_are_not_throttled(): void
+    {
+        $this->seed();
+
+        for ($i = 0; $i < 8; $i++) {
+            $this->postJson('/api/v1/auth/login', [
+                'username' => 'root',
+                'password' => 'password',
+            ])->assertOk();
+        }
+    }
+
+    public function test_failed_logins_lock_out_after_five_attempts_with_indonesian_message(): void
+    {
+        $this->seed();
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->postJson('/api/v1/auth/login', [
+                'username' => 'root',
+                'password' => 'wrong-password',
+            ])->assertStatus(422);
+        }
+
+        $this->postJson('/api/v1/auth/login', [
+            'username' => 'root',
+            'password' => 'password',
+        ])->assertStatus(429)
+            ->assertJsonPath('success', false)
+            ->assertJson(fn ($json) => $json->where('message', fn ($m) => str_starts_with($m, 'Terlalu banyak percobaan login'))->etc());
+    }
+
     public function test_inactive_user_cannot_login(): void
     {
         $this->seed();

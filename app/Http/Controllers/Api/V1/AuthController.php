@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
@@ -24,6 +26,16 @@ class AuthController extends Controller
             'username' => ['required', 'string'],
             'password' => ['required', 'string', 'min:6'],
         ]);
+
+        // Only failed attempts count toward the lockout (cleared on success), so
+        // repeated legitimate logins never trip it. The route-level `throttle:login`
+        // stays as a looser per-IP backstop against spraying many usernames.
+        $throttleKey = 'login:'.Str::transliterate(Str::lower($credentials['username'])).'|'.$request->ip();
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+
+            return $this->error("Terlalu banyak percobaan login gagal. Silakan coba lagi dalam {$seconds} detik.", 429);
+        }
 
         // The login screen has always advertised "username, email, atau telepon" as
         // acceptable identifiers (see android login_screen.dart); the backend only ever
@@ -45,9 +57,12 @@ class AuthController extends Controller
         }
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+            RateLimiter::hit($throttleKey, 60);
             $auditService->log('login_failed', 'auth', 'LOGIN', null, [], ['username' => $credentials['username']], 'failed');
             throw ValidationException::withMessages(['username' => ['Username atau password salah.']]);
         }
+
+        RateLimiter::clear($throttleKey);
 
         if (! $user->is_active) {
             return $this->error('Akun Anda telah dinonaktifkan. Hubungi administrator.', 403);

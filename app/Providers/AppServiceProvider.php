@@ -27,8 +27,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Per-account failed-attempt lockout lives in AuthController::login; this is only an
+        // IP-wide backstop, loose enough that successful logins/re-logins never hit it.
         RateLimiter::for('login', function (Request $request) {
-            return Limit::perMinute(5)->by($request->input('username').'|'.$request->ip());
+            return Limit::perMinute(30)->by($request->ip())->response(fn () => response()->json([
+                'success' => false,
+                'message' => 'Terlalu banyak percobaan login. Silakan coba lagi beberapa saat lagi.',
+            ], 429));
         });
 
         // Keyed by email+IP so one spammed address can't be used to lock out a shared IP
