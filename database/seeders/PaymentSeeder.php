@@ -30,14 +30,15 @@ class PaymentSeeder extends Seeder
                 }
             });
 
+        // Data contoh transaksi hanya memakai dua status: pending (belum bayar) dan paid (lunas).
         $scenarios = [
-            'AL003' => ['manual', 'waiting_verification'],
-            'AL006' => ['manual', 'rejected'],
+            'AL003' => ['manual', 'pending'],
+            'AL006' => ['manual', 'paid'],
             'AL007' => ['xendit', 'paid'],
-            'AL008' => ['midtrans', 'failed'],
+            'AL008' => ['midtrans', 'pending'],
             'AL009' => ['midtrans', 'paid'],
-            'AL011' => ['manual', 'paid'],
-            'AL012' => ['xendit', 'expired'],
+            'AL011' => ['xendit', 'pending'],
+            'AL012' => ['xendit', 'pending'],
         ];
 
         foreach ($scenarios as $unitId => [$provider, $status]) {
@@ -63,11 +64,11 @@ class PaymentSeeder extends Seeder
             }
         }
 
-        foreach (['pending', 'expired', 'failed', 'cancelled', 'refunded'] as $status) {
+        foreach (['xendit', 'midtrans'] as $provider) {
             $unit = Unit::whereNotIn('id', array_keys($scenarios))->where('status_id', 'AK')->inRandomOrder()->first();
-            $billing = $unit ? Billing::where('unit_id', $unit->id)->whereNotNull('approved_at')->oldest()->first() : null;
+            $billing = $unit ? Billing::where('unit_id', $unit->id)->where('status_id', '01')->whereNotNull('approved_at')->oldest()->first() : null;
             if ($billing) {
-                $payment = $this->transaction($billing, $status === 'failed' ? 'midtrans' : 'xendit', $status, $finance);
+                $payment = $this->transaction($billing, $provider, 'pending', $finance);
                 $payment->billings()->syncWithoutDetaching([$billing->id]);
             }
         }
@@ -79,6 +80,9 @@ class PaymentSeeder extends Seeder
         $adminFee = $provider === 'manual' ? 0 : 4500;
         $number = str_pad((string) $this->sequence++, 6, '0', STR_PAD_LEFT);
         $manual = $provider === 'manual';
+        $paid = $status === 'paid';
+        // Bukti transfer manual hanya ada pada transaksi yang sudah lunas.
+        $manualProof = $manual && $paid;
 
         return PaymentTransaction::updateOrCreate(
             ['transaction_number' => "TRX-DEMO-{$number}"],
@@ -95,19 +99,14 @@ class PaymentSeeder extends Seeder
                 'provider_reference' => "{$provider}-sandbox-{$number}",
                 'status' => $status,
                 'payment_url' => $manual ? null : "https://sandbox.{$provider}.example.test/pay/{$number}",
-                'expired_at' => in_array($status, ['expired', 'failed', 'cancelled'], true) ? now()->subDay() : now()->addDay(),
-                'paid_at' => in_array($status, ['paid', 'refunded'], true) ? now()->subDays(rand(1, 20)) : null,
-                'manual_proof_path' => $manual ? "dummy/manual-payments/proof-{$number}.jpg" : null,
-                'manual_transfer_date' => $manual ? now()->subDays(rand(1, 7))->toDateString() : null,
-                'manual_notes' => $manual ? "Pengirim: {$billing->unit->resident->name}\nBank: BCA\nRekening: 1234****{$number}\nNominal: ".($subtotal + $adminFee) : null,
-                'verification_notes' => match ($status) {
-                    'rejected' => 'Nominal transfer tidak sesuai atau bukti duplikat.',
-                    'paid' => $manual ? 'Bukti valid dan disetujui finance.' : null,
-                    'refunded' => 'Refund sandbox selesai.',
-                    default => null,
-                },
-                'verified_by' => in_array($status, ['paid', 'rejected'], true) && $manual ? $user?->id : null,
-                'verified_at' => in_array($status, ['paid', 'rejected'], true) && $manual ? now()->subHours(rand(2, 24)) : null,
+                'expired_at' => now()->addDay(),
+                'paid_at' => $paid ? now()->subDays(rand(1, 20)) : null,
+                'manual_proof_path' => $manualProof ? "dummy/manual-payments/proof-{$number}.jpg" : null,
+                'manual_transfer_date' => $manualProof ? now()->subDays(rand(1, 7))->toDateString() : null,
+                'manual_notes' => $manualProof ? "Pengirim: {$billing->unit->resident->name}\nBank: BCA\nRekening: 1234****{$number}\nNominal: ".($subtotal + $adminFee) : null,
+                'verification_notes' => $manualProof ? 'Bukti valid dan disetujui finance.' : null,
+                'verified_by' => $manualProof ? $user?->id : null,
+                'verified_at' => $manualProof ? now()->subHours(rand(2, 24)) : null,
                 'provider_payload' => [
                     'sandbox' => true,
                     'external_id' => "EXT-{$number}",

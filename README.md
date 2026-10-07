@@ -169,7 +169,7 @@ Customer Manual Pending (AL003)
 Username: customer.al003
 Email: resident.manual.pending@example.com
 Password: password
-Skenario: pembayaran manual menunggu verifikasi.
+Skenario: transaksi transfer manual belum dibayar.
 
 Customer Komplain Aktif (AL004)
 Username: customer.al004
@@ -183,11 +183,11 @@ Email: resident.nobills@example.com
 Password: password
 Skenario: akun aktif tanpa invoice aktif.
 
-Customer Manual Ditolak (AL006)
+Customer Manual Lunas (AL006)
 Username: customer.al006
 Email: resident.manual.rejected@example.com
 Password: password
-Skenario: pembayaran manual ditolak dan upload ulang bukti.
+Skenario: pembayaran transfer manual lunas dan terverifikasi.
 
 Customer Xendit (AL007)
 Username: customer.al007
@@ -195,11 +195,11 @@ Email: resident.xendit@example.com
 Password: password
 Skenario: histori pembayaran Xendit berhasil.
 
-Customer Midtrans Gagal (AL008)
+Customer Midtrans Pending (AL008)
 Username: customer.al008
 Email: resident.midtrans.failed@example.com
 Password: password
-Skenario: pembayaran Midtrans gagal dan invoice pending approval.
+Skenario: transaksi Midtrans belum dibayar dan invoice pending approval.
 
 Customer Maintenance Aktif (AL009)
 Username: customer.al009
@@ -213,11 +213,11 @@ Email: resident.inactive@example.com
 Password: password
 Skenario: akun nonaktif (is_active = false), tidak bisa login.
 
-Customer Bayar Sebagian (AL011)
+Customer Xendit Pending (AL011)
 Username: customer.al011
 Email: resident.partial@example.com
 Password: password
-Skenario: invoice dengan pembayaran sebagian.
+Skenario: transaksi Xendit belum dibayar.
 
 Customer Banyak Notifikasi (AL012)
 Username: customer.al012

@@ -58,9 +58,6 @@ class BillingSeeder extends Seeder
 
                     $historyMonths = $this->historyMonthsFor($unit);
                     $arrears = min($this->arrearsMonthsFor($unit), $historyMonths);
-                    // Bulan tertua dalam masa tunggakan kadang baru dicicil sebagian, bukan
-                    // dibiarkan nol sama sekali - meniru penghuni yang mulai mencicil tunggakan lama.
-                    $partialOffset = ($arrears >= 2 && crc32($unit->id.'-partial') % 10 < 3) ? $arrears - 1 : null;
 
                     for ($offset = $historyMonths - 1; $offset >= 0; $offset--) {
                         $period = now()->subMonths($offset);
@@ -70,17 +67,13 @@ class BillingSeeder extends Seeder
                         $discountRuleId = $discountResult['rule']?->id;
                         $approvedAt = now()->subMonths($offset)->subDays(6);
                         $notes = 'Approved dari demo seeder.';
-                        $cancelledAt = null;
-                        $cancellationReason = null;
                         $paidAt = null;
                         $principalPaid = 0;
                         $penaltyPaid = 0;
                         $penalty = 0;
 
-                        $isWithinArrears = $offset < $arrears;
-                        $status = $isWithinArrears
-                            ? ($offset === $partialOffset ? Billing::STATUS_PARTIAL : Billing::STATUS_UNPAID)
-                            : Billing::STATUS_PAID;
+                        // Data contoh hanya memakai dua status: Belum Bayar (dalam masa tunggakan) dan Lunas.
+                        $status = $offset < $arrears ? Billing::STATUS_UNPAID : Billing::STATUS_PAID;
 
                         if ($status === Billing::STATUS_PAID) {
                             $paidAt = now()->subMonths($offset)->addDays(2);
@@ -95,34 +88,11 @@ class BillingSeeder extends Seeder
                             ]))->setRelation('unit', $unit);
                             $penalty = $penaltyService->calculatePenalty($calcBilling, $paidAt);
                             $penaltyPaid = $penalty;
-                        } elseif ($status === Billing::STATUS_PARTIAL) {
-                            $principalPaid = round($amount * (mt_rand(30, 70) / 100), 2);
-                            $notes = 'Dibayar sebagian - sisa pokok dan denda masih tertunggak.';
                         } else {
                             $notes = $offset === 0 ? 'Tagihan bulan berjalan.' : 'Menunggak - belum ada pembayaran.';
                         }
 
                         // --- Skenario demo unit tertentu, override di atas hasil umum di atas ---
-                        if ($unit->id === 'AL011' && $offset === 1) {
-                            $status = Billing::STATUS_PARTIAL;
-                            $principalPaid = round($amount / 2, 2);
-                            $penaltyPaid = 0;
-                            $penalty = 0;
-                            $paidAt = null;
-                            $notes = 'Dibayar sebagian - sisa pokok dan denda masih tertunggak.';
-                        }
-
-                        if ($unit->id === 'AL010' && $offset === 2) {
-                            $status = Billing::STATUS_CANCELLED;
-                            $cancelledAt = now()->subMonths($offset)->addDays(3);
-                            $cancellationReason = 'Unit dalam renovasi, tagihan dibatalkan oleh admin estate.';
-                            $notes = 'Dibatalkan untuk skenario demo.';
-                            $paidAt = null;
-                            $principalPaid = 0;
-                            $penaltyPaid = 0;
-                            $penalty = 0;
-                        }
-
                         if ($unit->id === 'AL008' && $offset === 0) {
                             $approvedAt = null;
                             $status = Billing::STATUS_UNPAID;
@@ -151,9 +121,9 @@ class BillingSeeder extends Seeder
                                 'approval_notes' => $notes,
                                 'paid_at' => $paidAt,
                                 'processed_by' => $paidAt ? $finance?->id : null,
-                                'cancelled_at' => $cancelledAt,
-                                'cancelled_by' => $cancelledAt ? $finance?->id : null,
-                                'cancellation_reason' => $cancellationReason,
+                                'cancelled_at' => null,
+                                'cancelled_by' => null,
+                                'cancellation_reason' => null,
                                 'created_by' => $finance?->id,
                             ]
                         );
