@@ -54,7 +54,6 @@ export const menuItems = [
   { key: '/payments', label: 'Pembayaran', icon: CreditCardOutlined, permissions: ['payments.view'] },
   { key: '/admin/balance-reconciliation', label: 'Rekonsiliasi Saldo', icon: SwapOutlined, permissions: ['balances.view'] },
   { key: '/payment-schemes', label: 'Skema Pembayaran', icon: PercentageOutlined, permissions: ['payment-schemes.view'] },
-  { key: '/installments', label: 'Cicilan', icon: WalletOutlined, permissions: ['installments.view'] },
   { key: '/reversals', label: 'Reversal', icon: HistoryOutlined, permissions: ['reversals.view'] },
   { key: '/receivables', label: 'Piutang', icon: ReconciliationOutlined, permissions: ['reports.view'] },
   { key: '/reports', label: 'Laporan', icon: ProfileOutlined, permissions: ['reports.view'] },

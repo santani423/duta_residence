@@ -32,6 +32,7 @@ export default function PaymentsPage() {
   const { user } = useAuth();
   const [unit, setUnit] = useState(null);
   const [selectedBillingIds, setSelectedBillingIds] = useState([]);
+  const [searchStatus, setSearchStatus] = useState('unpaid');
   const [transaction, setTransaction] = useState(null);
   const [selectedVia, setVia] = useState('loket');
   const [proofOpen, setProofOpen] = useState(null);
@@ -78,12 +79,15 @@ export default function PaymentsPage() {
       unit_id: values.unit_id,
       date_from: values.billing_range?.[0]?.format('YYYY-MM-DD'),
       date_to: values.billing_range?.[1]?.format('YYYY-MM-DD'),
+      status: values.status,
     }),
     onSuccess: (response, variables) => {
       const found = response.data?.billings || [];
+      const paidView = variables?.status === 'paid';
       setUnit(response.data);
+      setSearchStatus(paidView ? 'paid' : 'unpaid');
       setSearchRange({ date_from: variables?.billing_range?.[0]?.format('YYYY-MM-DD'), date_to: variables?.billing_range?.[1]?.format('YYYY-MM-DD') });
-      setSelectedBillingIds(found.map((billing) => billing.id));
+      setSelectedBillingIds(paidView ? [] : found.map((billing) => billing.id));
       setTransaction(null);
       loketForm.setFieldsValue({ amount: undefined, use_balance: true });
     },
@@ -285,6 +289,7 @@ export default function PaymentsPage() {
 
   function resetPaymentWorkspace() {
     setUnit(null);
+    setSearchStatus('unpaid');
     setSelectedBillingIds([]);
     setTransaction(null);
     setUnitQuery('');
@@ -321,7 +326,8 @@ export default function PaymentsPage() {
   const manualInfo = config.data?.data?.manual_payment || {};
   const unitOptions = (unitLookup.data?.data || []).map((item) => ({ value: item.id, label: unitOptionLabel(item) }));
 
-  const schemeGroups = Object.values(unpaidBillings.reduce((groups, billing) => {
+  const isPaidView = searchStatus === 'paid';
+  const schemeGroups = isPaidView ? [] : Object.values(unpaidBillings.reduce((groups, billing) => {
     if (!billing.payment_scheme_id) return groups;
     const group = groups[billing.payment_scheme_id] || { id: billing.payment_scheme_id, count: 0, total: 0 };
     return { ...groups, [billing.payment_scheme_id]: { ...group, count: group.count + 1, total: group.total + Number(billing.penalty_detail?.total_outstanding ?? 0) } };
@@ -335,7 +341,8 @@ export default function PaymentsPage() {
     { title: 'Tagihan', render: (_, row) => formatCurrency(row.penalty_detail?.total_amount ?? 0) },
     { title: 'Terbayar', render: (_, row) => formatCurrency(row.penalty_detail?.total_paid ?? 0) },
     { title: 'Sisa Tagihan', render: (_, row) => formatCurrency(row.penalty_detail?.total_outstanding ?? 0) },
-    { title: 'Status', render: (_, row) => <StatusBadge type="billing" value={row.status_id} /> },
+    // Loket hanya menampilkan 2 status: tagihan dibayar sebagian ('03') masih punya sisa, jadi tampil sebagai Belum Bayar.
+    { title: 'Status', render: (_, row) => <StatusBadge type="billing" value={row.status_id === '03' ? '01' : row.status_id} /> },
     ...(schemeGroups.length ? [{ title: 'Skema', render: (_, row) => (row.payment_scheme_id ? <Tag color="green">Skema #{row.payment_scheme_id}</Tag> : '-') }] : []),
   ];
 
@@ -390,6 +397,9 @@ export default function PaymentsPage() {
                     <Form.Item label="Periode Tagihan (opsional)" name="billing_range">
                       <DatePicker.RangePicker picker="month" placeholder={['Tanggal awal', 'Tanggal akhir']} style={{ width: '100%' }} />
                     </Form.Item>
+                    <Form.Item label="Status Pembayaran" name="status" initialValue="unpaid">
+                      <Select options={[{ value: 'unpaid', label: 'Belum Bayar' }, { value: 'paid', label: 'Lunas' }]} />
+                    </Form.Item>
                     <Form.Item className="full-span">
                       <Space>
                         <Button type="primary" htmlType="submit" icon={<SearchOutlined />} loading={search.isPending}>Cari Tagihan</Button>
@@ -432,11 +442,17 @@ export default function PaymentsPage() {
                       columns={billingColumns}
                       pagination={false}
                       scrollX={1300}
-                      rowSelection={{
+                      rowSelection={isPaidView ? undefined : {
                         selectedRowKeys: selectedBillingIds,
                         onChange: changeSelection,
                       }}
                     />
+                    {isPaidView ? (
+                      <Typography.Text className="section-row" style={{ display: 'block' }}>
+                        Menampilkan <strong>{unpaidBillings.length}</strong> tagihan berstatus Lunas. Pilih status Belum Bayar untuk memproses pembayaran.
+                      </Typography.Text>
+                    ) : (
+                    <>
                     <Typography.Text className="section-row" style={{ display: 'block' }}>
                       Dipilih: <strong>{selectedBillingIds.length}</strong> dari {unpaidBillings.length} tagihan — Total: <strong>{formatCurrency(selectedTotal)}</strong>
                     </Typography.Text>
@@ -507,6 +523,8 @@ export default function PaymentsPage() {
                                 </Card>
                               ) : null}
                             </Can>
+                    )}
+                    </>
                     )}
                   </Card>
                 ) : null}

@@ -220,7 +220,7 @@ class BillingController extends Controller
             ->when($request->query('year'), fn ($q, $value) => $q->where('year', $value))
             ->when($request->query('month'), fn ($q, $value) => $q->where('month', $value))
             ->when($request->query('status_id'), fn ($q, $value) => $q->where('status_id', $value))
-            // Halaman "Tagihan": hanya yang belum lunas (Belum Bayar + Sudah Bayar sebagian) dari SEMUA tahun.
+            // Halaman "Tagihan": hanya yang belum lunas (Belum Bayar + Sebagian) dari SEMUA tahun.
             // Riwayat Tagihan tidak mengirim flag ini sehingga semua status ikut tampil.
             ->when($request->boolean('outstanding'), fn ($q) => $q->outstanding())
             // Umur tunggakan dihitung murni dari selisih year/month (tanpa GREATEST/MAX untuk

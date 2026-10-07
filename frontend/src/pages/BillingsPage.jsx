@@ -45,9 +45,18 @@ export default function BillingsPage({ mode = 'outstanding' }) {
   }, [urlUnitId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filterUnitId = table.filters.unit_id?.trim() || undefined;
-  const listParams = isHistory ? table.params : { ...table.params, outstanding: 1 };
+  // Halaman Tagihan: filter status baru tersedia setelah unit dipilih (Belum Bayar / Lunas).
+  // Tanpa unit, status diabaikan dan daftar tetap berisi tagihan belum lunas.
+  const outstandingStatus = filterUnitId ? table.params.status_id : undefined;
+  useEffect(() => {
+    if (!isHistory && !filterUnitId && table.filters.status_id) table.setFilters({ ...table.filters, status_id: undefined });
+  }, [isHistory, filterUnitId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const listParams = isHistory
+    ? table.params
+    : { ...table.params, status_id: outstandingStatus, outstanding: outstandingStatus === '02' ? undefined : 1 };
   const billings = useQuery({ queryKey: ['billings', mode, listParams], queryFn: () => api.billings.list(listParams) });
-  const { page: _p, per_page: _pp, ...summaryParams } = listParams;
+  // Ringkasan selalu menghitung tunggakan, tidak terpengaruh filter status.
+  const { page: _p, per_page: _pp, status_id: _s, ...summaryParams } = isHistory ? listParams : { ...listParams, outstanding: 1 };
   const summary = useQuery({ queryKey: ['billings', 'summary', mode, summaryParams], queryFn: () => api.billings.summary(summaryParams), enabled: !isHistory });
   // Bila daftar hanya berisi satu unit (mis. difilter per unit), petugas bisa memilih beberapa tagihan lalu langsung membayarnya.
   const rows = billings.data?.data || [];
@@ -245,7 +254,7 @@ export default function BillingsPage({ mode = 'outstanding' }) {
       <PageHeader
         title={isHistory ? 'Riwayat Tagihan' : 'Tagihan'}
         subtitle={isHistory
-          ? `Seluruh riwayat tagihan (belum bayar, sudah bayar, lunas) dari semua tahun${filterUnitId ? ` untuk unit ${filterUnitId}` : ''}.`
+          ? `Seluruh riwayat tagihan (belum bayar, sebagian, lunas) dari semua tahun${filterUnitId ? ` untuk unit ${filterUnitId}` : ''}.`
           : `Seluruh tagihan yang belum lunas dari semua tahun${filterUnitId ? ` untuk unit ${filterUnitId}` : ''}. Generate, filter, dan approval tagihan estate.`}
         breadcrumbs={[{ label: isHistory ? 'Riwayat Tagihan' : 'Tagihan' }]}
         onRefresh={() => {
@@ -291,7 +300,9 @@ export default function BillingsPage({ mode = 'outstanding' }) {
         <UnitFilterFields value={table.filters} onChange={table.setFilters} />
         <InputNumber placeholder="Tahun" value={table.filters.year} onChange={(value) => table.setFilters({ ...table.filters, year: value })} className="filter-input" />
         <Select allowClear placeholder="Bulan" value={table.filters.month} onChange={(value) => table.setFilters({ ...table.filters, month: value })} className="filter-input" options={Array.from({ length: 12 }, (_, index) => ({ value: index + 1, label: dayjs().month(index).format('MMMM') }))} />
-        <Select allowClear placeholder="Status" value={table.filters.status_id} onChange={(value) => table.setFilters({ ...table.filters, status_id: value })} className="filter-input" options={isHistory ? [{ value: '01', label: 'Belum Bayar' }, { value: '03', label: 'Sudah Bayar' }, { value: '02', label: 'Lunas' }, { value: '04', label: 'Dibatalkan' }] : [{ value: '01', label: 'Belum Bayar' }, { value: '03', label: 'Sudah Bayar' }]} />
+        {isHistory || filterUnitId ? (
+          <Select allowClear placeholder="Status" value={table.filters.status_id} onChange={(value) => table.setFilters({ ...table.filters, status_id: value })} className="filter-input" options={[{ value: '01', label: 'Belum Bayar' }, { value: '02', label: 'Lunas' }]} />
+        ) : null}
       </FilterBar>
 
       {isHistory ? null : (

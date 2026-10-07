@@ -19,7 +19,11 @@ class PaymentController extends Controller
 
     public function search(Request $request, PenaltyService $penaltyService, CollectorAssignmentService $assignmentService)
     {
-        $data = $request->validate(['unit_id' => ['required', 'exists:units,id']]);
+        $data = $request->validate([
+            'unit_id' => ['required', 'exists:units,id'],
+            // unpaid (default) = Belum Bayar + dibayar sebagian (masih ada sisa); paid = Lunas.
+            'status' => ['nullable', 'in:unpaid,paid'],
+        ]);
 
         if ($request->user()->hasRole('collector')) {
             $assignmentService->assertUnitAssigned($request->user(), $data['unit_id']);
@@ -27,24 +31,27 @@ class PaymentController extends Controller
 
         $dateFrom = $request->query('date_from');
         $dateTo = $request->query('date_to');
+        $showPaid = ($data['status'] ?? 'unpaid') === 'paid';
+
+        $inRange = function ($q) use ($dateFrom, $dateTo) {
+            return $q->approved()
+                ->when($dateFrom, function ($q, $value) {
+                    [$year, $month] = array_map('intval', explode('-', $value));
+                    $q->whereRaw('(year * 100 + month) >= ?', [$year * 100 + $month]);
+                })
+                ->when($dateTo, function ($q, $value) {
+                    [$year, $month] = array_map('intval', explode('-', $value));
+                    $q->whereRaw('(year * 100 + month) <= ?', [$year * 100 + $month]);
+                })
+                ->orderBy('year')->orderBy('month');
+        };
 
         $unit = Unit::query()
-            ->with(['cluster', 'resident', 'billings' => function ($q) use ($dateFrom, $dateTo) {
-                $q->outstanding()->approved()
-                    ->when($dateFrom, function ($q, $value) {
-                        [$year, $month] = array_map('intval', explode('-', $value));
-                        $q->whereRaw('(year * 100 + month) >= ?', [$year * 100 + $month]);
-                    })
-                    ->when($dateTo, function ($q, $value) {
-                        [$year, $month] = array_map('intval', explode('-', $value));
-                        $q->whereRaw('(year * 100 + month) <= ?', [$year * 100 + $month]);
-                    })
-                    ->orderBy('year')->orderBy('month');
-            }])
+            ->with(['cluster', 'resident', 'billings' => fn ($q) => $inRange($q->outstanding())])
             ->findOrFail($data['unit_id']);
 
         $now = now();
-        $billings = $unit->billings->map(function (Billing $billing) use ($unit, $penaltyService) {
+        $withPenalty = fn ($rows) => $rows->map(function (Billing $billing) use ($unit, $penaltyService) {
             $billing->setRelation('unit', $unit);
 
             return [
@@ -52,11 +59,17 @@ class PaymentController extends Controller
                 'penalty_detail' => $penaltyService->calculateInvoiceTotal($billing),
             ];
         });
-        $unit->setRelation('billings', $billings);
+        $outstanding = $withPenalty($unit->billings);
 
-        $totalOutstanding = round($billings->sum(fn ($row) => $row['penalty_detail']['total_outstanding']), 2);
-        $totalUpcoming = round($billings->filter(fn ($row) => ($row['year'] * 100 + $row['month']) > ($now->year * 100 + $now->month))
+        // Total tunggakan selalu dari tagihan yang belum lunas, apa pun filter status yang dipilih.
+        $totalOutstanding = round($outstanding->sum(fn ($row) => $row['penalty_detail']['total_outstanding']), 2);
+        $totalUpcoming = round($outstanding->filter(fn ($row) => ($row['year'] * 100 + $row['month']) > ($now->year * 100 + $now->month))
             ->sum(fn ($row) => $row['penalty_detail']['total_outstanding']), 2);
+
+        $billings = $showPaid
+            ? $withPenalty($inRange($unit->billings()->where('status_id', Billing::STATUS_PAID))->get())
+            : $outstanding;
+        $unit->setRelation('billings', $billings);
 
         return $this->success([
             ...$unit->toArray(),
