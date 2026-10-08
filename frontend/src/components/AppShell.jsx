@@ -24,9 +24,19 @@ import HelpCenter from './help/HelpCenter.jsx';
 
 const { Header, Sider, Content } = Layout;
 
+function passesRoleGate(entry, hasRole) {
+  return !entry.roles?.length || entry.roles.some((role) => hasRole(role));
+}
+
 function passesGate(entry, canAny, hasRole) {
-  return (!entry.roles?.length || entry.roles.some((role) => hasRole(role)))
-    && (entry.permissions.length === 0 || canAny(entry.permissions));
+  const permissions = entry.permissions || [];
+  return passesRoleGate(entry, hasRole) && (permissions.length === 0 || canAny(permissions));
+}
+
+// Parent bersub-menu hanya dicek role-nya; `permissions` parent diabaikan supaya
+// grup tetap tampil selama minimal satu child lolos (filter children di bawah).
+function passesParentGate(entry, canAny, hasRole) {
+  return entry.children ? passesRoleGate(entry, hasRole) : passesGate(entry, canAny, hasRole);
 }
 
 function menuLabel(item, badgeCounts) {
@@ -43,7 +53,7 @@ function menuLabel(item, badgeCounts) {
 
 function buildMenuItems(canAny, hasRole, badgeCounts) {
   return menuItems
-    .filter((item) => passesGate(item, canAny, hasRole))
+    .filter((item) => passesParentGate(item, canAny, hasRole))
     .map((item) => {
       if (!item.children) {
         return { key: item.key, label: menuLabel(item, badgeCounts), icon: item.icon ? createElement(item.icon) : null };

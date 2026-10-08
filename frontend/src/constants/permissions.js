@@ -41,6 +41,7 @@ import {
   UserSwitchOutlined,
   SwapOutlined,
   EyeInvisibleOutlined,
+  FundViewOutlined,
 } from '@ant-design/icons';
 
 export const roles = ['root', 'back_office', 'loket', 'cs', 'customer', 'collector'];
@@ -97,8 +98,10 @@ export const menuItems = [
     key: '/admin/collectors',
     label: 'Manajemen Kolektor',
     icon: UserSwitchOutlined,
-    permissions: ['collector-assignments.view', 'collector.read'],
+    // Informatif saja: AppShell menampilkan grup bila minimal satu child lolos.
+    permissions: ['collector.read', 'collector-assignments.view', 'collector-targets.view', 'collector-performance.view', 'collector-monitoring.view', 'collector-locations.view', 'collection-letters.view'],
     children: [
+      { key: '/collection/monitoring', label: 'Monitoring Penagihan', icon: FundViewOutlined, permissions: ['collector-monitoring.view'] },
       { key: '/admin/collectors/list', label: 'Data Kolektor', icon: TeamOutlined, permissions: ['collector.read'] },
       { key: '/admin/collectors/assignments', label: 'Penugasan Kolektor', icon: UserSwitchOutlined, permissions: ['collector-assignments.view'] },
       { key: '/admin/collectors/targets', label: 'Target Kolektor', icon: TrophyOutlined, permissions: ['collector-targets.view'] },
@@ -218,6 +221,7 @@ export const permissionLabels = {
   'payment-promises.create': 'Catat janji pembayaran',
   'payment-promises.update': 'Edit janji pembayaran',
   'collector-assignments.view': 'Lihat penugasan kolektor',
+  'collector-assignments.create': 'Buat penugasan kolektor',
   'collector-assignments.assign': 'Tugaskan kolektor',
   'collector-assignments.update': 'Edit penugasan kolektor',
   'collector-assignments.delete': 'Cabut penugasan kolektor',
@@ -279,4 +283,20 @@ export const permissionLabels = {
   'reports.export': 'Ekspor laporan (antrean)',
   'collector-locations.track': 'Lacak lokasi kolektor (supervisor)',
   'tunggakan-analysis.view': 'Lihat analisis tunggakan cluster',
+  'collection-accounts.view': 'Lihat akun penagihan',
+  'collection-activities.view': 'Lihat aktivitas penagihan',
+  'collection-activities.create': 'Catat aktivitas penagihan',
+  'collection-notes.view': 'Lihat catatan penagihan',
+  'collection-notes.create': 'Tambah catatan penagihan',
+  'collection-notes.update': 'Edit catatan penagihan',
+  'collection-notes.delete': 'Hapus catatan penagihan',
+  'collection-disputes.view': 'Lihat sengketa penagihan',
+  'collection-disputes.create': 'Ajukan sengketa penagihan',
+  'collection-disputes.resolve': 'Selesaikan sengketa penagihan',
+  'collection-escalations.view': 'Lihat eskalasi penagihan',
+  'collection-escalations.create': 'Buat eskalasi penagihan',
+  'collection-escalations.handle': 'Tangani eskalasi penagihan',
+  'collection-payments.submit': 'Kirim pembayaran hasil penagihan',
+  'collection-sync.push': 'Sinkronisasi data penagihan (offline)',
+  'collection-reports.view': 'Lihat laporan penagihan',
 };

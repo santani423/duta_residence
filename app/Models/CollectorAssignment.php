@@ -26,6 +26,7 @@ class CollectorAssignment extends Model
     ];
 
     protected $casts = [
+        'collector_id' => 'integer',
         'is_active' => 'boolean',
         'start_date' => 'date',
         'end_date' => 'date',
@@ -54,6 +55,18 @@ class CollectorAssignment extends Model
     public function assignedBy()
     {
         return $this->belongsTo(User::class, 'assigned_by');
+    }
+
+    /** Assignment lama yang dipindahkan (reassign) menjadi assignment ini. */
+    public function reassignedFrom()
+    {
+        return $this->belongsTo(self::class, 'reassigned_from_id');
+    }
+
+    /** Assignment pengganti yang dibuat saat assignment ini di-reassign. */
+    public function reassignedTo()
+    {
+        return $this->hasOne(self::class, 'reassigned_from_id');
     }
 
     public function scopeActive($query)

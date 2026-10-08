@@ -395,8 +395,10 @@ export const api = {
     list: (params) => http.get('/collectors', { params }),
     create: (payload) => http.post('/collectors', payload),
     update: (id, payload) => http.put(`/collectors/${id}`, payload),
-    remove: (id) => http.delete(`/collectors/${id}`),
+    // payload opsional: { assignment_action?: 'reassign'|'end', reassign_to_collector_id?, reason? }
+    remove: (id, payload) => (payload ? http.delete(`/collectors/${id}`, { data: payload }) : http.delete(`/collectors/${id}`)),
     detail: (id) => http.get(`/collectors/${id}`),
+    // payload: { account_status, reason?, assignment_action?: 'reassign'|'end', reassign_to_collector_id? }
     updateStatus: (id, payload) => http.patch(`/collectors/${id}/status`, payload),
     assignmentHistory: (id, params) => http.get(`/collectors/${id}/assignment-history`, { params }),
     uploadPhoto: (id, formData) => http.post(`/collectors/${id}/photo`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
@@ -406,13 +408,28 @@ export const api = {
     create: (payload) => http.post('/collector-assignments', payload),
     update: (id, payload) => http.put(`/collector-assignments/${id}`, payload),
     remove: (id) => http.delete(`/collector-assignments/${id}`),
-    reassign: (id, payload) => http.post(`/collector-assignments/${id}/reassign`, payload),
+    // payload: { new_collector_id, reason, start_date?, notes? }
+    reassign: (id, { new_collector_id, reason, start_date, notes } = {}) => http.post(`/collector-assignments/${id}/reassign`, {
+      new_collector_id,
+      reason,
+      ...(start_date ? { start_date } : {}),
+      ...(notes ? { notes } : {}),
+    }),
   },
   collectorTargets: {
     list: (params) => http.get('/collector-targets', { params }),
     create: (payload) => http.post('/collector-targets', payload),
     update: (id, payload) => http.put(`/collector-targets/${id}`, payload),
     remove: (id) => http.delete(`/collector-targets/${id}`),
+    progress: (params) => http.get('/collector-targets/progress', { params }),
+  },
+  collection: {
+    accounts: (params) => http.get('/collection/accounts', { params }),
+    collectorOptions: (params) => http.get('/collection/collectors/options', { params }),
+    assignmentPreview: (payload) => http.post('/collection/assignments/preview', payload),
+    bulkAssign: (payload) => http.post('/collection/assignments/bulk', payload),
+    unassignedUnits: (params) => http.get('/collection/assignments/unassigned-units', { params }),
+    performance: (params) => http.get('/collection/performance', { params }),
   },
   collectorPerformance: {
     forCollector: (params) => http.get('/collector-performance', { params }),

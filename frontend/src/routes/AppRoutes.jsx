@@ -70,6 +70,7 @@ const CollectorAssignmentsPage = lazy(() => import('../pages/CollectorAssignment
 const CollectorTargetsPage = lazy(() => import('../pages/CollectorTargetsPage.jsx'));
 const CollectorPerformancePage = lazy(() => import('../pages/CollectorPerformancePage.jsx'));
 const CollectorLiveMapPage = lazy(() => import('../pages/CollectorLiveMapPage.jsx'));
+const CollectionMonitoringPage = lazy(() => import('../pages/collection/CollectionMonitoringPage.jsx'));
 const CollectionLettersPage = lazy(() => import('../pages/CollectionLettersPage.jsx'));
 const CollectorRouteMapPage = lazy(() => import('../pages/collector/CollectorRouteMapPage.jsx'));
 const CollectorRemindersPage = lazy(() => import('../pages/collector/CollectorRemindersPage.jsx'));
@@ -193,6 +194,7 @@ export default function AppRoutes() {
         <Route path="admin/cms/settings/footer" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsFooterSettingsPage /></LazyPage></Protected>} />
         <Route path="admin/cms/settings/seo" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsSeoSettingsPage /></LazyPage></Protected>} />
         <Route path="admin/cms/settings/general" element={<Protected permissions={['landing-cms.manage']}><LazyPage><CmsGeneralSettingsPage /></LazyPage></Protected>} />
+        <Route path="collection/monitoring" element={<Protected permissions={['collector-monitoring.view']}><LazyPage><CollectionMonitoringPage /></LazyPage></Protected>} />
         <Route path="admin/collectors/list" element={<Protected permissions={['collector.read']}><LazyPage><CollectorsPage /></LazyPage></Protected>} />
         <Route path="admin/collectors/list/:id" element={<Protected permissions={['collector.detail']}><LazyPage><CollectorDetailPage /></LazyPage></Protected>} />
         <Route path="admin/collectors/assignments" element={<Protected permissions={['collector-assignments.view']}><LazyPage><CollectorAssignmentsPage /></LazyPage></Protected>} />

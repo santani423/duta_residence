@@ -3,12 +3,14 @@
 namespace App\Providers;
 
 use App\Models\Billing;
+use App\Models\CollectorAssignment;
 use App\Models\CollectorReminder;
 use App\Models\CollectorVisit;
 use App\Models\PaymentPromise;
 use App\Models\PaymentTransaction;
 use App\Observers\BillingCollectionObserver;
 use App\Observers\CollectionTimelineObserver;
+use App\Observers\CollectorAssignmentObserver;
 use App\Services\CollectionAccountRefreshQueue;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -75,6 +77,7 @@ class AppServiceProvider extends ServiceProvider
         PaymentTransaction::observe(CollectionTimelineObserver::class);
         CollectorReminder::observe(CollectionTimelineObserver::class);
         Billing::observe(BillingCollectionObserver::class);
+        CollectorAssignment::observe(CollectorAssignmentObserver::class);
 
         $flush = function () {
             try {

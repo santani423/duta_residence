@@ -10,6 +10,7 @@ use App\Models\PaymentTransaction;
 use App\Models\User;
 use App\Services\CollectorPerformanceService;
 use App\Services\SupervisorAssignmentService;
+use App\Support\Pagination;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -71,10 +72,11 @@ class SupervisorMonitoringController extends Controller
 
         $query = PaymentTransaction::query()
             ->with(['unit.cluster', 'creator'])
-            ->when($collectorIds, fn ($q) => $q->whereIn('created_by', $collectorIds))
+            // Tanpa `when`: scope kosong harus menghasilkan daftar kosong, bukan semua pembayaran.
+            ->whereIn('created_by', $collectorIds)
             ->when($request->query('status'), fn ($q, $value) => $q->where('status', $value))
             ->when($request->query('payment_method'), fn ($q, $value) => $q->where('payment_method', $value));
 
-        return $this->paginated($query->latest()->paginate($request->integer('per_page', 20)));
+        return $this->paginated($query->latest()->paginate(Pagination::perPage($request, 20)));
     }
 }

@@ -11,7 +11,10 @@ use App\Http\Controllers\Api\V1\ClusterController;
 use App\Http\Controllers\Api\V1\ClusterMapComponentTypeController;
 use App\Http\Controllers\Api\V1\ClusterMapController;
 use App\Http\Controllers\Api\V1\ClusterRateScheduleController;
+use App\Http\Controllers\Api\V1\CollectionAssignmentController;
 use App\Http\Controllers\Api\V1\CollectionLetterController;
+use App\Http\Controllers\Api\V1\CollectionMonitoringController;
+use App\Http\Controllers\Api\V1\CollectionPerformanceController;
 use App\Http\Controllers\Api\V1\CollectorAssignmentController;
 use App\Http\Controllers\Api\V1\CollectorController;
 use App\Http\Controllers\Api\V1\CollectorLocationController;
@@ -98,7 +101,8 @@ Route::get('landing/events/{slug}', [LandingController::class, 'event']);
 Route::get('landing/gallery-albums/{slug}', [LandingController::class, 'galleryAlbum']);
 Route::get('site-identity', [LandingController::class, 'identity']);
 
-Route::middleware(['auth:sanctum', 'audit'])->group(function () {
+// `active-user`: token milik akun yang sudah dinonaktifkan/dihapus ditolak 401 ACCOUNT_INACTIVE.
+Route::middleware(['auth:sanctum', 'audit', 'active-user'])->group(function () {
     Route::post('auth/logout', [AuthController::class, 'logout']);
     Route::get('auth/me', [AuthController::class, 'me']);
     Route::post('auth/change-password', [AuthController::class, 'changePassword']);
@@ -176,11 +180,19 @@ Route::middleware(['auth:sanctum', 'audit'])->group(function () {
     Route::delete('collector-assignments/{collectorAssignment}', [CollectorAssignmentController::class, 'destroy'])->middleware('permission:collector-assignments.delete');
     Route::post('collector-assignments/{collectorAssignment}/reassign', [CollectorAssignmentController::class, 'reassign'])->middleware('permission:collector.reassign');
 
+    Route::post('collection/assignments/preview', [CollectionAssignmentController::class, 'preview'])->middleware('permission:collector-assignments.assign|collector.assign');
+    Route::post('collection/assignments/bulk', [CollectionAssignmentController::class, 'bulk'])->middleware('permission:collector-assignments.assign|collector.assign');
+    Route::get('collection/assignments/unassigned-units', [CollectionAssignmentController::class, 'unassignedUnits'])->middleware('permission:collector-assignments.view');
+    Route::get('collection/accounts', [CollectionMonitoringController::class, 'accounts'])->middleware('permission:collector-monitoring.view');
+    Route::get('collection/collectors/options', [CollectionMonitoringController::class, 'collectorOptions'])->middleware('permission:collector.read|collector-monitoring.view|collector-assignments.view|collector-targets.view|collector-performance.view');
+    Route::get('collection/performance', [CollectionPerformanceController::class, 'ranking'])->middleware('permission:collector-monitoring.view');
+
     Route::post('collector-locations', [CollectorLocationController::class, 'store'])->middleware('role:collector');
     Route::get('collector-locations', [CollectorLocationController::class, 'index'])->middleware('permission:collector-locations.view|collector.location_view');
     Route::get('collector-locations/latest', [CollectorLocationController::class, 'latest'])->middleware('permission:collector-locations.view|collector.location_view');
 
     Route::get('collector-targets', [CollectorTargetController::class, 'index'])->middleware('permission:collector-targets.view|collector.target_manage');
+    Route::get('collector-targets/progress', [CollectorTargetController::class, 'progress'])->middleware('permission:collector-targets.view|collector.target_manage');
     Route::post('collector-targets', [CollectorTargetController::class, 'store'])->middleware('permission:collector-targets.create|collector.target_manage');
     Route::put('collector-targets/{collectorTarget}', [CollectorTargetController::class, 'update'])->middleware('permission:collector-targets.update|collector.target_manage');
     Route::delete('collector-targets/{collectorTarget}', [CollectorTargetController::class, 'destroy'])->middleware('permission:collector-targets.delete|collector.target_manage');

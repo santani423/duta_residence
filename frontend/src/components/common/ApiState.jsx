@@ -1,4 +1,4 @@
-import { Alert, Button, Empty, Result } from 'antd';
+import { Alert, Button, Empty, Result, Skeleton } from 'antd';
 
 export function LogoSpinner({ size = 64 }) {
   return (
@@ -8,7 +8,16 @@ export function LogoSpinner({ size = 64 }) {
   );
 }
 
-export function LoadingState() {
+// Tanpa `rows` -> spinner logo; dengan `rows` -> Skeleton paragraf sebanyak `rows`.
+export function LoadingState({ rows } = {}) {
+  if (rows) {
+    return (
+      <div role="status" aria-live="polite" aria-label="Memuat" style={{ padding: '16px 0' }}>
+        <Skeleton active title paragraph={{ rows }} />
+      </div>
+    );
+  }
+
   return (
     <div className="loading-state">
       <LogoSpinner size={72} />

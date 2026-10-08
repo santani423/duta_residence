@@ -52,6 +52,40 @@ class CollectorAssignmentService
     }
 
     /**
+     * Unit yang tercakup SATU scope assignment (tanpa melihat aktif/berlaku), dengan logika yang
+     * sama seperti unitIdsFor(): cluster → unit di cluster, block → unit di cluster+block,
+     * unit → unit_id itu sendiri, resident → unit milik resident. Juga menerima `units` +
+     * `unit_ids` (dipakai preview/bulk) → unit yang masih ada di antara id tersebut.
+     * Dipakai observer refresh cache & preview/bulk assignment.
+     *
+     * @param  array{scope_type?: ?string, cluster_id?: ?string, block?: ?string, unit_id?: ?string, resident_id?: ?string, unit_ids?: ?array}  $scope
+     * @return list<string>
+     */
+    public function unitIdsForScope(array $scope): array
+    {
+        $clusterId = $scope['cluster_id'] ?? null;
+
+        $unitIds = match ($scope['scope_type'] ?? null) {
+            'cluster' => $clusterId
+                ? Unit::query()->where('cluster_id', $clusterId)->pluck('id')->all()
+                : [],
+            'block' => $clusterId && ($scope['block'] ?? null) !== null && $scope['block'] !== ''
+                ? Unit::query()->where('cluster_id', $clusterId)->where('block', $scope['block'])->pluck('id')->all()
+                : [],
+            'unit' => ($scope['unit_id'] ?? null) ? [(string) $scope['unit_id']] : [],
+            'resident' => ($scope['resident_id'] ?? null)
+                ? Unit::query()->where('resident_id', $scope['resident_id'])->pluck('id')->all()
+                : [],
+            'units' => ! empty($scope['unit_ids'])
+                ? Unit::query()->whereIn('id', array_values(array_unique(array_map('strval', $scope['unit_ids']))))->pluck('id')->all()
+                : [],
+            default => [],
+        };
+
+        return array_values(array_unique(array_map('strval', $unitIds)));
+    }
+
+    /**
      * Always derived from unitIdsFor(), never resolved independently, so unit-vs-resident
      * scope can never drift out of sync with each other.
      */
