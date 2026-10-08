@@ -22,6 +22,7 @@ class CollectorAssignment extends Model
     protected $fillable = [
         'collector_id', 'scope_type', 'cluster_id', 'block', 'unit_id', 'resident_id',
         'is_active', 'assigned_by', 'start_date', 'end_date', 'status', 'priority', 'notes',
+        'reassigned_from_id', 'reassign_reason',
     ];
 
     protected $casts = [

@@ -193,6 +193,34 @@ class Unit extends Model
         return $this->hasMany(UnitDeposit::class);
     }
 
+    public function collectionState()
+    {
+        return $this->hasOne(CollectionAccountState::class);
+    }
+
+    public function collectionActivities()
+    {
+        return $this->hasMany(CollectionActivity::class);
+    }
+
+    public function collectionNotes()
+    {
+        return $this->hasMany(CollectionNote::class);
+    }
+
+    /**
+     * ID resident yang bertanggung jawab atas tagihan unit (pemilik atau penyewa sesuai
+     * billing_payer) - customer pada collection account.
+     */
+    public function billingPayerResidentId(): ?string
+    {
+        if ($this->billing_payer === 'penyewa' && $this->tenant_resident_id) {
+            return $this->tenant_resident_id;
+        }
+
+        return $this->resident_id;
+    }
+
     public function getDepositBalanceAttribute(): float
     {
         return (float) $this->balance;

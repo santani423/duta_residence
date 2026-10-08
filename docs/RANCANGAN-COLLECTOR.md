@@ -373,16 +373,18 @@ users 1─* collection_sync_logs, 1─* device_tokens
 
 ## 7. Kalkulasi Bisnis (backend)
 
-**Status akun** (urutan prioritas, yang pertama cocok dipakai):
-1. `escalated` — ada eskalasi aktif
-2. `disputed` — ada dispute open/under_review
-3. `promise_to_pay` — ada PTP pending yang belum lewat
-4. `paid` — outstanding = 0
+**Status akun** (urutan prioritas, yang pertama cocok dipakai — `CollectionAccountService::resolveStatus`):
+1. `paid` — outstanding = 0 (tidak ada yang perlu ditagih, apa pun status PTP/dispute)
+2. `escalated` — ada eskalasi aktif *(diaktifkan di T10)*
+3. `disputed` — ada dispute open/under_review *(diaktifkan di T10)*
+4. `promise_to_pay` — ada PTP `pending` dengan tanggal janji ≥ hari ini
 5. `overdue` — ada invoice lewat jatuh tempo (`PenaltyService::dueDate`)
 6. `partially_paid` — ada invoice status `03 Sebagian`, belum lewat jatuh tempo
 7. `due_today` — jatuh tempo hari ini
 8. `due_soon` — jatuh tempo ≤ `collector.due_soon_days` (default 7)
 9. `current`
+
+Outstanding hanya mencakup tagihan **disetujui** dan berstatus `01`/`03` — sama dengan yang bisa dibayar di `PaymentService`.
 
 **Aging** = hari sejak `oldest_due_date` invoice yang belum lunas → bucket `current / 1–30 / 31–60 / 61–90 / 91–180 / >180`.
 
@@ -602,22 +604,241 @@ Semua halaman: loading = skeleton, error = `ErrorState` + "Coba lagi", empty sta
 
 ---
 
-## 13. Rencana Implementasi
+## 13. Tahapan & Urutan Development
 
-| Phase | Isi | Output yang dapat diuji |
+### 13.1 Prinsip urutan
+
+1. **Backend dulu, lalu UI.** Setiap fitur dimulai dari migrasi → service → API → test, baru kemudian web dan Flutter. UI tidak pernah menunggu logika yang belum pasti.
+2. **Vertical slice.** Setiap tahap menghasilkan sesuatu yang bisa dipakai end-to-end, bukan "semua migrasi dulu, semua UI belakangan".
+3. **Risiko tinggi dikerjakan lebih awal.** Perubahan alur pembayaran (D1) dan fondasi offline Flutter (D2) dikerjakan cukup awal agar ada waktu UAT.
+4. **Tidak merusak yang berjalan.** Setiap tahap ditutup dengan seluruh test existing (38 feature test) tetap hijau.
+5. **Satu tahap = satu branch/PR**, dengan nama `feat/collector-tXX-<nama>`.
+
+Ukuran: **S** ≈ 1–2 hari, **M** ≈ 3–5 hari, **L** ≈ 1–2 minggu (1 developer).
+
+### 13.2 Peta urutan & jalur paralel
+
+```
+T0 Persiapan
+ └─► T1 Fondasi data ─► T2 Service inti ─► T3 API baca collector
+                                              │
+             ┌────────────────────────────────┼─────────────────────────────┐
+             ▼                                ▼                             ▼
+   JALUR WEB                          JALUR BACKEND FITUR            JALUR FLUTTER
+   T4 Komponen bersama web            T6 Contact activity & notes    T13 Fondasi Flutter
+   T5 Halaman inti collector          T7 Payment + verifikasi (D1)   T14 Layar collector (online)
+                                      T8 Visit                         (mengikuti T6–T10)
+                                      T9 Promise to Pay
+                                      T10 Dispute & Escalation
+             └────────────────┬───────────────┘                            │
+                              ▼                                            │
+                    T11 Supervisor management                              │
+                    T12 Reports & export                                   │
+                              └──────────────────┬─────────────────────────┘
+                                                 ▼
+                                   T15 Offline sync ─► T16 Push notification
+                                                 ▼
+                                   T17 Hardening, UAT & rollout
+```
+
+Dengan dua developer: satu di jalur web + backend fitur, satu di jalur Flutter mulai dari T13 (setelah T3 selesai).
+
+### 13.3 Milestone rilis
+
+| Milestone | Setelah tahap | Yang bisa dipakai pengguna |
 |---|---|---|
-| **1 Foundation** | Migrasi aditif (§6.2–6.3), model, permission baru di seeder (idempoten), `config/collector.php`, `CollectionAgingService`, `CollectionAccountService` (+ state cache & refresh), `CollectionPriorityService`, `CollectionActivityService`, endpoint `collector/dashboard`, `collector/accounts`, `accounts/{unit}`, `/bills`, `/activities` | Feature test scoping, status, aging, priority |
-| **2 Web Collector** | komponen bersama (§10), Dashboard, My Collection, Collection Detail + Timeline, menu & route collector (memperbaiki landing `/403` untuk collector) | build + lint |
-| **3 Android Collector** | fondasi Flutter (drift/riverpod/go_router), Home, Collection List/Detail, intent tel/WA/geo, contact result | `flutter analyze` + widget test |
-| **4 Payment** | `CollectionPaymentService` (submit → waiting_verification, proof, revision), Finance queue web, layar payment Flutter, notifikasi hasil | test cash/transfer/partial/proof/verify/reject/revision |
-| **5 Visit** | jadwal, start/finish, result_code, evidence baru, list today/upcoming/failed | test GPS/foto/sukses/gagal |
-| **6 PTP** | kolom baru, cancel, job broken/fulfilled, PTP monitoring + chart | test create/fulfill/broken/cancel |
-| **7 Dispute & Escalation** | tabel, service, workflow forward, auto-trigger, UI web & Flutter | test create/review/resolve/reject/forward |
-| **8 Offline Sync** | `collection_sync_logs`, `/collector/sync` + bootstrap, outbox Flutter, WorkManager, Sync Center, konflik; FCM bila D3 siap | test idempoten & konflik |
-| **9 Reporting** | 6 report + export xlsx/pdf, performance ranking multi-metric, target extension | test angka report = dashboard |
-| **10 Testing & hardening** | regresi test existing (38), N+1 check, index, load dashboard, UAT checklist | semua test hijau |
+| **M1 – Visibility** | T5 | Collector bisa melihat dashboard, daftar akun prioritas, detail akun + timeline di web |
+| **M2 – Field MVP** | T9 + T14 | Collector di lapangan (Android, online): kontak, visit, PTP, submit pembayaran; Finance memverifikasi |
+| **M3 – Control** | T12 | Supervisor: dispute, eskalasi, bulk assignment, ranking, laporan + export |
+| **M4 – Production-ready** | T17 | Offline, push notification, hardening |
 
-Setiap phase dikirim sebagai commit/PR terpisah; tidak ada phase yang mengubah perilaku loket, resident portal, atau billing selain D1 (pembayaran oleh collector).
+---
+
+### T0 — Persiapan · S
+**Tergantung:** —
+- [ ] Keputusan D1–D6 + kebijakan ping lokasi disetujui (§3).
+- [x] Jalankan baseline test (dari HEAD bersih) sebelum perubahan.
+- [ ] Siapkan database staging terpisah (bukan `.env` remote) untuk uji migrasi MySQL.
+- [x] Perluas `config/collector.php`: `due_soon_days`, bobot priority, `large_outstanding_threshold`, ambang auto-eskalasi, `payment_requires_verification`, batas tanggal PTP.
+
+**Selesai bila:** keputusan tercatat di dokumen ini, baseline test terdokumentasi.
+
+### T1 — Fondasi data · M · ✅ selesai (8 Okt 2026)
+**Tergantung:** T0
+- [x] Migrasi tabel baru `2026_10_08_000001`–`000005`: `collection_account_states`, `collection_activities`, `collection_notes`, `collection_sync_logs`, `device_tokens` (dispute/escalation menyusul di T10 agar PR kecil).
+- [x] Migrasi kolom aditif `000006`–`000009`: `payment_promises`, `collector_visits`, `payment_transactions`, `collector_assignments`, `collector_targets` (§6.3). Status baru disimpan sebagai `string` + validasi aplikasi, tanpa perubahan enum. Tipe evidence baru tidak butuh migrasi (kolom `type` sudah string).
+- [x] Model `CollectionAccountState`, `CollectionActivity`, `CollectionNote`, `CollectionSyncLog`, `DeviceToken`; kolom & relasi baru di `Unit` (`collectionState`, `collectionActivities`, `collectionNotes`, `billingPayerResidentId()`), `PaymentPromise`, `CollectorVisit`, `PaymentTransaction`, `CollectorAssignment`, `CollectorTarget`.
+- [x] Trait `HasClientUuid` dan `HasVersion`. Saat ini dipakai `CollectionNote`; model lama (PTP/visit/payment) baru memakai `HasVersion` di tahap fiturnya masing-masing (T7–T9).
+- [x] Permission `collection-*` di `RolePermissionSeeder` untuk collector/supervisor/finance/admin_estate/property_manager.
+
+**Verifikasi:** migrasi `down` → `up` lolos di sqlite. **Belum** diuji di MySQL staging.
+
+### T2 — Service inti · L · ✅ selesai (8 Okt 2026)
+**Tergantung:** T1
+- [x] `CollectionAgingService` — bucket hari + `breakdown()` untuk dashboard. *Keputusan:* `ReceivableController::aging` **tidak** direfaktor karena memakai tier bulan untuk denda (konsep berbeda); keduanya dibiarkan terpisah.
+- [x] `CollectionAccountService` — `computeMany`, `refresh`, `refreshMany`, `refreshAll`, `resolveStatus`, `openInvoices`. Data pendukung dimuat per chunk 200 unit dengan query agregat (tanpa N+1).
+- [x] `CollectionPriorityService` — skor & level dari config; akun disputed maksimal `medium`.
+- [x] `CollectorAssignmentService::primaryCollectorIdsFor()` — collector utama per unit (unit > resident > block > cluster).
+- [x] `CollectionActivityService` — `record()` untuk aktivitas manual (idempoten via `client_uuid`, diaudit) dan `recordForSubject()` untuk aktivitas turunan (idempoten per subjek+event).
+- [x] `CollectionTimelineService` — cursor pagination.
+- [x] **Tambahan:** `CollectionTimelineObserver` (visit, PTP, pembayaran, pengingat WA → timeline) dan `BillingCollectionObserver` (perubahan tagihan → refresh). Keduanya berjalan setelah commit dan tidak pernah melempar error ke alur bisnis. Refresh digabung per request lewat `CollectionAccountRefreshQueue` (flush saat terminating & setelah tiap job). Akibatnya endpoint lama otomatis mengisi timeline, dan T6–T9 tidak perlu menulis aktivitas sendiri untuk subjek-subjek ini.
+- [x] Command `collection:refresh-account-states [--unit=]` (terjadwal per jam) dan `collection:backfill-activities [--since=] [--skip-refresh]` (idempoten).
+- [x] Test: `tests/Unit/CollectionAgingServiceTest`, `tests/Unit/CollectionPriorityServiceTest`, `tests/Feature/CollectionAccountServiceTest` (22 test).
+
+**Langkah deploy T1+T2** (dijalankan tim deploy, bukan dari sesi pengembangan):
+1. `php artisan migrate`
+2. `php artisan db:seed --class=RolePermissionSeeder` — seeder ini memakai `syncPermissions`, jadi permission role yang diubah manual lewat UI akan kembali ke definisi seeder.
+3. `php artisan collection:backfill-activities` — mengisi timeline dari data lama sekaligus menghitung status semua akun.
+
+### T3 — API baca collector · M
+**Tergantung:** T2
+- [ ] Grup route `collector` (role collector) dan `collection` (supervisor/manager/finance) di `routes/api.php`.
+- [ ] `GET /collector/dashboard` (`CollectionDashboardService`, satu query agregat per widget, cache 60 dtk per collector).
+- [ ] `GET /collector/accounts` + filter lengkap (§11 brief) memakai `App\Support\UnitFilters` + state cache; eager loading untuk cegah N+1.
+- [ ] `GET /collector/accounts/{unit}`, `/bills`, `/activities`.
+- [ ] `GET /collection/accounts` (scope supervisor per cluster), `GET /collector/assignments`.
+- [ ] API Resource class untuk shape response yang dipakai web & Flutter.
+- [ ] Test: scoping (collector A ≠ B → 403), filter kombinasi, pagination, angka dashboard = angka list.
+- [ ] Tambah ke `docs/openapi.yaml`.
+
+**Selesai bila:** semua endpoint terdokumentasi & teruji; **kontrak API dibekukan** agar jalur web dan Flutter bisa mulai paralel.
+
+### T4 — Komponen bersama web · M
+**Tergantung:** T3 (kontrak)
+- [ ] `StatCard`, `ChartCard` (warna dari token antd → aman dark mode), `AgingChart`, `TargetProgress`, `PriorityBadge`, `CollectionTimeline`, `AccountCardList`, `CollectorSelect`, `PageSkeleton`, `ConfirmAmountModal`.
+- [ ] Tambah map status di `StatusBadge` (collectionAccount, visitLifecycle, ptp, collectionPayment, dispute, escalation).
+- [ ] `api.collector.*` dan `api.collection.*` di `services/estateApi.js`; hook `useCollectorAccounts`, `useCollectorDashboard`.
+- [ ] Menu collector di `constants/permissions.js`; route di `AppRoutes.jsx`; **redirect role collector dari `/` ke `/collector`** (perbaiki `/403`).
+
+**Selesai bila:** `npm run lint` + `npm run build` lolos; komponen dicek di light & dark mode.
+
+### T5 — Halaman inti collector (web) · L
+**Tergantung:** T4
+- [ ] Collector Dashboard (KPI, target vs actual, aging, priority, priority accounts, today's visits).
+- [ ] My Collection (tab view, filter, tabel desktop / kartu mobile, empty state).
+- [ ] Collection Detail (header, action bar, tab Overview/Bills/Timeline; tab lain diisi bertahap di T6–T10).
+- [ ] Collection Monitoring untuk supervisor (halaman yang sama + filter collector).
+
+**Selesai bila:** UAT singkat dengan 1 collector & 1 supervisor → **Milestone M1**.
+
+### T6 — Contact activity & notes · M
+**Tergantung:** T3 (backend), T5 (UI)
+- [ ] `POST /collector/activities` (call/whatsapp/sms/email + `channel_result` + `next_follow_up_at`).
+- [ ] CRUD `collector/notes` + attachment via `managed_files`; pastikan tidak bocor ke endpoint resident (test).
+- [ ] Hitung `failed_contact_count`, `last_contact_at`, `next_follow_up_at` di state.
+- [ ] Web: tombol Call/WA → modal Contact Result; tab Notes; halaman Activities.
+- [ ] Migrasi data: `collector_reminders` lama ikut ditampilkan di timeline (type whatsapp, tanpa result).
+
+### T7 — Payment + verifikasi (D1) · L · *risiko tertinggi*
+**Tergantung:** T3
+- [ ] `CollectionPaymentService`: `submit` (provider `collector`, `waiting_verification`, tidak menyentuh billing), `attachProof`, `requestRevision`, `resubmit`, `approve` (→ `PaymentService::settleGatewayTransaction`, dalam transaksi + `lockForUpdate`), `reject` (alasan wajib).
+- [ ] Validasi ulang di server: invoice milik unit, nominal ≤ outstanding saat approve (bukan saat submit), `verified_by ≠ collected_by`.
+- [ ] Feature flag `collector.payment_requires_verification`; jika `false` → alur lama `PaymentService::process`.
+- [ ] Perbaiki `CollectorPerformanceService`: collected = `collected_by` (baru) + `loket/created_by` (data lama), hanya status `paid`.
+- [ ] Notifikasi in-app: Payment Verified / Rejected / Revision Requested; supervisor notification "menunggu verifikasi" (generator existing).
+- [ ] Web collector: Payment List / Create / Detail. Web finance: Verification Queue.
+- [ ] Test: cash, transfer, partial, proof, approve, reject, revision, double-approve, approve setelah billing dibayar di loket (harus gagal dengan pesan jelas), regresi `PaymentFlowTest` & `LoketPaymentVerificationAndPrintTest`.
+
+### T8 — Visit · M
+**Tergantung:** T6
+- [ ] `CollectionVisitService`: schedule, start (GPS + timestamp), submit result (`result_code` → isi juga `status` lama), cancel; aturan tanda tangan/foto per hasil (D6).
+- [ ] Evidence type baru (selfie/property/payment_proof); hasil gagal menaikkan `failed_visit_count`.
+- [ ] Endpoint lama `units/{u}/visits` & `visits/{v}` tetap bekerja (regresi `CollectorVisitSignatureTest`).
+- [ ] Web: Visit List (today/upcoming/completed/failed), Detail (foto, peta, durasi), Create.
+
+### T9 — Promise to Pay · M
+**Tergantung:** T7 (fulfilled bergantung pada payment terverifikasi)
+- [ ] `PromiseToPayService`: create (isi `collector_id`, `visit_id`), cancel (alasan), `fulfill` dipanggil dari `CollectionPaymentService::approve`.
+- [ ] Command harian `collection:evaluate-promises` → `broken` + aktivitas + supervisor notification (generator `broken_promise` existing jadi berguna).
+- [ ] `GET /collection/promises` + summary (total, due today, due tomorrow, fulfilled, broken, success rate).
+- [ ] Web: PTP List/Detail collector, PTP Monitoring + chart fulfillment rate.
+
+**Selesai bila:** bersama T14 → **Milestone M2**.
+
+### T10 — Dispute & Escalation · L
+**Tergantung:** T6
+- [ ] Migrasi `collection_disputes`, `collection_escalations`, `collection_escalation_steps`.
+- [ ] `CollectionDisputeService` (open → under_review → resolved/rejected), `CollectionEscalationService` (create manual, forward supervisor → estate manager → legal, resolve).
+- [ ] Auto-trigger eskalasi (command harian, ambang dari config, akun disputed dikecualikan, tidak duplikat).
+- [ ] Web collector: form & list; web supervisor: Dispute Monitoring, Escalation Monitoring (inbox + timeline step).
+- [ ] Test: billing & outstanding tidak berubah oleh dispute/eskalasi (R8, R9).
+
+### T11 — Supervisor management · M
+**Tergantung:** T7–T10
+- [ ] `POST /collection/assignments/bulk` (manual bulk & area), reassign wajib `reason` + `reassigned_from_id`.
+- [ ] `CollectorAssignmentsPage`: mode Manual / Bulk / Area + histori reassign.
+- [ ] Target: kolom akun & collection rate di `CollectorTargetsPage`.
+- [ ] Performance: chart tren + ranking multi-metric (`/collection/performance?metric=`).
+- [ ] Visit Monitoring, dashboard supervisor ditambah chart.
+
+### T12 — Reports & export · M
+**Tergantung:** T11, D4
+- [ ] `CollectionReportService` — 6 report (collection, aging, collector, visit, PTP, payment), memakai service yang sama dengan dashboard (angka identik).
+- [ ] Export xlsx (library D4) + PDF (DomPDF); report besar lewat `report_exports` + job existing.
+- [ ] Web: halaman Reports (collector: limited, supervisor/finance: lengkap).
+
+**Selesai bila:** angka report = angka dashboard untuk periode yang sama (test) → **Milestone M3**.
+
+### T13 — Fondasi Flutter · L · *bisa mulai setelah T3*
+**Tergantung:** T3, D2
+- [ ] Tambah `flutter_riverpod`, `go_router`, `drift`, `uuid`, `connectivity_plus`; struktur `lib/src/features/collector/{data,domain,presentation}`.
+- [ ] Model bertipe + repository untuk akun, tagihan, aktivitas (dari kontrak T3).
+- [ ] `go_router` hanya untuk shell collector; shell customer/supervisor tetap memakai navigasi lama.
+- [ ] Manifest: `<queries>` tel/https/geo, permission `CAMERA`; `applicationId` final (koordinasi rilis).
+- [ ] Helper intent: `tel:`, `wa.me`, `geo:` + fallback Google Maps.
+
+**Selesai bila:** `flutter analyze` bersih; login collector masuk ke shell baru; login customer/supervisor tidak berubah.
+
+### T14 — Layar collector Flutter (online) · L
+**Tergantung:** T13, mengikuti backend T6–T10
+- [ ] Bottom nav baru: Home / Collection / Visits / Activity / Profile.
+- [ ] Home, Collection List (kartu + search + chip filter), Collection Detail (quick action + tab).
+- [ ] Contact Result bottom sheet setelah kembali dari Call/WA (T6).
+- [ ] Visit: start → result → foto → notes → submit (T8).
+- [ ] Payment: invoice → nominal → metode (dari API) → bukti → review → konfirmasi (T7).
+- [ ] PTP, Note, Dispute, Escalation (T9, T10).
+- [ ] Notifikasi: perbaiki routing staff di `notification_router.dart`.
+
+### T15 — Offline sync · L
+**Tergantung:** T14
+- [ ] Backend: `CollectionSyncService`, `POST /collector/sync` (batch, idempoten via `client_uuid`, konflik via `base_version`), `GET /collector/sync/bootstrap?since=` (delta, dipaginasi), tulis `collection_sync_logs`.
+- [ ] Flutter: tabel drift (cache + outbox), semua aksi T14 menulis lokal dulu lalu outbox; `workmanager` untuk flush; foto disimpan lokal hingga terunggah.
+- [ ] Payment offline hanya **draft**, submit setelah online + bukti terunggah.
+- [ ] Sync Center: last synced, antrian, gagal, konflik ([Refresh] [Review Changes]).
+- [ ] Test backend: duplikat, konflik, item tidak valid tidak menggagalkan item lain; uji manual mode pesawat.
+
+### T16 — Push notification · M
+**Tergantung:** T15, D3 (project Firebase)
+- [ ] Backend: `POST/DELETE /devices`, channel `push` di pengiriman notifikasi (job antrean).
+- [ ] Event: PTP due today, PTP broken, new assignment, visit reminder, payment verified/rejected, dispute/escalation update, pesan supervisor.
+- [ ] Flutter: `firebase_messaging` + `flutter_local_notifications`, deep link ke akun/PTP/payment, permission `POST_NOTIFICATIONS`.
+
+### T17 — Hardening, UAT & rollout · M
+**Tergantung:** semua
+- [ ] Audit N+1 (query log di test), index sesuai pola filter, cache dashboard.
+- [ ] Review keamanan: setiap endpoint `/collector/*` & `/collection/*` diuji akses lintas role.
+- [ ] UAT per role dengan skenario §14; perbaikan.
+- [ ] Rollout produksi berurutan:
+  1. Deploy backend + migrasi (dijalankan oleh tim deploy, di luar sesi pengembangan).
+  2. `php artisan collection:refresh-account-states` (backfill).
+  3. Seeder permission.
+  4. Aktifkan scheduler (`evaluate-promises`, auto-eskalasi, refresh state).
+  5. Deploy web.
+  6. Rilis APK ke collector pilot (1–2 orang) → seluruh collector.
+  7. Nyalakan `payment_requires_verification` setelah Finance siap dengan antrean verifikasi.
+- [ ] Update `docs/REVISION_ROADMAP.md` dan `docs/DEPLOYMENT.md`.
+
+### 13.4 Ringkasan estimasi
+
+| Jalur | Tahap | Estimasi (1 dev) |
+|---|---|---|
+| Fondasi | T0–T3 | ± 3–4 minggu |
+| Web + backend fitur | T4–T12 | ± 7–9 minggu |
+| Flutter | T13–T16 | ± 6–8 minggu (paralel mulai minggu ke-4) |
+| Hardening & rollout | T17 | ± 1–2 minggu |
+| **Total** | | **± 12–14 minggu dengan 2 developer paralel**; ± 18–22 minggu dengan 1 developer |
+
+Setiap tahap tidak mengubah perilaku loket, resident portal, atau billing, kecuali D1 di T7 (di balik feature flag).
 
 ---
 

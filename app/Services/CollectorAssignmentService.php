@@ -74,4 +74,46 @@ class CollectorAssignmentService
     {
         abort_unless($this->isUnitAssigned($collector, $unitId), 403, 'Unit ini tidak ditugaskan kepada Anda.');
     }
+
+    /**
+     * Kebalikan dari unitIdsFor(): collector utama untuk sekumpulan unit sekaligus (cache
+     * collection account, monitoring supervisor). Memakai definisi assignment "aktif & berlaku"
+     * yang sama dengan unitIdsFor() supaya keduanya tidak pernah berbeda. Bila beberapa
+     * assignment mencakup unit yang sama, scope paling spesifik menang (unit > resident >
+     * block > cluster), lalu assignment terbaru.
+     *
+     * @param  iterable<Unit>  $units
+     * @return array<string, int> unit_id => collector_id
+     */
+    public function primaryCollectorIdsFor(iterable $units): array
+    {
+        $assignments = CollectorAssignment::query()
+            ->active()
+            ->currentlyEffective()
+            ->orderByDesc('id')
+            ->get(['id', 'collector_id', 'scope_type', 'cluster_id', 'block', 'unit_id', 'resident_id']);
+
+        if ($assignments->isEmpty()) {
+            return [];
+        }
+
+        $byUnit = $assignments->where('scope_type', 'unit')->groupBy('unit_id');
+        $byResident = $assignments->where('scope_type', 'resident')->groupBy('resident_id');
+        $byBlock = $assignments->where('scope_type', 'block')->groupBy(fn ($a) => $a->cluster_id.'|'.$a->block);
+        $byCluster = $assignments->where('scope_type', 'cluster')->groupBy('cluster_id');
+
+        $map = [];
+        foreach ($units as $unit) {
+            $match = $byUnit->get($unit->id)?->first()
+                ?? ($unit->resident_id ? $byResident->get($unit->resident_id)?->first() : null)
+                ?? $byBlock->get($unit->cluster_id.'|'.$unit->block)?->first()
+                ?? $byCluster->get($unit->cluster_id)?->first();
+
+            if ($match) {
+                $map[$unit->id] = (int) $match->collector_id;
+            }
+        }
+
+        return $map;
+    }
 }

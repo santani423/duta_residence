@@ -19,3 +19,8 @@ Schedule::command('billings:notify-penalty-changes')
 Schedule::command('supervisor:generate-notifications')
     ->hourly()
     ->withoutOverlapping();
+
+// Jaring pengaman cache status akun penagihan (refresh per-event sudah berjalan lewat observer).
+Schedule::command('collection:refresh-account-states')
+    ->hourly()
+    ->withoutOverlapping();

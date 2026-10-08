@@ -37,6 +37,8 @@ class PaymentTransaction extends Model
         'manual_sender_account_number', 'manual_amount', 'manual_transfer_date',
         'manual_notes', 'manual_proof_uploaded_at',
         'verification_notes', 'verified_by', 'verified_at', 'provider_payload', 'created_by',
+        'collected_by', 'collected_at', 'collection_latitude', 'collection_longitude',
+        'revision_notes', 'revision_requested_at', 'rejection_reason', 'client_uuid', 'version',
     ];
 
     protected $appends = ['payment_method_label'];
@@ -53,6 +55,11 @@ class PaymentTransaction extends Model
         'manual_proof_uploaded_at' => 'datetime',
         'verified_at' => 'datetime',
         'provider_payload' => 'array',
+        'collected_at' => 'datetime',
+        'collection_latitude' => 'decimal:7',
+        'collection_longitude' => 'decimal:7',
+        'revision_requested_at' => 'datetime',
+        'version' => 'integer',
     ];
 
     public function getPaymentMethodLabelAttribute(): ?string

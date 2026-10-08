@@ -17,12 +17,13 @@ class CollectorTarget extends Model
 
     protected $fillable = [
         'collector_id', 'period_type', 'period_start', 'target_amount',
-        'target_visit_count', 'created_by',
+        'target_visit_count', 'target_account_count', 'target_collection_rate', 'created_by',
     ];
 
     protected $casts = [
         'period_start' => 'date',
         'target_amount' => 'decimal:2',
+        'target_collection_rate' => 'decimal:2',
     ];
 
     public function collector()
