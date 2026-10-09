@@ -7,7 +7,6 @@ use App\Http\Responses\ApiResponse;
 use App\Models\CollectorTarget;
 use App\Models\PaymentPromise;
 use App\Models\PaymentTransaction;
-use App\Models\User;
 use App\Services\CollectorPerformanceService;
 use App\Services\SupervisorAssignmentService;
 use App\Support\Pagination;
@@ -32,25 +31,24 @@ class SupervisorMonitoringController extends Controller
         ]);
 
         $collectorIds = $scopeService->collectorIdsFor($request->user());
-        $periodType = $data['period_type'] ?? 'monthly';
-        $periodStart = $data['period_start'] ?? now()->startOfMonth()->toDateString();
+        // Default & normalisasi mengikuti jenis periode (harian = hari ini, mingguan = Senin).
+        $period = $performanceService->resolvePeriod($data['period_type'] ?? 'monthly', $data['period_start'] ?? null);
 
         $targets = CollectorTarget::query()
             ->whereIn('collector_id', $collectorIds)
-            ->where('period_type', $periodType)
-            ->whereDate('period_start', $periodStart)
+            ->where('period_type', $period['type'])
+            ->whereDate('period_start', $period['start_date'])
             ->with('collector')
             ->get();
 
-        $rows = $targets->map(function (CollectorTarget $target) use ($performanceService, $periodType, $periodStart) {
-            $achievement = $performanceService->achievementFor($target->collector, $periodType, $periodStart);
+        // Satu batch metrik untuk semua collector bertarget (tanpa N+1).
+        $metrics = $performanceService->metricsFor($targets->pluck('collector_id')->all(), $period);
 
-            return [
-                'collector' => $target->collector,
-                'target' => $target,
-                'achievement' => $achievement,
-            ];
-        });
+        $rows = $targets->map(fn (CollectorTarget $target) => [
+            'collector' => $target->collector,
+            'target' => $target,
+            'achievement' => $performanceService->achievementFromMetrics($metrics[(int) $target->collector_id], $period),
+        ])->values();
 
         return $this->success($rows);
     }

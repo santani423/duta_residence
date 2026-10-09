@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\CollectorAssignment;
+use App\Models\CollectorProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -112,6 +113,8 @@ class CollectorManagementTest extends TestCase
 
         $response = $this->postJson("/api/v1/collector-assignments/{$assignmentId}/reassign", [
             'new_collector_id' => $collectorB->id,
+            // `reason` wajib untuk reassign (keputusan #5); notes tetap opsional.
+            'reason' => 'Collector A resigned.',
             'notes' => 'Collector A resigned.',
         ])->assertCreated();
 
@@ -324,7 +327,7 @@ class CollectorManagementTest extends TestCase
             'name' => $csUser->name, 'username' => $csUser->username, 'role' => 'collector',
         ])->assertStatus(422);
 
-        $this->assertSame(0, \App\Models\CollectorProfile::whereIn('user_id', [
+        $this->assertSame(0, CollectorProfile::whereIn('user_id', [
             User::where('username', 'orphan.attempt')->value('id') ?? 0,
         ])->count());
     }

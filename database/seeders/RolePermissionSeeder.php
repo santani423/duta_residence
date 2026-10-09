@@ -209,7 +209,7 @@ class RolePermissionSeeder extends Seeder
                 'collector-performance.view',
                 'collector-evidence.view', 'collector-evidence.upload',
                 'collector-complaints.view',
-                'collection-letters.view',
+                'collection-letters.view', 'collection-letters.create', 'collection-letters.download',
                 'collector.detail', 'collector.location_view',
                 'installment-plans.view', 'installment-plans.submit',
                 'collection-accounts.view',

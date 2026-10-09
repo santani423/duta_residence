@@ -35,13 +35,20 @@ const SCOPE_LABELS = { cluster: 'Cluster', block: 'Blok', unit: 'Unit', resident
 const PRIORITY_LABELS = { low: 'Rendah', normal: 'Normal', high: 'Tinggi', urgent: 'Mendesak', critical: 'Kritis' };
 const PERIOD_LABELS = { daily: 'Harian', weekly: 'Mingguan', monthly: 'Bulanan' };
 const EMPLOYMENT_LABELS = { tetap: 'Tetap', kontrak: 'Kontrak', harian: 'Harian' };
+const PROMISE_STATUS_LABELS = {
+  pending: 'Menunggu', fulfilled: 'Ditepati', broken: 'Diingkari', rescheduled: 'Dijadwalkan Ulang', cancelled: 'Dibatalkan',
+};
 const SORTABLE_ACCOUNT_FIELDS = { outstanding_total: 'outstanding_total', aging_days: 'aging_days', last_contact_at: 'last_contact_at', priority_score: 'priority_score' };
 
 // Query yang terpengaruh saat penugasan dipindahkan.
 const ASSIGNMENT_AFFECTED_QUERY_KEYS = ['collectors', 'collector-assignments', 'collection', 'collector-performance', 'supervisor-collectors'];
 
 function scopeSummary(record) {
-  if (record.scope_type === 'cluster') return `Cluster ${record.cluster?.name || record.cluster_id}`;
+  if (record.scope_type === 'cluster') {
+    const name = record.cluster?.name || record.cluster_id;
+    // Nama cluster umumnya sudah diawali "Cluster" (mis. "Cluster Alamanda").
+    return /^cluster\b/i.test(String(name)) ? name : `Cluster ${name}`;
+  }
   if (record.scope_type === 'block') return `${record.cluster?.name || record.cluster_id} — Blok ${record.block}`;
   if (record.scope_type === 'unit') return `Unit ${record.unit_id}`;
   if (record.scope_type === 'resident') return `Penghuni ${record.resident?.name || record.resident_id}`;
@@ -89,9 +96,14 @@ export default function CollectorDetailPage() {
   const { can } = useAuth();
   const [reassignModal, setReassignModal] = useState(null);
   const [reassignForm] = Form.useForm();
+  const [historyPage, setHistoryPage] = useState({ page: 1, per_page: 20 });
 
   const detail = useQuery({ queryKey: ['collectors', id], queryFn: () => api.collectors.detail(id) });
-  const history = useQuery({ queryKey: ['collectors', id, 'assignment-history'], queryFn: () => api.collectors.assignmentHistory(id) });
+  // Log audit penugasan, dipaginasi backend (default 20, maks 100).
+  const history = useQuery({
+    queryKey: ['collectors', id, 'assignment-history', historyPage],
+    queryFn: () => api.collectors.assignmentHistory(id, historyPage),
+  });
 
   const reassign = useMutation({
     mutationFn: ({ assignmentId, values }) => api.collectorAssignments.reassign(assignmentId, {
@@ -139,20 +151,19 @@ export default function CollectorDetailPage() {
   const payload = detail.data?.data || {};
   const collector = payload.collector || {};
   const profile = collector.collector_profile || {};
+  // GET /collectors/{id} → summary datar: beban akun (collection_account_states, diiris ke cakupan
+  // supervisor) + metrik bulan berjalan (collected_this_month, visit_count, ptp_*) + period {type,start,end}.
   const summary = payload.summary || {};
-  // Ringkasan baru (states + metrik bulan berjalan); toleran bila metrik dibungkus objek tersendiri.
-  const metrics = summary.metrics || summary.this_month || summary.month || {};
   const pick = (...keys) => {
     for (const key of keys) {
       if (summary[key] !== undefined && summary[key] !== null) return summary[key];
-      if (metrics[key] !== undefined && metrics[key] !== null) return metrics[key];
     }
     return null;
   };
   const photoUrl = photoUrlOf(profile);
   const assignments = payload.assignments || [];
-  const collected = pick('collected_this_month', 'collected_amount');
-  const target = pick('target_this_month', 'target_amount');
+  const collected = pick('collected_this_month');
+  const target = pick('target_this_month');
   const achievement = pick('achievement_percent_raw');
   const achievementValue = achievement !== null ? Number(achievement) : (Number(target) > 0 ? (Number(collected || 0) / Number(target)) * 100 : null);
   const visitCount = pick('visit_count');
@@ -161,6 +172,12 @@ export default function CollectorDetailPage() {
   const ptpFulfilled = pick('ptp_fulfilled');
   const ptpBroken = pick('ptp_broken');
   const totalUnits = pick('total_units');
+  // Termasuk penugasan aktif yang dijadwalkan mulai nanti (definisi sama dengan guard nonaktif/hapus).
+  const activeAssignmentCount = pick('active_assignment_count') ?? assignments.length;
+  const scheduledCount = Math.max(0, Number(activeAssignmentCount) - assignments.length);
+  const periodLabel = summary.period?.start
+    ? `${formatDate(summary.period.start)} – ${formatDate(summary.period.end)}`
+    : null;
   const dutyStart = formatTime(profile.duty_start_time);
   const dutyEnd = formatTime(profile.duty_end_time);
 
@@ -308,7 +325,7 @@ export default function CollectorDetailPage() {
                     columns={[
                       { title: 'Unit', dataIndex: 'unit_id' },
                       { title: 'Jumlah', dataIndex: 'promised_amount', render: formatCurrency },
-                      { title: 'Status', dataIndex: 'status' },
+                      { title: 'Status', dataIndex: 'status', render: (value) => PROMISE_STATUS_LABELS[value] || value || '-' },
                       { title: 'Tanggal Janji', dataIndex: 'promised_date', render: (value) => formatDate(value) },
                     ]}
                   />
@@ -345,6 +362,8 @@ export default function CollectorDetailPage() {
           <ResponsiveTable
             query={history}
             scrollX={720}
+            onChange={(pagination) => setHistoryPage({ page: pagination.current || 1, per_page: pagination.pageSize || 20 })}
+            {...(history.isError ? {} : { locale: { emptyText: <EmptyData description="Belum ada log perubahan penugasan." /> } })}
             columns={[
               { title: 'Waktu', dataIndex: 'created_at', width: 170, render: (value) => formatDateTime(value) },
               { title: 'Aktivitas', dataIndex: 'activity' },
@@ -401,6 +420,7 @@ export default function CollectorDetailPage() {
             title="Tertagih Bulan Ini"
             value={collected}
             format="currency"
+            hint={periodLabel ? `Periode ${periodLabel}. Pembayaran lunas yang ditagih kolektor ini.` : undefined}
             progress={Number(target) > 0 ? achievementValue : null}
             status={achievementValue >= 100 ? 'good' : (achievementValue >= 50 ? 'warning' : 'critical')}
             footer={<Typography.Text type="secondary">{Number(target) > 0 ? `Target ${formatCurrency(target)}` : 'Target bulan ini belum diatur'}</Typography.Text>}
@@ -425,7 +445,14 @@ export default function CollectorDetailPage() {
           />
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <StatCard title="Penugasan Aktif" value={assignments.length} format="number" />
+          <StatCard
+            title="Penugasan Aktif"
+            value={activeAssignmentCount}
+            format="number"
+            footer={scheduledCount > 0
+              ? <Typography.Text type="secondary">{scheduledCount} dijadwalkan mulai nanti</Typography.Text>
+              : null}
+          />
         </Col>
       </Row>
 
@@ -685,7 +712,8 @@ function LocationTab({ location }) {
 
   useEffect(() => {
     if (!location || !containerRef.current || mapRef.current) return undefined;
-    const point = [location.latitude, location.longitude];
+    // latitude/longitude dikirim sebagai string desimal ("-6.1234567").
+    const point = [Number(location.latitude), Number(location.longitude)];
     mapRef.current = L.map(containerRef.current).setView(point, 15);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',

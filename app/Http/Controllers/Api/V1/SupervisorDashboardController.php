@@ -69,10 +69,28 @@ class SupervisorDashboardController extends Controller
                 'broken_promise' => PaymentPromise::query()->whereIn('unit_id', $unitIds)->where('status', 'broken')->count(),
             ],
             'complaints' => ResidentComplaint::query()->whereIn('collector_id', $collectorIds)->where('status', '!=', 'closed')->count(),
-            'active_emergencies' => EmergencyAlert::query()->whereIn('unit_id', $unitIds)->where('status', 'active')->count(),
+            'active_emergencies' => EmergencyAlert::query()->where('status', 'active')
+                ->tap(fn ($q) => self::constrainEmergencies($q, $scopeService->hasFullScope($user), $unitIds, $collectorIds))
+                ->count(),
             'visits_today' => CollectorVisit::query()->whereIn('collector_id', $collectorIds)->whereDate('visit_date', now()->toDateString())->count(),
             'pending_approvals' => ApprovalRequest::query()->pending()->where(fn ($q) => $q->whereNull('related_collector_id')->orWhereIn('related_collector_id', $collectorIds))->count(),
             'unhandled_notifications' => SupervisorNotification::query()->unhandled()->where(fn ($q) => $q->whereNull('related_collector_id')->orWhereIn('related_collector_id', $collectorIds))->count(),
         ]);
+    }
+
+    /**
+     * Darurat aktif dalam cakupan: alert pada unit di cluster supervisor, PLUS SOS collector
+     * (unit_id NULL — aplikasi collector tidak mengirim unit) yang dikirim collector dalam
+     * cakupannya (dicocokkan lewat `created_by`). Full scope melihat semua alert.
+     */
+    public static function constrainEmergencies($query, bool $fullScope, array $unitIds, array $collectorIds)
+    {
+        if ($fullScope) {
+            return $query;
+        }
+
+        return $query->where(fn ($q) => $q
+            ->whereIn('unit_id', $unitIds)
+            ->orWhere(fn ($sos) => $sos->whereNull('unit_id')->whereIn('created_by', $collectorIds)));
     }
 }

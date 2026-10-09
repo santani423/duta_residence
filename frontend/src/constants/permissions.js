@@ -100,6 +100,11 @@ export const menuItems = [
     icon: UserSwitchOutlined,
     // Informatif saja: AppShell menampilkan grup bila minimal satu child lolos.
     permissions: ['collector.read', 'collector-assignments.view', 'collector-targets.view', 'collector-performance.view', 'collector-monitoring.view', 'collector-locations.view', 'collection-letters.view'],
+    // Akun yang HANYA ber-role collector punya collector-performance.view & collection-letters.view,
+    // tetapi menu miliknya sendiri sudah ada di level atas (Target & Performa, Surat Penagihan, ...).
+    // Grup admin ini disembunyikan untuk mereka supaya menu tidak dobel. User dengan role lain
+    // (mis. supervisor + collector) tetap melihat grup ini.
+    excludeWhenOnlyRoles: ['collector'],
     children: [
       { key: '/collection/monitoring', label: 'Monitoring Penagihan', icon: FundViewOutlined, permissions: ['collector-monitoring.view'] },
       { key: '/admin/collectors/list', label: 'Data Kolektor', icon: TeamOutlined, permissions: ['collector.read'] },

@@ -21,8 +21,10 @@ class CollectorTarget extends Model
     ];
 
     protected $casts = [
-        'period_start' => 'date',
+        'period_start' => 'date:Y-m-d',
         'target_amount' => 'decimal:2',
+        'target_visit_count' => 'integer',
+        'target_account_count' => 'integer',
         'target_collection_rate' => 'decimal:2',
     ];
 

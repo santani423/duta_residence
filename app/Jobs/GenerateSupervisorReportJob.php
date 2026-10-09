@@ -4,8 +4,8 @@ namespace App\Jobs;
 
 use App\Models\ReportExport;
 use App\Models\User;
+use App\Services\CollectionScopeService;
 use App\Services\CollectorPerformanceService;
-use App\Services\SupervisorAssignmentService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -25,7 +25,7 @@ class GenerateSupervisorReportJob implements ShouldQueue
 
     public function __construct(private readonly int $reportExportId) {}
 
-    public function handle(SupervisorAssignmentService $scopeService, CollectorPerformanceService $performanceService): void
+    public function handle(CollectionScopeService $scopeService, CollectorPerformanceService $performanceService): void
     {
         $export = ReportExport::query()->find($this->reportExportId);
         if (! $export) {
@@ -36,16 +36,24 @@ class GenerateSupervisorReportJob implements ShouldQueue
 
         try {
             $requester = User::query()->findOrFail($export->requested_by);
-            $collectorIds = $scopeService->collectorIdsFor($requester);
             $filters = $export->filters ?? [];
-            $periodType = $filters['period_type'] ?? 'monthly';
-            $periodStart = $filters['period_start'] ?? now()->startOfMonth()->toDateString();
+            $period = $performanceService->resolvePeriod($filters['period_type'] ?? 'monthly', $filters['period_start'] ?? null);
 
-            $rows = [['Kode Kolektor', 'Nama Kolektor', 'Target', 'Tercapai', 'Persentase', 'Jumlah Kunjungan']];
-            $collectors = User::query()->whereIn('id', $collectorIds)->with('collectorProfile')->get();
+            $rows = [[
+                'Kode Kolektor', 'Nama Kolektor', 'Target', 'Tercapai', 'Persentase', 'Jumlah Kunjungan',
+                'Kunjungan Berhasil', 'PTP Terpenuhi', 'Collection Rate', 'Tunggakan Saat Ini',
+            ]];
+
+            // Semua collector dalam cakupan peminta (full scope = semua collector), metrik dihitung
+            // dalam satu batch — tanpa query per collector.
+            $collectors = $scopeService->allCollectorsQuery($requester)
+                ->with('collectorProfile')
+                ->orderBy('name')
+                ->get();
+            $metrics = $performanceService->metricsFor($collectors->pluck('id')->all(), $period);
 
             foreach ($collectors as $collector) {
-                $achievement = $performanceService->achievementFor($collector, $periodType, $periodStart);
+                $achievement = $performanceService->achievementFromMetrics($metrics[(int) $collector->id], $period);
 
                 $rows[] = [
                     $collector->collectorProfile?->collector_code ?? '-',
@@ -54,6 +62,10 @@ class GenerateSupervisorReportJob implements ShouldQueue
                     $achievement['collected_amount'],
                     ($achievement['achievement_percent'] ?? 0).'%',
                     $achievement['visit_count'],
+                    $achievement['successful_visit_count'],
+                    $achievement['ptp_fulfilled'],
+                    $achievement['collection_rate'] === null ? '-' : $achievement['collection_rate'].'%',
+                    $achievement['outstanding_total'],
                 ];
             }
 

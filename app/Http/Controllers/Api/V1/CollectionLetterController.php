@@ -7,7 +7,9 @@ use App\Http\Responses\ApiResponse;
 use App\Models\CollectionLetter;
 use App\Models\Unit;
 use App\Services\AuditService;
+use App\Services\CollectionScopeService;
 use App\Services\CollectorAssignmentService;
+use App\Support\Pagination;
 use App\Support\UnitFilters;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -24,15 +26,20 @@ class CollectionLetterController extends Controller
         'final_notice' => 'Surat Peringatan Terakhir',
     ];
 
-    public function index(Request $request)
+    /**
+     * Daftar surat dibatasi ke unit dalam cakupan user: collector → unit yang ditugaskan,
+     * supervisor → unit di clusternya, full scope → semua.
+     */
+    public function index(Request $request, CollectionScopeService $scope)
     {
         $query = CollectionLetter::query()
             ->with(['unit.cluster', 'resident', 'billing', 'generatedBy'])
+            ->tap(fn ($q) => $scope->constrainUnits($q, $request->user(), 'collection_letters.unit_id'))
             ->tap(fn ($q) => UnitFilters::apply($q, $request, except: ['resident_id']))
             ->when($request->query('resident_id'), fn ($q, $value) => $q->where('resident_id', $value))
             ->when($request->query('letter_type'), fn ($q, $value) => $q->where('letter_type', $value));
 
-        return $this->paginated($query->latest('generated_at')->paginate($request->integer('per_page', 15)));
+        return $this->paginated($query->latest('generated_at')->paginate(Pagination::perPage($request)));
     }
 
     public function store(Request $request, AuditService $auditService, CollectorAssignmentService $assignmentService)
@@ -76,8 +83,9 @@ class CollectionLetterController extends Controller
         return $this->success($letter->load('generatedBy'), 'Surat penagihan berhasil dibuat.', 201);
     }
 
-    public function download(CollectionLetter $collectionLetter)
+    public function download(Request $request, CollectionLetter $collectionLetter, CollectionScopeService $scope)
     {
+        $scope->assertUnitInScope($request->user(), $collectionLetter->unit_id);
         abort_unless($collectionLetter->pdf_path && Storage::disk('public')->exists($collectionLetter->pdf_path), 404, 'Berkas surat tidak ditemukan.');
 
         return Storage::disk('public')->download($collectionLetter->pdf_path, "Surat-Penagihan-{$collectionLetter->id}.pdf");

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\CollectorLocation;
 use App\Models\EmergencyAlert;
+use App\Models\User;
 use App\Services\SupervisorAssignmentService;
 use Illuminate\Http\Request;
 
@@ -31,11 +32,18 @@ class SupervisorMapController extends Controller
 
         $locations = CollectorLocation::query()->with('collector.collectorProfile')->whereIn('id', $latestIds)->get();
 
+        // Termasuk SOS collector (unit_id NULL) dari collector dalam cakupan - lihat
+        // SupervisorDashboardController::constrainEmergencies.
         $emergencies = EmergencyAlert::query()
             ->where('status', 'active')
-            ->whereIn('unit_id', $unitIds)
+            ->tap(fn ($q) => SupervisorDashboardController::constrainEmergencies($q, $scopeService->hasFullScope($request->user()), $unitIds, $collectorIds))
             ->with(['unit.cluster', 'resident'])
+            ->latest()
             ->get();
+
+        // Pengirim alert (tambahan field `reporter`, agar SOS tanpa unit tetap bisa dikenali).
+        $reporters = User::query()->whereIn('id', $emergencies->pluck('created_by')->filter()->unique())->get(['id', 'name'])->keyBy('id');
+        $emergencies->each(fn (EmergencyAlert $alert) => $alert->setRelation('reporter', $reporters->get($alert->created_by)));
 
         return $this->success([
             'collector_locations' => $locations,

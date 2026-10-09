@@ -20,6 +20,7 @@ import {
   Select,
   Skeleton,
   Space,
+  Switch,
   Table,
   Tag,
   Typography,
@@ -213,13 +214,16 @@ export default function CollectionMonitoringPage() {
 
   const { filters } = table;
   const params = useMemo(() => {
-    const { collector, ...rest } = table.params;
+    const { collector, include_settled: includeSettled, ...rest } = table.params;
     const min = debouncedRange.min ?? undefined;
     const max = debouncedRange.max ?? undefined;
     return {
       ...rest,
       collector_id: collector && collector !== UNASSIGNED ? collector : undefined,
       unassigned: collector === UNASSIGNED ? 1 : undefined,
+      // Backend default has_outstanding=1 (hanya akun bertunggakan); 0 = ikut tampilkan akun lunas.
+      // Filter status "Lunas" otomatis ikut menyertakan akun tanpa tunggakan.
+      has_outstanding: includeSettled || nonEmptyArray(rest.status)?.includes('paid') ? 0 : undefined,
       status: nonEmptyArray(rest.status),
       aging_bucket: nonEmptyArray(rest.aging_bucket),
       priority: nonEmptyArray(rest.priority),
@@ -501,6 +505,14 @@ export default function CollectionMonitoringPage() {
             aria-label="Tunggakan maksimum"
           />
         </div>
+        <Space>
+          <Switch
+            checked={Boolean(filters.include_settled)}
+            onChange={(checked) => patchFilters({ include_settled: checked || undefined })}
+            aria-label="Tampilkan juga akun tanpa tunggakan"
+          />
+          <Typography.Text>Termasuk akun lunas</Typography.Text>
+        </Space>
       </FilterBar>
 
       {showOverview ? (

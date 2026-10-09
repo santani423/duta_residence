@@ -5,8 +5,8 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Notifications\ResetPasswordNotification;
 use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -72,6 +72,19 @@ class User extends Authenticatable
     public function sendPasswordResetNotification($token): void
     {
         $this->notify(new ResetPasswordNotification($token, $this->email));
+    }
+
+    /**
+     * Keluarkan akun dari semua perangkat: hapus semua token Sanctum dan lepas penanda sesi
+     * tunggal. Dipakai saat akun staff dinonaktifkan, dihapus, atau username-nya diganti.
+     */
+    public function revokeApiTokens(): void
+    {
+        $this->tokens()->delete();
+
+        if ($this->active_token_id !== null) {
+            $this->forceFill(['active_token_id' => null])->saveQuietly();
+        }
     }
 
     public function auditLogs()

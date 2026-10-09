@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\CollectorLocation;
+use App\Services\CollectionScopeService;
+use App\Support\Pagination;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -59,21 +61,35 @@ class CollectorLocationController extends Controller
         }
     }
 
-    public function index(Request $request)
+    /**
+     * Riwayat ping lokasi. Collector hanya melihat ping dirinya sendiri, supervisor hanya
+     * collector dalam cakupannya, full scope melihat semua (CollectionScopeService).
+     */
+    public function index(Request $request, CollectionScopeService $scope)
     {
+        $user = $request->user();
+
+        if ($collectorId = $request->query('collector_id')) {
+            $scope->assertCollectorInScope($user, (int) $collectorId);
+        }
+
         $query = CollectorLocation::query()
             ->with('collector')
-            ->when($request->query('collector_id'), fn ($q, $value) => $q->where('collector_id', $value))
+            ->tap(fn ($q) => $scope->constrainCollectors($q, $user, 'collector_locations.collector_id'))
+            ->when($request->query('collector_id'), fn ($q, $value) => $q->where('collector_id', (int) $value))
             ->when($request->query('since'), fn ($q, $value) => $q->where('recorded_at', '>=', $value));
 
-        return $this->paginated($query->latest('recorded_at')->paginate($request->integer('per_page', 50)));
+        return $this->paginated($query->latest('recorded_at')->paginate(Pagination::perPage($request, 50)));
     }
 
-    /** Latest ping per active collector, for the live monitoring map. */
-    public function latest()
+    /** Ping terakhir per collector (dalam cakupan user), untuk peta pemantauan real-time. */
+    public function latest(Request $request, CollectionScopeService $scope)
     {
+        $user = $request->user();
+
         $latestIds = CollectorLocation::query()
             ->selectRaw('MAX(id) as id')
+            ->tap(fn ($q) => $scope->constrainCollectors($q, $user, 'collector_id'))
             ->groupBy('collector_id');
 
         $locations = CollectorLocation::query()

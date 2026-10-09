@@ -3,6 +3,7 @@ import { TrophyOutlined } from '@ant-design/icons';
 import { useIsFetching, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, Cell, Tooltip, XAxis, YAxis } from 'recharts';
 import PageHeader from '../components/common/PageHeader.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
@@ -398,7 +399,12 @@ function SingleCollectorView({ isCollector }) {
   });
 
   const data = performance.data?.data;
-  const achievement = data?.achievement_percent_raw ?? data?.achievement_percent;
+  // Backend (achievementFor) selalu mengirim target_amount angka (0 bila tanpa target, demi Flutter);
+  // keberadaan target dibaca dari target_id. achievement_percent_raw = null bila tanpa target.
+  const hasTarget = Boolean(data?.target_id) || (data?.target_id === undefined && Number(data?.target_amount) > 0);
+  const achievement = hasTarget
+    ? (data?.achievement_percent_raw !== undefined ? data.achievement_percent_raw : data?.achievement_percent)
+    : null;
   const achievementStatus = isBlank(achievement) ? undefined : (Number(achievement) >= 100 ? 'good' : (Number(achievement) >= 70 ? undefined : 'warning'));
   const visitPercent = data?.visit_achievement_percent
     ?? (data?.target_visit_count ? (Number(data.visit_count || 0) / Number(data.target_visit_count)) * 100 : null);
@@ -422,7 +428,7 @@ function SingleCollectorView({ isCollector }) {
               value={data?.collected_amount}
               format="currency"
               loading={performance.isLoading}
-              footer={<Typography.Text type="secondary">Target {isBlank(data?.target_amount) ? 'belum ditetapkan' : formatCurrency(data.target_amount)}</Typography.Text>}
+              footer={<Typography.Text type="secondary">Target {hasTarget ? formatCurrency(data.target_amount) : 'belum ditetapkan'}</Typography.Text>}
             />
           </Col>
           <Col xs={24} md={8}>
@@ -466,6 +472,23 @@ function SingleCollectorView({ isCollector }) {
               />
             </Col>
           ) : null}
+          {!isBlank(data?.assigned_accounts) ? (
+            <Col xs={24} md={8}>
+              <StatCard
+                title="Akun Ditangani"
+                value={data.assigned_accounts}
+                format="number"
+                progress={isBlank(data?.account_achievement_percent) ? null : data.account_achievement_percent}
+                hint="Jumlah akun penagihan yang saat ini menjadi tanggung jawab kolektor (bukan per periode)."
+                footer={(
+                  <Typography.Text type="secondary">
+                    Tunggakan saat ini {formatCurrency(data.outstanding_total || 0)}
+                    {!isBlank(data?.overdue_accounts) ? ` · ${formatMetric(data.overdue_accounts, 'number')} menunggak` : ''}
+                  </Typography.Text>
+                )}
+              />
+            </Col>
+          ) : null}
         </Row>
       </div>
     );
@@ -485,8 +508,13 @@ function SingleCollectorView({ isCollector }) {
 }
 
 export default function CollectorPerformancePage() {
-  const { hasRole, can } = useAuth();
-  const isCollector = hasRole('collector');
+  const { roles, can } = useAuth();
+  const location = useLocation();
+  // Mode "milik sendiri": rute /collector/performance, atau akun yang hanya ber-role collector
+  // (backend menolak collector melihat performa collector lain). User multi-role (mis.
+  // supervisor + collector) di /admin/collectors/performance tetap melihat tampilan admin.
+  const isCollector = location.pathname.startsWith('/collector/')
+    || (roles.length > 0 && roles.every((role) => role === 'collector'));
   const showRanking = !isCollector && can('collector-monitoring.view');
   const queryClient = useQueryClient();
   const queryKey = showRanking ? ['collection', 'performance'] : ['collector-performance'];

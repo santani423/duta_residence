@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Jobs\GenerateSupervisorReportJob;
 use App\Models\ReportExport;
+use App\Services\CollectorPerformanceService;
+use App\Support\Pagination;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -20,7 +22,7 @@ class SupervisorReportController extends Controller
             ->where('requested_by', $request->user()->id)
             ->when($request->query('status'), fn ($q, $value) => $q->where('status', $value));
 
-        return $this->paginated($query->latest()->paginate($request->integer('per_page', 15)));
+        return $this->paginated($query->latest()->paginate(Pagination::perPage($request)));
     }
 
     /**
@@ -28,7 +30,7 @@ class SupervisorReportController extends Controller
      * first background job in this codebase. Small single-period reports stay synchronous
      * through the existing ReportController/DocumentController endpoints, unchanged.
      */
-    public function store(Request $request)
+    public function store(Request $request, CollectorPerformanceService $performanceService)
     {
         $data = $request->validate([
             'type' => ['required', Rule::in(['collector_performance'])],
@@ -37,13 +39,16 @@ class SupervisorReportController extends Controller
             'period_start' => ['nullable', 'date'],
         ]);
 
+        // Default & normalisasi awal periode mengikuti jenis periode (harian/mingguan/bulanan).
+        $period = $performanceService->resolvePeriod($data['period_type'] ?? 'monthly', $data['period_start'] ?? null);
+
         $export = ReportExport::query()->create([
             'type' => $data['type'],
             'format' => $data['format'] ?? 'csv',
             'status' => ReportExport::STATUS_QUEUED,
             'filters' => [
-                'period_type' => $data['period_type'] ?? 'monthly',
-                'period_start' => $data['period_start'] ?? now()->startOfMonth()->toDateString(),
+                'period_type' => $period['type'],
+                'period_start' => $period['start_date'],
             ],
             'requested_by' => $request->user()->id,
         ]);

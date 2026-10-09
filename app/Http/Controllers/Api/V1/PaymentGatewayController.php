@@ -11,6 +11,7 @@ use App\Models\PaymentGatewaySetting;
 use App\Models\PaymentTransaction;
 use App\Models\PaymentWebhookEvent;
 use App\Services\AuditService;
+use App\Services\CollectionScopeService;
 use App\Services\NotificationPresenter;
 use App\Services\Payments\PaymentGatewayFactory;
 use App\Services\PaymentSchemeService;
@@ -32,10 +33,12 @@ class PaymentGatewayController extends Controller
         return $this->success(PaymentGatewaySetting::current()->publicConfig());
     }
 
-    public function index(Request $request)
+    public function index(Request $request, CollectionScopeService $scope)
     {
         $query = PaymentTransaction::query()
             ->with(['unit.cluster', 'unit.resident', 'billings', 'verifier'])
+            // Collector hanya melihat transaksi unit yang ditugaskan kepadanya.
+            ->when($scope->isCollectorScope($request->user()), fn ($q) => $scope->constrainUnits($q, $request->user(), 'payment_transactions.unit_id'))
             ->when($request->query('search'), fn ($q, $value) => $q->where(fn ($inner) => $inner
                 ->where('transaction_number', 'like', "%{$value}%")
                 ->orWhere('invoice_number', 'like', "%{$value}%")
@@ -57,8 +60,13 @@ class PaymentGatewayController extends Controller
         return $this->paginated($query->orderByDesc('updated_at')->orderByDesc('id')->paginate($request->integer('per_page', 15)));
     }
 
-    public function show(PaymentTransaction $transaction)
+    public function show(Request $request, PaymentTransaction $transaction, CollectionScopeService $scope)
     {
+        // Kolektor hanya boleh membuka transaksi unit yang ditugaskan kepadanya (cegah IDOR by id).
+        if ($scope->isCollectorScope($request->user())) {
+            $scope->assertUnitInScope($request->user(), (string) $transaction->unit_id);
+        }
+
         return $this->success($transaction->load(['unit.cluster', 'unit.resident', 'billings', 'verifier']));
     }
 

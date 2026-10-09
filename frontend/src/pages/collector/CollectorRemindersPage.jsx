@@ -1,9 +1,10 @@
-import { Button, Card, Empty, Form, Input, List, Select, Space, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Empty, Form, Input, List, Select, Space, Tag, Typography, message } from 'antd';
 import { WhatsAppOutlined } from '@ant-design/icons';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import dayjs from 'dayjs';
 import PageHeader from '../../components/common/PageHeader.jsx';
+import { ErrorState, LogoSpinner } from '../../components/common/ApiState.jsx';
 import { useDebounce } from '../../hooks/useDebounce.js';
 import { api } from '../../services/estateApi.js';
 import { buildWhatsAppLink } from '../../utils/whatsapp.js';
@@ -20,7 +21,14 @@ export default function CollectorRemindersPage() {
   const units = useQuery({ queryKey: ['units', 'search', debounced], queryFn: () => api.units.list({ search: debounced || undefined, per_page: 20 }) });
   const options = (units.data?.data || []).map((unit) => ({ value: unit.id, label: `${unit.id} — ${unit.resident?.name || ''}`, unit }));
 
-  const history = useQuery({ queryKey: ['collector-reminders', selectedUnit?.id], queryFn: () => api.collectorReminders.list({ unit_id: selectedUnit.id }), enabled: Boolean(selectedUnit) });
+  const history = useQuery({
+    queryKey: ['collector-reminders', selectedUnit?.id],
+    queryFn: () => api.collectorReminders.list({ unit_id: selectedUnit.id }),
+    enabled: Boolean(selectedUnit),
+    retry: (count, error) => error?.status !== 403 && count < 2,
+  });
+  const historyItems = Array.isArray(history.data?.data) ? history.data.data : [];
+  const unitWithoutResident = Boolean(selectedUnit) && !selectedUnit.resident_id && !selectedUnit.resident;
 
   const logReminder = useMutation({
     mutationFn: (payload) => api.collectorReminders.create(payload),
@@ -41,6 +49,10 @@ export default function CollectorRemindersPage() {
     const values = form.getFieldsValue();
     if (!selectedUnit) {
       message.warning('Pilih unit terlebih dahulu.');
+      return;
+    }
+    if (unitWithoutResident) {
+      message.warning('Unit ini belum memiliki penghuni terdaftar, pengingat tidak dapat dicatat.');
       return;
     }
     const link = buildWhatsAppLink(values.phone, values.message);
@@ -73,6 +85,14 @@ export default function CollectorRemindersPage() {
               notFoundContent={units.isFetching ? 'Mencari...' : 'Tidak ditemukan'}
             />
           </Form.Item>
+          {unitWithoutResident ? (
+            <Alert
+              type="warning"
+              showIcon
+              style={{ marginBottom: 16 }}
+              title="Unit ini belum memiliki penghuni terdaftar, jadi pengingat tidak dapat dicatat."
+            />
+          ) : null}
           <Form.Item label="Nomor WhatsApp" name="phone" rules={[{ required: true, message: 'Nomor telepon wajib diisi' }]}>
             <Input placeholder="08xxxxxxxxxx" />
           </Form.Item>
@@ -90,9 +110,22 @@ export default function CollectorRemindersPage() {
 
       {selectedUnit ? (
         <Card title={`Riwayat Pengingat — ${selectedUnit.id}`}>
-          {(history.data?.data || []).length ? (
+          {history.isLoading ? <LogoSpinner size={40} /> : null}
+          {history.isError ? (
+            history.error?.status === 403 ? (
+              <Alert
+                type="info"
+                showIcon
+                title="Riwayat pengingat belum dapat ditampilkan untuk akun Anda."
+                description="Pengingat tetap tercatat setiap kali Anda menekan tombol di atas."
+              />
+            ) : (
+              <ErrorState error={history.error} onRetry={() => history.refetch()} />
+            )
+          ) : null}
+          {!history.isLoading && !history.isError && historyItems.length ? (
             <List
-              dataSource={history.data.data}
+              dataSource={historyItems}
               renderItem={(item) => (
                 <List.Item>
                   <List.Item.Meta
@@ -102,9 +135,10 @@ export default function CollectorRemindersPage() {
                 </List.Item>
               )}
             />
-          ) : (
+          ) : null}
+          {!history.isLoading && !history.isError && !historyItems.length ? (
             <Empty description="Belum ada pengingat untuk unit ini." />
-          )}
+          ) : null}
         </Card>
       ) : null}
     </section>

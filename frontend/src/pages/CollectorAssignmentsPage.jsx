@@ -125,7 +125,8 @@ function priorityLabel(value) {
 function scopeSummary(record) {
   if (!record) return '-';
   const clusterName = record.cluster?.name || record.cluster_id;
-  if (record.scope_type === 'cluster') return `Seluruh cluster ${clusterName}`;
+  // Nama cluster umumnya sudah diawali "Cluster" (mis. "Cluster Flamboyan").
+  if (record.scope_type === 'cluster') return /^cluster\b/i.test(String(clusterName)) ? `Seluruh ${clusterName}` : `Seluruh cluster ${clusterName}`;
   if (record.scope_type === 'block') return `${clusterName} · Blok ${record.block}`;
   if (record.scope_type === 'unit') return `Unit ${record.unit_id}`;
   if (record.scope_type === 'resident') return `Penghuni ${record.resident?.name || record.resident_id}`;
@@ -466,7 +467,7 @@ function AssignmentListTab() {
                   : 'Belum ada penugasan. Buka tab "Tugaskan" untuk memberi wilayah kerja ke kolektor.'}
               />
             ),
-          }}
+          }})}
         />
       </Card>
 
@@ -1119,7 +1120,7 @@ function BulkAssignForm({ initialRows = [] }) {
                     : 'Tidak ada unit yang cocok dengan filter.'}
                 />
               ),
-            }}
+            }})}
           />
         </Card>
       </AssignLayout>
@@ -1421,7 +1422,7 @@ function UnassignedUnitsTab({ canAssign, onAssign }) {
                   : 'Semua unit dalam wilayah Anda sudah memiliki kolektor.'}
               />
             ),
-          }}
+          }})}
         />
       </Card>
     </>

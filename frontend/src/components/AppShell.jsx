@@ -24,19 +24,28 @@ import HelpCenter from './help/HelpCenter.jsx';
 
 const { Header, Sider, Content } = Layout;
 
-function passesRoleGate(entry, hasRole) {
+// `excludeWhenOnlyRoles`: sembunyikan entri bila SEMUA role user ada di daftar ini
+// (mis. akun collector murni tidak perlu grup admin "Manajemen Kolektor").
+function isExcludedByRoles(entry, userRoles) {
+  const excluded = entry.excludeWhenOnlyRoles;
+  if (!excluded?.length || !userRoles?.length) return false;
+  return userRoles.every((role) => excluded.includes(role));
+}
+
+function passesRoleGate(entry, hasRole, userRoles) {
+  if (isExcludedByRoles(entry, userRoles)) return false;
   return !entry.roles?.length || entry.roles.some((role) => hasRole(role));
 }
 
-function passesGate(entry, canAny, hasRole) {
+function passesGate(entry, canAny, hasRole, userRoles) {
   const permissions = entry.permissions || [];
-  return passesRoleGate(entry, hasRole) && (permissions.length === 0 || canAny(permissions));
+  return passesRoleGate(entry, hasRole, userRoles) && (permissions.length === 0 || canAny(permissions));
 }
 
-// Parent bersub-menu hanya dicek role-nya; `permissions` parent diabaikan supaya
-// grup tetap tampil selama minimal satu child lolos (filter children di bawah).
-function passesParentGate(entry, canAny, hasRole) {
-  return entry.children ? passesRoleGate(entry, hasRole) : passesGate(entry, canAny, hasRole);
+// Parent bersub-menu hanya dicek role-nya (termasuk `excludeWhenOnlyRoles`); `permissions`
+// parent diabaikan supaya grup tetap tampil selama minimal satu child lolos (filter children di bawah).
+function passesParentGate(entry, canAny, hasRole, userRoles) {
+  return entry.children ? passesRoleGate(entry, hasRole, userRoles) : passesGate(entry, canAny, hasRole, userRoles);
 }
 
 function menuLabel(item, badgeCounts) {
@@ -51,16 +60,16 @@ function menuLabel(item, badgeCounts) {
   );
 }
 
-function buildMenuItems(canAny, hasRole, badgeCounts) {
+function buildMenuItems(canAny, hasRole, userRoles, badgeCounts) {
   return menuItems
-    .filter((item) => passesParentGate(item, canAny, hasRole))
+    .filter((item) => passesParentGate(item, canAny, hasRole, userRoles))
     .map((item) => {
       if (!item.children) {
         return { key: item.key, label: menuLabel(item, badgeCounts), icon: item.icon ? createElement(item.icon) : null };
       }
 
       const children = item.children
-        .filter((child) => passesGate(child, canAny, hasRole))
+        .filter((child) => passesGate(child, canAny, hasRole, userRoles))
         .map((child) => ({ key: child.key, label: menuLabel(child, badgeCounts), icon: child.icon ? createElement(child.icon) : null }));
 
       // A submenu with every child filtered out has nothing useful to show.
@@ -79,14 +88,14 @@ export default function AppShell() {
   const { token } = theme.useToken();
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.lg;
-  const { user, canAny, hasRole, logout } = useAuth();
+  const { user, roles: userRoles, canAny, hasRole, logout } = useAuth();
   const { mode, setMode } = useThemeMode();
   const siteName = useSiteIdentity();
   const navigate = useNavigate();
   const location = useLocation();
   const pendingPaymentVerificationCount = usePendingPaymentVerificationCount();
   const badgeCounts = useMemo(() => ({ '/payments': pendingPaymentVerificationCount }), [pendingPaymentVerificationCount]);
-  const items = useMemo(() => buildMenuItems(canAny, hasRole, badgeCounts), [canAny, hasRole, badgeCounts]);
+  const items = useMemo(() => buildMenuItems(canAny, hasRole, userRoles, badgeCounts), [canAny, hasRole, userRoles, badgeCounts]);
   const flatKeys = useMemo(() => flattenKeys(items), [items]);
   const selectedKey = flatKeys
     .filter((key) => key !== '/' && location.pathname.startsWith(key))

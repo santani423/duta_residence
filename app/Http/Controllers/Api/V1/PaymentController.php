@@ -7,6 +7,7 @@ use App\Http\Responses\ApiResponse;
 use App\Models\Billing;
 use App\Models\Receipt;
 use App\Models\Unit;
+use App\Services\CollectionScopeService;
 use App\Services\CollectorAssignmentService;
 use App\Services\PaymentService;
 use App\Services\PenaltyService;
@@ -128,10 +129,12 @@ class PaymentController extends Controller
         return $this->success($receipt, 'Pembayaran berhasil diproses.', 201);
     }
 
-    public function receipts(Request $request)
+    public function receipts(Request $request, CollectionScopeService $scope)
     {
         $query = Receipt::query()
             ->with('unit.cluster')
+            // Collector hanya melihat kuitansi unit yang ditugaskan kepadanya.
+            ->when($scope->isCollectorScope($request->user()), fn ($q) => $scope->constrainUnits($q, $request->user(), 'receipts.unit_id'))
             ->when($request->query('search'), fn ($q, $value) => $q->where(fn ($inner) => $inner
                 ->where('number', 'like', "%{$value}%")
                 ->orWhere('unit_id', 'like', "%{$value}%")
@@ -149,8 +152,13 @@ class PaymentController extends Controller
         return $this->paginated($query->latest('transaction_date')->paginate($request->integer('per_page', 15)));
     }
 
-    public function showReceipt(Receipt $receipt)
+    public function showReceipt(Request $request, Receipt $receipt, CollectionScopeService $scope)
     {
+        // Kolektor hanya boleh membuka kuitansi unit yang ditugaskan kepadanya (cegah IDOR by id).
+        if ($scope->isCollectorScope($request->user())) {
+            $scope->assertUnitInScope($request->user(), (string) $receipt->unit_id);
+        }
+
         return $this->success($receipt->load(['unit.cluster', 'billings']));
     }
 }

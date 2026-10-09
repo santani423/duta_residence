@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -56,5 +57,24 @@ class CollectorProfile extends Model
     public function currentPhoto()
     {
         return $this->photos()->first();
+    }
+
+    /** Foto profil terbaru (satu row) — untuk eager load di daftar tanpa memuat semua foto. */
+    public function latestPhoto()
+    {
+        return $this->morphOne(ManagedFile::class, 'entity')->latestOfMany();
+    }
+
+    /**
+     * URL publik foto terbaru. Tidak di-append global (hindari lazy load di setiap serialisasi
+     * profil); controller memanggil `->append('photo_url')` setelah eager load `latestPhoto`.
+     */
+    protected function photoUrl(): Attribute
+    {
+        return Attribute::get(function (): ?string {
+            $path = $this->latestPhoto?->path;
+
+            return $path ? asset('storage/'.$path) : null;
+        });
     }
 }

@@ -7,20 +7,35 @@ use App\Http\Responses\ApiResponse;
 use App\Models\CollectorReminder;
 use App\Models\Unit;
 use App\Services\AuditService;
+use App\Services\CollectionScopeService;
 use App\Services\CollectorAssignmentService;
+use App\Support\Pagination;
 use Illuminate\Http\Request;
 
 class CollectorReminderController extends Controller
 {
     use ApiResponse;
 
-    public function index(Request $request)
+    /**
+     * Riwayat pengingat WA, dibatasi ke unit dalam cakupan user. Collector boleh membaca
+     * riwayat unit yang ditugaskan kepadanya (halaman Pengingat WA memanggil
+     * `?unit_id=...`); unit di luar cakupan → 403, tanpa `unit_id` → hanya unit miliknya.
+     * Supervisor → unit di clusternya, full scope → semua.
+     */
+    public function index(Request $request, CollectionScopeService $scope)
     {
+        $user = $request->user();
+
+        if ($unitId = $request->query('unit_id')) {
+            $scope->assertUnitInScope($user, (string) $unitId);
+        }
+
         $query = CollectorReminder::query()
             ->with(['unit.cluster', 'resident', 'sender'])
+            ->tap(fn ($q) => $scope->constrainUnits($q, $user, 'collector_reminders.unit_id'))
             ->when($request->query('unit_id'), fn ($q, $value) => $q->where('unit_id', $value));
 
-        return $this->paginated($query->latest('sent_at')->paginate($request->integer('per_page', 15)));
+        return $this->paginated($query->latest('sent_at')->paginate(Pagination::perPage($request)));
     }
 
     /**

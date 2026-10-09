@@ -111,9 +111,11 @@ class SupervisorController extends Controller
         abort_unless($supervisor->hasRole('supervisor'), 404);
         $data = $this->validateSupervisor($request, $supervisor);
         $old = $supervisor->load('supervisorProfile')->toArray();
+        $usernameChanged = $data['username'] !== $supervisor->username;
 
         $supervisor->update([
             'name' => $data['name'],
+            'username' => $data['username'],
             'email' => $data['email'] ?? null,
             'phone' => $data['phone'] ?? null,
             'is_active' => $data['account_status'] === SupervisorProfile::STATUS_ACTIVE,
@@ -131,6 +133,11 @@ class SupervisorController extends Controller
             'updated_by' => $request->user()->id,
         ]);
 
+        // Ganti username atau status non-aktif → keluarkan dari semua perangkat.
+        if ($usernameChanged || $data['account_status'] !== SupervisorProfile::STATUS_ACTIVE) {
+            $supervisor->revokeApiTokens();
+        }
+
         $supervisor->refresh()->load('supervisorProfile');
         $auditService->log('supervisor_updated', 'supervisors', 'UPDATE', $supervisor, $old, $supervisor->toArray());
 
@@ -141,6 +148,7 @@ class SupervisorController extends Controller
     {
         abort_unless($supervisor->hasRole('supervisor'), 404);
         $old = $supervisor->toArray();
+        $supervisor->revokeApiTokens();
         $supervisor->delete();
         $auditService->log('supervisor_deleted', 'supervisors', 'DELETE', $supervisor, $old, []);
 
@@ -160,11 +168,15 @@ class SupervisorController extends Controller
         $supervisor->forceFill(['is_active' => $data['account_status'] === SupervisorProfile::STATUS_ACTIVE])->save();
         $supervisor->supervisorProfile->forceFill([
             'account_status' => $data['account_status'],
-            'admin_notes' => $data['reason']
+            'admin_notes' => ($data['reason'] ?? null)
                 ? trim(($supervisor->supervisorProfile->admin_notes ?? '')."\n[".now()->toDateTimeString()."] {$data['reason']}")
                 : $supervisor->supervisorProfile->admin_notes,
             'updated_by' => $request->user()->id,
         ])->save();
+
+        if ($data['account_status'] !== SupervisorProfile::STATUS_ACTIVE) {
+            $supervisor->revokeApiTokens();
+        }
 
         $supervisor->refresh()->load('supervisorProfile');
         $auditService->log('supervisor_status_changed', 'supervisors', 'UPDATE_STATUS', $supervisor, $old, $supervisor->toArray());

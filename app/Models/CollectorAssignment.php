@@ -28,8 +28,10 @@ class CollectorAssignment extends Model
     protected $casts = [
         'collector_id' => 'integer',
         'is_active' => 'boolean',
-        'start_date' => 'date',
-        'end_date' => 'date',
+        // Diserialisasi sebagai Y-m-d: cast 'date' biasa menghasilkan datetime UTC
+        // (mis. 2026-10-07T17:00:00Z untuk 8 Okt WIB) sehingga tanggal di web mundur sehari.
+        'start_date' => 'date:Y-m-d',
+        'end_date' => 'date:Y-m-d',
     ];
 
     public function collector()
@@ -85,14 +87,14 @@ class CollectorAssignment extends Model
      * "in effect right now" used both for scoping (CollectorAssignmentService)
      * and for admin "active assignments" listings, so the two can never disagree.
      *
-     * Uses whereDate() (not a raw string where()) because a `date`-cast column is
-     * persisted with a full "Y-m-d H:i:s" value (Eloquent always writes the
-     * connection's datetime format for date casts) - MySQL's native DATE column
-     * type silently truncates that to just the date, but SQLite (this app's test
-     * driver) stores it verbatim as TEXT, so a plain string "<=" comparison
-     * against a bare "Y-m-d" today-string would lexicographically fail there.
-     * whereDate() normalizes both sides via SQL DATE()/date(), which is correct
-     * under every driver.
+     * Uses whereDate() (not a raw string where()) because stored values are not
+     * uniform: with the `date:Y-m-d` cast a string input is written as "Y-m-d"
+     * while a Carbon input is written in the connection's "Y-m-d H:i:s" format.
+     * MySQL's native DATE column type silently truncates both to just the date,
+     * but SQLite (this app's test driver) stores them verbatim as TEXT, so a plain
+     * string "<=" comparison against a bare "Y-m-d" today-string would
+     * lexicographically fail there. whereDate() normalizes both sides via SQL
+     * DATE()/date(), which is correct under every driver.
      */
     public function scopeCurrentlyEffective(Builder $query)
     {

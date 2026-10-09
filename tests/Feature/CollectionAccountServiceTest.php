@@ -46,11 +46,24 @@ class CollectionAccountServiceTest extends TestCase
         parent::tearDown();
     }
 
+    private int $unitSequence = 0;
+
+    /**
+     * Unit uji di blok khusus 'Z' dengan id & nomor kavling berurutan, supaya tidak pernah
+     * bentrok dengan unit seed (unique cluster_id+block+lot_number dan primary key id).
+     */
     private function makeUnit(array $attributes = []): Unit
     {
         $resident = Resident::factory()->create();
+        $sequence = ++$this->unitSequence;
 
-        return Unit::factory()->create(['resident_id' => $resident->id, ...$attributes]);
+        return Unit::factory()->create([
+            'id' => 'Z'.str_pad((string) $sequence, 4, '0', STR_PAD_LEFT),
+            'block' => 'Z',
+            'lot_number' => (string) $sequence,
+            'resident_id' => $resident->id,
+            ...$attributes,
+        ]);
     }
 
     /** Tagihan disetujui tanpa denda supaya nominal outstanding mudah diverifikasi. */

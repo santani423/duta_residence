@@ -7,6 +7,7 @@ use App\Http\Responses\ApiResponse;
 use App\Models\CollectorVisit;
 use App\Models\CollectorVisitEvidence;
 use App\Services\AuditService;
+use App\Services\CollectionScopeService;
 use App\Services\CollectorAssignmentService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -15,8 +16,14 @@ class CollectorVisitEvidenceController extends Controller
 {
     use ApiResponse;
 
-    public function index(CollectorVisit $visit)
+    /**
+     * Bukti kunjungan hanya boleh dibaca bila unit kunjungan dalam cakupan user: collector →
+     * unit yang ditugaskan kepadanya, supervisor → unit di clusternya, full scope → semua.
+     */
+    public function index(Request $request, CollectorVisit $visit, CollectionScopeService $scope)
     {
+        $scope->assertUnitInScope($request->user(), $visit->unit_id);
+
         return $this->success($visit->evidence()->with('uploader')->latest()->get());
     }
 
@@ -49,8 +56,12 @@ class CollectorVisitEvidenceController extends Controller
         return $this->success($evidence->load('uploader'), 'Bukti kunjungan berhasil diunggah.', 201);
     }
 
-    public function destroy(CollectorVisitEvidence $evidence, AuditService $auditService)
+    public function destroy(Request $request, CollectorVisitEvidence $evidence, AuditService $auditService, CollectionScopeService $scope)
     {
+        $visit = CollectorVisit::query()->withTrashed()->find($evidence->visit_id);
+        abort_unless($visit, 404, 'Kunjungan untuk bukti ini tidak ditemukan.');
+        $scope->assertUnitInScope($request->user(), $visit->unit_id);
+
         $old = $evidence->toArray();
         $evidence->delete();
         $auditService->log('collector_visit_evidence_deleted', 'collector-evidence', 'DELETE', $evidence, $old, []);

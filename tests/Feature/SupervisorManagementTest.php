@@ -116,9 +116,12 @@ class SupervisorManagementTest extends TestCase
         ])->assertCreated();
 
         $this->postJson('/api/v1/collector-assignments', [
+            // Blok khusus test: cluster AL utuh sudah dipegang kolektor seeder, dan penugasan
+            // identik untuk kolektor lain kini ditolak oleh guard duplikat.
             'collector_id' => $outOfClusterCollector->id,
-            'scope_type' => 'cluster',
+            'scope_type' => 'block',
             'cluster_id' => 'AL',
+            'block' => 'Q',
         ])->assertCreated();
 
         $supervisor = User::find($supervisorId);
