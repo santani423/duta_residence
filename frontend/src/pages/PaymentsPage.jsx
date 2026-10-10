@@ -264,6 +264,23 @@ export default function PaymentsPage() {
     if ((receiptTable.filters.unit_id || undefined) !== urlUnitId) receiptTable.setFilters({ ...receiptTable.filters, unit_id: urlUnitId });
   }, [urlUnitId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Unit dari URL langsung dipilih di tab Proses Pembayaran dan tagihannya dicari otomatis.
+  const [activeTab, setActiveTab] = useState('workspace');
+  const [appliedUrlUnitId, setAppliedUrlUnitId] = useState();
+  if (appliedUrlUnitId !== urlUnitId) {
+    setAppliedUrlUnitId(urlUnitId);
+    if (urlUnitId) {
+      setActiveTab('workspace');
+      setUnitFilters({});
+      setUnitQuery(urlUnitId);
+    }
+  }
+  useEffect(() => {
+    if (!urlUnitId) return;
+    searchForm.setFieldsValue({ unit_id: urlUnitId, billing_range: undefined, status: 'unpaid' });
+    search.mutate({ unit_id: urlUnitId, status: 'unpaid' });
+  }, [urlUnitId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function updateUnitFilters(next) {
     setUnitFilters(next);
     searchForm.setFieldValue('unit_id', undefined);
@@ -364,13 +381,14 @@ export default function PaymentsPage() {
           type="info"
           showIcon
           className="section-row"
-          message={`Menampilkan transaksi dan kuitansi pembayaran untuk unit ${urlUnitId}`}
+          message={`Menampilkan tagihan, transaksi, dan kuitansi pembayaran untuk unit ${urlUnitId}`}
           action={<Button size="small" onClick={() => setSearchParams({})}>Tampilkan semua unit</Button>}
         />
       ) : null}
 
       <Tabs
-        defaultActiveKey={urlUnitId ? 'receipts' : 'workspace'}
+        activeKey={activeTab}
+        onChange={setActiveTab}
         items={[
           {
             key: 'workspace',
