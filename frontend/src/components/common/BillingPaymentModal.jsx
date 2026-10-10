@@ -9,6 +9,7 @@ import { useDebounce } from '../../hooks/useDebounce.js';
 import { formatCurrency, formatDateTime, formatPeriod } from '../../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../../utils/apiError.js';
 import { invalidatePaymentQueries } from '../../utils/queryInvalidation.js';
+import { confirmPayment } from '../../utils/confirmPayment.js';
 import ResponsiveTable from '../tables/ResponsiveTable.jsx';
 import MoneyInput from './MoneyInput.jsx';
 import PaymentPrintMenu from './PaymentPrintMenu.jsx';
@@ -125,8 +126,19 @@ export default function BillingPaymentModal({ unitId, billingIds = [], open, onC
   });
 
   function submit(values) {
-    if (isTransfer) transfer.mutate(values);
-    else pay.mutate(values);
+    if (isTransfer) {
+      confirmPayment({
+        title: 'Kirim bukti transfer?',
+        content: `Bukti transfer untuk ${selected.length} tagihan unit ${unitId} senilai ${formatCurrency(total)} akan dikirim untuk diverifikasi.`,
+        okText: 'Kirim',
+        onOk: () => transfer.mutateAsync(values),
+      });
+      return;
+    }
+    confirmPayment({
+      content: `Pembayaran loket untuk ${selected.length} tagihan unit ${unitId} senilai ${formatCurrency(summary?.amount_allocated)} akan diproses.`,
+      onOk: () => pay.mutateAsync(values),
+    });
   }
 
   function close() {

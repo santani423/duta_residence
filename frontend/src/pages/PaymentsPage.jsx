@@ -10,6 +10,7 @@ import FilterBar from '../components/common/FilterBar.jsx';
 import { UnitFilterFields } from '../components/common/UnitFilters.jsx';
 import { unitOptionLabel } from '../hooks/useUnitLookups.js';
 import Can from '../components/common/Can.jsx';
+import { confirmPayment } from '../utils/confirmPayment.js';
 import StatusBadge from '../components/common/StatusBadge.jsx';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import { api, storageUrl } from '../services/estateApi.js';
@@ -481,7 +482,7 @@ export default function PaymentsPage() {
                     </Space>
                     {via === 'loket' ? (
                             <Can permission="payments.process" fallback={<Alert type="warning" showIcon message="Anda tidak memiliki akses proses loket." />}>
-                              <Form form={loketForm} layout="vertical" onFinish={processLoket.mutate} initialValues={{ payment_method_id: 'C', loket_code: 'L01', use_balance: true, cashier_name: user?.name }} className="responsive-form">
+                              <Form form={loketForm} layout="vertical" onFinish={(values) => confirmPayment({ content: `Pembayaran loket untuk ${selectedBillingIds.length} tagihan unit ${unit.id} senilai ${formatCurrency(preview?.amount_allocated)} akan diproses.`, onOk: () => processLoket.mutateAsync(values) })} initialValues={{ payment_method_id: 'C', loket_code: 'L01', use_balance: true, cashier_name: user?.name }} className="responsive-form">
                                 <Form.Item label="Nominal Pembayaran (tunai)" name="amount" rules={[{ type: 'number', min: cashMin, message: `Nominal minimal ${formatCurrency(cashMin)}` }]}>
                                   <MoneyInput step={1000} min={cashMin} />
                                 </Form.Item>
@@ -529,7 +530,7 @@ export default function PaymentsPage() {
                                 message={`Via: ${viaLabel}`}
                                 description={via === 'manual' ? `${manualInfo.bank_name || '-'} ${manualInfo.account_number || ''} a.n. ${manualInfo.account_name || '-'}` : 'Transaksi akan menghasilkan payment URL. Transaksi gateway melunasi seluruh tagihan yang dipilih.'}
                               />
-                              <Button className="section-row" type="primary" disabled={!selectedBillingIds.length} loading={createGateway.isPending} onClick={() => createGateway.mutate({ provider: via })}>Buat Transaksi</Button>
+                              <Button className="section-row" type="primary" disabled={!selectedBillingIds.length} loading={createGateway.isPending} onClick={() => confirmPayment({ title: 'Buat transaksi pembayaran?', content: `Transaksi ${via} untuk ${selectedBillingIds.length} tagihan unit ${unit.id} akan dibuat.`, okText: 'Ya, Buat', onOk: () => createGateway.mutateAsync({ provider: via }) })}>Buat Transaksi</Button>
                               {transaction ? (
                                 <Card className="section-row" title={transaction.invoice_number}>
                                   <Space direction="vertical">

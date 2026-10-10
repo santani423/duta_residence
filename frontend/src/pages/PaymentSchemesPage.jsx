@@ -10,6 +10,7 @@ import FilterBar from '../components/common/FilterBar.jsx';
 import { UnitFilterFields } from '../components/common/UnitFilters.jsx';
 import { unitOptionLabel } from '../hooks/useUnitLookups.js';
 import Can from '../components/common/Can.jsx';
+import { confirmPayment } from '../utils/confirmPayment.js';
 import MoneyInput from '../components/common/MoneyInput.jsx';
 import StatusBadge from '../components/common/StatusBadge.jsx';
 import PaymentPrintMenu from '../components/common/PaymentPrintMenu.jsx';
@@ -943,7 +944,7 @@ function PaySchemeDrawer({ scheme, onClose }) {
 
                 {via === 'loket' ? (
                   <Can permission="payments.process" fallback={<Alert type="warning" showIcon message="Anda tidak memiliki akses proses loket." />}>
-                    <Form form={loketForm} layout="vertical" onFinish={processLoket.mutate} initialValues={{ payment_method_id: 'C', loket_code: 'L01', use_balance: true, cashier_name: user?.name }} className="responsive-form">
+                    <Form form={loketForm} layout="vertical" onFinish={(values) => confirmPayment({ content: `Pembayaran skema untuk ${billingIds.length} tagihan unit ${scheme.unit_id} senilai ${formatCurrency(preview?.amount_allocated)} akan diproses.`, onOk: () => processLoket.mutateAsync(values) })} initialValues={{ payment_method_id: 'C', loket_code: 'L01', use_balance: true, cashier_name: user?.name }} className="responsive-form">
                       <Form.Item label="Nominal Pembayaran (tunai)" name="amount" rules={[{ type: 'number', min: cashMin, message: `Nominal minimal ${formatCurrency(cashMin)}` }]}>
                         <MoneyInput step={1000} min={cashMin} />
                       </Form.Item>
@@ -991,7 +992,7 @@ function PaySchemeDrawer({ scheme, onClose }) {
                       message={`Via: ${viaLabel}`}
                       description={via === 'manual' ? `${manualInfo.bank_name || '-'} ${manualInfo.account_number || ''} a.n. ${manualInfo.account_name || '-'}` : 'Transaksi akan menghasilkan payment URL. Transaksi gateway melunasi seluruh tagihan skema ini.'}
                     />
-                    <Button className="section-row" type="primary" disabled={!billingIds.length} loading={createGateway.isPending} onClick={() => createGateway.mutate()}>Buat Transaksi</Button>
+                    <Button className="section-row" type="primary" disabled={!billingIds.length} loading={createGateway.isPending} onClick={() => confirmPayment({ title: 'Buat transaksi pembayaran?', content: `Transaksi ${via} untuk ${billingIds.length} tagihan unit ${scheme.unit_id} akan dibuat.`, okText: 'Ya, Buat', onOk: () => createGateway.mutateAsync() })}>Buat Transaksi</Button>
                     {transaction ? (
                       <Card className="section-row" title={transaction.invoice_number}>
                         <Space direction="vertical">

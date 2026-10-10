@@ -49,6 +49,7 @@ import { api, storageUrl } from '../../services/estateApi.js';
 import { useTableState } from '../../hooks/useTableState.js';
 import { compactText, formatCurrency, formatDate, formatDateTime, formatNotificationType, formatPaymentMethod, formatPeriod } from '../../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../../utils/apiError.js';
+import { confirmPayment } from '../../utils/confirmPayment.js';
 import { downloadBlob } from '../../utils/download.js';
 import { useThemeMode } from '../../state/ThemeContext.jsx';
 import MoneyInput from '../../components/common/MoneyInput.jsx';
@@ -555,9 +556,15 @@ function ResidentBills() {
   }
 
   function pay(provider) {
-    createPayment.mutate({ invoiceIds: paying.invoiceIds, provider });
-    setPaying(null);
-    setSelectedIds([]);
+    const target = paying;
+    confirmPayment({
+      content: `Pembayaran ${target.invoice_number} senilai ${formatCurrency(target.total)} via ${provider} akan diproses.`,
+      onOk: () => {
+        setPaying(null);
+        setSelectedIds([]);
+        return createPayment.mutateAsync({ invoiceIds: target.invoiceIds, provider });
+      },
+    });
   }
 
   return (
@@ -722,6 +729,13 @@ function ResidentInvoiceDetail() {
     : `Pembayaran unit ini hanya dapat dilakukan oleh ${tenantData.billing_payer === 'penyewa' ? 'penyewa' : 'pemilik'} sesuai pengaturan penanggung jawab tagihan.`;
   const canPayInvoice = ['unpaid', 'overdue'].includes(data.status) && !payDisabledReason;
 
+  function payInvoice(provider) {
+    confirmPayment({
+      content: `Pembayaran ${data.invoice_number} senilai ${formatCurrency(data.total)}${provider ? ` via ${provider}` : ''} akan diproses.`,
+      onOk: () => createPayment.mutateAsync({ invoiceId: data.id, provider }),
+    });
+  }
+
   return (
     <section>
       <PageHeader title="Detail Invoice" breadcrumbs={[{ label: 'Penghuni' }, { label: 'Invoice' }, { label: data.invoice_number || invoiceId }]} onRefresh={query.refetch} />
@@ -750,14 +764,14 @@ function ResidentInvoiceDetail() {
                 <Button
                   type="primary"
                   disabled={!canPayInvoice}
-                  onClick={() => createPayment.mutate({ invoiceId: data.id, provider: configData?.active_gateway })}
+                  onClick={() => payInvoice(configData?.active_gateway)}
                 >
                   Bayar Sekarang
                 </Button>
               </Tooltip>
             </Space>
           </Card>
-          <PaymentConfigCard config={configData} total={data.total} invoiceNumber={data.invoice_number} vaNumber={data.unit?.va_number} onProvider={canPayInvoice ? (provider) => createPayment.mutate({ invoiceId: data.id, provider }) : undefined} />
+          <PaymentConfigCard config={configData} total={data.total} invoiceNumber={data.invoice_number} vaNumber={data.unit?.va_number} onProvider={canPayInvoice ? payInvoice : undefined} />
           <Card title="Riwayat Pembayaran" className="resident-wide"><PaymentTable data={data.payment_history} /></Card>
         </div>
       )}
