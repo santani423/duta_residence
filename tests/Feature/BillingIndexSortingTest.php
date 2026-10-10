@@ -19,7 +19,7 @@ class BillingIndexSortingTest extends TestCase
     {
         $this->seed(EstateSeeder::class);
 
-        $unit = Unit::factory()->create(['cluster_id' => 'AL']);
+        $unit = Unit::factory()->create(['cluster_id' => '01']);
 
         // Inserted out of period order on purpose, so a created_at-based sort would differ.
         Billing::factory()->create(['unit_id' => $unit->id, 'year' => 2026, 'month' => 10]);
@@ -50,8 +50,8 @@ class BillingIndexSortingTest extends TestCase
     {
         $this->seed(EstateSeeder::class);
 
-        $unitA = Unit::factory()->create(['cluster_id' => 'AL']);
-        $unitB = Unit::factory()->create(['cluster_id' => 'AL']);
+        $unitA = Unit::factory()->create(['cluster_id' => '01']);
+        $unitB = Unit::factory()->create(['cluster_id' => '01']);
 
         $older = Billing::factory()->create(['unit_id' => $unitA->id, 'year' => 2026, 'month' => 5, 'updated_at' => now()->subDay()]);
         $newer = Billing::factory()->create(['unit_id' => $unitB->id, 'year' => 2026, 'month' => 5, 'updated_at' => now()]);
@@ -71,7 +71,7 @@ class BillingIndexSortingTest extends TestCase
         $this->seed(EstateSeeder::class);
         $this->travelTo(now()->setDate(2026, 11, 25));
 
-        $unit = Unit::factory()->create(['cluster_id' => 'AL']);
+        $unit = Unit::factory()->create(['cluster_id' => '01']);
         $paid = Billing::factory()->create([
             'unit_id' => $unit->id, 'year' => 2026, 'month' => 5,
             'status_id' => Billing::STATUS_PAID, 'paid_at' => now()->setDate(2026, 6, 10),

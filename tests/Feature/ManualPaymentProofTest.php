@@ -19,7 +19,7 @@ class ManualPaymentProofTest extends TestCase
 
     private function createManualPayment(): PaymentTransaction
     {
-        $billing = Billing::where('unit_id', 'GA012')->where('status_id', '01')->whereNotNull('approved_at')->firstOrFail();
+        $billing = Billing::where('unit_id', '07012')->where('status_id', '01')->whereNotNull('approved_at')->firstOrFail();
 
         Sanctum::actingAs(User::where('username', 'customer')->first());
 
@@ -207,7 +207,7 @@ class ManualPaymentProofTest extends TestCase
     public function test_online_gateways_are_hidden_and_rejected_until_enabled_but_transfer_is_always_available(): void
     {
         $this->seed();
-        $billing = Billing::where('unit_id', 'GA012')->where('status_id', '01')->whereNotNull('approved_at')->firstOrFail();
+        $billing = Billing::where('unit_id', '07012')->where('status_id', '01')->whereNotNull('approved_at')->firstOrFail();
 
         Sanctum::actingAs(User::where('username', 'finance')->first());
         $this->getJson('/api/v1/payments/gateway/config')->assertOk()->assertJsonPath('data.available_methods', ['manual']);

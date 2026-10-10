@@ -92,7 +92,7 @@ class NotificationAccessControlTest extends TestCase
         $rina = User::where('username', 'supervisor.rina')->first();
         $dewiCollector = User::where('username', 'kolektor.dewi')->first();
 
-        // kolektor.dewi is only assigned to supervisor.hendra's cluster (DA), never rina's.
+        // kolektor.dewi is only assigned to supervisor.hendra's cluster (04), never rina's.
         $hendraOnly = SupervisorNotification::query()->create([
             'category' => 'ptp_due',
             'priority' => 'high',
@@ -128,7 +128,7 @@ class NotificationAccessControlTest extends TestCase
         $rina = User::where('username', 'supervisor.rina')->first();
         $budiCollector = User::where('username', 'kolektor.budi')->first();
 
-        // kolektor.budi is assigned to cluster AL, which supervisor.rina oversees.
+        // kolektor.budi is assigned to cluster 01, which supervisor.rina oversees.
         $mine = SupervisorNotification::query()->create([
             'category' => 'ptp_due',
             'priority' => 'high',

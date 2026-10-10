@@ -22,7 +22,7 @@ class LoketPaymentVerificationAndPrintTest extends TestCase
     private function waitingVerificationPayment(): PaymentTransaction
     {
         Storage::fake('public');
-        $billing = Billing::where('unit_id', 'GA012')->where('status_id', '01')->whereNotNull('approved_at')->firstOrFail();
+        $billing = Billing::where('unit_id', '07012')->where('status_id', '01')->whereNotNull('approved_at')->firstOrFail();
 
         Sanctum::actingAs(User::where('username', 'customer')->first());
         $payment = PaymentTransaction::findOrFail(
@@ -82,7 +82,7 @@ class LoketPaymentVerificationAndPrintTest extends TestCase
             'kuitansi dari transaksi' => ['payment-transactions/{transaction}/receipt'],
             'bukti transaksi' => ['payment-transactions/{transaction}'],
             'daftar transaksi' => ['payment-transactions'],
-            'riwayat kuitansi' => ['payment-receipts?unit_id=GA012'],
+            'riwayat kuitansi' => ['payment-receipts?unit_id=07012'],
         ];
     }
 
@@ -94,12 +94,12 @@ class LoketPaymentVerificationAndPrintTest extends TestCase
         Sanctum::actingAs(User::where('username', 'loket')->first());
 
         $number = $this->postJson('/api/v1/payments/process', [
-            'unit_id' => 'GA012',
+            'unit_id' => '07012',
             'payment_method_id' => 'C',
             'loket_code' => 'L01',
             'cashier_name' => 'Loket Kasir',
         ])->assertCreated()->json('data.number');
-        $transaction = PaymentTransaction::where('unit_id', 'GA012')->where('payment_provider', 'loket')->latest('id')->firstOrFail();
+        $transaction = PaymentTransaction::where('unit_id', '07012')->where('payment_provider', 'loket')->latest('id')->firstOrFail();
 
         $url = '/api/v1/documents/'.str_replace(['{number}', '{transaction}'], [$number, $transaction->id], $path);
         $response = $this->get($url)->assertOk();
@@ -152,7 +152,7 @@ class LoketPaymentVerificationAndPrintTest extends TestCase
         Sanctum::actingAs(User::where('username', 'loket')->first());
 
         $number = $this->postJson('/api/v1/payments/process', [
-            'unit_id' => 'GA012', 'payment_method_id' => 'C', 'loket_code' => 'L01', 'cashier_name' => 'Loket Kasir',
+            'unit_id' => '07012', 'payment_method_id' => 'C', 'loket_code' => 'L01', 'cashier_name' => 'Loket Kasir',
         ])->assertCreated()->json('data.number');
         $receipt = Receipt::findOrFail($number);
 

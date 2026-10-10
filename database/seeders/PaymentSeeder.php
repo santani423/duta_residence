@@ -32,13 +32,13 @@ class PaymentSeeder extends Seeder
 
         // Data contoh transaksi hanya memakai dua status: pending (belum bayar) dan paid (lunas).
         $scenarios = [
-            'AL003' => ['manual', 'pending'],
-            'AL006' => ['manual', 'paid'],
-            'AL007' => ['xendit', 'paid'],
-            'AL008' => ['midtrans', 'pending'],
-            'AL009' => ['midtrans', 'paid'],
-            'AL011' => ['xendit', 'pending'],
-            'AL012' => ['xendit', 'pending'],
+            '01003' => ['manual', 'pending'],
+            '01006' => ['manual', 'paid'],
+            '01007' => ['xendit', 'paid'],
+            '01008' => ['midtrans', 'pending'],
+            '01009' => ['midtrans', 'paid'],
+            '01011' => ['xendit', 'pending'],
+            '01012' => ['xendit', 'pending'],
         ];
 
         foreach ($scenarios as $unitId => [$provider, $status]) {

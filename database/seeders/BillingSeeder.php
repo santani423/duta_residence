@@ -25,12 +25,12 @@ class BillingSeeder extends Seeder
      * TERTUA yang masih belum lunas - lihat konversi ke jumlah bulan di arrearsMonthsFor().
      */
     private const SHOWCASE_OLDEST_OVERDUE_MONTHS = [
-        'GA001' => 1,
-        'GA002' => 2,
-        'GA003' => 3,
-        'GA004' => 6,
-        'GA005' => 12,
-        'GA006' => 20,
+        '07001' => 1,
+        '07002' => 2,
+        '07003' => 3,
+        '07004' => 6,
+        '07005' => 12,
+        '07006' => 20,
     ];
 
     public function run(): void
@@ -45,7 +45,7 @@ class BillingSeeder extends Seeder
 
             return $rateCache[$key] ??= $rateScheduleService->rateForPeriod($cluster, $year, $month);
         };
-        $skipUnits = ['AL005'];
+        $skipUnits = ['01005'];
 
         Unit::with(['cluster', 'discountRule'])
             ->where('status_id', '!=', 'RK')
@@ -93,7 +93,7 @@ class BillingSeeder extends Seeder
                         }
 
                         // --- Skenario demo unit tertentu, override di atas hasil umum di atas ---
-                        if ($unit->id === 'AL008' && $offset === 0) {
+                        if ($unit->id === '01008' && $offset === 0) {
                             $approvedAt = null;
                             $status = Billing::STATUS_UNPAID;
                             $notes = 'Draft/pending approval untuk simulasi.';
@@ -131,11 +131,11 @@ class BillingSeeder extends Seeder
                 }
             });
 
-        $ga = Unit::find('GA012');
+        $ga = Unit::find('07012');
         if ($ga) {
             $period = now();
             Billing::updateOrCreate(
-                ['unit_id' => 'GA012', 'year' => $period->year, 'month' => $period->month],
+                ['unit_id' => '07012', 'year' => $period->year, 'month' => $period->month],
                 [
                     'amount' => (float) $ga->cluster->monthly_rate,
                     'penalty' => 0,
@@ -179,15 +179,15 @@ class BillingSeeder extends Seeder
             return self::SHOWCASE_OLDEST_OVERDUE_MONTHS[$unit->id] + 1;
         }
 
-        if ($unit->id === 'AL001') {
+        if ($unit->id === '01001') {
             return 0; // "Andi Lunas Pratama" - seluruh tagihan lunas dan pembayaran lancar.
         }
 
-        if ($unit->id === 'AL002') {
+        if ($unit->id === '01002') {
             return 5; // "Bima Menunggak Saputra" - tagihan jatuh tempo + denda tier 3 bulan+.
         }
 
-        if ($unit->cluster_id === 'OR') {
+        if ($unit->cluster_id === '11') {
             return 0; // Cluster premium, profil "pembayaran terbaik".
         }
 

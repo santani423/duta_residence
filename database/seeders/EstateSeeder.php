@@ -16,23 +16,44 @@ use Illuminate\Database\Seeder;
 
 class EstateSeeder extends Seeder
 {
-    public const CLUSTERS = [
-        ['id' => 'AL', 'name' => 'Cluster Alamanda', 'rate' => 350000, 'profile' => 'reguler, tingkat hunian seimbang'],
-        ['id' => 'BO', 'name' => 'Cluster Bougenville', 'rate' => 375000, 'profile' => 'premium dengan fasilitas taman keluarga'],
-        ['id' => 'CE', 'name' => 'Cluster Cendana', 'rate' => 325000, 'profile' => 'banyak tenant dan pergantian penghuni'],
-        ['id' => 'DA', 'name' => 'Cluster Dahlia', 'rate' => 300000, 'profile' => 'cluster baru dengan unit kosong'],
-        ['id' => 'ED', 'name' => 'Cluster Edelweiss', 'rate' => 450000, 'profile' => 'premium, pembayaran lancar'],
-        ['id' => 'FL', 'name' => 'Cluster Flamboyan', 'rate' => 400000, 'profile' => 'tingkat komplain tinggi'],
-        ['id' => 'GA', 'name' => 'Cluster Gardenia', 'rate' => 300000, 'profile' => 'banyak tunggakan dan test loket'],
-        ['id' => 'HA', 'name' => 'Cluster Harmoni', 'rate' => 360000, 'profile' => 'keluarga muda dan fasilitas komunal'],
-        ['id' => 'IM', 'name' => 'Cluster Imperial', 'rate' => 550000, 'profile' => 'premium hampir penuh'],
-        ['id' => 'JA', 'name' => 'Cluster Jasmine', 'rate' => 325000, 'profile' => 'campuran owner dan tenant'],
-        ['id' => 'KE', 'name' => 'Cluster Kenanga', 'rate' => 340000, 'profile' => 'okupansi stabil'],
-        ['id' => 'LA', 'name' => 'Cluster Lavender', 'rate' => 390000, 'profile' => 'banyak maintenance ringan'],
-        ['id' => 'MA', 'name' => 'Cluster Magnolia', 'rate' => 420000, 'profile' => 'unit besar dan family member'],
-        ['id' => 'NI', 'name' => 'Cluster Nirwana', 'rate' => 315000, 'profile' => 'banyak unit renovasi'],
-        ['id' => 'OR', 'name' => 'Cluster Orchid', 'rate' => 470000, 'profile' => 'premium, pembayaran terbaik'],
-    ];
+    public const CLUSTERS_CSV = 'data/clusters.csv';
+
+    /**
+     * Daftar cluster diambil dari database/data/clusters.csv dengan format
+     * "kode","nama","tarif bulanan" (tanpa header).
+     *
+     * @return array<int, array{id: string, name: string, rate: int, profile: string}>
+     */
+    public static function clusters(): array
+    {
+        static $clusters;
+
+        if ($clusters !== null) {
+            return $clusters;
+        }
+
+        $handle = fopen(database_path(self::CLUSTERS_CSV), 'r');
+        $clusters = [];
+
+        while (($row = fgetcsv($handle, escape: '\\')) !== false) {
+            if ($row === [null] || count($row) < 3) {
+                continue;
+            }
+
+            [$id, $name, $rate] = array_map('trim', $row);
+
+            $clusters[] = [
+                'id' => $id,
+                'name' => $name,
+                'rate' => (int) $rate,
+                'profile' => str_starts_with($name, 'Ruko') ? 'ruko komersial' : 'hunian reguler',
+            ];
+        }
+
+        fclose($handle);
+
+        return $clusters;
+    }
 
     public function run(): void
     {
@@ -65,13 +86,13 @@ class EstateSeeder extends Seeder
             District::updateOrCreate(['id' => $id], ['regency_id' => '3671', 'name' => $name]);
         }
 
-        foreach (self::CLUSTERS as $index => $row) {
+        foreach (self::clusters() as $index => $row) {
             $operatingSince = now()->subYears(8 - ($index % 5));
 
             Cluster::updateOrCreate(['id' => $row['id']], [
                 'name' => $row['name'],
                 'monthly_rate' => $row['rate'],
-                'is_active' => $index !== 13,
+                'is_active' => true,
                 'description' => "{$row['profile']}. Alamat: Boulevard Grand Duta blok {$row['id']}. Fasilitas: taman, keamanan 24 jam, CCTV, jogging track. Pengelola: Estate Office {$row['name']}. Beroperasi sejak ".$operatingSince->format('Y-m-d').'.',
             ]);
 

@@ -37,7 +37,7 @@ class PenaltyServiceTest extends TestCase
         $period = $now->copy()->startOfMonth()->subMonths($monthsAgo);
 
         return new Billing([
-            'unit_id' => 'AL001',
+            'unit_id' => '01001',
             'year' => $period->year,
             'month' => $period->month,
             'amount' => $amount,
@@ -138,7 +138,7 @@ class PenaltyServiceTest extends TestCase
 
         foreach ($expected as $month => $expectedOverdue) {
             $billing = new Billing([
-                'unit_id' => 'AL001', 'year' => 2026, 'month' => $month,
+                'unit_id' => '01001', 'year' => 2026, 'month' => $month,
                 'amount' => 500000, 'is_penalty_eligible' => true, 'status_id' => Billing::STATUS_UNPAID,
             ]);
 

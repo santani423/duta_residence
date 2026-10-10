@@ -61,20 +61,20 @@ class CollectorSeeder extends Seeder
         $auditService = app(AuditService::class);
 
         // --- Active assignments: cluster / block / unit / resident scopes ---
-        $this->assign($budi, 'cluster', ['cluster_id' => 'AL'], $admin, 'high', 'Wilayah utama Cluster Alamanda.');
-        $this->assign($siti, 'cluster', ['cluster_id' => 'BO'], $admin, 'normal', 'Wilayah utama Cluster Bougenville.');
-        foreach (['CE001', 'CE002', 'CE003'] as $unitId) {
+        $this->assign($budi, 'cluster', ['cluster_id' => '01'], $admin, 'high', 'Wilayah utama Dolomite.');
+        $this->assign($siti, 'cluster', ['cluster_id' => '02'], $admin, 'normal', 'Wilayah utama Garnet.');
+        foreach (['03001', '03002', '03003'] as $unitId) {
             $this->assign($ahmad, 'unit', ['unit_id' => $unitId], $admin, 'normal', 'Unit prioritas tunggakan lama.');
         }
-        $this->assign($dewi, 'block', ['cluster_id' => 'DA', 'block' => 'A'], $admin, 'low', 'Blok A Cluster Dahlia.');
-        $residentId = Unit::whereNotNull('resident_id')->where('cluster_id', 'ED')->first()?->resident_id;
+        $this->assign($dewi, 'block', ['cluster_id' => '04', 'block' => 'A'], $admin, 'low', 'Blok A Amber.');
+        $residentId = Unit::whereNotNull('resident_id')->where('cluster_id', '05')->first()?->resident_id;
         if ($residentId) {
             $this->assign($maya, 'resident', ['resident_id' => $residentId], $admin, 'normal', 'Penghuni VIP, tetap diikuti selama cuti.');
         }
 
         // --- History: a completed assignment (Rudi, before going inactive) and a transfer (Ahmad -> Eko -> back) ---
         $completed = CollectorAssignment::query()->firstOrCreate(
-            ['collector_id' => $rudi->id, 'scope_type' => 'unit', 'unit_id' => 'GA001'],
+            ['collector_id' => $rudi->id, 'scope_type' => 'unit', 'unit_id' => '07001'],
             ['is_active' => false, 'status' => CollectorAssignment::STATUS_COMPLETED, 'start_date' => now()->subMonths(3)->toDateString(), 'end_date' => now()->subMonth()->toDateString(), 'priority' => 'normal', 'assigned_by' => $admin->id]
         );
         if ($completed->wasRecentlyCreated) {
@@ -82,11 +82,11 @@ class CollectorSeeder extends Seeder
         }
 
         $transferredOut = CollectorAssignment::query()->firstOrCreate(
-            ['collector_id' => $eko->id, 'scope_type' => 'unit', 'unit_id' => 'GA007'],
+            ['collector_id' => $eko->id, 'scope_type' => 'unit', 'unit_id' => '07007'],
             ['is_active' => false, 'status' => CollectorAssignment::STATUS_TRANSFERRED, 'start_date' => now()->subMonths(2)->toDateString(), 'end_date' => now()->subWeeks(2)->toDateString(), 'priority' => 'normal', 'assigned_by' => $admin->id, 'notes' => 'Dipindahkan karena status kepegawaian berubah.']
         );
         $transferredIn = CollectorAssignment::query()->firstOrCreate(
-            ['collector_id' => $budi->id, 'scope_type' => 'unit', 'unit_id' => 'GA007'],
+            ['collector_id' => $budi->id, 'scope_type' => 'unit', 'unit_id' => '07007'],
             ['is_active' => true, 'status' => CollectorAssignment::STATUS_ACTIVE, 'start_date' => now()->subWeeks(2)->toDateString(), 'priority' => 'normal', 'assigned_by' => $admin->id]
         );
         if ($transferredOut->wasRecentlyCreated) {
@@ -107,27 +107,27 @@ class CollectorSeeder extends Seeder
         $this->target($budi, now()->toDateString(), 300_000, 1, $admin, CollectorTarget::PERIOD_DAILY);
 
         // --- Loket payment transactions attributed to collectors, so CollectorPerformanceService reflects real achievement. ---
-        $this->loketPayment($budi, 'AL001', 3_200_000);
-        $this->loketPayment($budi, 'AL007', 2_600_000);
-        $this->loketPayment($siti, 'BO001', 5_000_000);
-        $this->loketPayment($siti, 'BO002', 4_100_000);
-        $this->loketPayment($ahmad, 'CE001', 1_500_000); // well under target - "belum tercapai"
+        $this->loketPayment($budi, '01001', 3_200_000);
+        $this->loketPayment($budi, '01007', 2_600_000);
+        $this->loketPayment($siti, '02001', 5_000_000);
+        $this->loketPayment($siti, '02002', 4_100_000);
+        $this->loketPayment($ahmad, '03001', 1_500_000); // well under target - "belum tercapai"
 
         // --- Field visits (with GPS-only evidence - no real files needed) ---
-        $this->visit($budi, 'AL001', 'completed', 'Penagihan bulanan', -6.2088, 106.8456);
-        $this->visit($budi, 'AL007', 'completed', 'Konfirmasi janji bayar', -6.2091, 106.8460);
-        $this->visit($siti, 'BO001', 'no_answer', 'Penagihan bulanan', -6.2105, 106.8471);
-        $this->visit($ahmad, 'CE001', 'refused', 'Penagihan tunggakan', -6.2120, 106.8480);
-        $this->visit($dewi, 'DA001', 'rescheduled', 'Penagihan bulanan', -6.2130, 106.8490);
+        $this->visit($budi, '01001', 'completed', 'Penagihan bulanan', -6.2088, 106.8456);
+        $this->visit($budi, '01007', 'completed', 'Konfirmasi janji bayar', -6.2091, 106.8460);
+        $this->visit($siti, '02001', 'no_answer', 'Penagihan bulanan', -6.2105, 106.8471);
+        $this->visit($ahmad, '03001', 'refused', 'Penagihan tunggakan', -6.2120, 106.8480);
+        $this->visit($dewi, '04001', 'rescheduled', 'Penagihan bulanan', -6.2130, 106.8490);
 
         // --- Promise to Pay ---
-        $this->promise($budi, 'AL013', 1_800_000, 'pending');
-        $this->promise($ahmad, 'CE002', 2_400_000, 'broken');
-        $this->promise($dewi, 'DA002', 900_000, 'fulfilled');
+        $this->promise($budi, '01013', 1_800_000, 'pending');
+        $this->promise($ahmad, '03002', 2_400_000, 'broken');
+        $this->promise($dewi, '04002', 900_000, 'fulfilled');
 
         // --- Complaints about collection visits ---
-        $this->complaint($budi, 'AL001', 'Kolektor datang di luar jam yang dijanjikan.', 'resolved');
-        $this->complaint($ahmad, 'CE001', 'Nada bicara kolektor dianggap kurang sopan.', 'in_review');
+        $this->complaint($budi, '01001', 'Kolektor datang di luar jam yang dijanjikan.', 'resolved');
+        $this->complaint($ahmad, '03001', 'Nada bicara kolektor dianggap kurang sopan.', 'in_review');
 
         // --- Live-location pings (a few recent ones, for the "last known location" widget) ---
         $this->location($budi, -6.2088, 106.8456, now()->subMinutes(45));
@@ -135,8 +135,8 @@ class CollectorSeeder extends Seeder
         $this->location($siti, -6.2105, 106.8471, now()->subMinutes(30));
 
         // --- Collection letters (no PDF rendering in seeders - pdf_path stays null) ---
-        $this->letter($budi, 'AL001', 'reminder', 'Yth. Bapak/Ibu, kami informasikan bahwa terdapat tagihan IPL yang belum diselesaikan. Mohon segera melakukan pembayaran.');
-        $this->letter($ahmad, 'CE001', 'warning', 'Surat peringatan kedua terkait tunggakan IPL yang belum diselesaikan lebih dari 2 bulan.');
+        $this->letter($budi, '01001', 'reminder', 'Yth. Bapak/Ibu, kami informasikan bahwa terdapat tagihan IPL yang belum diselesaikan. Mohon segera melakukan pembayaran.');
+        $this->letter($ahmad, '03001', 'warning', 'Surat peringatan kedua terkait tunggakan IPL yang belum diselesaikan lebih dari 2 bulan.');
     }
 
     private function makeCollector(string $username, string $name, string $code, string $whatsapp, string $employmentStatus, string $accountStatus, User $admin): User

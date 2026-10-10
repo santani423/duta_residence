@@ -9,7 +9,7 @@ class UnitCodeGeneratorService
 {
     /**
      * Kode unit mengikuti pola yang sudah dipakai sistem sejak awal: prefix cluster_id
-     * (2 karakter) diikuti nomor urut 3 digit, mis. GA001, GA002, ... (lihat UnitSeeder).
+     * (2 karakter) diikuti nomor urut 3 digit, mis. 07001, 07002, ... (lihat UnitSeeder).
      * Kolom units.id adalah primary key string(5), jadi nomor urut dibatasi 3 digit.
      *
      * Harus dipanggil di dalam DB::transaction() yang sama dengan Unit::create()-nya.

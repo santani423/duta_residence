@@ -34,9 +34,9 @@ use Illuminate\Support\Facades\Hash;
  *
  * Sample login credentials (password is 'password' for all):
  *   username           status     oversees
- *   supervisor.rina     active     Cluster Alamanda & Bougenville (Budi & Siti's clusters)
- *   supervisor.hendra   active     Cluster Cendana & Dahlia (Ahmad & Dewi's clusters)
- *   supervisor.wati     inactive   Cluster Edelweiss
+ *   supervisor.rina     active     Dolomite & Garnet (Budi & Siti's clusters)
+ *   supervisor.hendra   active     Jade & Amber (Ahmad & Dewi's clusters)
+ *   supervisor.wati     inactive   Diamond
  */
 class SupervisorSeeder extends Seeder
 {
@@ -49,11 +49,11 @@ class SupervisorSeeder extends Seeder
         $hendra = $this->makeSupervisor('supervisor.hendra', 'Hendra Kusuma', 'SPV-0002', '081234600002', SupervisorProfile::STATUS_ACTIVE, $admin);
         $wati = $this->makeSupervisor('supervisor.wati', 'Wati Purnama', 'SPV-0003', '081234600003', SupervisorProfile::STATUS_INACTIVE, $admin);
 
-        $this->assignCluster($rina, 'AL', $admin);
-        $this->assignCluster($rina, 'BO', $admin);
-        $this->assignCluster($hendra, 'CE', $admin);
-        $this->assignCluster($hendra, 'DA', $admin);
-        $this->assignCluster($wati, 'ED', $admin);
+        $this->assignCluster($rina, '01', $admin);
+        $this->assignCluster($rina, '02', $admin);
+        $this->assignCluster($hendra, '03', $admin);
+        $this->assignCluster($hendra, '04', $admin);
+        $this->assignCluster($wati, '05', $admin);
 
         // --- Approval Center: Reversal (pending only, real receipt, never approved here) ---
         $receipt = Receipt::query()->where('status', '!=', 'cancelled')->latest('transaction_date')->first();
@@ -94,10 +94,10 @@ class SupervisorSeeder extends Seeder
         }
 
         // --- Approval Center: Installment Plan (pending, approved, rejected) ---
-        $installmentUnit = Billing::query()->outstanding()->orderBy('id')->first()?->unit_id ?? 'AL001';
+        $installmentUnit = Billing::query()->outstanding()->orderBy('id')->first()?->unit_id ?? '01001';
         $this->installmentPlanDemo($installmentUnit, 'pending', $admin);
-        $this->installmentPlanDemo('BO001', 'approved', $admin);
-        $this->installmentPlanDemo('CE001', 'rejected', $admin);
+        $this->installmentPlanDemo('02001', 'approved', $admin);
+        $this->installmentPlanDemo('03001', 'rejected', $admin);
 
         // --- Approval Center: Billing Adjustment (pending, rejected - approved skipped to avoid mutating a real billing's discount in seed data) ---
         $adjustmentBilling = Billing::query()->outstanding()->orderByDesc('id')->first();
@@ -136,7 +136,7 @@ class SupervisorSeeder extends Seeder
 
         $failedBroadcast = Broadcast::query()->firstOrCreate(
             ['sender_id' => $admin->id, 'type' => Broadcast::TYPE_RESIDENT, 'message' => 'Pengingat: mohon segera menyelesaikan tunggakan IPL bulan ini.'],
-            ['target_criteria' => ['cluster_id' => 'CE'], 'recipient_count' => 1, 'success_count' => 0, 'fail_count' => 1]
+            ['target_criteria' => ['cluster_id' => '03'], 'recipient_count' => 1, 'success_count' => 0, 'fail_count' => 1]
         );
         if ($failedBroadcast->wasRecentlyCreated) {
             BroadcastRecipient::query()->create(['broadcast_id' => $failedBroadcast->id, 'recipient_type' => 'resident', 'recipient_id' => null, 'name' => 'Contoh Penghuni', 'phone' => '', 'delivery_status' => 'failed', 'provider_response' => 'invalid_phone_number', 'sent_at' => now()->subHours(2)]);

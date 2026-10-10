@@ -16,9 +16,9 @@ class MaintenanceSeeder extends Seeder
         $statuses = ['submitted', 'scheduled', 'assigned', 'in_progress', 'completed', 'cancelled', 'rejected'];
 
         $fixed = [
-            ['AL009', 'AC', 'high', 'scheduled'],
-            ['AL004', 'Lampu jalan', 'normal', 'submitted'],
-            ['AL007', 'Plumbing', 'normal', 'completed'],
+            ['01009', 'AC', 'high', 'scheduled'],
+            ['01004', 'Lampu jalan', 'normal', 'submitted'],
+            ['01007', 'Plumbing', 'normal', 'completed'],
         ];
 
         foreach ($fixed as [$unitId, $category, $urgency, $status]) {

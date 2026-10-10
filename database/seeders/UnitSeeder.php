@@ -25,11 +25,11 @@ class UnitSeeder extends Seeder
             ['type' => 'K', 'building' => 120, 'land' => 200],
         ];
 
-        foreach (EstateSeeder::CLUSTERS as $clusterIndex => $cluster) {
-            // AL & GA menampung ResidentSeeder::SPECIAL (butuh unit s.d. index 12) dan
+        foreach (EstateSeeder::clusters() as $clusterIndex => $cluster) {
+            // 01 & 07 menampung ResidentSeeder::SPECIAL (butuh unit s.d. index 12) dan
             // skenario kosong/renovasi/nonaktif di index 27-30, jadi tetap 30 unit.
             // Cluster lain dipangkas jadi 3 unit supaya total ~100 unit dan seeder enteng di server.
-            $unitCount = in_array($cluster['id'], ['AL', 'GA'], true) ? 30 : 3;
+            $unitCount = in_array($cluster['id'], ['01', '07'], true) ? 30 : 3;
 
             for ($i = 1; $i <= $unitCount; $i++) {
                 $id = $cluster['id'].str_pad((string) $i, 3, '0', STR_PAD_LEFT);
@@ -98,7 +98,7 @@ class UnitSeeder extends Seeder
                 ]);
 
                 if ($statusId !== 'RK') {
-                    $username = $id === 'GA012' ? 'customer' : 'customer.'.strtolower($id);
+                    $username = $id === '07012' ? 'customer' : 'customer.'.strtolower($id);
                     $user = User::updateOrCreate(['username' => $username], [
                         'name' => $resident->name,
                         'email' => $resident->email,
@@ -136,15 +136,15 @@ class UnitSeeder extends Seeder
             return;
         }
 
-        $orphanedResidentIds = Unit::whereIn('id', ['BO001', 'CE001'])->pluck('resident_id')->diff([$multiOwner->id]);
+        $orphanedResidentIds = Unit::whereIn('id', ['02001', '03001'])->pluck('resident_id')->diff([$multiOwner->id]);
 
-        Unit::whereIn('id', ['BO001', 'CE001'])->update(['resident_id' => $multiOwner->id]);
+        Unit::whereIn('id', ['02001', '03001'])->update(['resident_id' => $multiOwner->id]);
 
         // Unit direassign langsung via query, bukan lewat UnitController, jadi bersihkan
-        // manual akun customer lama yang unit_id-nya masih menunjuk ke BO001/CE001 padahal
+        // manual akun customer lama yang unit_id-nya masih menunjuk ke 02001/03001 padahal
         // penghuninya sudah bukan pemilik lagi.
         User::query()->role('customer')
-            ->whereIn('unit_id', ['BO001', 'CE001'])
+            ->whereIn('unit_id', ['02001', '03001'])
             ->where(fn ($q) => $q->whereNull('resident_id')->orWhere('resident_id', '!=', $multiOwner->id))
             ->update(['unit_id' => null]);
 

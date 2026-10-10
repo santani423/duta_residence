@@ -57,7 +57,7 @@ class CollectorLifecycleTest extends TestCase
         return User::find($id);
     }
 
-    private function createUnit(string $cluster = 'GA'): string
+    private function createUnit(string $cluster = '07'): string
     {
         $this->actAsRoot();
         $this->lotSeq++;
@@ -410,14 +410,14 @@ class CollectorLifecycleTest extends TestCase
         $inScope = $this->createCollector('lc.scope.in');
         $outScope = $this->createCollector('lc.scope.out');
         // Cluster penuh sudah dipegang collector seeder (guard duplikat), jadi pakai scope unit.
-        $this->assignUnit($inScope, $this->createUnit('GA'));
-        $this->assignUnit($outScope, $this->createUnit('AL'));
+        $this->assignUnit($inScope, $this->createUnit('07'));
+        $this->assignUnit($outScope, $this->createUnit('01'));
 
         $this->actAsRoot();
         $supervisorId = $this->postJson('/api/v1/supervisors', [
             'name' => 'Supervisor Scope', 'username' => 'lc.scope.spv', 'password' => 'password123', 'account_status' => 'active',
         ])->assertCreated()->json('data.id');
-        $this->postJson('/api/v1/supervisor-assignments', ['supervisor_id' => $supervisorId, 'cluster_id' => 'GA'])->assertCreated();
+        $this->postJson('/api/v1/supervisor-assignments', ['supervisor_id' => $supervisorId, 'cluster_id' => '07'])->assertCreated();
 
         Sanctum::actingAs(User::find($supervisorId));
         $ids = collect($this->getJson('/api/v1/collectors?per_page=100')->assertOk()->json('data'))->pluck('id');
@@ -433,11 +433,11 @@ class CollectorLifecycleTest extends TestCase
     {
         $inGa = $this->createCollector('lc.filter.ga');
         $inAl = $this->createCollector('lc.filter.al');
-        $this->assignUnit($inGa, $this->createUnit('GA'));
-        $this->assignUnit($inAl, $this->createUnit('AL'));
+        $this->assignUnit($inGa, $this->createUnit('07'));
+        $this->assignUnit($inAl, $this->createUnit('01'));
 
         $this->actAsRoot();
-        $ids = collect($this->getJson('/api/v1/collectors?cluster_id=GA&per_page=100')->assertOk()->json('data'))->pluck('id');
+        $ids = collect($this->getJson('/api/v1/collectors?cluster_id=07&per_page=100')->assertOk()->json('data'))->pluck('id');
         $this->assertContains($inGa->id, $ids);
         $this->assertNotContains($inAl->id, $ids);
 

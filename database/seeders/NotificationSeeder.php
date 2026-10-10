@@ -29,7 +29,7 @@ class NotificationSeeder extends Seeder
         ];
 
         Unit::with('resident')->where('status_id', 'AK')->orderBy('id')->limit(260)->get()->each(function (Unit $unit, int $i) use ($types) {
-            $count = $unit->id === 'AL012' ? 18 : rand(2, 7);
+            $count = $unit->id === '01012' ? 18 : rand(2, 7);
             $keys = array_keys($types);
 
             for ($n = 0; $n < $count; $n++) {
@@ -40,7 +40,7 @@ class NotificationSeeder extends Seeder
                         'user_id' => null,
                         'channel' => 'in_app',
                         'recipient' => $unit->resident?->email ?: $unit->resident?->phone,
-                        'read_status' => $unit->id === 'AL012' || $n % 3 !== 0 ? 'unread' : 'read',
+                        'read_status' => $unit->id === '01012' || $n % 3 !== 0 ? 'unread' : 'read',
                         'status' => $n % 5 === 0 ? 'pending' : 'sent',
                         'attempts' => $n % 2,
                         'sent_at' => now()->subDays($n),

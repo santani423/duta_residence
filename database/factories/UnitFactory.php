@@ -26,7 +26,7 @@ class UnitFactory extends Factory
         return [
             'id' => strtoupper(fake()->bothify('??###')),
             'resident_id' => Resident::factory(),
-            'cluster_id' => 'AL',
+            'cluster_id' => '01',
             'block' => fake()->randomElement(['A', 'B', 'C', 'D', 'E']),
             'lot_number' => (string) fake()->unique()->numberBetween(1, 999),
             'property_type_id' => $type['code'],

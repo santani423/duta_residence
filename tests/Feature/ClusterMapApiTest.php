@@ -24,32 +24,32 @@ class ClusterMapApiTest extends TestCase
     private function createMapForGa(): ClusterMap
     {
         Sanctum::actingAs(User::where('username', 'root')->first());
-        $this->postJson('/api/v1/clusters/GA/map', ['canvas_type' => 'blank'])->assertCreated();
+        $this->postJson('/api/v1/clusters/07/map', ['canvas_type' => 'blank'])->assertCreated();
 
-        return ClusterMap::query()->where('cluster_id', 'GA')->firstOrFail();
+        return ClusterMap::query()->where('cluster_id', '07')->firstOrFail();
     }
 
     public function test_creating_a_map_twice_for_the_same_cluster_returns_the_existing_one(): void
     {
         Sanctum::actingAs(User::where('username', 'root')->first());
 
-        $firstId = $this->postJson('/api/v1/clusters/GA/map', ['canvas_type' => 'blank'])
+        $firstId = $this->postJson('/api/v1/clusters/07/map', ['canvas_type' => 'blank'])
             ->assertCreated()->json('data.id');
 
-        $response = $this->postJson('/api/v1/clusters/GA/map', ['canvas_type' => 'blank'])->assertOk();
+        $response = $this->postJson('/api/v1/clusters/07/map', ['canvas_type' => 'blank'])->assertOk();
 
         $this->assertSame($firstId, $response->json('data.id'));
-        $this->assertSame(1, ClusterMap::query()->where('cluster_id', 'GA')->count());
+        $this->assertSame(1, ClusterMap::query()->where('cluster_id', '07')->count());
     }
 
     public function test_show_lists_available_units_and_seeded_component_types_before_any_object_is_placed(): void
     {
         $map = $this->createMapForGa();
 
-        $response = $this->getJson('/api/v1/clusters/GA/map')->assertOk();
+        $response = $this->getJson('/api/v1/clusters/07/map')->assertOk();
 
         $unitIds = collect($response->json('data.available_units'))->pluck('id')->all();
-        $this->assertContains('GA001', $unitIds);
+        $this->assertContains('07001', $unitIds);
         $this->assertGreaterThan(0, count($response->json('data.component_types')));
         $this->assertSame($map->id, $response->json('data.map.id'));
     }
@@ -67,7 +67,7 @@ class ClusterMapApiTest extends TestCase
                 [
                     'id' => $unitObjectId,
                     'object_category' => 'unit',
-                    'unit_id' => 'GA001',
+                    'unit_id' => '07001',
                     'shape_type' => 'rect',
                     'x' => 10, 'y' => 20, 'width' => 60, 'height' => 120,
                 ],
@@ -83,7 +83,7 @@ class ClusterMapApiTest extends TestCase
         ])->assertOk();
 
         $this->assertCount(2, $response->json('data.objects'));
-        $this->assertDatabaseHas('cluster_map_objects', ['id' => $unitObjectId, 'unit_id' => 'GA001']);
+        $this->assertDatabaseHas('cluster_map_objects', ['id' => $unitObjectId, 'unit_id' => '07001']);
         $this->assertDatabaseHas('cluster_map_versions', ['cluster_map_id' => $map->id]);
         $this->assertDatabaseHas('audit_logs', ['module' => 'cluster-maps', 'activity' => 'cluster_map_saved']);
     }
@@ -94,8 +94,8 @@ class ClusterMapApiTest extends TestCase
 
         $this->putJson("/api/v1/cluster-maps/{$map->id}/objects", [
             'objects' => [
-                ['id' => (string) Str::uuid(), 'object_category' => 'unit', 'unit_id' => 'GA001', 'shape_type' => 'rect', 'x' => 0, 'y' => 0],
-                ['id' => (string) Str::uuid(), 'object_category' => 'unit', 'unit_id' => 'GA001', 'shape_type' => 'rect', 'x' => 10, 'y' => 10],
+                ['id' => (string) Str::uuid(), 'object_category' => 'unit', 'unit_id' => '07001', 'shape_type' => 'rect', 'x' => 0, 'y' => 0],
+                ['id' => (string) Str::uuid(), 'object_category' => 'unit', 'unit_id' => '07001', 'shape_type' => 'rect', 'x' => 10, 'y' => 10],
             ],
         ])->assertStatus(422);
     }
@@ -103,7 +103,7 @@ class ClusterMapApiTest extends TestCase
     public function test_placing_a_unit_from_a_different_cluster_is_rejected(): void
     {
         $map = $this->createMapForGa();
-        $otherClusterUnit = Unit::query()->where('cluster_id', '!=', 'GA')->firstOrFail();
+        $otherClusterUnit = Unit::query()->where('cluster_id', '!=', '07')->firstOrFail();
 
         $this->putJson("/api/v1/cluster-maps/{$map->id}/objects", [
             'objects' => [
@@ -118,7 +118,7 @@ class ClusterMapApiTest extends TestCase
 
         Sanctum::actingAs(User::where('username', 'loket')->first());
 
-        $this->getJson('/api/v1/clusters/GA/map')->assertOk();
+        $this->getJson('/api/v1/clusters/07/map')->assertOk();
         $this->putJson("/api/v1/cluster-maps/{$map->id}/objects", ['objects' => []])->assertForbidden();
     }
 
@@ -129,7 +129,7 @@ class ClusterMapApiTest extends TestCase
 
         $this->putJson("/api/v1/cluster-maps/{$map->id}/objects", [
             'objects' => [
-                ['id' => $firstObjectId, 'object_category' => 'unit', 'unit_id' => 'GA001', 'shape_type' => 'rect', 'x' => 0, 'y' => 0],
+                ['id' => $firstObjectId, 'object_category' => 'unit', 'unit_id' => '07001', 'shape_type' => 'rect', 'x' => 0, 'y' => 0],
             ],
         ])->assertOk();
 
@@ -139,7 +139,7 @@ class ClusterMapApiTest extends TestCase
         $secondObjectId = (string) Str::uuid();
         $this->putJson("/api/v1/cluster-maps/{$map->id}/objects", [
             'objects' => [
-                ['id' => $secondObjectId, 'object_category' => 'unit', 'unit_id' => 'GA002', 'shape_type' => 'rect', 'x' => 5, 'y' => 5],
+                ['id' => $secondObjectId, 'object_category' => 'unit', 'unit_id' => '07002', 'shape_type' => 'rect', 'x' => 5, 'y' => 5],
             ],
         ])->assertOk();
 
@@ -147,7 +147,7 @@ class ClusterMapApiTest extends TestCase
 
         $this->postJson("/api/v1/cluster-map-versions/{$firstVersionId}/restore")->assertOk();
 
-        $this->assertDatabaseHas('cluster_map_objects', ['id' => $firstObjectId, 'unit_id' => 'GA001']);
+        $this->assertDatabaseHas('cluster_map_objects', ['id' => $firstObjectId, 'unit_id' => '07001']);
         $this->assertDatabaseMissing('cluster_map_objects', ['id' => $secondObjectId]);
         $this->assertDatabaseHas('audit_logs', ['module' => 'cluster-maps', 'activity' => 'cluster_map_version_restored']);
     }

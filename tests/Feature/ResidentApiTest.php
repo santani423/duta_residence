@@ -75,7 +75,7 @@ class ResidentApiTest extends TestCase
         Sanctum::actingAs(User::where('username', 'root')->first());
 
         $emptyUnitId = $this->postJson('/api/v1/units', [
-            'cluster_id' => 'GA',
+            'cluster_id' => '07',
             'block' => 'Z',
             'lot_number' => '01',
             'property_type_id' => 'B',
@@ -88,7 +88,7 @@ class ResidentApiTest extends TestCase
 
         $this->postJson('/api/v1/units', [
             'resident_id' => $occupiedResidentId,
-            'cluster_id' => 'GA',
+            'cluster_id' => '07',
             'block' => 'Z',
             'lot_number' => '02',
             'property_type_id' => 'B',
@@ -96,7 +96,7 @@ class ResidentApiTest extends TestCase
             'status_id' => 'AK',
         ])->assertCreated();
 
-        $response = $this->getJson('/api/v1/units?unassigned=1&cluster_id=GA&block=Z');
+        $response = $this->getJson('/api/v1/units?unassigned=1&cluster_id=07&block=Z');
 
         $response->assertOk();
         $ids = collect($response->json('data'))->pluck('id');
@@ -111,7 +111,7 @@ class ResidentApiTest extends TestCase
         Sanctum::actingAs(User::where('username', 'root')->first());
 
         $unitId = $this->postJson('/api/v1/units', [
-            'cluster_id' => 'GA',
+            'cluster_id' => '07',
             'block' => 'Z',
             'lot_number' => '03',
             'property_type_id' => 'B',
@@ -145,7 +145,7 @@ class ResidentApiTest extends TestCase
     private function createEmptyUnit(string $lot): string
     {
         return $this->postJson('/api/v1/units', [
-            'cluster_id' => 'GA',
+            'cluster_id' => '07',
             'block' => 'Z',
             'lot_number' => $lot,
             'property_type_id' => 'B',
@@ -254,7 +254,7 @@ class ResidentApiTest extends TestCase
 
         $unitId = $this->postJson('/api/v1/units', [
             'resident_id' => $existingResidentId,
-            'cluster_id' => 'GA',
+            'cluster_id' => '07',
             'block' => 'Z',
             'lot_number' => '04',
             'property_type_id' => 'B',
@@ -283,7 +283,7 @@ class ResidentApiTest extends TestCase
             ->assertCreated()->json('data.resident.id');
 
         $unitPayload = [
-            'cluster_id' => 'GA',
+            'cluster_id' => '07',
             'block' => 'Y',
             'lot_number' => '1',
             'property_type_id' => 'B',
@@ -321,7 +321,7 @@ class ResidentApiTest extends TestCase
         $residentId = $this->postJson('/api/v1/residents', ['name' => 'Dua Unit'])
             ->assertCreated()->json('data.resident.id');
 
-        $base = ['cluster_id' => 'GA', 'block' => 'X', 'property_type_id' => 'B', 'status_id' => 'RK'];
+        $base = ['cluster_id' => '07', 'block' => 'X', 'property_type_id' => 'B', 'status_id' => 'RK'];
         $first = $this->postJson('/api/v1/units', $base + ['lot_number' => '1', 'resident_id' => $residentId])->json('data.id');
         $this->postJson('/api/v1/units', $base + ['lot_number' => '2', 'resident_id' => $residentId])->assertCreated();
 

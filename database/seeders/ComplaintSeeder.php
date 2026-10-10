@@ -17,9 +17,9 @@ class ComplaintSeeder extends Seeder
         $statuses = ['submitted', 'in_review', 'in_progress', 'resolved', 'closed', 'rejected'];
 
         $fixed = [
-            ['AL004', 'Kebisingan renovasi malam hari', 'Lingkungan', 'urgent', 'in_progress'],
-            ['AL007', 'Lampu taman mati', 'Fasilitas', 'normal', 'resolved'],
-            ['AL012', 'Tagihan perlu klarifikasi', 'Tagihan', 'high', 'submitted'],
+            ['01004', 'Kebisingan renovasi malam hari', 'Lingkungan', 'urgent', 'in_progress'],
+            ['01007', 'Lampu taman mati', 'Fasilitas', 'normal', 'resolved'],
+            ['01012', 'Tagihan perlu klarifikasi', 'Tagihan', 'high', 'submitted'],
         ];
 
         foreach ($fixed as [$unitId, $title, $category, $priority, $status]) {

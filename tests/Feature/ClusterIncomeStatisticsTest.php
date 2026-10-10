@@ -20,7 +20,7 @@ class ClusterIncomeStatisticsTest extends TestCase
 
     /**
      * Only the reference/role/cluster seeders - NOT BillingSeeder/PaymentSeeder, which fill
-     * clusters like AL with a large rolling window of demo billing history that would make
+     * clusters like 01 with a large rolling window of demo billing history that would make
      * this test's month-bucket assertions depend on whatever that generator happens to
      * produce for "this month" at run time.
      */
@@ -41,7 +41,7 @@ class ClusterIncomeStatisticsTest extends TestCase
     }
 
     /**
-     * Covers: cluster isolation (AL vs BO), only STATUS_PAID counts (unpaid/partial/cancelled
+     * Covers: cluster isolation (01 vs 02), only STATUS_PAID counts (unpaid/partial/cancelled
      * excluded), grouping by paid_at (payment date) rather than the billing's own year/month
      * period, months outside the rolling 12-month window are excluded, and months with no paid
      * billing still appear in the series at 0 instead of being dropped.
@@ -58,59 +58,59 @@ class ClusterIncomeStatisticsTest extends TestCase
         $twoMonthsAgo = $thisMonth->copy()->subMonths(2);
         $outsideWindow = $thisMonth->copy()->subMonths(13);
 
-        // Paid, in-window, cluster AL -> must count in the current month's bucket.
+        // Paid, in-window, cluster 01 -> must count in the current month's bucket.
         Billing::factory()->create([
-            'unit_id' => $makeUnit('AL')->id, 'year' => $thisMonth->year, 'month' => $thisMonth->month,
+            'unit_id' => $makeUnit('01')->id, 'year' => $thisMonth->year, 'month' => $thisMonth->month,
             'amount' => 350000, 'status_id' => Billing::STATUS_PAID,
             'principal_paid' => 350000, 'penalty_paid' => 20000,
             'paid_at' => $thisMonth->copy()->addDays(2), 'created_by' => $finance->id,
         ]);
 
-        // Paid, in-window, cluster AL, but its OWN billing period is 5 months ago while it was
+        // Paid, in-window, cluster 01, but its OWN billing period is 5 months ago while it was
         // only actually paid (paid_at) two months ago - must bucket by paid_at, not year/month.
         Billing::factory()->create([
-            'unit_id' => $makeUnit('AL')->id, 'year' => $thisMonth->copy()->subMonths(5)->year, 'month' => $thisMonth->copy()->subMonths(5)->month,
+            'unit_id' => $makeUnit('01')->id, 'year' => $thisMonth->copy()->subMonths(5)->year, 'month' => $thisMonth->copy()->subMonths(5)->month,
             'amount' => 350000, 'status_id' => Billing::STATUS_PAID,
             'principal_paid' => 350000, 'penalty_paid' => 0,
             'paid_at' => $twoMonthsAgo->copy()->addDays(5), 'created_by' => $finance->id,
         ]);
 
-        // Paid, in-window, but a DIFFERENT cluster -> must not leak into AL's total.
+        // Paid, in-window, but a DIFFERENT cluster -> must not leak into 01's total.
         Billing::factory()->create([
-            'unit_id' => $makeUnit('BO')->id, 'year' => $thisMonth->year, 'month' => $thisMonth->month,
+            'unit_id' => $makeUnit('02')->id, 'year' => $thisMonth->year, 'month' => $thisMonth->month,
             'amount' => 500000, 'status_id' => Billing::STATUS_PAID,
             'principal_paid' => 500000, 'penalty_paid' => 0,
             'paid_at' => $thisMonth->copy()->addDays(1), 'created_by' => $finance->id,
         ]);
 
-        // Unpaid / partial / cancelled, cluster AL, in-window -> must be excluded from income.
+        // Unpaid / partial / cancelled, cluster 01, in-window -> must be excluded from income.
         Billing::factory()->create([
-            'unit_id' => $makeUnit('AL')->id, 'year' => $thisMonth->year, 'month' => $thisMonth->month,
+            'unit_id' => $makeUnit('01')->id, 'year' => $thisMonth->year, 'month' => $thisMonth->month,
             'amount' => 350000, 'status_id' => Billing::STATUS_UNPAID, 'created_by' => $finance->id,
         ]);
         Billing::factory()->create([
-            'unit_id' => $makeUnit('AL')->id, 'year' => $thisMonth->year, 'month' => $thisMonth->month,
+            'unit_id' => $makeUnit('01')->id, 'year' => $thisMonth->year, 'month' => $thisMonth->month,
             'amount' => 350000, 'status_id' => Billing::STATUS_PARTIAL,
             'principal_paid' => 175000, 'paid_at' => null, 'created_by' => $finance->id,
         ]);
         Billing::factory()->create([
-            'unit_id' => $makeUnit('AL')->id, 'year' => $thisMonth->year, 'month' => $thisMonth->month,
+            'unit_id' => $makeUnit('01')->id, 'year' => $thisMonth->year, 'month' => $thisMonth->month,
             'amount' => 350000, 'status_id' => Billing::STATUS_CANCELLED,
             'principal_paid' => 0, 'penalty_paid' => 0, 'paid_at' => null, 'created_by' => $finance->id,
         ]);
 
-        // Paid, cluster AL, but OUTSIDE the rolling 12-month window -> must be excluded.
+        // Paid, cluster 01, but OUTSIDE the rolling 12-month window -> must be excluded.
         Billing::factory()->create([
-            'unit_id' => $makeUnit('AL')->id, 'year' => $outsideWindow->year, 'month' => $outsideWindow->month,
+            'unit_id' => $makeUnit('01')->id, 'year' => $outsideWindow->year, 'month' => $outsideWindow->month,
             'amount' => 350000, 'status_id' => Billing::STATUS_PAID,
             'principal_paid' => 350000, 'penalty_paid' => 0,
             'paid_at' => $outsideWindow->copy()->addDays(3), 'created_by' => $finance->id,
         ]);
 
         $this->as('admin.estate');
-        $data = $this->getJson('/api/v1/clusters/AL/income-statistics')->assertOk()->json('data');
+        $data = $this->getJson('/api/v1/clusters/01/income-statistics')->assertOk()->json('data');
 
-        $this->assertSame('AL', $data['cluster_id']);
+        $this->assertSame('01', $data['cluster_id']);
         $this->assertCount(12, $data['monthly_income']);
 
         $byMonth = collect($data['monthly_income'])->keyBy('month');
@@ -127,6 +127,6 @@ class ClusterIncomeStatisticsTest extends TestCase
 
     public function test_income_statistics_requires_cluster_view_permission(): void
     {
-        $this->getJson('/api/v1/clusters/AL/income-statistics')->assertUnauthorized();
+        $this->getJson('/api/v1/clusters/01/income-statistics')->assertUnauthorized();
     }
 }

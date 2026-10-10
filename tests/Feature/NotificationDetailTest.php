@@ -104,7 +104,7 @@ class NotificationDetailTest extends TestCase
         $finance2 = User::where('username', 'finance2')->first();
 
         $others = $this->staffNotification($finance2);
-        $residentAddressed = NotificationQueue::factory()->unread()->create(['unit_id' => 'GA012', 'user_id' => null, 'recipient' => '0812000']);
+        $residentAddressed = NotificationQueue::factory()->unread()->create(['unit_id' => '07012', 'user_id' => null, 'recipient' => '0812000']);
 
         Sanctum::actingAs($finance);
         foreach ([$others, $residentAddressed] as $n) {
@@ -175,7 +175,7 @@ class NotificationDetailTest extends TestCase
         $mine = NotificationQueue::factory()->unread()->create(['unit_id' => $unitId, 'user_id' => null, 'recipient' => '0812']);
         $staffBroadcast = NotificationQueue::factory()->unread()->create(['unit_id' => $unitId, 'user_id' => null, 'recipient' => 'staff', 'type' => 'emergency_alert']);
         $staffPersonal = NotificationQueue::factory()->unread()->create(['unit_id' => $unitId, 'user_id' => $otherUser->id, 'recipient' => (string) $otherUser->id]);
-        $otherUnit = NotificationQueue::factory()->unread()->create(['unit_id' => 'AL001', 'user_id' => null, 'recipient' => '0813']);
+        $otherUnit = NotificationQueue::factory()->unread()->create(['unit_id' => '01001', 'user_id' => null, 'recipient' => '0813']);
 
         Sanctum::actingAs($customer);
         $ids = collect($this->getJson('/api/v1/resident/notifications?per_page=1000')->assertOk()->json('data'))->pluck('id');
@@ -204,7 +204,7 @@ class NotificationDetailTest extends TestCase
         $this->seed();
         Storage::fake('public');
         $customer = User::where('username', 'customer')->first();
-        $billing = Billing::where('unit_id', 'GA012')->where('status_id', '01')->whereNotNull('approved_at')->firstOrFail();
+        $billing = Billing::where('unit_id', '07012')->where('status_id', '01')->whereNotNull('approved_at')->firstOrFail();
 
         Sanctum::actingAs($customer);
         $paymentId = $this->postJson("/api/v1/resident/invoices/{$billing->id}/payments", ['provider' => 'manual'])->assertCreated()->json('data.id');

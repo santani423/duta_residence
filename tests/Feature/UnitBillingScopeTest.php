@@ -25,8 +25,8 @@ class UnitBillingScopeTest extends TestCase
         parent::setUp();
         $this->seed(EstateSeeder::class);
 
-        $this->unit = Unit::factory()->create(['cluster_id' => 'AL']);
-        $this->other = Unit::factory()->create(['cluster_id' => 'AL']);
+        $this->unit = Unit::factory()->create(['cluster_id' => '01']);
+        $this->other = Unit::factory()->create(['cluster_id' => '01']);
 
         foreach (['billings.view', 'payments.view'] as $permission) {
             Permission::findOrCreate($permission);
@@ -126,7 +126,7 @@ class UnitBillingScopeTest extends TestCase
         foreach ([$this->unit, $this->other] as $unit) {
             Receipt::create([
                 'number' => 'KW-'.$unit->id, 'unit_id' => $unit->id, 'transaction_date' => now(),
-                'resident_name' => 'X', 'cluster_name' => 'AL', 'block' => 'A', 'lot_number' => '1',
+                'resident_name' => 'X', 'cluster_name' => '01', 'block' => 'A', 'lot_number' => '1',
                 'total_billing' => 1, 'total_penalty' => 0, 'grand_total' => 1, 'billing_count' => 1,
             ]);
         }

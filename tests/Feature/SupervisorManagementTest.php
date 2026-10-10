@@ -103,7 +103,7 @@ class SupervisorManagementTest extends TestCase
 
         $this->postJson('/api/v1/supervisor-assignments', [
             'supervisor_id' => $supervisorId,
-            'cluster_id' => 'GA',
+            'cluster_id' => '07',
         ])->assertCreated();
 
         $inClusterCollector = $this->makeCollector('collector.ga.test');
@@ -112,15 +112,15 @@ class SupervisorManagementTest extends TestCase
         $this->postJson('/api/v1/collector-assignments', [
             'collector_id' => $inClusterCollector->id,
             'scope_type' => 'cluster',
-            'cluster_id' => 'GA',
+            'cluster_id' => '07',
         ])->assertCreated();
 
         $this->postJson('/api/v1/collector-assignments', [
-            // Blok khusus test: cluster AL utuh sudah dipegang kolektor seeder, dan penugasan
+            // Blok khusus test: cluster 01 utuh sudah dipegang kolektor seeder, dan penugasan
             // identik untuk kolektor lain kini ditolak oleh guard duplikat.
             'collector_id' => $outOfClusterCollector->id,
             'scope_type' => 'block',
-            'cluster_id' => 'AL',
+            'cluster_id' => '01',
             'block' => 'Q',
         ])->assertCreated();
 
@@ -145,7 +145,7 @@ class SupervisorManagementTest extends TestCase
 
         $assignmentId = $this->postJson('/api/v1/supervisor-assignments', [
             'supervisor_id' => $supervisorA,
-            'cluster_id' => 'AL',
+            'cluster_id' => '01',
         ])->assertCreated()->json('data.id');
 
         $this->postJson("/api/v1/supervisor-assignments/{$assignmentId}/reassign", [
@@ -156,7 +156,7 @@ class SupervisorManagementTest extends TestCase
             'id' => $assignmentId, 'is_active' => false, 'status' => 'transferred',
         ]);
         $this->assertDatabaseHas('supervisor_assignments', [
-            'supervisor_id' => $supervisorB, 'cluster_id' => 'AL', 'is_active' => true, 'status' => 'active',
+            'supervisor_id' => $supervisorB, 'cluster_id' => '01', 'is_active' => true, 'status' => 'active',
         ]);
     }
 
@@ -170,7 +170,7 @@ class SupervisorManagementTest extends TestCase
         $this->postJson('/api/v1/collector-assignments', [
             'collector_id' => $collector->id,
             'scope_type' => 'cluster',
-            'cluster_id' => 'GA',
+            'cluster_id' => '07',
         ])->assertCreated();
 
         $collectorIds = app(SupervisorAssignmentService::class)->collectorIdsFor($root);

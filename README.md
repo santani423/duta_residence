@@ -142,85 +142,85 @@ Semua password `password`:
 
 | Username | Email | Status | Wilayah yang diawasi |
 | --- | --- | --- | --- |
-| `supervisor.rina` | supervisorrina@grandduta.test | active | Cluster Alamanda & Bougenville (wilayah Budi & Siti). |
-| `supervisor.hendra` | supervisorhendra@grandduta.test | active | Cluster Cendana & Dahlia (wilayah Ahmad & Dewi). |
-| `supervisor.wati` | supervisorwati@grandduta.test | inactive | Cluster Edelweiss. |
+| `supervisor.rina` | supervisorrina@grandduta.test | active | Cluster Dolomite & Garnet (wilayah Budi & Siti). |
+| `supervisor.hendra` | supervisorhendra@grandduta.test | active | Cluster Jade & Amber (wilayah Ahmad & Dewi). |
+| `supervisor.wati` | supervisorwati@grandduta.test | inactive | Cluster Diamond. |
 
 ### Customer / penghuni (`ResidentSeeder.php` & `UnitSeeder.php`)
 
-Setiap unit aktif (bukan status "RK") otomatis mendapat akun customer dengan username `customer.{unit_id}` (huruf kecil) dan password `password` — total sekitar 450 akun di 15 cluster. Unit `GA012` adalah pengecualian legacy dengan username `customer` (email `resident@gd.test`).
+Setiap unit aktif (bukan status "RK") otomatis mendapat akun customer dengan username `customer.{unit_id}` (huruf kecil) dan password `password` — total akun sesuai jumlah unit di 14 cluster (lihat `database/data/clusters.csv`). Unit `07012` adalah pengecualian legacy dengan username `customer` (email `resident@gd.test`).
 
-12 unit di cluster Alamanda (AL001-AL012) sengaja dibuat untuk skenario QA tertentu:
+12 unit di cluster Dolomite (01001-01012) sengaja dibuat untuk skenario QA tertentu:
 
 ```text
-Customer Lunas (AL001)
-Username: customer.al001
+Customer Lunas (01001)
+Username: customer.01001
 Email: resident.paid@example.com
 Password: password
 Skenario: seluruh tagihan lunas dan histori pembayaran berhasil.
 
-Customer Menunggak (AL002)
-Username: customer.al002
+Customer Menunggak (01002)
+Username: customer.01002
 Email: resident.overdue@example.com
 Password: password
 Skenario: tagihan jatuh tempo, denda, dan dashboard overdue.
 
-Customer Manual Pending (AL003)
-Username: customer.al003
+Customer Manual Pending (01003)
+Username: customer.01003
 Email: resident.manual.pending@example.com
 Password: password
 Skenario: transaksi transfer manual belum dibayar.
 
-Customer Komplain Aktif (AL004)
-Username: customer.al004
+Customer Komplain Aktif (01004)
+Username: customer.01004
 Email: resident.complaint@example.com
 Password: password
 Skenario: komplain aktif dan maintenance baru.
 
-Customer Tanpa Tagihan (AL005)
-Username: customer.al005
+Customer Tanpa Tagihan (01005)
+Username: customer.01005
 Email: resident.nobills@example.com
 Password: password
 Skenario: akun aktif tanpa invoice aktif.
 
-Customer Manual Lunas (AL006)
-Username: customer.al006
+Customer Manual Lunas (01006)
+Username: customer.01006
 Email: resident.manual.rejected@example.com
 Password: password
 Skenario: pembayaran transfer manual lunas dan terverifikasi.
 
-Customer Xendit (AL007)
-Username: customer.al007
+Customer Xendit (01007)
+Username: customer.01007
 Email: resident.xendit@example.com
 Password: password
 Skenario: histori pembayaran Xendit berhasil.
 
-Customer Midtrans Pending (AL008)
-Username: customer.al008
+Customer Midtrans Pending (01008)
+Username: customer.01008
 Email: resident.midtrans.failed@example.com
 Password: password
 Skenario: transaksi Midtrans belum dibayar dan invoice pending approval.
 
-Customer Maintenance Aktif (AL009)
-Username: customer.al009
+Customer Maintenance Aktif (01009)
+Username: customer.01009
 Email: resident.maintenance@example.com
 Password: password
 Skenario: memiliki maintenance terjadwal dan selesai.
 
-Customer Nonaktif (AL010)
-Username: customer.al010
+Customer Nonaktif (01010)
+Username: customer.01010
 Email: resident.inactive@example.com
 Password: password
 Skenario: akun nonaktif (is_active = false), tidak bisa login.
 
-Customer Xendit Pending (AL011)
-Username: customer.al011
+Customer Xendit Pending (01011)
+Username: customer.01011
 Email: resident.partial@example.com
 Password: password
 Skenario: transaksi Xendit belum dibayar.
 
-Customer Banyak Notifikasi (AL012)
-Username: customer.al012
+Customer Banyak Notifikasi (01012)
+Username: customer.01012
 Email: resident.notifications@example.com
 Password: password
 Skenario: badge notifikasi unread besar.

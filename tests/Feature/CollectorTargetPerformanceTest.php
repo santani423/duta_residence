@@ -60,7 +60,7 @@ class CollectorTargetPerformanceTest extends TestCase
         app(CollectionAccountRefreshQueue::class)->flush();
     }
 
-    private function unitId(string $clusterId = 'GA', int $offset = 0): string
+    private function unitId(string $clusterId = '07', int $offset = 0): string
     {
         return Unit::query()->where('cluster_id', $clusterId)->orderBy('id')->skip($offset)->value('id');
     }
@@ -164,10 +164,10 @@ class CollectorTargetPerformanceTest extends TestCase
         $this->promise(['collector_id' => $id, 'status' => 'broken', 'broken_at' => '2026-09-25 10:00:00', 'created_at' => '2026-08-20 09:00:00']);
         $this->promise(['collector_id' => $other->id, 'created_by' => $id]);
 
-        DB::table('collection_account_states')->updateOrInsert(['unit_id' => $this->unitId('GA', 0)], [
+        DB::table('collection_account_states')->updateOrInsert(['unit_id' => $this->unitId('07', 0)], [
             'collector_id' => $id, 'outstanding_total' => 450000, 'aging_days' => 40, 'priority_level' => 'critical', 'status' => 'overdue',
         ]);
-        DB::table('collection_account_states')->updateOrInsert(['unit_id' => $this->unitId('GA', 1)], [
+        DB::table('collection_account_states')->updateOrInsert(['unit_id' => $this->unitId('07', 1)], [
             'collector_id' => $id, 'outstanding_total' => 0, 'aging_days' => 0, 'priority_level' => 'normal', 'status' => 'paid',
         ]);
 
@@ -251,11 +251,11 @@ class CollectorTargetPerformanceTest extends TestCase
     public function test_supervisor_is_limited_to_collectors_in_their_clusters(): void
     {
         $this->seed();
-        $supervisor = $this->makeSupervisor('perf.spv', 'GA');
+        $supervisor = $this->makeSupervisor('perf.spv', '07');
         $inScope = $this->makeCollector('perf.in.scope', 'Aaa Dalam Cakupan');
         $outScope = $this->makeCollector('perf.out.scope', 'Bbb Luar Cakupan');
-        $this->assignCluster($inScope, 'GA');
-        $this->assignCluster($outScope, 'AL');
+        $this->assignCluster($inScope, '07');
+        $this->assignCluster($outScope, '01');
 
         $outTarget = CollectorTarget::query()->create([
             'collector_id' => $outScope->id, 'period_type' => 'monthly', 'period_start' => '2026-09-01', 'target_amount' => 100000,
@@ -287,8 +287,8 @@ class CollectorTargetPerformanceTest extends TestCase
         $this->assertTrue($progress->contains($inScope->id));
         $this->assertFalse($progress->contains($outScope->id));
 
-        $this->getJson('/api/v1/collector-targets/progress?cluster_id=AL')->assertForbidden();
-        $this->getJson('/api/v1/collection/performance?cluster_id=AL')->assertForbidden();
+        $this->getJson('/api/v1/collector-targets/progress?cluster_id=01')->assertForbidden();
+        $this->getJson('/api/v1/collection/performance?cluster_id=01')->assertForbidden();
 
         $ranking = collect($this->getJson('/api/v1/collection/performance')->assertOk()->json('data.ranking'))->pluck('collector.id');
         $this->assertTrue($ranking->contains($inScope->id));
@@ -400,9 +400,9 @@ class CollectorTargetPerformanceTest extends TestCase
     {
         Carbon::setTestNow('2026-10-08 09:00:00');
         $this->seed();
-        $supervisor = $this->makeSupervisor('perf.spv.targets', 'GA');
+        $supervisor = $this->makeSupervisor('perf.spv.targets', '07');
         $collector = $this->makeCollector('perf.spv.collector');
-        $this->assignCluster($collector, 'GA');
+        $this->assignCluster($collector, '07');
         CollectorTarget::query()->create([
             'collector_id' => $collector->id, 'period_type' => 'daily', 'period_start' => '2026-10-08', 'target_amount' => 100000,
         ]);

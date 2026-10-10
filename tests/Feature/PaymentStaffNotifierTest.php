@@ -19,7 +19,7 @@ class PaymentStaffNotifierTest extends TestCase
     {
         $this->seed();
         $customer = User::where('username', 'customer')->first();
-        $billing = Billing::where('unit_id', 'GA012')->where('status_id', '01')->whereNotNull('approved_at')->firstOrFail();
+        $billing = Billing::where('unit_id', '07012')->where('status_id', '01')->whereNotNull('approved_at')->firstOrFail();
 
         Sanctum::actingAs($customer);
         $paymentId = $this->postJson("/api/v1/resident/invoices/{$billing->id}/payments", ['provider' => 'manual'])->assertCreated()->json('data.id');

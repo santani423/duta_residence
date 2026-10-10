@@ -38,7 +38,7 @@ class BroadcastTest extends TestCase
         $this->postJson('/api/v1/collector-assignments', [
             'collector_id' => $collector->id,
             'scope_type' => 'cluster',
-            'cluster_id' => 'GA',
+            'cluster_id' => '07',
         ])->assertCreated();
 
         $response = $this->postJson('/api/v1/broadcasts', [
