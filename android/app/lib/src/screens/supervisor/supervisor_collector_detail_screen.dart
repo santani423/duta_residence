@@ -4,6 +4,7 @@ import '../../api/api_client.dart';
 import '../../api/api_exception.dart';
 import '../../constants/app_spacing.dart';
 import '../../utils/formatters.dart';
+import '../../utils/visit_labels.dart';
 import '../../widgets/duta_card.dart';
 import '../../widgets/info_row.dart';
 import '../../widgets/state_views.dart';
@@ -147,8 +148,7 @@ class _SupervisorCollectorDetailScreenState
                         for (final visit in visits.take(5))
                           _ListLine(
                             title: compact(asMap(visit)['purpose']),
-                            subtitle:
-                                '${dateTime(asMap(visit)['visit_date'])} — ${compact(asMap(visit)['status'])}',
+                            subtitle: _visitSubtitle(asMap(visit)),
                           ),
                     ],
                   ),
@@ -220,4 +220,15 @@ class _ListLine extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Tanggal, status (label Indonesia) dan keterangan tanda tangan sebuah kunjungan.
+String _visitSubtitle(Map<String, dynamic> visit) {
+  final status = visitStatusLabel(visit['status']);
+  final signature = visitAwaitingSignature(visit)
+      ? ' · $visitAwaitingSignatureLabel'
+      : (visit['status'] == 'completed' && visitHasSignature(visit)
+            ? ' · $visitSignedLabel'
+            : '');
+  return '${dateTime(visit['visit_date'])} — $status$signature';
 }

@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../../api/api_client.dart';
 import '../../api/api_exception.dart';
 import '../../constants/app_spacing.dart';
+import '../../theme/app_status_colors.dart';
 import '../../utils/formatters.dart';
+import '../../utils/visit_labels.dart';
 import '../../widgets/duta_card.dart';
 import '../../widgets/info_row.dart';
 import '../../widgets/state_views.dart';
@@ -46,7 +48,9 @@ class _UnitDetailScreenState extends State<UnitDetailScreen> {
     if (residentId != null) {
       final visitsResult = await widget.apiClient.get(
         'residents/$residentId/visits',
-        query: {'unit_id': widget.unitId, 'per_page': 10},
+        // Wider than the rows shown, so older visits still waiting for a
+        // signature stay reachable (see _shownVisits).
+        query: {'unit_id': widget.unitId, 'per_page': 30},
       );
       visits = asList(visitsResult.data);
       final promisesResult = await widget.apiClient.get(
@@ -59,8 +63,62 @@ class _UnitDetailScreenState extends State<UnitDetailScreen> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _future = _load());
+    // Block body on purpose: an arrow closure would hand the Future back to
+    // setState, which asserts in debug builds and skips the rebuild.
+    setState(() {
+      _future = _load();
+    });
     await _future;
+  }
+
+  /// Reopens a visit that still waits for the resident's signature so the
+  /// collector can finish it, then reloads the unit so its state is current.
+  Future<void> _resumeVisit(
+    Map<String, dynamic> unit,
+    Map<String, dynamic> visit,
+  ) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => VisitFormScreen(
+          apiClient: widget.apiClient,
+          unit: unit,
+          visit: visit,
+        ),
+      ),
+    );
+    // Not awaited: a failed reload is shown by the FutureBuilder's error view.
+    if (!mounted) return;
+    setState(() {
+      _future = _load();
+    });
+  }
+
+  /// The five newest visits plus any older one still waiting for the
+  /// resident's signature: this list is where such a visit is resumed, so it
+  /// must not drop out as newer visits come in.
+  static List<Map<String, dynamic>> _shownVisits(List<dynamic> visits) => [
+    for (final (index, visit) in visits.map(asMap).indexed)
+      if (index < 5 || visitAwaitingSignature(visit)) visit,
+  ];
+
+  Widget _visitLine(Map<String, dynamic> unit, Map<String, dynamic> visit) {
+    final awaiting = visitAwaitingSignature(visit);
+    return _ListLine(
+      title: compact(visit['purpose']),
+      subtitle:
+          '${dateTime(visit['visit_date'])} — ${visitStatusLabel(visit['status'])}',
+      badge: awaiting ? const _AwaitingSignatureChip() : null,
+      // Only the signed state is marked. A "Selesai" visit that is neither
+      // awaiting nor signed is a legacy one, finished all the same, so it
+      // stays neutral as on the web and the supervisor screen.
+      trailing:
+          !awaiting &&
+              visit['status'] == 'completed' &&
+              visitHasSignature(visit)
+          ? const _SignedBadge()
+          : null,
+      onTap: awaiting ? () => _resumeVisit(unit, visit) : null,
+    );
   }
 
   @override
@@ -141,18 +199,8 @@ class _UnitDetailScreenState extends State<UnitDetailScreen> {
                       if (result.visits.isEmpty)
                         const Text('Belum ada kunjungan tercatat.')
                       else
-                        for (final visit in result.visits.take(5))
-                          _ListLine(
-                            title: compact(asMap(visit)['purpose']),
-                            subtitle:
-                                '${dateTime(asMap(visit)['visit_date'])} — ${compact(asMap(visit)['status'])}',
-                            trailing: asMap(visit)['status'] == 'completed'
-                                ? _SignatureBadge(
-                                    signed:
-                                        asMap(visit)['has_signature'] == true,
-                                  )
-                                : null,
-                          ),
+                        for (final visit in _shownVisits(result.visits))
+                          _visitLine(unit, visit),
                     ],
                   ),
                 ),
@@ -314,15 +362,23 @@ class _ActionButton extends StatelessWidget {
 }
 
 class _ListLine extends StatelessWidget {
-  const _ListLine({required this.title, required this.subtitle, this.trailing});
+  const _ListLine({
+    required this.title,
+    required this.subtitle,
+    this.badge,
+    this.trailing,
+    this.onTap,
+  });
 
   final String title;
   final String subtitle;
+  final Widget? badge;
   final Widget? trailing;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    final line = Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -336,32 +392,88 @@ class _ListLine extends StatelessWidget {
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
                 Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+                if (badge != null) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  badge!,
+                ],
               ],
             ),
           ),
           ?trailing,
+          if (onTap != null)
+            Icon(
+              Icons.chevron_right_rounded,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
         ],
+      ),
+    );
+    if (onTap == null) return line;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+      child: line,
+    );
+  }
+}
+
+/// Marks a "Selesai" visit the resident has signed.
+class _SignedBadge extends StatelessWidget {
+  const _SignedBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: visitSignedLabel,
+      child: Icon(
+        Icons.check_circle,
+        size: 18,
+        color: Theme.of(context).colorScheme.primary,
       ),
     );
   }
 }
 
-class _SignatureBadge extends StatelessWidget {
-  const _SignatureBadge({required this.signed});
-
-  final bool signed;
+/// Marks a "Selesai" visit that is saved but not finished yet because the
+/// resident has not signed.
+class _AwaitingSignatureChip extends StatelessWidget {
+  const _AwaitingSignatureChip();
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Tooltip(
-      message: signed
-          ? 'Tanda tangan penghuni sudah tersimpan'
-          : 'Belum ditandatangani',
-      child: Icon(
-        signed ? Icons.check_circle : Icons.warning_amber_rounded,
-        size: 18,
-        color: signed ? colors.primary : colors.error,
+    final theme = Theme.of(context);
+    final pair =
+        theme.extension<AppStatusColors>()?.warning ??
+        StatusColorPair(
+          container: theme.colorScheme.errorContainer,
+          onContainer: theme.colorScheme.onErrorContainer,
+        );
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: pair.container,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.hourglass_top_rounded,
+              size: 12,
+              color: pair.onContainer,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              visitAwaitingSignatureLabel,
+              style: TextStyle(
+                color: pair.onContainer,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

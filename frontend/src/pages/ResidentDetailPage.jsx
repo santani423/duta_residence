@@ -34,6 +34,7 @@ import {
   EditOutlined,
   EnvironmentOutlined,
   MoreOutlined,
+  PaperClipOutlined,
   PlusOutlined,
   SendOutlined,
   UserOutlined,
@@ -46,7 +47,8 @@ import PageHeader from '../components/common/PageHeader.jsx';
 import ExportPdfButton from '../components/common/ExportPdfButton.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
 import Can from '../components/common/Can.jsx';
-import StatusBadge from '../components/common/StatusBadge.jsx';
+import StatusBadge, { VisitSignatureBadge, statusOptions } from '../components/common/StatusBadge.jsx';
+import VisitEvidenceModal, { VISIT_EVIDENCE_PERMISSIONS } from '../components/collection/VisitEvidenceModal.jsx';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import { EmptyData, ErrorState, LoadingState } from '../components/common/ApiState.jsx';
 import ResidentForm from '../components/forms/ResidentForm.jsx';
@@ -727,14 +729,20 @@ function ServiceRequestsTab({ residentId, unitId, units }) {
 function VisitsTab({ residentId, unitId, units }) {
   const table = useTableState();
   const [drawer, setDrawer] = useState({ open: false, record: null });
+  const [evidenceVisit, setEvidenceVisit] = useState(null);
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
+  const { canAny } = useAuth();
+  const canViewEvidence = canAny(VISIT_EVIDENCE_PERMISSIONS);
   const query = useQuery({ queryKey: ['residents', residentId, 'visits', unitId, table.params], queryFn: () => api.residents.visits(residentId, { ...table.params, unit_id: unitId || undefined }) });
 
   const save = useMutation({
     mutationFn: (values) => (drawer.record ? api.visits.update(drawer.record.id, values) : api.visits.create(values.unit_id, values)),
-    onSuccess: () => {
-      message.success('Kunjungan berhasil disimpan');
+    onSuccess: (response) => {
+      // Kunjungan "Selesai" baru final setelah penghuni tanda tangan di HP collector; pesan backend menjelaskannya.
+      const text = response?.message || 'Kunjungan berhasil disimpan';
+      if (response?.data?.awaiting_signature) message.warning(text);
+      else message.success(text);
       setDrawer({ open: false, record: null });
       form.resetFields();
       queryClient.invalidateQueries({ queryKey: ['residents', residentId, 'visits'] });
@@ -760,13 +768,13 @@ function VisitsTab({ residentId, unitId, units }) {
     <section>
       <UnitScopeNote unitId={unitId} units={units} />
       <FilterBar extra={<Can permission="visits.create"><Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); setDrawer({ open: true, record: null }); }}>Jadwalkan/Catat Kunjungan</Button></Can>}>
-        <Select allowClear placeholder="Status" value={table.filters.status} onChange={(value) => table.setFilters({ ...table.filters, status: value })} className="filter-input" options={['completed', 'no_answer', 'refused', 'rescheduled'].map((value) => ({ value, label: value }))} />
+        <Select allowClear placeholder="Status" value={table.filters.status} onChange={(value) => table.setFilters({ ...table.filters, status: value })} className="filter-input" options={statusOptions('visitStatus')} />
       </FilterBar>
       <Card>
         <ResponsiveTable
           query={query}
           onChange={table.handleTableChange}
-          scrollX={1300}
+          scrollX={1660}
           columns={[
             { title: 'Tanggal', dataIndex: 'visit_date', render: formatDateTime, width: 170, fixed: 'left' },
             { title: 'Unit', dataIndex: 'unit_id', width: 90 },
@@ -775,25 +783,38 @@ function VisitsTab({ residentId, unitId, units }) {
             { title: 'Ditemui', dataIndex: 'met_with', width: 140 },
             { title: 'Collector', render: (_, row) => row.collector?.name || '-', width: 150 },
             { title: 'Lokasi', render: (_, row) => (row.checkin_latitude ? <a target="_blank" rel="noreferrer" href={`https://maps.google.com/?q=${row.checkin_latitude},${row.checkin_longitude}`}><EnvironmentOutlined /> Lihat</a> : '-'), width: 100 },
-            { title: 'Status', dataIndex: 'status', render: (value) => <StatusBadge type="transaction" value={value} />, width: 130 },
+            { title: 'Status', dataIndex: 'status', render: (value) => <StatusBadge type="visitStatus" value={value} />, width: 160 },
+            { title: 'Tanda Tangan', key: 'signature', render: (_, row) => <VisitSignatureBadge visit={row} />, width: 180 },
             { title: 'Jadwal Berikutnya', dataIndex: 'next_visit_date', render: (value) => formatDate(value), width: 150 },
             {
               title: 'Aksi',
               fixed: 'right',
-              width: 90,
+              width: 150,
               render: (_, row) => (
-                <Can permission="visits.update">
-                  <Button size="small" icon={<EditOutlined />} onClick={() => {
-                    form.setFieldsValue({ ...row, visit_date: dayjs(row.visit_date), next_visit_date: row.next_visit_date ? dayjs(row.next_visit_date) : null });
-                    setDrawer({ open: true, record: row });
-                  }}
-                  />
-                </Can>
+                <Space size={4}>
+                  <Can permission="visits.update">
+                    <Button size="small" icon={<EditOutlined />} onClick={() => {
+                      form.setFieldsValue({ ...row, visit_date: dayjs(row.visit_date), next_visit_date: row.next_visit_date ? dayjs(row.next_visit_date) : null });
+                      setDrawer({ open: true, record: row });
+                    }}
+                    />
+                  </Can>
+                  {canViewEvidence ? (
+                    <Button size="small" icon={<PaperClipOutlined />} onClick={() => setEvidenceVisit(row)}>
+                      Bukti{row.evidence_count ? ` (${row.evidence_count})` : ''}
+                    </Button>
+                  ) : null}
+                </Space>
               ),
             },
           ]}
         />
       </Card>
+      <VisitEvidenceModal
+        visit={evidenceVisit}
+        onClose={() => setEvidenceVisit(null)}
+        onStale={() => queryClient.invalidateQueries({ queryKey: ['residents', residentId, 'visits'] })}
+      />
       <Drawer title={drawer.record ? 'Edit Kunjungan' : 'Catat Kunjungan'} open={drawer.open} onClose={() => setDrawer({ open: false, record: null })} width={480} extra={<Space><Button onClick={() => setDrawer({ open: false, record: null })}>Batal</Button><Button type="primary" loading={save.isPending} onClick={() => form.submit()}>Simpan</Button></Space>} destroyOnHidden>
         <Form form={form} layout="vertical" onFinish={(values) => save.mutate({ ...values, visit_date: values.visit_date.format('YYYY-MM-DD HH:mm:ss'), next_visit_date: values.next_visit_date?.format?.('YYYY-MM-DD') || null })} initialValues={{ unit_id: unitId || units[0]?.id, visit_date: dayjs(), status: 'completed' }}>
           {!drawer.record ? (
@@ -806,7 +827,7 @@ function VisitsTab({ residentId, unitId, units }) {
           <Form.Item label="Hasil Kunjungan" name="result"><Input.TextArea rows={2} /></Form.Item>
           <Form.Item label="Ditemui Dengan" name="met_with"><Input /></Form.Item>
           <Form.Item label="Status" name="status" rules={[{ required: true }]}>
-            <Select options={['completed', 'no_answer', 'refused', 'rescheduled'].map((value) => ({ value, label: value }))} />
+            <Select options={statusOptions('visitStatus')} />
           </Form.Item>
           <Form.Item label="Jadwal Kunjungan Berikutnya" name="next_visit_date"><DatePicker style={{ width: '100%' }} /></Form.Item>
           <Form.Item label="Catatan" name="notes"><Input.TextArea rows={2} /></Form.Item>

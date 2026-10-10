@@ -444,6 +444,9 @@ export const api = {
     list: (visitId) => http.get(`/visits/${visitId}/evidence`),
     upload: (visitId, formData) => http.post(`/visits/${visitId}/evidence`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
     remove: (id) => http.delete(`/visit-evidence/${id}`),
+    // fileUrl = `file_url` dari backend (path relatif API "visit-evidence/{id}/file"). Diambil sebagai Blob
+    // lewat axios karena butuh Bearer token - <img src> langsung ke API akan 401.
+    file: (fileUrl) => http.get(fileUrl, { responseType: 'blob' }),
   },
   collectionLetters: {
     list: (params) => http.get('/collection-letters', { params }),

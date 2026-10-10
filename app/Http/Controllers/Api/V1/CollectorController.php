@@ -180,7 +180,8 @@ class CollectorController extends Controller
                 'total_visits' => $visits()->count(),
                 'total_complaints' => $complaints()->count(),
             ],
-            'recent_visits' => $visits()->with('unit.cluster')->latest('visit_date')->limit(10)->get(),
+            // Per visit: lifecycle, has_signature, awaiting_signature; unit.resident_id dipakai web untuk membuka bukti.
+            'recent_visits' => $visits()->with('unit.cluster')->withSignatureState()->latest('visit_date')->limit(10)->get(),
             'recent_payment_promises' => $promises()->with('unit.cluster')->latest('promised_date')->limit(10)->get(),
             'recent_complaints' => $complaints()->with('unit.cluster')->latest()->limit(10)->get(),
             'latest_location' => CollectorLocation::query()->where('collector_id', $collector->id)->latest('recorded_at')->first(),
@@ -591,10 +592,12 @@ class CollectorController extends Controller
             ->whereDate('period_start', $start->toDateString())
             ->pluck('target_amount', 'collector_id');
 
+        // Sama dengan visitAggregates(): hanya kunjungan final, sampai detik terakhir bulan berjalan.
         $visits = CollectorVisit::query()
+            ->finished()
             ->toBase()
             ->whereIn('collector_id', $ids)
-            ->whereBetween('visit_date', [$start->toDateString(), $end->toDateString()])
+            ->whereBetween('visit_date', [$start->toDateTimeString(), $end->toDateTimeString()])
             ->selectRaw('collector_id, COUNT(*) as total')
             ->groupBy('collector_id')
             ->pluck('total', 'collector_id');

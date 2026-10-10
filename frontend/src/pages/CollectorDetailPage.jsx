@@ -2,10 +2,10 @@ import {
   Alert, Avatar, Button, Card, Col, DatePicker, Descriptions, Empty, Form, Image, Input, Modal, Row, Select, Space, Table, Tabs,
   Tag, Typography, message,
 } from 'antd';
-import { SwapOutlined, UserOutlined } from '@ant-design/icons';
+import { PaperClipOutlined, SwapOutlined, UserOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import L from 'leaflet';
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
@@ -14,12 +14,13 @@ import shadowUrl from 'leaflet/dist/images/marker-shadow.png';
 import 'leaflet/dist/leaflet.css';
 import PageHeader from '../components/common/PageHeader.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
-import StatusBadge, { statusOptions } from '../components/common/StatusBadge.jsx';
+import StatusBadge, { VisitSignatureBadge, statusOptions } from '../components/common/StatusBadge.jsx';
 import { UnitFilterFields } from '../components/common/UnitFilters.jsx';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import { EmptyData, ErrorState } from '../components/common/ApiState.jsx';
 import StatCard from '../components/collection/StatCard.jsx';
 import CollectorSelect from '../components/collection/CollectorSelect.jsx';
+import VisitEvidenceModal, { VISIT_EVIDENCE_PERMISSIONS } from '../components/collection/VisitEvidenceModal.jsx';
 import { api, storageUrl } from '../services/estateApi.js';
 import { useTableState } from '../hooks/useTableState.js';
 import { useAuth } from '../state/AuthContext.jsx';
@@ -299,19 +300,7 @@ export default function CollectorDetailPage() {
             <div className="stack">
               <Card title={`Kunjungan Terakhir (${summary.total_visits ?? 0} total)`}>
                 {(payload.recent_visits || []).length ? (
-                  <Table
-                    size="small"
-                    rowKey="id"
-                    dataSource={payload.recent_visits}
-                    pagination={false}
-                    scroll={{ x: 480 }}
-                    columns={[
-                      { title: 'Unit', dataIndex: 'unit_id' },
-                      { title: 'Tujuan', dataIndex: 'purpose' },
-                      { title: 'Status', dataIndex: 'status' },
-                      { title: 'Tanggal', dataIndex: 'visit_date', render: (value) => formatDateTime(value) },
-                    ]}
-                  />
+                  <RecentVisitsTable visits={payload.recent_visits} collector={collector} onStale={detail.refetch} />
                 ) : <Empty description="Belum ada kunjungan tercatat." />}
               </Card>
               <Card title={`Janji Bayar (${summary.total_payment_promises ?? 0} total)`}>
@@ -703,6 +692,52 @@ function AssignmentListCard({ collectorId }) {
         ]}
       />
     </Card>
+  );
+}
+
+// Kunjungan terbaru kolektor. Kunjungan "Selesai" baru final setelah penghuni tanda tangan di HP
+// collector (kolom Tanda Tangan); bukti (tanda tangan/foto/GPS) dibuka lewat modal. onStale memuat
+// ulang detail kolektor bila modal menemukan bukti yang lebih baru dari baris tabel.
+function RecentVisitsTable({ visits, collector, onStale }) {
+  const { can, canAny } = useAuth();
+  const [evidenceVisit, setEvidenceVisit] = useState(null);
+  const canViewEvidence = canAny(VISIT_EVIDENCE_PERMISSIONS);
+
+  return (
+    <>
+      <Table
+        size="small"
+        rowKey="id"
+        dataSource={visits}
+        pagination={false}
+        scroll={{ x: 760 }}
+        columns={[
+          {
+            title: 'Unit',
+            dataIndex: 'unit_id',
+            render: (value, record) => {
+              const residentId = record.unit?.resident_id ?? record.resident_id;
+              return residentId && can('residents.view') ? <Link to={`/residents/${residentId}`}>{value}</Link> : value;
+            },
+          },
+          { title: 'Tujuan', dataIndex: 'purpose' },
+          { title: 'Status', dataIndex: 'status', render: (value) => <StatusBadge type="visitStatus" value={value} /> },
+          { title: 'Tanda Tangan', key: 'signature', render: (_, record) => <VisitSignatureBadge visit={record} /> },
+          { title: 'Tanggal', dataIndex: 'visit_date', render: (value) => formatDateTime(value) },
+          canViewEvidence ? {
+            title: 'Aksi',
+            key: 'evidence',
+            fixed: 'right',
+            render: (_, record) => (
+              <Button size="small" icon={<PaperClipOutlined />} onClick={() => setEvidenceVisit({ ...record, collector: record.collector || collector })}>
+                Bukti
+              </Button>
+            ),
+          } : null,
+        ].filter(Boolean)}
+      />
+      <VisitEvidenceModal visit={evidenceVisit} onClose={() => setEvidenceVisit(null)} onStale={onStale} />
+    </>
   );
 }
 

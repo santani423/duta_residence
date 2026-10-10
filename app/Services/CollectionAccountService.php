@@ -265,10 +265,12 @@ class CollectionAccountService
                 ->selectRaw('unit_id, COUNT(*) as aggregate')
                 ->pluck('aggregate', 'unit_id'),
 
-            // Aktivitas kontak/visit terakhir per unit (untuk waktu & hasil kontak terakhir).
+            // Aktivitas kontak/visit terakhir per unit (untuk waktu & hasil kontak terakhir). Visit yang
+            // baru dimulai (mis. Selesai menunggu tanda tangan penghuni) belum dihitung sebagai kontak.
             'last_activities' => CollectionActivity::query()
                 ->whereIn('unit_id', $unitIds)
                 ->whereIn('type', $contactAndVisitTypes)
+                ->where(fn ($q) => $q->where('type', '<>', CollectionActivity::TYPE_VISIT)->orWhere('event', '<>', CollectorVisit::LIFECYCLE_IN_PROGRESS))
                 ->orderByDesc('occurred_at')
                 ->orderByDesc('id')
                 ->get(['id', 'unit_id', 'occurred_at', 'channel_result'])

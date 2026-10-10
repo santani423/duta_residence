@@ -138,16 +138,22 @@ class CollectionActivityService
     private function describeVisit(CollectorVisit $visit, ?string $event): array
     {
         $result = $visit->result_code ?? $visit->status;
-        $event ??= $visit->lifecycle === CollectorVisit::LIFECYCLE_SCHEDULED ? 'scheduled' : 'created';
+        $event ??= $this->initialVisitEvent($visit);
         $isScheduled = $event === 'scheduled';
+        // Kunjungan yang baru dimulai belum punya hasil final (mis. Selesai menunggu tanda tangan).
+        $isStarted = $event === CollectorVisit::LIFECYCLE_IN_PROGRESS;
 
         return [
             'type' => CollectionActivity::TYPE_VISIT,
             'event' => $event,
-            'channel_result' => $isScheduled ? null : $result,
-            'summary' => $isScheduled
-                ? 'Kunjungan dijadwalkan: '.$visit->purpose
-                : 'Kunjungan: '.$visit->purpose.' ('.$result.')',
+            'channel_result' => $isScheduled || $isStarted ? null : $result,
+            'summary' => match (true) {
+                $isScheduled => 'Kunjungan dijadwalkan: '.$visit->purpose,
+                $isStarted => 'Kunjungan dimulai: '.$visit->purpose.($visit->isAwaitingSignature() ? ' — menunggu tanda tangan penghuni' : ''),
+                // Hasil "Selesai" hanya bisa final (lifecycle completed) setelah penghuni tanda tangan.
+                $event === CollectorVisit::LIFECYCLE_COMPLETED && $visit->status === CollectorVisit::STATUS_COMPLETED => 'Kunjungan selesai dan ditandatangani penghuni: '.$visit->purpose,
+                default => 'Kunjungan: '.$visit->purpose.' ('.$result.')',
+            },
             'details' => [
                 'purpose' => $visit->purpose,
                 'status' => $visit->status,
@@ -157,13 +163,32 @@ class CollectionActivityService
                 'met_with' => $visit->met_with,
                 'scheduled_date' => $visit->scheduled_date?->toDateString(),
             ],
-            'occurred_at' => $isScheduled ? ($visit->created_at ?? now()) : ($visit->finished_at ?? $visit->visit_date),
+            'occurred_at' => match (true) {
+                $isScheduled => $visit->created_at ?? now(),
+                $isStarted => $visit->started_at ?? $visit->visit_date,
+                default => $visit->finished_at ?? $visit->visit_date,
+            },
             'next_follow_up_at' => $visit->next_visit_date,
             'latitude' => $visit->checkin_latitude ?? $visit->start_latitude,
             'longitude' => $visit->checkin_longitude ?? $visit->start_longitude,
             'collector_id' => $visit->collector_id,
             'actor' => $this->user($visit->updated_by ?? $visit->created_by ?? $visit->collector_id),
         ];
+    }
+
+    /**
+     * Event pertama visit: dijadwalkan, dimulai (in_progress, mis. menunggu tanda tangan), atau
+     * langsung tercatat. Visit yang pernah dimulai (started_at) dan kini final memakai event
+     * lifecycle akhirnya - sama dengan yang dicatat observer - supaya backfill tetap idempoten.
+     */
+    private function initialVisitEvent(CollectorVisit $visit): string
+    {
+        return match (true) {
+            $visit->lifecycle === CollectorVisit::LIFECYCLE_SCHEDULED => 'scheduled',
+            $visit->lifecycle === CollectorVisit::LIFECYCLE_IN_PROGRESS => CollectorVisit::LIFECYCLE_IN_PROGRESS,
+            $visit->started_at !== null && in_array($visit->lifecycle, [CollectorVisit::LIFECYCLE_COMPLETED, CollectorVisit::LIFECYCLE_FAILED, CollectorVisit::LIFECYCLE_CANCELLED], true) => $visit->lifecycle,
+            default => 'created',
+        };
     }
 
     private function describePromise(PaymentPromise $promise, ?string $event): array

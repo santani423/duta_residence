@@ -92,7 +92,7 @@ class _SignatureCaptureScreenState extends State<SignatureCaptureScreen> {
       );
       if (mounted) Navigator.of(context).pop(true);
     } on ApiException catch (error) {
-      setState(() => _error = error.message);
+      if (mounted) setState(() => _error = error.message);
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
@@ -101,85 +101,95 @@ class _SignatureCaptureScreenState extends State<SignatureCaptureScreen> {
   @override
   Widget build(BuildContext context) {
     final isPreview = _previewBytes != null;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Tanda Tangan Penghuni')),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                isPreview
-                    ? 'Apakah tanda tangan sudah benar?'
-                    : 'Silakan minta penghuni untuk membubuhkan tanda tangan di bawah ini.',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.outlineVariant,
-                    ),
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                    color: Colors.white,
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: isPreview
-                      ? Center(child: Image.memory(_previewBytes!))
-                      : Signature(
-                          controller: _signatureController,
-                          backgroundColor: Colors.white,
-                        ),
+    return PopScope(
+      // Storing the signature is what finishes a "Selesai" visit, so the
+      // screen stays until the upload is answered: leaving earlier would keep
+      // its outcome from the visit form.
+      canPop: !_uploading,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Tanda Tangan Penghuni')),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  isPreview
+                      ? 'Apakah tanda tangan sudah benar?'
+                      : 'Silakan minta penghuni untuk membubuhkan tanda tangan di bawah ini.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: AppSpacing.sm),
-                DutaCard(
-                  color: Theme.of(context).colorScheme.errorContainer,
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Text(
-                    _error!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onErrorContainer,
+                const SizedBox(height: AppSpacing.lg),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                      color: Colors.white,
                     ),
+                    clipBehavior: Clip.antiAlias,
+                    child: isPreview
+                        ? Center(child: Image.memory(_previewBytes!))
+                        : Signature(
+                            controller: _signatureController,
+                            backgroundColor: Colors.white,
+                          ),
                   ),
                 ),
-              ],
-              const SizedBox(height: AppSpacing.lg),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _uploading
-                          ? null
-                          : (isPreview ? _redo : _signatureController.clear),
-                      child: Text(isPreview ? 'Ulangi' : 'Hapus'),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    flex: 2,
-                    child: FilledButton(
-                      onPressed: _uploading
-                          ? null
-                          : (isPreview ? _submit : _confirmDrawing),
-                      child: _uploading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(
-                              isPreview ? 'Gunakan Tanda Tangan' : 'Konfirmasi',
-                            ),
+                if (_error != null) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  DutaCard(
+                    color: Theme.of(context).colorScheme.errorContainer,
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Text(
+                      _error!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onErrorContainer,
+                      ),
                     ),
                   ),
                 ],
-              ),
-            ],
+                const SizedBox(height: AppSpacing.lg),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _uploading
+                            ? null
+                            : (isPreview ? _redo : _signatureController.clear),
+                        child: Text(isPreview ? 'Ulangi' : 'Hapus'),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton(
+                        onPressed: _uploading
+                            ? null
+                            : (isPreview ? _submit : _confirmDrawing),
+                        child: _uploading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text(
+                                isPreview
+                                    ? 'Gunakan Tanda Tangan'
+                                    : 'Konfirmasi',
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

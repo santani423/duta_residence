@@ -72,7 +72,8 @@ class SupervisorDashboardController extends Controller
             'active_emergencies' => EmergencyAlert::query()->where('status', 'active')
                 ->tap(fn ($q) => self::constrainEmergencies($q, $scopeService->hasFullScope($user), $unitIds, $collectorIds))
                 ->count(),
-            'visits_today' => CollectorVisit::query()->whereIn('collector_id', $collectorIds)->whereDate('visit_date', now()->toDateString())->count(),
+            // Hanya kunjungan final; kunjungan yang menunggu tanda tangan penghuni belum dihitung.
+            'visits_today' => CollectorVisit::query()->finished()->whereIn('collector_id', $collectorIds)->whereDate('visit_date', now()->toDateString())->count(),
             'pending_approvals' => ApprovalRequest::query()->pending()->where(fn ($q) => $q->whereNull('related_collector_id')->orWhereIn('related_collector_id', $collectorIds))->count(),
             'unhandled_notifications' => SupervisorNotification::query()->unhandled()->where(fn ($q) => $q->whereNull('related_collector_id')->orWhereIn('related_collector_id', $collectorIds))->count(),
         ]);

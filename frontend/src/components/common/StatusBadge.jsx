@@ -1,4 +1,4 @@
-import { Tag } from 'antd';
+import { Tag, Typography } from 'antd';
 
 const maps = {
   billing: {
@@ -93,12 +93,40 @@ const maps = {
     without_unit: ['Tanpa Unit', 'orange'],
     never_linked: ['Belum Ada Unit', 'default'],
   },
+  // Hasil kunjungan collector (collector_visits.status).
+  visitStatus: {
+    completed: ['Selesai', 'green'],
+    no_answer: ['Tidak Ada Jawaban', 'gold'],
+    refused: ['Menolak', 'red'],
+    rescheduled: ['Dijadwalkan Ulang', 'blue'],
+  },
+  // Tanda tangan penghuni pada kunjungan - nilai dari visitSignatureState().
+  visitSignature: {
+    signed: ['Ditandatangani', 'green'],
+    awaiting: ['Menunggu tanda tangan', 'orange'],
+  },
 };
 
 // Label untuk dipakai di Select/filter agar konsisten dengan badge.
 // eslint-disable-next-line react-refresh/only-export-components
 export function statusOptions(type) {
   return Object.entries(maps[type] || {}).map(([value, [label]]) => ({ value, label }));
+}
+
+// Kunjungan "Selesai" baru final setelah penghuni tanda tangan di HP collector. Backend mengirim
+// awaiting_signature (status completed + lifecycle in_progress) dan has_signature; data lama tanpa
+// tanda tangan tidak dianggap menunggu -> null (ditampilkan "—").
+// eslint-disable-next-line react-refresh/only-export-components
+export function visitSignatureState(visit) {
+  if (!visit) return null;
+  const awaiting = visit.awaiting_signature ?? (visit.status === 'completed' && visit.lifecycle === 'in_progress');
+  if (awaiting) return 'awaiting';
+  return visit.has_signature ? 'signed' : null;
+}
+
+export function VisitSignatureBadge({ visit, state = visitSignatureState(visit) }) {
+  if (!state) return <Typography.Text type="secondary">—</Typography.Text>;
+  return <StatusBadge type="visitSignature" value={state} />;
 }
 
 export default function StatusBadge({ type, value, children }) {

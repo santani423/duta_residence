@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -9,6 +11,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class CollectorVisit extends Model
 {
     use HasFactory, SoftDeletes;
+
+    /** Hasil kunjungan (kolom `status`) "Selesai" - baru final setelah penghuni tanda tangan. */
+    public const STATUS_COMPLETED = 'completed';
+
+    public const STATUSES = [self::STATUS_COMPLETED, 'no_answer', 'refused', 'rescheduled'];
 
     public const LIFECYCLE_SCHEDULED = 'scheduled';
 
@@ -46,6 +53,49 @@ class CollectorVisit extends Model
         'start_longitude' => 'decimal:7',
         'version' => 'integer',
     ];
+
+    protected $appends = ['awaiting_signature'];
+
+    /**
+     * "Menunggu tanda tangan": kunjungan Selesai yang sudah disimpan tetapi belum ditandatangani
+     * penghuni di HP collector (lifecycle masih in_progress). Belum dihitung sebagai kunjungan
+     * selesai di mana pun. Data lama (lifecycle completed) tidak pernah menunggu.
+     */
+    public function isAwaitingSignature(): bool
+    {
+        return $this->status === self::STATUS_COMPLETED && $this->lifecycle === self::LIFECYCLE_IN_PROGRESS;
+    }
+
+    protected function awaitingSignature(): Attribute
+    {
+        return Attribute::get(fn (): bool => $this->isAwaitingSignature());
+    }
+
+    /**
+     * Hanya kunjungan final (lifecycle completed/failed), sama dengan metrik kinerja: kunjungan
+     * "Menunggu tanda tangan" (in_progress) belum dihitung di KPI kunjungan.
+     */
+    public function scopeFinished(Builder $query): Builder
+    {
+        return $query->whereIn('lifecycle', [self::LIFECYCLE_COMPLETED, self::LIFECYCLE_FAILED]);
+    }
+
+    /** Tambahkan `has_signature` (ada tanda tangan penghuni yang belum dihapus) ke query. */
+    public function scopeWithSignatureState(Builder $query): Builder
+    {
+        return $query->withExists(self::signatureExistence());
+    }
+
+    /** Versi satu model dari withSignatureState(), untuk respons simpan/ubah/unggah bukti. */
+    public function loadSignatureState(): static
+    {
+        return $this->loadExists(self::signatureExistence());
+    }
+
+    private static function signatureExistence(): array
+    {
+        return ['evidence as has_signature' => fn ($q) => $q->where('type', CollectorVisitEvidence::TYPE_SIGNATURE)];
+    }
 
     public function unit()
     {

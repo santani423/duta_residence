@@ -163,6 +163,7 @@ Route::middleware(['auth:sanctum', 'audit', 'active-user'])->group(function () {
 
     Route::get('visits/{visit}/evidence', [CollectorVisitEvidenceController::class, 'index'])->middleware('permission:collector-evidence.view');
     Route::post('visits/{visit}/evidence', [CollectorVisitEvidenceController::class, 'store'])->middleware('permission:collector-evidence.upload');
+    Route::get('visit-evidence/{evidence}/file', [CollectorVisitEvidenceController::class, 'file'])->middleware('permission:collector-evidence.download|collector-evidence.view');
     Route::delete('visit-evidence/{evidence}', [CollectorVisitEvidenceController::class, 'destroy'])->middleware('permission:collector-evidence.delete');
 
     Route::get('collectors', [CollectorController::class, 'index'])->middleware('permission:collector.read');

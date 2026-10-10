@@ -1,9 +1,14 @@
-import { Card, Col, Row, Statistic, Table, Tabs, Tag } from 'antd';
+import { Button, Card, Col, Row, Statistic, Table, Tabs, Tag } from 'antd';
+import { PaperClipOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { useParams } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader.jsx';
 import { ErrorState, LoadingState } from '../../components/common/ApiState.jsx';
+import StatusBadge, { VisitSignatureBadge } from '../../components/common/StatusBadge.jsx';
+import VisitEvidenceModal, { VISIT_EVIDENCE_PERMISSIONS } from '../../components/collection/VisitEvidenceModal.jsx';
 import { api } from '../../services/estateApi.js';
+import { useAuth } from '../../state/AuthContext.jsx';
 import { formatCurrency, formatDate, formatDateTime } from '../../utils/format.js';
 
 export default function SupervisorCollectorDetailPage() {
@@ -60,17 +65,7 @@ export default function SupervisorCollectorDetailPage() {
             label: 'Kunjungan Terbaru',
             children: (
               <Card>
-                <Table
-                  rowKey="id"
-                  dataSource={payload.recent_visits || []}
-                  pagination={false}
-                  columns={[
-                    { title: 'Tanggal', dataIndex: 'visit_date', render: formatDateTime },
-                    { title: 'Unit', dataIndex: 'unit_id' },
-                    { title: 'Tujuan', dataIndex: 'purpose' },
-                    { title: 'Status', dataIndex: 'status' },
-                  ]}
-                />
+                <RecentVisitsTable visits={payload.recent_visits || []} collector={collector} onStale={detail.refetch} />
               </Card>
             ),
           },
@@ -115,5 +110,50 @@ export default function SupervisorCollectorDetailPage() {
         ]}
       />
     </section>
+  );
+}
+
+// Kunjungan terbaru kolektor. Kunjungan "Selesai" baru final setelah penghuni tanda tangan di HP
+// collector (kolom Tanda Tangan); bukti (tanda tangan/foto/GPS) dibuka lewat modal. onStale memuat
+// ulang detail kolektor bila modal menemukan bukti yang lebih baru dari baris tabel.
+function RecentVisitsTable({ visits, collector, onStale }) {
+  const { can, canAny } = useAuth();
+  const [evidenceVisit, setEvidenceVisit] = useState(null);
+  const canViewEvidence = canAny(VISIT_EVIDENCE_PERMISSIONS);
+
+  return (
+    <>
+      <Table
+        rowKey="id"
+        dataSource={visits}
+        pagination={false}
+        scroll={{ x: 760 }}
+        columns={[
+          { title: 'Tanggal', dataIndex: 'visit_date', render: formatDateTime },
+          {
+            title: 'Unit',
+            dataIndex: 'unit_id',
+            render: (value, record) => {
+              const residentId = record.unit?.resident_id ?? record.resident_id;
+              return residentId && can('residents.view') ? <Link to={`/residents/${residentId}`}>{value}</Link> : value;
+            },
+          },
+          { title: 'Tujuan', dataIndex: 'purpose' },
+          { title: 'Status', dataIndex: 'status', render: (value) => <StatusBadge type="visitStatus" value={value} /> },
+          { title: 'Tanda Tangan', key: 'signature', render: (_, record) => <VisitSignatureBadge visit={record} /> },
+          canViewEvidence ? {
+            title: 'Aksi',
+            key: 'evidence',
+            fixed: 'right',
+            render: (_, record) => (
+              <Button size="small" icon={<PaperClipOutlined />} onClick={() => setEvidenceVisit({ ...record, collector: record.collector || collector })}>
+                Bukti
+              </Button>
+            ),
+          } : null,
+        ].filter(Boolean)}
+      />
+      <VisitEvidenceModal visit={evidenceVisit} onClose={() => setEvidenceVisit(null)} onStale={onStale} />
+    </>
   );
 }

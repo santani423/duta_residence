@@ -11,6 +11,7 @@ use App\Models\PaymentPromise;
 use App\Models\PaymentTransaction;
 use App\Models\ResidentComplaint;
 use App\Models\User;
+use App\Services\CollectionScopeService;
 use App\Services\CollectorAssignmentService;
 use App\Services\PenaltyService;
 use App\Services\SupervisorAssignmentService;
@@ -39,7 +40,7 @@ class SupervisorCollectorController extends Controller
 
         $collectors->getCollection()->transform(function (User $collector) {
             $collector->latest_location = CollectorLocation::query()->where('collector_id', $collector->id)->latest('recorded_at')->first();
-            $collector->today_visit_count = CollectorVisit::query()->where('collector_id', $collector->id)->whereDate('visit_date', now()->toDateString())->count();
+            $collector->today_visit_count = CollectorVisit::query()->finished()->where('collector_id', $collector->id)->whereDate('visit_date', now()->toDateString())->count();
             $collector->active_ptp_count = PaymentPromise::query()->whereIn('unit_id', app(CollectorAssignmentService::class)->unitIdsFor($collector))->where('status', 'pending')->count();
 
             return $collector;
@@ -48,10 +49,14 @@ class SupervisorCollectorController extends Controller
         return $this->paginated($collectors);
     }
 
-    public function show(Request $request, User $collector, SupervisorAssignmentService $scopeService, CollectorAssignmentService $assignmentService, PenaltyService $penaltyService)
+    public function show(Request $request, User $collector, SupervisorAssignmentService $scopeService, CollectorAssignmentService $assignmentService, PenaltyService $penaltyService, CollectionScopeService $collectionScope)
     {
         $scopeService->assertCollectorAssigned($request->user(), $collector->id);
         abort_unless($collector->hasRole('collector'), 404);
+
+        // Kunjungan (dan buktinya) hanya untuk unit di cluster supervisor; kolektor bisa juga
+        // memegang unit di cluster lain yang bukan wewenangnya.
+        $visits = fn () => $collectionScope->constrainUnits(CollectorVisit::query()->where('collector_id', $collector->id), $request->user());
 
         $collector->load(['collectorProfile.photos']);
 
@@ -77,10 +82,10 @@ class SupervisorCollectorController extends Controller
                 'total_payments_collected' => (float) PaymentTransaction::query()->where('created_by', $collector->id)->where('payment_provider', 'loket')->where('status', 'paid')->sum('total'),
                 'total_payment_promises' => PaymentPromise::query()->whereIn('unit_id', $unitIds)->count(),
                 'broken_promises' => PaymentPromise::query()->whereIn('unit_id', $unitIds)->where('status', 'broken')->count(),
-                'total_visits' => CollectorVisit::query()->where('collector_id', $collector->id)->count(),
+                'total_visits' => $visits()->count(),
                 'total_complaints' => ResidentComplaint::query()->where('collector_id', $collector->id)->count(),
             ],
-            'recent_visits' => CollectorVisit::query()->where('collector_id', $collector->id)->with('unit.cluster')->latest('visit_date')->limit(10)->get(),
+            'recent_visits' => $visits()->with('unit.cluster')->withSignatureState()->latest('visit_date')->limit(10)->get(),
             'recent_payment_promises' => PaymentPromise::query()->whereIn('unit_id', $unitIds)->with('unit.cluster')->latest('promised_date')->limit(10)->get(),
             'recent_complaints' => ResidentComplaint::query()->where('collector_id', $collector->id)->with('unit.cluster')->latest()->limit(10)->get(),
             'latest_location' => CollectorLocation::query()->where('collector_id', $collector->id)->latest('recorded_at')->first(),
