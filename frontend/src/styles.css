@@ -215,6 +215,8 @@ a {
 
 .stack {
   display: grid;
+  /* minmax(0, 1fr) agar anak grid (mis. Card berisi Table scroll-x) tidak melebar melewati kolom. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
 }
 

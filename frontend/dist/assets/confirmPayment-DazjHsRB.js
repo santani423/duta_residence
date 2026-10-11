@@ -1,1 +1,0 @@
-import{M as r}from"./index-BwdaClLs.js";function i({title:a="Proses pembayaran?",content:n,okText:e="Ya, Proses",onOk:o}){r.confirm({title:a,content:n??"Pastikan tagihan dan nominal sudah benar sebelum melanjutkan.",okText:e,cancelText:"Periksa Lagi",onOk:()=>Promise.resolve(o?.()).catch(()=>{})})}export{i as c};
