@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\CollectionAccountState;
 use App\Models\CollectionActivity;
 use App\Models\CollectorAssignment;
+use App\Models\Unit;
 use App\Models\User;
 use App\Services\CollectionAccountRefreshQueue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -16,9 +17,10 @@ use Tests\TestCase;
  * Stage B2 — manajemen penugasan collector: reassign, edit immutable, revoke, guard duplikat
  * lintas collector, scope supervisor, bulk/area assign, preview, unit belum ditugaskan.
  *
- * Data seed yang dipakai: 07001..07030 (07007 dipegang kolektor.budi via scope unit, 07001 hanya
- * riwayat completed), 01 dipegang budi (cluster), 02 siti, 03001-003 ahmad (unit), 04 blok A
- * dewi. supervisor.rina mengawasi 01+02, supervisor.hendra 03+04. kolektor.rudi tidak aktif.
+ * Data seed yang dipakai (database/data/pelanggan.csv): cluster 07 berisi 07001..07014, satu blok
+ * "AL-" (07007 dipegang kolektor.budi via scope unit, 07001 hanya riwayat completed), 01 dipegang
+ * budi (cluster), 02 siti, 03001-003 ahmad (unit), 04 blok AR1 dewi. supervisor.rina mengawasi
+ * 01+02, supervisor.hendra 03+04. kolektor.rudi tidak aktif.
  */
 class CollectorAssignmentManagementTest extends TestCase
 {
@@ -240,10 +242,10 @@ class CollectorAssignmentManagementTest extends TestCase
         $this->actingAsRoot();
         $a = $this->makeCollector('b2.reactivate.a');
         $b = $this->makeCollector('b2.reactivate.b');
-        $id = $this->assignUnit($a, '07015');
+        $id = $this->assignUnit($a, '07002');
 
         $this->putJson("/api/v1/collector-assignments/{$id}", ['status' => 'completed'])->assertOk();
-        $this->assignUnit($b, '07015');
+        $this->assignUnit($b, '07002');
 
         $this->putJson("/api/v1/collector-assignments/{$id}", ['status' => 'active'])
             ->assertUnprocessable()->assertJsonValidationErrors('status');
@@ -253,7 +255,7 @@ class CollectorAssignmentManagementTest extends TestCase
     {
         $this->actingAsRoot();
         $a = $this->makeCollector('b2.revoke.a');
-        $id = $this->assignUnit($a, '07016');
+        $id = $this->assignUnit($a, '07003');
 
         $this->deleteJson("/api/v1/collector-assignments/{$id}")->assertOk();
         $row = CollectorAssignment::find($id);
@@ -337,43 +339,43 @@ class CollectorAssignmentManagementTest extends TestCase
         $this->actingAsRoot();
         $target = $this->makeCollector('b2.bulk.target');
         $other = $this->makeCollector('b2.bulk.other');
-        $this->assignUnit($target, '07018');
-        $otherId = $this->assignUnit($other, '07019');
+        $this->assignUnit($target, '07005');
+        $otherId = $this->assignUnit($other, '07006');
 
         $response = $this->postJson('/api/v1/collection/assignments/bulk', [
-            'mode' => 'units', 'collector_id' => $target->id, 'unit_ids' => ['07017', '07018', '07019'],
+            'mode' => 'units', 'collector_id' => $target->id, 'unit_ids' => ['07004', '07005', '07006'],
             'priority' => 'high',
         ])->assertCreated();
 
         $this->assertCount(1, $response->json('data.created'));
-        $this->assertSame(['07018'], $response->json('data.skipped'));
+        $this->assertSame(['07005'], $response->json('data.skipped'));
         $this->assertSame([], $response->json('data.transferred'));
         $this->assertSame([[
-            'unit_id' => '07019', 'collector_id' => $other->id, 'collector_name' => $other->name, 'assignment_id' => $otherId,
+            'unit_id' => '07006', 'collector_id' => $other->id, 'collector_name' => $other->name, 'assignment_id' => $otherId,
         ]], $response->json('data.conflicts'));
 
         $created = CollectorAssignment::find($response->json('data.created.0'));
-        $this->assertSame('07017', $created->unit_id);
+        $this->assertSame('07004', $created->unit_id);
         $this->assertSame('high', $created->priority);
         $this->assertSame('unit', $created->scope_type);
         $this->assertTrue(AuditLog::query()->where('activity', 'collector_assignment_bulk')->exists());
 
         // State cache ikut diperbarui oleh observer setelah antrean di-flush.
         app(CollectionAccountRefreshQueue::class)->flush();
-        $this->assertSame($target->id, (int) CollectionAccountState::query()->find('07017')?->collector_id);
+        $this->assertSame($target->id, (int) CollectionAccountState::query()->find('07004')?->collector_id);
 
         // Tidak ada yang baru → 200.
         $this->postJson('/api/v1/collection/assignments/bulk', [
-            'mode' => 'units', 'collector_id' => $target->id, 'unit_ids' => ['07017'],
-        ])->assertOk()->assertJsonPath('data.skipped', ['07017']);
+            'mode' => 'units', 'collector_id' => $target->id, 'unit_ids' => ['07004'],
+        ])->assertOk()->assertJsonPath('data.skipped', ['07004']);
 
         // Pindahkan konflik: wajib alasan.
         $this->postJson('/api/v1/collection/assignments/bulk', [
-            'mode' => 'units', 'collector_id' => $target->id, 'unit_ids' => ['07019'], 'transfer_conflicts' => true,
+            'mode' => 'units', 'collector_id' => $target->id, 'unit_ids' => ['07006'], 'transfer_conflicts' => true,
         ])->assertUnprocessable()->assertJsonValidationErrors('reason');
 
         $response = $this->postJson('/api/v1/collection/assignments/bulk', [
-            'mode' => 'units', 'collector_id' => $target->id, 'unit_ids' => ['07019'],
+            'mode' => 'units', 'collector_id' => $target->id, 'unit_ids' => ['07006'],
             'transfer_conflicts' => true, 'reason' => 'Penyeimbangan beban kerja',
         ])->assertCreated();
 
@@ -386,7 +388,7 @@ class CollectorAssignmentManagementTest extends TestCase
         $this->assertSame('Penyeimbangan beban kerja', $new->reassign_reason);
 
         app(CollectionAccountRefreshQueue::class)->flush();
-        $this->assertSame($target->id, (int) CollectionAccountState::query()->find('07019')?->collector_id);
+        $this->assertSame($target->id, (int) CollectionAccountState::query()->find('07006')?->collector_id);
     }
 
     public function test_bulk_validates_collector_units_and_limits(): void
@@ -395,7 +397,7 @@ class CollectorAssignmentManagementTest extends TestCase
         $target = $this->makeCollector('b2.bulk.validate');
 
         $this->postJson('/api/v1/collection/assignments/bulk', [
-            'mode' => 'units', 'collector_id' => $this->user('kolektor.rudi')->id, 'unit_ids' => ['07020'],
+            'mode' => 'units', 'collector_id' => $this->user('kolektor.rudi')->id, 'unit_ids' => ['07008'],
         ])->assertUnprocessable()->assertJsonValidationErrors('collector_id');
 
         $this->postJson('/api/v1/collection/assignments/bulk', [
@@ -403,9 +405,9 @@ class CollectorAssignmentManagementTest extends TestCase
         ])->assertUnprocessable()->assertJsonValidationErrors('unit_ids');
 
         $this->postJson('/api/v1/collection/assignments/bulk', [
-            'mode' => 'units', 'collector_id' => $target->id, 'unit_ids' => ['07020', 'XX999'],
+            'mode' => 'units', 'collector_id' => $target->id, 'unit_ids' => ['07008', 'XX999'],
         ])->assertUnprocessable()->assertJsonValidationErrors('unit_ids');
-        $this->assertFalse(CollectorAssignment::query()->where('unit_id', '07020')->exists());
+        $this->assertFalse(CollectorAssignment::query()->where('unit_id', '07008')->exists());
 
         $this->postJson('/api/v1/collection/assignments/bulk', [
             'mode' => 'units', 'collector_id' => $target->id,
@@ -457,19 +459,19 @@ class CollectorAssignmentManagementTest extends TestCase
 
         $data = $this->postJson('/api/v1/collection/assignments/preview', ['scope_type' => 'cluster', 'cluster_id' => '07'])
             ->assertOk()->json('data');
-        $this->assertSame(30, $data['unit_count']);
-        $this->assertSame(29, $data['unassigned_count']);
+        $this->assertSame(14, $data['unit_count']);
+        $this->assertSame(13, $data['unassigned_count']);
         $this->assertSame([['collector_id' => $budi->id, 'name' => $budi->name, 'unit_count' => 1]], $data['current_collectors']);
         foreach (['outstanding_total', 'overdue_accounts', 'critical_accounts'] as $key) {
             $this->assertArrayHasKey($key, $data);
         }
 
-        $data = $this->postJson('/api/v1/collection/assignments/preview', ['scope_type' => 'units', 'unit_ids' => ['07007', '07021', 'NOPE1']])
+        $data = $this->postJson('/api/v1/collection/assignments/preview', ['scope_type' => 'units', 'unit_ids' => ['07007', '07009', 'NOPE1']])
             ->assertOk()->json('data');
         $this->assertSame(2, $data['unit_count']);
         $this->assertSame(1, $data['unassigned_count']);
 
-        $data = $this->postJson('/api/v1/collection/assignments/preview', ['scope_type' => 'block', 'cluster_id' => '01', 'block' => 'A'])
+        $data = $this->postJson('/api/v1/collection/assignments/preview', ['scope_type' => 'block', 'cluster_id' => '01', 'block' => 'D1'])
             ->assertOk()->json('data');
         $this->assertSame(0, $data['unassigned_count']);
         $this->assertSame($budi->id, $data['current_collectors'][0]['collector_id']);
@@ -483,14 +485,14 @@ class CollectorAssignmentManagementTest extends TestCase
     public function test_preview_outstanding_comes_from_account_state_cache(): void
     {
         $this->actingAsRoot();
-        CollectionAccountState::query()->updateOrCreate(['unit_id' => '07022'], [
+        CollectionAccountState::query()->updateOrCreate(['unit_id' => '07002'], [
             'outstanding_total' => 1500000, 'aging_days' => 45, 'priority_level' => 'critical', 'status' => 'overdue',
         ]);
-        CollectionAccountState::query()->updateOrCreate(['unit_id' => '07023'], [
+        CollectionAccountState::query()->updateOrCreate(['unit_id' => '07003'], [
             'outstanding_total' => 0, 'aging_days' => 0, 'priority_level' => 'normal', 'status' => 'paid',
         ]);
 
-        $data = $this->postJson('/api/v1/collection/assignments/preview', ['scope_type' => 'units', 'unit_ids' => ['07022', '07023']])
+        $data = $this->postJson('/api/v1/collection/assignments/preview', ['scope_type' => 'units', 'unit_ids' => ['07002', '07003']])
             ->assertOk()->json('data');
         $this->assertEquals(1500000, $data['outstanding_total']);
         $this->assertSame(1, $data['overdue_accounts']);
@@ -505,7 +507,7 @@ class CollectorAssignmentManagementTest extends TestCase
 
         $items = collect($this->getJson('/api/v1/collection/assignments/unassigned-units?cluster_id=07&per_page=100')->assertOk()->json('data'));
         $ids = $items->pluck('unit_id');
-        $this->assertCount(29, $ids);
+        $this->assertCount(13, $ids);
         $this->assertNotContains('07007', $ids);
         $this->assertContains('07001', $ids); // hanya riwayat completed → tetap belum ditugaskan
 
@@ -518,29 +520,40 @@ class CollectorAssignmentManagementTest extends TestCase
         // Unit dalam cluster yang ditugaskan (01 milik budi) tidak muncul.
         $this->assertSame(0, $this->getJson('/api/v1/collection/assignments/unassigned-units?cluster_id=01')->assertOk()->json('meta.total'));
 
-        $blockB = collect($this->getJson('/api/v1/collection/assignments/unassigned-units?cluster_id=07&block=B&per_page=100')->json('data'));
-        $this->assertTrue($blockB->every(fn ($row) => $row['block'] === 'B'));
-        $this->assertNotEmpty($blockB);
+        $blockJ2 = collect($this->getJson('/api/v1/collection/assignments/unassigned-units?cluster_id=03&block=J2&per_page=100')->json('data'));
+        $this->assertTrue($blockJ2->every(fn ($row) => $row['block'] === 'J2'));
+        $this->assertNotEmpty($blockJ2);
 
         // has_outstanding memakai cache state.
-        CollectionAccountState::query()->updateOrCreate(['unit_id' => '07024'], ['outstanding_total' => 250000, 'aging_days' => 10]);
+        CollectionAccountState::query()->updateOrCreate(['unit_id' => '07004'], ['outstanding_total' => 250000, 'aging_days' => 10]);
         $withDebt = collect($this->getJson('/api/v1/collection/assignments/unassigned-units?cluster_id=07&has_outstanding=1&per_page=100')->json('data'));
-        $this->assertContains('07024', $withDebt->pluck('unit_id'));
+        $this->assertContains('07004', $withDebt->pluck('unit_id'));
         $this->assertTrue($withDebt->every(fn ($row) => $row['outstanding_total'] > 0));
 
-        $this->getJson('/api/v1/collection/assignments/unassigned-units?search=07024')
-            ->assertOk()->assertJsonPath('data.0.unit_id', '07024');
+        $this->getJson('/api/v1/collection/assignments/unassigned-units?search=07004')
+            ->assertOk()->assertJsonPath('data.0.unit_id', '07004');
 
         // Setelah ditugaskan, unit langsung hilang dari daftar (cakupan dihitung live).
-        $this->assignUnit($this->makeCollector('b2.unassigned.c'), '07024');
-        $this->assertNotContains('07024', collect($this->getJson('/api/v1/collection/assignments/unassigned-units?cluster_id=07&per_page=100')->json('data'))->pluck('unit_id'));
+        $this->assignUnit($this->makeCollector('b2.unassigned.c'), '07004');
+        $this->assertNotContains('07004', collect($this->getJson('/api/v1/collection/assignments/unassigned-units?cluster_id=07&per_page=100')->json('data'))->pluck('unit_id'));
     }
 
     public function test_unassigned_units_are_scoped_to_supervisor_clusters(): void
     {
-        Sanctum::actingAs($this->user('supervisor.hendra')); // 03 (semua milik ahmad) + 04 (blok A milik dewi)
+        Sanctum::actingAs($this->user('supervisor.hendra')); // 03 (03001-003 milik ahmad) + 04 (blok AR1 milik dewi)
 
-        $ids = collect($this->getJson('/api/v1/collection/assignments/unassigned-units?per_page=100')->assertOk()->json('data'))->pluck('unit_id')->sort()->values()->all();
-        $this->assertSame(['04002', '04003'], $ids);
+        $response = $this->getJson('/api/v1/collection/assignments/unassigned-units?per_page=100')->assertOk();
+        $expected = Unit::query()
+            ->whereIn('cluster_id', ['03', '04'])
+            ->whereNotIn('id', ['03001', '03002', '03003'])
+            ->where(fn ($q) => $q->where('cluster_id', '03')->orWhere('block', '!=', 'AR1'))
+            ->count();
+        $this->assertSame($expected, $response->json('meta.total'));
+
+        $rows = collect($response->json('data'));
+        $this->assertNotEmpty($rows);
+        $this->assertTrue($rows->every(fn ($row) => in_array($row['cluster_id'], ['03', '04'], true)
+            && ! in_array($row['unit_id'], ['03001', '03002', '03003'], true)
+            && ! ($row['cluster_id'] === '04' && $row['block'] === 'AR1')));
     }
 }

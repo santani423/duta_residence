@@ -39,7 +39,7 @@ class NotificationSeeder extends Seeder
                     [
                         'user_id' => null,
                         'channel' => 'in_app',
-                        'recipient' => $unit->resident?->email ?: $unit->resident?->phone,
+                        'recipient' => $unit->resident?->email ?: $unit->resident?->phone ?: $unit->id,
                         'read_status' => $unit->id === '01012' || $n % 3 !== 0 ? 'unread' : 'read',
                         'status' => $n % 5 === 0 ? 'pending' : 'sent',
                         'attempts' => $n % 2,

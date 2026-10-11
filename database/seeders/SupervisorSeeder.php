@@ -94,9 +94,9 @@ class SupervisorSeeder extends Seeder
         }
 
         // --- Approval Center: Installment Plan (pending, approved, rejected) ---
-        $installmentUnit = Billing::query()->outstanding()->orderBy('id')->first()?->unit_id ?? '01001';
+        $installmentUnit = Billing::query()->outstanding()->orderBy('id')->first()?->unit_id ?? '01002';
         $this->installmentPlanDemo($installmentUnit, 'pending', $admin);
-        $this->installmentPlanDemo('02001', 'approved', $admin);
+        $this->installmentPlanDemo('02003', 'approved', $admin);
         $this->installmentPlanDemo('03001', 'rejected', $admin);
 
         // --- Approval Center: Billing Adjustment (pending, rejected - approved skipped to avoid mutating a real billing's discount in seed data) ---

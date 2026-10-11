@@ -148,85 +148,15 @@ Semua password `password`:
 
 ### Customer / penghuni (`ResidentSeeder.php` & `UnitSeeder.php`)
 
-Setiap unit aktif (bukan status "RK") otomatis mendapat akun customer dengan username `customer.{unit_id}` (huruf kecil) dan password `password` — total akun sesuai jumlah unit di 14 cluster (lihat `database/data/clusters.csv`). Unit `07012` adalah pengecualian legacy dengan username `customer` (email `resident@gd.test`).
+Unit dan penghuni diimpor dari data pelanggan sistem lama di `database/data/pelanggan.csv` (parser: `database/seeders/PelangganData.php`), cluster dari `database/data/clusters.csv`. Hasil impor: ±1.440 unit di 14 cluster. Baris uji/contoh dari sistem lama dan unit duplikat (cluster/blok/nomor sama) dilewati; daftarnya dicetak saat seeding.
 
-12 unit di cluster Dolomite (01001-01012) sengaja dibuat untuk skenario QA tertentu:
+- Unit tanpa pemilik (nama "0"/kosong) diimpor dengan status `RK` (properti kosong) tanpa penghuni.
+- Setiap unit berpemilik mendapat satu penghuni (id `RS` + kode unit, mis. `RS001002`) dan akun customer dengan username `customer.{kode unit}` dan password `password`. Unit `07012` adalah pengecualian legacy dengan username `customer`.
+- Tagihan, pembayaran, komplain, maintenance, notifikasi, dan penugasan kolektor tetap data demo yang ditempelkan ke unit-unit asli di atas (mis. 01002 menunggak, 01014 selalu lunas, 01005 tanpa tagihan, 07001-07006 contoh umur tunggakan).
 
-```text
-Customer Lunas (01001)
-Username: customer.01001
-Email: resident.paid@example.com
-Password: password
-Skenario: seluruh tagihan lunas dan histori pembayaran berhasil.
+> **Perhatian:** CSV ini berisi data pribadi asli (nama, nomor HP, alamat KTP), dan semua akun customer hasil seeding memakai password `password`. Jangan jalankan seeder ini di server yang bisa diakses publik tanpa mengganti password tersebut.
 
-Customer Menunggak (01002)
-Username: customer.01002
-Email: resident.overdue@example.com
-Password: password
-Skenario: tagihan jatuh tempo, denda, dan dashboard overdue.
-
-Customer Manual Pending (01003)
-Username: customer.01003
-Email: resident.manual.pending@example.com
-Password: password
-Skenario: transaksi transfer manual belum dibayar.
-
-Customer Komplain Aktif (01004)
-Username: customer.01004
-Email: resident.complaint@example.com
-Password: password
-Skenario: komplain aktif dan maintenance baru.
-
-Customer Tanpa Tagihan (01005)
-Username: customer.01005
-Email: resident.nobills@example.com
-Password: password
-Skenario: akun aktif tanpa invoice aktif.
-
-Customer Manual Lunas (01006)
-Username: customer.01006
-Email: resident.manual.rejected@example.com
-Password: password
-Skenario: pembayaran transfer manual lunas dan terverifikasi.
-
-Customer Xendit (01007)
-Username: customer.01007
-Email: resident.xendit@example.com
-Password: password
-Skenario: histori pembayaran Xendit berhasil.
-
-Customer Midtrans Pending (01008)
-Username: customer.01008
-Email: resident.midtrans.failed@example.com
-Password: password
-Skenario: transaksi Midtrans belum dibayar dan invoice pending approval.
-
-Customer Maintenance Aktif (01009)
-Username: customer.01009
-Email: resident.maintenance@example.com
-Password: password
-Skenario: memiliki maintenance terjadwal dan selesai.
-
-Customer Nonaktif (01010)
-Username: customer.01010
-Email: resident.inactive@example.com
-Password: password
-Skenario: akun nonaktif (is_active = false), tidak bisa login.
-
-Customer Xendit Pending (01011)
-Username: customer.01011
-Email: resident.partial@example.com
-Password: password
-Skenario: transaksi Xendit belum dibayar.
-
-Customer Banyak Notifikasi (01012)
-Username: customer.01012
-Email: resident.notifications@example.com
-Password: password
-Skenario: badge notifikasi unread besar.
-```
-
-Seeder demo membuat 15 cluster, sekitar 450 data customer/unit, ribuan tagihan beberapa periode, histori pembayaran Xendit/Midtrans/manual sandbox, komplain, maintenance, notifikasi, dokumen dummy, dan audit log. Jalankan ulang dengan:
+Jalankan ulang dengan:
 
 ```bash
 php artisan migrate:fresh --seed

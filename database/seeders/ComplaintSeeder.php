@@ -17,7 +17,7 @@ class ComplaintSeeder extends Seeder
         $statuses = ['submitted', 'in_review', 'in_progress', 'resolved', 'closed', 'rejected'];
 
         $fixed = [
-            ['01004', 'Kebisingan renovasi malam hari', 'Lingkungan', 'urgent', 'in_progress'],
+            ['01014', 'Kebisingan renovasi malam hari', 'Lingkungan', 'urgent', 'in_progress'],
             ['01007', 'Lampu taman mati', 'Fasilitas', 'normal', 'resolved'],
             ['01012', 'Tagihan perlu klarifikasi', 'Tagihan', 'high', 'submitted'],
         ];

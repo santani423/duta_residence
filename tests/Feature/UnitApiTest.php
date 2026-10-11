@@ -124,7 +124,7 @@ class UnitApiTest extends TestCase
 
         Sanctum::actingAs(User::where('username', 'root')->first());
 
-        // UnitSeeder already seeds 04001..04003 for cluster 04, so the next two
+        // UnitSeeder already seeds 04001..04047 for cluster 04 (pelanggan.csv), so the next two
         // units created for it must continue the sequence without gaps or manual input.
         $firstId = $this->postJson('/api/v1/units', [
             'cluster_id' => '04',
@@ -144,8 +144,8 @@ class UnitApiTest extends TestCase
             'status_id' => 'AK',
         ])->assertCreated()->json('data.id');
 
-        $this->assertSame('04004', $firstId);
-        $this->assertSame('04005', $secondId);
+        $this->assertSame('04048', $firstId);
+        $this->assertSame('04049', $secondId);
     }
 
     public function test_manually_supplied_unit_id_is_ignored_and_server_generates_its_own(): void
@@ -164,7 +164,7 @@ class UnitApiTest extends TestCase
             'status_id' => 'AK',
         ])->assertCreated();
 
-        $response->assertJsonPath('data.id', '04004');
+        $response->assertJsonPath('data.id', '04048');
         $this->assertNull(Unit::find('ZZ999'));
     }
 
@@ -182,7 +182,7 @@ class UnitApiTest extends TestCase
             'occupancy_id' => '1',
             'status_id' => 'AK',
         ])->assertCreated()->json('data.id');
-        $this->assertSame('04004', $firstId);
+        $this->assertSame('04048', $firstId);
 
         $this->deleteJson("/api/v1/units/{$firstId}")->assertOk();
 
@@ -195,7 +195,7 @@ class UnitApiTest extends TestCase
             'status_id' => 'AK',
         ])->assertCreated()->json('data.id');
 
-        $this->assertSame('04005', $secondId, 'the deleted 04004 code must not be reused for a new unit');
+        $this->assertSame('04049', $secondId, 'the deleted 04048 code must not be reused for a new unit');
     }
 
     public function test_creating_unit_without_resident_succeeds_with_null_resident_id(): void

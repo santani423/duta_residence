@@ -21,7 +21,7 @@ class HelpCenterApiTest extends TestCase
         $this->assertContains('kelola-user', $adminSlugs, 'admin_estate should see the users guide');
         $this->assertNotContains('panduan-penghuni', $adminSlugs, 'admin_estate should not see the customer-only guide');
 
-        Sanctum::actingAs(User::where('username', 'customer.01001')->first());
+        Sanctum::actingAs(User::where('username', 'customer.01002')->first());
         $customerSlugs = collect($this->getJson('/api/v1/manual-book/sections')->assertOk()->json('data'))
             ->pluck('slug')->all();
         $this->assertContains('panduan-penghuni', $customerSlugs);
@@ -55,7 +55,7 @@ class HelpCenterApiTest extends TestCase
         $adminSlugs = collect($this->getJson('/api/v1/manual-book/sections')->json('data'))->pluck('slug')->all();
         $this->assertNotContains('panduan-baru', $adminSlugs);
 
-        Sanctum::actingAs(User::where('username', 'customer.01001')->first());
+        Sanctum::actingAs(User::where('username', 'customer.01002')->first());
         $customerSlugs = collect($this->getJson('/api/v1/manual-book/sections')->json('data'))->pluck('slug')->all();
         $this->assertContains('panduan-baru', $customerSlugs);
 
@@ -67,7 +67,7 @@ class HelpCenterApiTest extends TestCase
     {
         $this->seed();
 
-        $customer = User::where('username', 'customer.01001')->first();
+        $customer = User::where('username', 'customer.01002')->first();
         Sanctum::actingAs($customer);
 
         $tours = $this->getJson('/api/v1/guided-tours')->assertOk()->json('data');
@@ -90,7 +90,7 @@ class HelpCenterApiTest extends TestCase
     {
         $this->seed();
 
-        Sanctum::actingAs(User::where('username', 'customer.01001')->first());
+        Sanctum::actingAs(User::where('username', 'customer.01002')->first());
         $this->getJson('/api/v1/help-settings')->assertOk();
         $this->putJson('/api/v1/admin/help-settings', [
             'settings' => [['scope_type' => 'global', 'is_enabled' => false]],

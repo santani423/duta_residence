@@ -6,6 +6,7 @@ use App\Models\Billing;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\ClusterRateScheduleService;
+use App\Services\CollectionAccountRefreshQueue;
 use App\Services\DiscountService;
 use App\Services\PenaltyService;
 use Illuminate\Database\Seeder;
@@ -46,11 +47,15 @@ class BillingSeeder extends Seeder
             return $rateCache[$key] ??= $rateScheduleService->rateForPeriod($cluster, $year, $month);
         };
         $skipUnits = ['01005'];
+        $refreshQueue = app(CollectionAccountRefreshQueue::class);
 
         Unit::with(['cluster', 'discountRule'])
             ->where('status_id', '!=', 'RK')
             ->orderBy('id')
-            ->chunk(100, function ($units) use ($finance, $penaltyService, $discountService, $resolveRate, $skipUnits) {
+            ->chunk(100, function ($units) use ($finance, $penaltyService, $discountService, $resolveRate, $skipUnits, $refreshQueue) {
+                $rows = [];
+                $now = now();
+
                 foreach ($units as $unit) {
                     if (in_array($unit->id, $skipUnits, true)) {
                         continue;
@@ -103,31 +108,43 @@ class BillingSeeder extends Seeder
                             $penalty = 0;
                         }
 
-                        Billing::updateOrCreate(
-                            ['unit_id' => $unit->id, 'year' => $period->year, 'month' => $period->month],
-                            [
-                                'amount' => $amount,
-                                'principal_paid' => $principalPaid,
-                                'penalty' => $penalty,
-                                'penalty_paid' => $penaltyPaid,
-                                'discount' => $discount,
-                                'discount_rule_id' => $discountRuleId,
-                                'status_id' => $status,
-                                'is_penalty_eligible' => $unit->is_penalty_eligible,
-                                'is_discount_eligible' => $unit->is_discount_eligible,
-                                'billing_type' => 'regular',
-                                'approved_by' => $approvedAt ? $finance?->id : null,
-                                'approved_at' => $approvedAt,
-                                'approval_notes' => $notes,
-                                'paid_at' => $paidAt,
-                                'processed_by' => $paidAt ? $finance?->id : null,
-                                'cancelled_at' => null,
-                                'cancelled_by' => null,
-                                'cancellation_reason' => null,
-                                'created_by' => $finance?->id,
-                            ]
-                        );
+                        $rows[] = [
+                            'unit_id' => $unit->id,
+                            'year' => $period->year,
+                            'month' => $period->month,
+                            'amount' => $amount,
+                            'principal_paid' => $principalPaid,
+                            'penalty' => $penalty,
+                            'penalty_paid' => $penaltyPaid,
+                            'discount' => $discount,
+                            'discount_rule_id' => $discountRuleId,
+                            'status_id' => $status,
+                            'is_penalty_eligible' => $unit->is_penalty_eligible,
+                            'is_discount_eligible' => $unit->is_discount_eligible,
+                            'billing_type' => 'regular',
+                            'approved_by' => $approvedAt ? $finance?->id : null,
+                            'approved_at' => $approvedAt,
+                            'approval_notes' => $notes,
+                            'paid_at' => $paidAt,
+                            'processed_by' => $paidAt ? $finance?->id : null,
+                            'cancelled_at' => null,
+                            'cancelled_by' => null,
+                            'cancellation_reason' => null,
+                            'created_by' => $finance?->id,
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ];
                     }
+                }
+
+                // Ditulis bulk per 100 unit (~2.400 tagihan) - updateOrCreate per tagihan terlalu
+                // lambat untuk ~1.400 unit. upsert tidak memicu observer, jadi cache collection
+                // account di-refresh lewat antrean yang sama dengan BillingCollectionObserver.
+                foreach (array_chunk($rows, 500) as $chunk) {
+                    Billing::upsert($chunk, ['unit_id', 'year', 'month'], array_diff(array_keys($chunk[0]), ['unit_id', 'year', 'month', 'created_at']));
+                }
+                foreach ($units as $unit) {
+                    $refreshQueue->push($unit->id);
                 }
             });
 
@@ -179,12 +196,12 @@ class BillingSeeder extends Seeder
             return self::SHOWCASE_OLDEST_OVERDUE_MONTHS[$unit->id] + 1;
         }
 
-        if ($unit->id === '01001') {
-            return 0; // "Andi Lunas Pratama" - seluruh tagihan lunas dan pembayaran lancar.
+        if ($unit->id === '01014') {
+            return 0; // Seluruh tagihan lunas dan pembayaran lancar.
         }
 
         if ($unit->id === '01002') {
-            return 5; // "Bima Menunggak Saputra" - tagihan jatuh tempo + denda tier 3 bulan+.
+            return 5; // tagihan jatuh tempo + denda tier 3 bulan+.
         }
 
         if ($unit->cluster_id === '11') {

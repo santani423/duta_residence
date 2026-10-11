@@ -66,7 +66,7 @@ class CollectorSeeder extends Seeder
         foreach (['03001', '03002', '03003'] as $unitId) {
             $this->assign($ahmad, 'unit', ['unit_id' => $unitId], $admin, 'normal', 'Unit prioritas tunggakan lama.');
         }
-        $this->assign($dewi, 'block', ['cluster_id' => '04', 'block' => 'A'], $admin, 'low', 'Blok A Amber.');
+        $this->assign($dewi, 'block', ['cluster_id' => '04', 'block' => 'AR1'], $admin, 'low', 'Blok AR1 Amber.');
         $residentId = Unit::whereNotNull('resident_id')->where('cluster_id', '05')->first()?->resident_id;
         if ($residentId) {
             $this->assign($maya, 'resident', ['resident_id' => $residentId], $admin, 'normal', 'Penghuni VIP, tetap diikuti selama cuti.');
@@ -107,16 +107,16 @@ class CollectorSeeder extends Seeder
         $this->target($budi, now()->toDateString(), 300_000, 1, $admin, CollectorTarget::PERIOD_DAILY);
 
         // --- Loket payment transactions attributed to collectors, so CollectorPerformanceService reflects real achievement. ---
-        $this->loketPayment($budi, '01001', 3_200_000);
+        $this->loketPayment($budi, '01002', 3_200_000);
         $this->loketPayment($budi, '01007', 2_600_000);
-        $this->loketPayment($siti, '02001', 5_000_000);
+        $this->loketPayment($siti, '02003', 5_000_000);
         $this->loketPayment($siti, '02002', 4_100_000);
         $this->loketPayment($ahmad, '03001', 1_500_000); // well under target - "belum tercapai"
 
         // --- Field visits (with GPS-only evidence - no real files needed) ---
-        $this->visit($budi, '01001', 'completed', 'Penagihan bulanan', -6.2088, 106.8456);
+        $this->visit($budi, '01002', 'completed', 'Penagihan bulanan', -6.2088, 106.8456);
         $this->visit($budi, '01007', 'completed', 'Konfirmasi janji bayar', -6.2091, 106.8460);
-        $this->visit($siti, '02001', 'no_answer', 'Penagihan bulanan', -6.2105, 106.8471);
+        $this->visit($siti, '02003', 'no_answer', 'Penagihan bulanan', -6.2105, 106.8471);
         $this->visit($ahmad, '03001', 'refused', 'Penagihan tunggakan', -6.2120, 106.8480);
         $this->visit($dewi, '04001', 'rescheduled', 'Penagihan bulanan', -6.2130, 106.8490);
 
@@ -126,7 +126,7 @@ class CollectorSeeder extends Seeder
         $this->promise($dewi, '04002', 900_000, 'fulfilled');
 
         // --- Complaints about collection visits ---
-        $this->complaint($budi, '01001', 'Kolektor datang di luar jam yang dijanjikan.', 'resolved');
+        $this->complaint($budi, '01002', 'Kolektor datang di luar jam yang dijanjikan.', 'resolved');
         $this->complaint($ahmad, '03001', 'Nada bicara kolektor dianggap kurang sopan.', 'in_review');
 
         // --- Live-location pings (a few recent ones, for the "last known location" widget) ---
@@ -135,7 +135,7 @@ class CollectorSeeder extends Seeder
         $this->location($siti, -6.2105, 106.8471, now()->subMinutes(30));
 
         // --- Collection letters (no PDF rendering in seeders - pdf_path stays null) ---
-        $this->letter($budi, '01001', 'reminder', 'Yth. Bapak/Ibu, kami informasikan bahwa terdapat tagihan IPL yang belum diselesaikan. Mohon segera melakukan pembayaran.');
+        $this->letter($budi, '01002', 'reminder', 'Yth. Bapak/Ibu, kami informasikan bahwa terdapat tagihan IPL yang belum diselesaikan. Mohon segera melakukan pembayaran.');
         $this->letter($ahmad, '03001', 'warning', 'Surat peringatan kedua terkait tunggakan IPL yang belum diselesaikan lebih dari 2 bulan.');
     }
 

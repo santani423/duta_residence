@@ -2,165 +2,126 @@
 
 namespace Database\Seeders;
 
-use App\Models\DiscountRule;
-use App\Models\Resident;
 use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class UnitSeeder extends Seeder
 {
+    /**
+     * Akun customer legacy dengan username "customer" (bukan customer.{kode unit}),
+     * dipakai sebagai akun uji loket/pembayaran.
+     */
+    public const LEGACY_CUSTOMER_UNIT = '07012';
+
+    /**
+     * Unit diambil dari database/data/pelanggan.csv (lihat PelangganData). Ditulis secara
+     * bulk (upsert per 500 baris) karena jumlahnya ~1.400 unit dan seeder dijalankan ke
+     * database remote - updateOrCreate per baris terlalu lambat.
+     */
     public function run(): void
     {
         $creator = User::where('username', 'admin.estate')->first() ?: User::where('username', 'root')->first();
-        $discountRuleIds = DiscountRule::query()->pluck('id', 'name');
-        $districts = ['367101', '367102', '367103'];
-        $unitProfiles = [
-            ['type' => 'B', 'building' => 36, 'land' => 72],
-            ['type' => 'B', 'building' => 45, 'land' => 90],
-            ['type' => 'B', 'building' => 60, 'land' => 120],
-            ['type' => 'B', 'building' => 90, 'land' => 160],
-            ['type' => 'K', 'building' => 120, 'land' => 200],
-        ];
+        $now = now();
+        $units = collect(PelangganData::units());
 
-        foreach (EstateSeeder::clusters() as $clusterIndex => $cluster) {
-            // 01 & 07 menampung ResidentSeeder::SPECIAL (butuh unit s.d. index 12) dan
-            // skenario kosong/renovasi/nonaktif di index 27-30, jadi tetap 30 unit.
-            // Cluster lain dipangkas jadi 3 unit supaya total ~100 unit dan seeder enteng di server.
-            $unitCount = in_array($cluster['id'], ['01', '07'], true) ? 30 : 3;
+        $rows = $units->map(fn (array $unit) => [
+            'id' => $unit['id'],
+            // VA per unit: deterministik dari kode unit yang sudah unik.
+            'va_number' => '8801'.str_pad($unit['id'], 6, '0', STR_PAD_LEFT),
+            'resident_id' => $unit['resident']['id'] ?? null,
+            'cluster_id' => $unit['cluster_id'],
+            'block' => $unit['block'],
+            'lot_number' => $unit['lot_number'],
+            'property_type_id' => $unit['property_type_id'],
+            'building_area' => $unit['building_area'],
+            'land_area' => $unit['land_area'],
+            'handover_date' => $unit['handover_date'],
+            'occupancy_id' => $unit['occupancy_id'],
+            'status_id' => $unit['status_id'],
+            'is_penalty_eligible' => true,
+            'is_discount_eligible' => false,
+            'created_by' => $creator?->id,
+            'updated_by' => $creator?->id,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ])->values();
 
-            for ($i = 1; $i <= $unitCount; $i++) {
-                $id = $cluster['id'].str_pad((string) $i, 3, '0', STR_PAD_LEFT);
-                $profile = $unitProfiles[($i + $clusterIndex) % count($unitProfiles)];
-                $statusId = 'AK';
-                $occupancyId = '1';
-                $notes = $this->unitScenario($i, $cluster['profile']);
+        foreach ($rows->chunk(500) as $chunk) {
+            Unit::upsert($chunk->all(), ['id'], [
+                'resident_id', 'cluster_id', 'block', 'lot_number', 'property_type_id', 'building_area',
+                'land_area', 'handover_date', 'occupancy_id', 'status_id', 'updated_by', 'updated_at',
+            ]);
+        }
 
-                if ($i >= 27 && $i <= 28) {
-                    $statusId = 'RK';
-                    $occupancyId = '2';
-                    $notes .= ' Unit kosong untuk skenario ketersediaan.';
-                }
-                if ($i === 29) {
-                    $statusId = 'RK';
-                    $occupancyId = '2';
-                    $notes .= ' Unit sedang direnovasi.';
-                }
-                if ($i === 30) {
-                    $statusId = 'TA';
-                    $notes .= ' Penghuni lama nonaktif.';
-                }
+        $this->seedCustomerAccounts($units->filter(fn (array $unit) => $unit['resident'] && $unit['status_id'] !== 'RK'));
+    }
 
-                $special = ResidentSeeder::SPECIAL[$id] ?? null;
-                if ($special) {
-                    $statusId = ($special['inactive'] ?? false) ? 'TA' : 'AK';
-                    $occupancyId = '1';
-                    $notes .= ' '.$special['scenario'];
-                    $resident = Resident::where('id', 'RS'.$id)->first();
-                } else {
-                    $resident = Resident::updateOrCreate(['id' => 'RS'.$id], [
-                        'name' => fake()->name(),
-                        'phone' => '08'.str_pad((string) (1200000000 + $clusterIndex * 10000 + $i), 10, '0', STR_PAD_LEFT),
-                        'telephone' => '021'.str_pad((string) (7300000 + $clusterIndex * 100 + $i), 7, '0', STR_PAD_LEFT),
-                        'id_card_address' => 'Duta Indah Residence '.$cluster['name'].' Blok '.chr(65 + (($i - 1) % 6)).' No '.$i,
-                        'district_id' => $districts[($i + $clusterIndex) % count($districts)],
-                        'email' => strtolower($id).'@resident.example.com',
-                        'created_by' => $creator?->id,
-                        'updated_by' => $creator?->id,
-                    ]);
-                }
+    /**
+     * Setiap unit berpemilik mendapat akun customer (username customer.{kode unit},
+     * password awal "password"), sama seperti akun yang dibuat ResidentAccountService.
+     */
+    private function seedCustomerAccounts($units): void
+    {
+        $password = Hash::make('password');
+        $now = now();
+        $takenEmails = User::query()->whereNotNull('email')->pluck('email')->flip();
+        $preferences = json_encode([
+            'billing' => true,
+            'payments' => true,
+            'complaints' => true,
+            'maintenance' => true,
+            'documents' => true,
+            'announcements' => true,
+        ]);
 
-                $unit = Unit::updateOrCreate(['id' => $id], [
-                    // Deterministic per-unit VA: (clusterIndex, i) is already
-                    // unique within this seeder's loop, same as the phone
-                    // number generation above.
-                    'va_number' => '8801'.str_pad((string) (100000 + $clusterIndex * 1000 + $i), 6, '0', STR_PAD_LEFT),
-                    'resident_id' => $resident->id,
-                    'cluster_id' => $cluster['id'],
-                    'block' => chr(65 + (($i - 1) % 6)),
-                    'lot_number' => (string) $i,
-                    'property_type_id' => $profile['type'],
-                    'building_area' => $profile['building'],
-                    'land_area' => $profile['land'],
-                    'handover_date' => now()->subMonths(4 + (($i + $clusterIndex) % 48))->toDateString(),
-                    'occupancy_id' => $occupancyId,
-                    'status_id' => $statusId,
-                    'is_penalty_eligible' => $i % 9 !== 0,
-                    'is_discount_eligible' => $i % 11 === 0,
-                    'discount_rule_id' => $i % 11 === 0
-                        ? ($i % 22 === 0 ? $discountRuleIds['Diskon Awal Bulan'] ?? null : $discountRuleIds['Diskon Karyawan Estate'] ?? null)
-                        : null,
-                    'notes' => trim($notes),
-                    'created_by' => $creator?->id,
-                    'updated_by' => $creator?->id,
-                ]);
-
-                if ($statusId !== 'RK') {
-                    $username = $id === '07012' ? 'customer' : 'customer.'.strtolower($id);
-                    $user = User::updateOrCreate(['username' => $username], [
-                        'name' => $resident->name,
-                        'email' => $resident->email,
-                        'phone' => $resident->phone,
-                        'unit_id' => $unit->id,
-                        'resident_id' => $resident->id,
-                        'password' => Hash::make('password'),
-                        'is_active' => $statusId === 'AK',
-                        'theme_preference' => ['system', 'light', 'dark'][($i + $clusterIndex) % 3],
-                        'language_preference' => 'id',
-                        'notification_preferences' => [
-                            'billing' => true,
-                            'payments' => true,
-                            'complaints' => $i % 3 !== 0,
-                            'maintenance' => true,
-                            'documents' => true,
-                            'announcements' => true,
-                        ],
-                        'last_login_at' => now()->subDays(($i + $clusterIndex) % 25),
-                        'last_login_ip' => '36.80.'.($clusterIndex + 10).'.'.($i + 20),
-                    ]);
-                    $user->syncRoles(['customer']);
-                }
+        $rows = $units->map(function (array $unit) use ($password, $now, &$takenEmails, $preferences) {
+            $resident = $unit['resident'];
+            $username = $unit['id'] === self::LEGACY_CUSTOMER_UNIT ? 'customer' : 'customer.'.$unit['id'];
+            $email = $resident['email'] && ! isset($takenEmails[$resident['email']]) ? $resident['email'] : null;
+            if ($email) {
+                $takenEmails[$email] = true;
             }
+
+            return [
+                'username' => $username,
+                'name' => $resident['name'],
+                'email' => $email,
+                'phone' => $resident['phone'],
+                'unit_id' => $unit['id'],
+                'resident_id' => $resident['id'],
+                'password' => $password,
+                'is_active' => $unit['status_id'] === 'AK',
+                'theme_preference' => 'system',
+                'language_preference' => 'id',
+                'notification_preferences' => $preferences,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        })->values();
+
+        foreach ($rows->chunk(500) as $chunk) {
+            User::upsert($chunk->all(), ['username'], [
+                'name', 'email', 'phone', 'unit_id', 'resident_id', 'is_active', 'updated_at',
+            ]);
         }
 
-        $this->assignMultiUnitOwnershipDemo();
-    }
-
-    private function assignMultiUnitOwnershipDemo(): void
-    {
-        $multiOwner = Resident::find('RSAL001');
-
-        if (! $multiOwner) {
-            return;
+        $role = Role::findByName('customer', 'web');
+        $userIds = User::query()->whereIn('username', $rows->pluck('username'))->pluck('id');
+        foreach ($userIds->chunk(500) as $chunk) {
+            DB::table(config('permission.table_names.model_has_roles'))->insertOrIgnore(
+                $chunk->map(fn ($id) => [
+                    'role_id' => $role->id,
+                    'model_type' => (new User)->getMorphClass(),
+                    'model_id' => $id,
+                ])->values()->all()
+            );
         }
 
-        $orphanedResidentIds = Unit::whereIn('id', ['02001', '03001'])->pluck('resident_id')->diff([$multiOwner->id]);
-
-        Unit::whereIn('id', ['02001', '03001'])->update(['resident_id' => $multiOwner->id]);
-
-        // Unit direassign langsung via query, bukan lewat UnitController, jadi bersihkan
-        // manual akun customer lama yang unit_id-nya masih menunjuk ke 02001/03001 padahal
-        // penghuninya sudah bukan pemilik lagi.
-        User::query()->role('customer')
-            ->whereIn('unit_id', ['02001', '03001'])
-            ->where(fn ($q) => $q->whereNull('resident_id')->orWhere('resident_id', '!=', $multiOwner->id))
-            ->update(['unit_id' => null]);
-
-        Resident::whereIn('id', $orphanedResidentIds)->doesntHave('units')->delete();
-    }
-
-    private function unitScenario(int $i, string $clusterProfile): string
-    {
-        $types = [
-            'owner menempati unit sendiri',
-            'owner menyewakan unit kepada tenant',
-            'tenant aktif dengan masa sewa hampir selesai',
-            'anggota keluarga sebagai representative',
-            'riwayat pindah unit dari blok lama',
-        ];
-
-        return Str::ucfirst($types[$i % count($types)])."; {$clusterProfile}.";
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 }

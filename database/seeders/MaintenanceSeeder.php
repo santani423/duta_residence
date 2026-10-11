@@ -17,7 +17,7 @@ class MaintenanceSeeder extends Seeder
 
         $fixed = [
             ['01009', 'AC', 'high', 'scheduled'],
-            ['01004', 'Lampu jalan', 'normal', 'submitted'],
+            ['01014', 'Lampu jalan', 'normal', 'submitted'],
             ['01007', 'Plumbing', 'normal', 'completed'],
         ];
 

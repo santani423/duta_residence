@@ -8,37 +8,40 @@ use Illuminate\Database\Seeder;
 
 class ResidentSeeder extends Seeder
 {
-    public const SPECIAL = [
-        '01001' => ['email' => 'resident.paid@example.com', 'name' => 'Andi Lunas Pratama', 'scenario' => 'Seluruh tagihan lunas dan pembayaran lancar.'],
-        '01002' => ['email' => 'resident.overdue@example.com', 'name' => 'Bima Menunggak Saputra', 'scenario' => 'Memiliki tagihan jatuh tempo dan denda.'],
-        '01003' => ['email' => 'resident.manual.pending@example.com', 'name' => 'Citra Manual Pending', 'scenario' => 'Transaksi transfer manual belum dibayar.'],
-        '01004' => ['email' => 'resident.complaint@example.com', 'name' => 'Dewi Komplain Aktif', 'scenario' => 'Memiliki komplain aktif.'],
-        '01005' => ['email' => 'resident.nobills@example.com', 'name' => 'Eka Tanpa Tagihan', 'scenario' => 'Penghuni aktif tanpa tagihan.'],
-        '01006' => ['email' => 'resident.manual.rejected@example.com', 'name' => 'Fajar Manual Lunas', 'scenario' => 'Pembayaran transfer manual lunas dan terverifikasi.'],
-        '01007' => ['email' => 'resident.xendit@example.com', 'name' => 'Gita Xendit Berhasil', 'scenario' => 'Histori pembayaran Xendit berhasil.'],
-        '01008' => ['email' => 'resident.midtrans.failed@example.com', 'name' => 'Hadi Midtrans Pending', 'scenario' => 'Transaksi Midtrans belum dibayar.'],
-        '01009' => ['email' => 'resident.maintenance@example.com', 'name' => 'Intan Maintenance Aktif', 'scenario' => 'Memiliki maintenance terjadwal dan selesai.'],
-        '01010' => ['email' => 'resident.inactive@example.com', 'name' => 'Joko Nonaktif', 'scenario' => 'Akun penghuni nonaktif.', 'inactive' => true],
-        '01011' => ['email' => 'resident.partial@example.com', 'name' => 'Kirana Xendit Pending', 'scenario' => 'Transaksi Xendit belum dibayar.'],
-        '01012' => ['email' => 'resident.notifications@example.com', 'name' => 'Laras Banyak Notifikasi', 'scenario' => 'Memiliki banyak notifikasi belum dibaca.'],
-        '07012' => ['email' => 'resident@gd.test', 'name' => 'Budi Santoso', 'scenario' => 'Akun penghuni legacy untuk test loket 07012.'],
-    ];
-
+    /**
+     * Penghuni diambil dari database/data/pelanggan.csv (lihat PelangganData). Sistem lama
+     * mencatat satu pemilik per unit, jadi setiap unit berpemilik mendapat satu record
+     * penghuni dengan id RS + kode unit (mis. RS001002 untuk unit 01002).
+     */
     public function run(): void
     {
         $creator = User::where('username', 'admin.estate')->first() ?: User::where('username', 'root')->first();
+        $now = now();
 
-        foreach (self::SPECIAL as $unitId => $profile) {
-            Resident::updateOrCreate(['id' => 'RS'.$unitId], [
-                'name' => $profile['name'],
-                'phone' => '0812'.str_pad((string) (crc32($unitId) % 100000000), 8, '0', STR_PAD_LEFT),
-                'telephone' => null,
-                'id_card_address' => null,
+        $rows = collect(PelangganData::units())
+            ->pluck('resident')
+            ->filter()
+            ->map(fn (array $resident) => $resident + [
                 'district_id' => null,
-                'email' => $profile['email'],
+                'is_active' => true,
                 'created_by' => $creator?->id,
                 'updated_by' => $creator?->id,
-            ]);
+                'created_at' => $now,
+                'updated_at' => $now,
+            ])
+            ->values();
+
+        foreach ($rows->chunk(500) as $chunk) {
+            Resident::upsert(
+                $chunk->all(),
+                ['id'],
+                ['name', 'phone', 'telephone', 'id_card_address', 'email', 'updated_by', 'updated_at']
+            );
+        }
+
+        $skipped = PelangganData::skipped();
+        if ($skipped && $this->command) {
+            $this->command->warn(count($skipped).' baris pelanggan.csv tidak diimpor: '.implode('; ', $skipped));
         }
     }
 }

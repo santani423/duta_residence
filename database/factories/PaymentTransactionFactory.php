@@ -21,7 +21,7 @@ class PaymentTransactionFactory extends Factory
         return [
             'transaction_number' => 'TRX-'.now()->format('Ymd').'-'.Str::upper(Str::random(10)),
             'invoice_number' => 'INV-'.now()->format('Ymd').'-'.Str::upper(Str::random(10)),
-            'unit_id' => '01001',
+            'unit_id' => '01002',
             'subtotal' => $total,
             'tax' => 0,
             'admin_fee' => $provider === 'manual' ? 0 : 4500,
