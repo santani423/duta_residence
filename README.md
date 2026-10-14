@@ -152,7 +152,8 @@ Unit dan penghuni diimpor dari data pelanggan sistem lama di `database/data/pela
 
 - Unit tanpa pemilik (nama "0"/kosong) diimpor dengan status `RK` (properti kosong) tanpa penghuni.
 - Setiap unit berpemilik mendapat satu penghuni (id `RS` + kode unit, mis. `RS001002`) dan akun customer dengan username `customer.{kode unit}` dan password `password`. Unit `07012` adalah pengecualian legacy dengan username `customer`.
-- Tagihan, pembayaran, komplain, maintenance, notifikasi, dan penugasan kolektor tetap data demo yang ditempelkan ke unit-unit asli di atas (mis. 01002 menunggak, 01014 selalu lunas, 01005 tanpa tagihan, 07001-07006 contoh umur tunggakan).
+- Tagihan dan pembayaran IPL diimpor dari buku IPL manual 2024 sampai data terbaru di `database/data/ipl.csv` (parser: `database/seeders/IplData.php`, sumber: `docs/sempelIpl.md`): ±8.600 kuitansi asli (tanggal, nominal, kasir, cara bayar; nomor kwitansi manual ada di catatan kuitansi) melunasi tagihan per bulan, dan unit aktif di cluster 05-09 dan 11-14 mendapat tagihan Belum Bayar untuk bulan sejak Januari 2024 yang belum tercatat dibayar. Cluster 01-04 dan 10 tidak dibuatkan tunggakan karena tidak ada pembayaran lagi di buku sejak 2017/2018. Riwayat kenaikan tarif cluster (Diamond, Chrysocolla, ruko Amber/Alexandrite/Jade Arcade) mengikuti data itu. Unit `07012` menunggak sejak Mei 2026 dan dipakai test pembayaran loket.
+- Komplain, maintenance, notifikasi, dan penugasan kolektor tetap data demo yang ditempelkan ke unit-unit asli di atas.
 
 > **Perhatian:** CSV ini berisi data pribadi asli (nama, nomor HP, alamat KTP), dan semua akun customer hasil seeding memakai password `password`. Jangan jalankan seeder ini di server yang bisa diakses publik tanpa mengganti password tersebut.
 

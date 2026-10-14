@@ -19,6 +19,18 @@ class EstateSeeder extends Seeder
     public const CLUSTERS_CSV = 'data/clusters.csv';
 
     /**
+     * Kenaikan tarif IPL yang tercatat di buku IPL manual 2024+ (lihat IplData):
+     * cluster => [tanggal berlaku, tarif sebelumnya]. Tarif sesudahnya = tarif di clusters.csv.
+     */
+    public const RATE_INCREASES = [
+        '05' => ['2025-11-01', 250000],
+        '06' => ['2025-01-01', 250000],
+        '07' => ['2025-01-01', 250000],
+        '08' => ['2025-01-01', 250000],
+        '09' => ['2025-11-01', 225000],
+    ];
+
+    /**
      * Daftar cluster diambil dari database/data/clusters.csv dengan format
      * "kode","nama","tarif bulanan" (tanpa header).
      *
@@ -96,18 +108,32 @@ class EstateSeeder extends Seeder
                 'description' => "{$row['profile']}. Alamat: Boulevard Grand Duta blok {$row['id']}. Fasilitas: taman, keamanan 24 jam, CCTV, jogging track. Pengelola: Estate Office {$row['name']}. Beroperasi sejak ".$operatingSince->format('Y-m-d').'.',
             ]);
 
+            [$increaseDate, $initialRate] = self::RATE_INCREASES[$row['id']] ?? [null, $row['rate']];
+
             // Mirrors what ClusterController::store() does for clusters created via the API -
             // without this, cluster_rate_schedules stays empty and the tariff history table
             // on the cluster detail page has nothing to show.
             ClusterRateSchedule::updateOrCreate(
                 ['cluster_id' => $row['id'], 'effective_date' => $operatingSince->toDateString()],
                 [
-                    'rate' => $row['rate'],
+                    'rate' => $initialRate,
                     'notes' => 'Tarif awal saat cluster dibuat.',
                     'is_active' => true,
                     'activated_at' => $operatingSince,
                 ]
             );
+
+            if ($increaseDate) {
+                ClusterRateSchedule::updateOrCreate(
+                    ['cluster_id' => $row['id'], 'effective_date' => $increaseDate],
+                    [
+                        'rate' => $row['rate'],
+                        'notes' => 'Kenaikan tarif sesuai buku IPL manual.',
+                        'is_active' => true,
+                        'activated_at' => $increaseDate,
+                    ]
+                );
+            }
         }
     }
 }

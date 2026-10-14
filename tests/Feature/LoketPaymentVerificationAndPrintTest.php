@@ -81,7 +81,8 @@ class LoketPaymentVerificationAndPrintTest extends TestCase
             'kuitansi thermal' => ['spt/{number}?format=thermal'],
             'kuitansi dari transaksi' => ['payment-transactions/{transaction}/receipt'],
             'bukti transaksi' => ['payment-transactions/{transaction}'],
-            'daftar transaksi' => ['payment-transactions'],
+            // Data seed IPL berisi ribuan transaksi, di atas batas cetak PDF daftar (500 baris).
+            'daftar transaksi' => ['payment-transactions?unit_id=07012'],
             'riwayat kuitansi' => ['payment-receipts?unit_id=07012'],
         ];
     }

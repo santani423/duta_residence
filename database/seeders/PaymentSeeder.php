@@ -3,146 +3,151 @@
 namespace Database\Seeders;
 
 use App\Models\Billing;
+use App\Models\PaymentAllocation;
 use App\Models\PaymentTransaction;
 use App\Models\Receipt;
 use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 class PaymentSeeder extends Seeder
 {
-    private int $sequence = 1;
+    private const TRANSACTION_PREFIX = 'TRX-IPL-';
 
+    /**
+     * Kuitansi, transaksi loket, dan alokasi pembayaran dari buku IPL manual (lihat IplData) -
+     * bentuknya sama dengan hasil PaymentService::process() saat kasir menerima pembayaran,
+     * dengan nominal pas (tanpa denda/saldo). Tagihan yang dilunasinya dibuat BillingSeeder.
+     */
     public function run(): void
     {
-        $finance = User::where('username', 'finance')->first() ?: User::where('username', 'root')->first();
-        $loket = User::where('username', 'loket')->first() ?: $finance;
+        $loket = User::where('username', 'loket')->first() ?: User::where('username', 'root')->first();
+        $payments = collect(IplData::payments());
+        $units = Unit::with(['cluster', 'resident'])->whereIn('id', $payments->pluck('unit_id')->unique())->get()->keyBy('id');
+        $payments = $payments->filter(fn (array $payment) => $units->has($payment['unit_id']))->values();
+        $prefixLength = strlen(config('grandduta.receipt_prefix', 'GD'));
+        $code = fn (array $payment) => str_replace('.', '', substr($payment['receipt_number'], $prefixLength));
+        $now = now();
 
-        Billing::with('unit.cluster')->where('status_id', '02')->orderBy('id')->limit(900)->get()
-            ->each(function (Billing $billing) use ($loket) {
-                $receipt = $this->receipt($billing, $loket, 'C', 'L');
-                $billing->update(['receipt_number' => $receipt->number, 'loket_code' => 'L01']);
-
-                if ($this->sequence % 3 === 0) {
-                    $payment = $this->transaction($billing, $this->sequence % 2 === 0 ? 'midtrans' : 'xendit', 'paid', $loket);
-                    $payment->billings()->syncWithoutDetaching([$billing->id]);
-                }
-            });
-
-        // Data contoh transaksi hanya memakai dua status: pending (belum bayar) dan paid (lunas).
-        $scenarios = [
-            '01003' => ['manual', 'pending'],
-            '01006' => ['manual', 'paid'],
-            '01007' => ['xendit', 'paid'],
-            '01008' => ['midtrans', 'pending'],
-            '01009' => ['midtrans', 'paid'],
-            '01011' => ['xendit', 'pending'],
-            '01012' => ['xendit', 'pending'],
-        ];
-
-        foreach ($scenarios as $unitId => [$provider, $status]) {
-            $billing = Billing::where('unit_id', $unitId)->where('status_id', '01')->whereNotNull('approved_at')->oldest()->first()
-                ?: Billing::where('unit_id', $unitId)->oldest()->first();
-            if (! $billing) {
-                continue;
-            }
-
-            $payment = $this->transaction($billing, $provider, $status, $finance);
-            $payment->billings()->syncWithoutDetaching([$billing->id]);
-
-            if ($status === 'paid') {
-                $receipt = $this->receipt($billing, $finance, $provider === 'manual' ? 'D' : 'D', $provider === 'xendit' ? 'X' : ($provider === 'midtrans' ? 'T' : 'M'));
-                $billing->update([
-                    'status_id' => '02',
-                    'principal_paid' => (float) $billing->amount - (float) $billing->discount,
-                    'penalty_paid' => (float) $billing->penalty,
-                    'paid_at' => $payment->paid_at,
-                    'receipt_number' => $receipt->number,
-                    'processed_by' => $finance?->id,
-                ]);
-            }
-        }
-
-        foreach (['xendit', 'midtrans'] as $provider) {
-            $unit = Unit::whereNotIn('id', array_keys($scenarios))->where('status_id', 'AK')->inRandomOrder()->first();
-            $billing = $unit ? Billing::where('unit_id', $unit->id)->where('status_id', '01')->whereNotNull('approved_at')->oldest()->first() : null;
-            if ($billing) {
-                $payment = $this->transaction($billing, $provider, 'pending', $finance);
-                $payment->billings()->syncWithoutDetaching([$billing->id]);
-            }
-        }
-    }
-
-    private function transaction(Billing $billing, string $provider, string $status, ?User $user): PaymentTransaction
-    {
-        $subtotal = (float) $billing->amount + (float) $billing->penalty - (float) $billing->discount;
-        $adminFee = $provider === 'manual' ? 0 : 4500;
-        $number = str_pad((string) $this->sequence++, 6, '0', STR_PAD_LEFT);
-        $manual = $provider === 'manual';
-        $paid = $status === 'paid';
-        // Bukti transfer manual hanya ada pada transaksi yang sudah lunas.
-        $manualProof = $manual && $paid;
-
-        return PaymentTransaction::updateOrCreate(
-            ['transaction_number' => "TRX-DEMO-{$number}"],
-            [
-                'invoice_number' => "INV-DEMO-{$number}",
-                'unit_id' => $billing->unit_id,
-                'subtotal' => $subtotal,
-                'tax' => 0,
-                'admin_fee' => $adminFee,
-                'total' => $subtotal + $adminFee,
-                'currency' => 'IDR',
-                'payment_provider' => $provider,
-                'payment_method' => $manual ? 'bank_transfer' : ($provider === 'xendit' ? 'xendit_invoice' : 'snap'),
-                'provider_reference' => "{$provider}-sandbox-{$number}",
-                'status' => $status,
-                'payment_url' => $manual ? null : "https://sandbox.{$provider}.example.test/pay/{$number}",
-                'expired_at' => now()->addDay(),
-                'paid_at' => $paid ? now()->subDays(rand(1, 20)) : null,
-                'manual_proof_path' => $manualProof ? "dummy/manual-payments/proof-{$number}.jpg" : null,
-                'manual_transfer_date' => $manualProof ? now()->subDays(rand(1, 7))->toDateString() : null,
-                'manual_notes' => $manualProof ? "Pengirim: {$billing->unit->resident->name}\nBank: BCA\nRekening: 1234****{$number}\nNominal: ".($subtotal + $adminFee) : null,
-                'verification_notes' => $manualProof ? 'Bukti valid dan disetujui finance.' : null,
-                'verified_by' => $manualProof ? $user?->id : null,
-                'verified_at' => $manualProof ? now()->subHours(rand(2, 24)) : null,
-                'provider_payload' => [
-                    'sandbox' => true,
-                    'external_id' => "EXT-{$number}",
-                    'order_id' => "ORDER-{$number}",
-                    'idempotency_key' => (string) Str::uuid(),
-                    'simulated_status' => $status,
-                ],
-                'created_by' => $user?->id,
-            ]
-        );
-    }
-
-    private function receipt(Billing $billing, ?User $user, string $method, string $channel): Receipt
-    {
-        $number = 'GD.'.now()->format('ym').'.'.str_pad((string) $this->sequence++, 6, '0', STR_PAD_LEFT);
-        $total = (float) $billing->amount + (float) $billing->penalty - (float) $billing->discount;
-
-        return Receipt::updateOrCreate(['number' => $number], [
-            'unit_id' => $billing->unit_id,
-            'transaction_date' => $billing->paid_at ?: now()->subDays(rand(1, 15)),
-            'resident_name' => $billing->unit->resident->name,
-            'cluster_name' => $billing->unit->cluster->name,
-            'block' => $billing->unit->block,
-            'lot_number' => $billing->unit->lot_number,
-            'total_billing' => $billing->amount,
-            'total_penalty' => $billing->penalty,
-            'grand_total' => $total,
-            'billing_count' => 1,
-            'billing_periods' => sprintf('%04d-%02d', $billing->year, $billing->month),
-            'loket_code' => 'L01',
-            'cashier_name' => $user?->name,
-            'payment_method_id' => $method,
-            'payment_channel_id' => $channel,
+        $transactions = $payments->map(fn (array $payment) => [
+            'transaction_number' => self::TRANSACTION_PREFIX.$code($payment),
+            'invoice_number' => 'INV-IPL-'.$code($payment),
+            'unit_id' => $payment['unit_id'],
+            'subtotal' => $payment['amount'],
+            'tax' => 0,
+            'admin_fee' => 0,
+            'total' => $payment['amount'],
+            'currency' => 'IDR',
+            'payment_provider' => 'loket',
+            'payment_method' => $payment['payment_method_id'],
             'status' => 'paid',
-            'notes' => 'Receipt demo dari database seeder.',
-            'created_by' => $user?->id,
+            'paid_at' => $payment['paid_at'],
+            'created_by' => $loket?->id,
+            'created_at' => $now,
+            'updated_at' => $now,
         ]);
+
+        // Bulk upsert (bukan PaymentService) karena jumlahnya ribuan dan seeder dijalankan ke
+        // database remote. Timeline penagihan untuk transaksi ini bisa diisi belakangan lewat
+        // `php artisan collection:backfill-activities`.
+        foreach ($transactions->chunk(500) as $chunk) {
+            PaymentTransaction::upsert($chunk->values()->all(), ['transaction_number'], ['unit_id', 'subtotal', 'total', 'payment_method', 'status', 'paid_at', 'updated_at']);
+        }
+
+        $transactionIds = PaymentTransaction::query()->where('transaction_number', 'like', self::TRANSACTION_PREFIX.'%')->pluck('id', 'transaction_number');
+
+        $receipts = $payments->map(function (array $payment) use ($units, $transactionIds, $code, $loket, $now) {
+            $unit = $units->get($payment['unit_id']);
+            $periods = array_keys($payment['shares']);
+            $periodList = implode(', ', $periods);
+
+            return [
+                'number' => $payment['receipt_number'],
+                'payment_transaction_id' => $transactionIds[self::TRANSACTION_PREFIX.$code($payment)] ?? null,
+                'unit_id' => $unit->id,
+                'transaction_date' => $payment['paid_at'],
+                'resident_name' => $payment['payer_name'] ?: ($unit->resident?->name ?? '-'),
+                'cluster_name' => $unit->cluster->name,
+                'block' => $unit->block,
+                'lot_number' => $unit->lot_number,
+                'total_billing' => $payment['amount'],
+                'total_penalty' => 0,
+                'grand_total' => $payment['amount'],
+                'deposit_amount' => 0,
+                'balance_used' => 0,
+                'billing_count' => min(count($periods), 255),
+                'billing_periods' => strlen($periodList) <= 200 ? $periodList : reset($periods).' s/d '.end($periods),
+                'loket_code' => 'L01',
+                'cashier_name' => $payment['cashier_name'],
+                'payment_method_id' => $payment['payment_method_id'],
+                'payment_channel_id' => $payment['payment_channel_id'],
+                'status' => 'paid',
+                'notes' => $payment['notes'],
+                'created_by' => $loket?->id,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        });
+
+        foreach ($receipts->chunk(500) as $chunk) {
+            Receipt::upsert($chunk->values()->all(), ['number'], array_diff(array_keys($chunk->first()), ['number', 'created_at']));
+        }
+
+        $this->seedAllocations($payments, $transactionIds, $code, $now);
+    }
+
+    /**
+     * Pivot billing_payment_transaction + payment_allocations per bulan yang dibayar, seperti
+     * yang ditulis PaymentService::process(). Ditulis ulang setiap seeding supaya idempoten.
+     */
+    private function seedAllocations($payments, $transactionIds, callable $code, $now): void
+    {
+        $billingIds = Billing::query()
+            ->whereIn('unit_id', $payments->pluck('unit_id')->unique())
+            ->get(['id', 'unit_id', 'year', 'month'])
+            ->mapWithKeys(fn (Billing $billing) => [sprintf('%s|%04d-%02d', $billing->unit_id, $billing->year, $billing->month) => $billing->id]);
+
+        $pivot = [];
+        $allocations = [];
+
+        foreach ($payments as $payment) {
+            $transactionId = $transactionIds[self::TRANSACTION_PREFIX.$code($payment)] ?? null;
+            [$paidYear, $paidMonth] = array_map('intval', explode('-', $payment['paid_at']));
+
+            foreach ($payment['shares'] as $period => $share) {
+                $billingId = $billingIds["{$payment['unit_id']}|{$period}"] ?? null;
+                if (! $transactionId || ! $billingId) {
+                    continue;
+                }
+
+                [$year, $month] = array_map('intval', explode('-', $period));
+                $pivot[] = ['billing_id' => $billingId, 'payment_transaction_id' => $transactionId];
+                $allocations[] = [
+                    'billing_id' => $billingId,
+                    'payment_transaction_id' => $transactionId,
+                    'principal_amount' => $share,
+                    'penalty_amount' => 0,
+                    'total_amount' => $share,
+                    'overdue_months' => max(0, ($paidYear - $year) * 12 + $paidMonth - $month),
+                    'penalty_rule_id' => null,
+                    'penalty_rule_snapshot' => null,
+                    'calculated_at' => $payment['paid_at'],
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+        }
+
+        PaymentAllocation::query()
+            ->whereIn('payment_transaction_id', PaymentTransaction::query()->where('transaction_number', 'like', self::TRANSACTION_PREFIX.'%')->select('id'))
+            ->delete();
+
+        foreach (array_chunk($pivot, 500) as $chunk) {
+            DB::table('billing_payment_transaction')->insertOrIgnore($chunk);
+        }
+        foreach (array_chunk($allocations, 500) as $chunk) {
+            PaymentAllocation::insert($chunk);
+        }
     }
 }

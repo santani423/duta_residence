@@ -7,219 +7,228 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Services\ClusterRateScheduleService;
 use App\Services\CollectionAccountRefreshQueue;
-use App\Services\DiscountService;
-use App\Services\PenaltyService;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
 
 class BillingSeeder extends Seeder
 {
     /**
-     * Kedalaman histori tagihan maksimum per unit (bulan) - dipangkas otomatis untuk unit
-     * yang serah terimanya belum selama itu (lihat historyMonthsFor()).
+     * Tagihan IPL dari buku IPL manual 2024 sampai data terbaru (lihat IplData):
+     *  - setiap bulan yang tercatat dibayar menjadi tagihan Lunas senilai uang yang dibayar
+     *    (bulan yang dibayar lebih dari sekali - kekurangan/penambahan tagihan - digabung);
+     *  - unit aktif di cluster yang ditagih lewat buku itu mendapat tagihan Belum Bayar untuk
+     *    setiap bulan sejak Januari 2024 sampai bulan berjalan yang belum tercatat dibayar.
+     *
+     * Kuitansi/transaksi pembayarannya dibuat PaymentSeeder dengan nomor kuitansi yang sama.
      */
-    private const MAX_HISTORY_MONTHS = 24;
-
-    /**
-     * Unit contoh dengan umur tunggakan tertua yang tetap (bukan hasil dadu acak), supaya
-     * mudah ditelusuri satu per satu saat demo/testing: dari baru menunggak sampai lebih
-     * setahun. Nilainya adalah umur tunggakan (overdue_months) yang diinginkan untuk tagihan
-     * TERTUA yang masih belum lunas - lihat konversi ke jumlah bulan di arrearsMonthsFor().
-     */
-    private const SHOWCASE_OLDEST_OVERDUE_MONTHS = [
-        '07001' => 1,
-        '07002' => 2,
-        '07003' => 3,
-        '07004' => 6,
-        '07005' => 12,
-        '07006' => 20,
-    ];
-
     public function run(): void
     {
         $finance = User::where('username', 'finance')->first() ?: User::where('username', 'root')->first();
-        $penaltyService = app(PenaltyService::class);
-        $discountService = app(DiscountService::class);
+        $loket = User::where('username', 'loket')->first() ?: $finance;
         $rateScheduleService = app(ClusterRateScheduleService::class);
         $rateCache = [];
-        $resolveRate = function ($cluster, int $year, int $month) use (&$rateCache, $rateScheduleService) {
-            $key = "{$cluster->id}-{$year}-{$month}";
+        $clusterRate = function (Unit $unit, string $period) use (&$rateCache, $rateScheduleService): float {
+            [$year, $month] = array_map('intval', explode('-', $period));
 
-            return $rateCache[$key] ??= $rateScheduleService->rateForPeriod($cluster, $year, $month);
+            return $rateCache["{$unit->cluster_id}|{$period}"] ??= $rateScheduleService->rateForPeriod($unit->cluster, $year, $month);
         };
-        $skipUnits = ['01005'];
-        $refreshQueue = app(CollectionAccountRefreshQueue::class);
 
-        Unit::with(['cluster', 'discountRule'])
-            ->where('status_id', '!=', 'RK')
-            ->orderBy('id')
-            ->chunk(100, function ($units) use ($finance, $penaltyService, $discountService, $resolveRate, $skipUnits, $refreshQueue) {
-                $rows = [];
-                $now = now();
+        $units = Unit::with('cluster')->get()->keyBy('id');
+        $now = now();
+        $currentPeriod = $now->format('Y-m');
+        $rows = [];
 
-                foreach ($units as $unit) {
-                    if (in_array($unit->id, $skipUnits, true)) {
-                        continue;
-                    }
+        foreach (IplData::payments() as $payment) {
+            $unit = $units->get($payment['unit_id']);
+            if (! $unit) {
+                continue;
+            }
 
-                    $historyMonths = $this->historyMonthsFor($unit);
-                    $arrears = min($this->arrearsMonthsFor($unit), $historyMonths);
+            foreach ($payment['shares'] as $period => $share) {
+                $key = "{$unit->id}|{$period}";
 
-                    for ($offset = $historyMonths - 1; $offset >= 0; $offset--) {
-                        $period = now()->subMonths($offset);
-                        $amount = $resolveRate($unit->cluster, $period->year, $period->month);
-                        $discountResult = $discountService->calculateForNewBilling($unit, $amount);
-                        $discount = $discountResult['amount'];
-                        $discountRuleId = $discountResult['rule']?->id;
-                        $approvedAt = now()->subMonths($offset)->subDays(6);
-                        $notes = 'Approved dari demo seeder.';
-                        $paidAt = null;
-                        $principalPaid = 0;
-                        $penaltyPaid = 0;
-                        $penalty = 0;
+                if (isset($rows[$key])) {
+                    // Sama seperti PaymentService: receipt_number = kuitansi terakhir yang menyentuh tagihan.
+                    $rows[$key]['amount'] += $share;
+                    $rows[$key]['principal_paid'] += $share;
+                    $rows[$key]['paid_at'] = $payment['paid_at'];
+                    $rows[$key]['receipt_number'] = $payment['receipt_number'];
 
-                        // Data contoh hanya memakai dua status: Belum Bayar (dalam masa tunggakan) dan Lunas.
-                        $status = $offset < $arrears ? Billing::STATUS_UNPAID : Billing::STATUS_PAID;
-
-                        if ($status === Billing::STATUS_PAID) {
-                            $paidAt = now()->subMonths($offset)->addDays(2);
-                            $principalPaid = $amount - $discount;
-
-                            // Hitung denda seolah tagihan masih outstanding pada tanggal pembayaran,
-                            // lalu bekukan hasilnya - meniru urutan yang dipakai PaymentService::process().
-                            $calcBilling = (new Billing([
-                                'unit_id' => $unit->id, 'year' => $period->year, 'month' => $period->month,
-                                'amount' => $amount, 'discount' => $discount, 'is_penalty_eligible' => $unit->is_penalty_eligible,
-                                'status_id' => Billing::STATUS_UNPAID,
-                            ]))->setRelation('unit', $unit);
-                            $penalty = $penaltyService->calculatePenalty($calcBilling, $paidAt);
-                            $penaltyPaid = $penalty;
-                        } else {
-                            $notes = $offset === 0 ? 'Tagihan bulan berjalan.' : 'Menunggak - belum ada pembayaran.';
-                        }
-
-                        // --- Skenario demo unit tertentu, override di atas hasil umum di atas ---
-                        if ($unit->id === '01008' && $offset === 0) {
-                            $approvedAt = null;
-                            $status = Billing::STATUS_UNPAID;
-                            $notes = 'Draft/pending approval untuk simulasi.';
-                            $paidAt = null;
-                            $principalPaid = 0;
-                            $penaltyPaid = 0;
-                            $penalty = 0;
-                        }
-
-                        $rows[] = [
-                            'unit_id' => $unit->id,
-                            'year' => $period->year,
-                            'month' => $period->month,
-                            'amount' => $amount,
-                            'principal_paid' => $principalPaid,
-                            'penalty' => $penalty,
-                            'penalty_paid' => $penaltyPaid,
-                            'discount' => $discount,
-                            'discount_rule_id' => $discountRuleId,
-                            'status_id' => $status,
-                            'is_penalty_eligible' => $unit->is_penalty_eligible,
-                            'is_discount_eligible' => $unit->is_discount_eligible,
-                            'billing_type' => 'regular',
-                            'approved_by' => $approvedAt ? $finance?->id : null,
-                            'approved_at' => $approvedAt,
-                            'approval_notes' => $notes,
-                            'paid_at' => $paidAt,
-                            'processed_by' => $paidAt ? $finance?->id : null,
-                            'cancelled_at' => null,
-                            'cancelled_by' => null,
-                            'cancellation_reason' => null,
-                            'created_by' => $finance?->id,
-                            'created_at' => $now,
-                            'updated_at' => $now,
-                        ];
-                    }
+                    continue;
                 }
 
-                // Ditulis bulk per 100 unit (~2.400 tagihan) - updateOrCreate per tagihan terlalu
-                // lambat untuk ~1.400 unit. upsert tidak memicu observer, jadi cache collection
-                // account di-refresh lewat antrean yang sama dengan BillingCollectionObserver.
-                foreach (array_chunk($rows, 500) as $chunk) {
-                    Billing::upsert($chunk, ['unit_id', 'year', 'month'], array_diff(array_keys($chunk[0]), ['unit_id', 'year', 'month', 'created_at']));
-                }
-                foreach ($units as $unit) {
-                    $refreshQueue->push($unit->id);
-                }
-            });
+                $periodStart = CarbonImmutable::parse("{$period}-01");
+                $paidAt = CarbonImmutable::parse($payment['paid_at']);
 
-        $ga = Unit::find('07012');
-        if ($ga) {
-            $period = now();
-            Billing::updateOrCreate(
-                ['unit_id' => '07012', 'year' => $period->year, 'month' => $period->month],
-                [
-                    'amount' => (float) $ga->cluster->monthly_rate,
-                    'penalty' => 0,
-                    'discount' => 0,
+                $rows[$key] = $this->row($unit, $period, $share, $now, $finance) + [
+                    'principal_paid' => $share,
+                    'status_id' => Billing::STATUS_PAID,
+                    // Pembayaran dimuka: tagihannya dianggap sudah diterbitkan saat dibayar.
+                    'approved_at' => $periodStart->min($paidAt),
+                    'approval_notes' => 'Impor buku IPL manual.',
+                    'paid_at' => $payment['paid_at'],
+                    'receipt_number' => $payment['receipt_number'],
+                    'loket_code' => 'L01',
+                    'processed_by' => $loket?->id,
+                ];
+            }
+        }
+
+        // Tarif riil bisa berbeda dari tarif cluster (mis. Alexandrite: AX3 Rp200rb, AX7 Rp350rb),
+        // jadi tagihan Belum Bayar memakai tarif yang paling sering dibayar unit itu sejak 2024 -
+        // atau tarif umum di bloknya bila unitnya belum pernah bayar - disetarakan ke tarif
+        // cluster saat ini supaya kenaikan tarif cluster tetap ikut. Pembagian pembayaran borongan
+        // yang tidak bulat (bukan kelipatan Rp2.500) tidak dipakai sebagai acuan.
+        $paidByUnit = [];
+        $unitRates = [];
+        $blockRates = [];
+        foreach ($rows as $row) {
+            $unit = $units->get($row['unit_id']);
+            $period = sprintf('%04d-%02d', $row['year'], $row['month']);
+            $paidByUnit[$unit->id][] = $row;
+
+            $rate = round($row['amount'] * $clusterRate($unit, $currentPeriod) / max(1, $clusterRate($unit, $period)));
+            if ($period >= IplData::START_PERIOD && $rate > 0 && fmod($rate, 2500) == 0) {
+                $unitRates[$unit->id][] = $rate;
+                $blockRates[$unit->block][] = $rate;
+            }
+        }
+
+        foreach ($units as $unit) {
+            if ($unit->status_id !== 'AK' || ! in_array($unit->cluster_id, IplData::BILLED_CLUSTERS, true)) {
+                continue;
+            }
+
+            $paid = $paidByUnit[$unit->id] ?? [];
+            $unitRate = $this->mostFrequent($unitRates[$unit->id] ?? []) ?? $this->mostFrequent($blockRates[$unit->block] ?? []);
+            $currentClusterRate = $clusterRate($unit, $currentPeriod);
+            $rate = fn (string $period) => $unitRate && $currentClusterRate > 0
+                ? round($unitRate * $clusterRate($unit, $period) / $currentClusterRate, -2)
+                : $clusterRate($unit, $period);
+
+            for ($period = $this->firstBilledPeriod($unit, $paid); $period <= $currentPeriod; $period = CarbonImmutable::parse("{$period}-01")->addMonth()->format('Y-m')) {
+                $key = "{$unit->id}|{$period}";
+                if (isset($rows[$key])) {
+                    continue;
+                }
+
+                $rows[$key] = $this->row($unit, $period, $rate($period), $now, $finance) + [
+                    'principal_paid' => 0,
                     'status_id' => Billing::STATUS_UNPAID,
-                    'billing_type' => 'regular',
-                    'approved_by' => $finance?->id,
-                    'approved_at' => now()->subDays(5),
-                    'approval_notes' => 'Tagihan wajib untuk PaymentFlowTest.',
-                    'created_by' => $finance?->id,
-                ]
-            );
+                    'approved_at' => CarbonImmutable::parse("{$period}-01"),
+                    'approval_notes' => $period === $currentPeriod ? 'Tagihan bulan berjalan.' : 'Menunggak - belum tercatat di buku IPL manual.',
+                    'paid_at' => null,
+                    'receipt_number' => null,
+                    'loket_code' => null,
+                    'processed_by' => null,
+                ];
+            }
+        }
+
+        // Ditulis bulk karena jumlahnya puluhan ribu tagihan dan seeder dijalankan ke database
+        // remote. upsert tidak memicu observer, jadi cache collection account di-refresh lewat
+        // antrean yang sama dengan BillingCollectionObserver.
+        foreach (array_chunk(array_values($rows), 500) as $chunk) {
+            Billing::upsert($chunk, ['unit_id', 'year', 'month'], array_diff(array_keys($chunk[0]), ['unit_id', 'year', 'month', 'created_at']));
+        }
+
+        $refreshQueue = app(CollectionAccountRefreshQueue::class);
+        foreach (array_unique(array_column($rows, 'unit_id')) as $unitId) {
+            $refreshQueue->push($unitId);
+        }
+
+        $this->ensureLegacyCustomerHasUnpaidBilling($finance);
+
+        $skipped = IplData::skipped();
+        if ($skipped && $this->command) {
+            $this->command->warn(count($skipped).' baris ipl.csv tidak diimpor: '.implode('; ', $skipped));
         }
     }
 
-    /**
-     * Jangan buat histori tagihan sebelum unit itu serah terima.
-     */
-    private function historyMonthsFor(Unit $unit): int
+    private function row(Unit $unit, string $period, float $amount, $now, ?User $finance): array
     {
-        $monthsSinceHandover = $unit->handover_date
-            ? (int) abs(now()->diffInMonths($unit->handover_date))
-            : self::MAX_HISTORY_MONTHS;
+        [$year, $month] = array_map('intval', explode('-', $period));
 
-        return max(1, min(self::MAX_HISTORY_MONTHS, $monthsSinceHandover));
+        return [
+            'unit_id' => $unit->id,
+            'year' => $year,
+            'month' => $month,
+            'amount' => $amount,
+            'penalty' => 0,
+            'penalty_paid' => 0,
+            'discount' => 0,
+            'discount_rule_id' => null,
+            'is_penalty_eligible' => $unit->is_penalty_eligible,
+            'is_discount_eligible' => $unit->is_discount_eligible,
+            'billing_type' => 'regular',
+            'approved_by' => $finance?->id,
+            'cancelled_at' => null,
+            'cancelled_by' => null,
+            'cancellation_reason' => null,
+            'created_by' => $finance?->id,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ];
     }
 
     /**
-     * Sebaran umur tunggakan yang realistis dan deterministik (stabil setiap kali seeder
-     * dijalankan ulang, berbasis hash id unit): ~40% unit lunas penuh (auto-debit/bayar cepat),
-     * ~30% tagihan bulan berjalan saja (normal, bukan tunggakan), ~20% menunggak ringan
-     * (1-3 bulan), ~7% menunggak sedang (4-11 bulan), ~3% menunggak berat (12-24 bulan).
-     * Unit contoh (showcase) dan unit skenario khusus memakai nilai tetap, bukan hasil dadu.
+     * Tagihan mulai Januari 2024, atau sejak serah terima bila lebih baru. Unit tanpa tanggal
+     * serah terima mulai dari periode pertama yang pernah dibayarnya, supaya unit baru tidak
+     * terlihat menunggak sebelum mulai ditagih.
      */
-    private function arrearsMonthsFor(Unit $unit): int
+    private function firstBilledPeriod(Unit $unit, array $paid): string
     {
-        if (isset(self::SHOWCASE_OLDEST_OVERDUE_MONTHS[$unit->id])) {
-            // +1 karena tagihan tertua yang belum lunas ada di offset (arrears - 1): arrears
-            // adalah JUMLAH tagihan yang belum dibayar (termasuk bulan berjalan di offset 0),
-            // sedangkan overdue_months dihitung dari umur tagihan tertuanya.
-            return self::SHOWCASE_OLDEST_OVERDUE_MONTHS[$unit->id] + 1;
-        }
-
-        if ($unit->id === '01014') {
-            return 0; // Seluruh tagihan lunas dan pembayaran lancar.
-        }
-
-        if ($unit->id === '01002') {
-            return 5; // tagihan jatuh tempo + denda tier 3 bulan+.
-        }
-
-        if ($unit->cluster_id === '11') {
-            return 0; // Cluster premium, profil "pembayaran terbaik".
-        }
-
-        $roll = crc32($unit->id) % 100;
-
-        // Nilai yang dikembalikan adalah JUMLAH tagihan belum lunas (arrears), bukan umur
-        // tunggakan langsung - tagihan tertua ada di offset (arrears - 1), jadi umur
-        // tunggakan tertuanya = arrears - 1. Rentang di bawah sudah memperhitungkan itu supaya
-        // setiap tier benar-benar mencerminkan label komentarnya.
-        return match (true) {
-            $roll < 40 => 0,                                      // lunas penuh (auto-debit/bayar cepat)
-            $roll < 70 => 1,                                      // hanya tagihan bulan berjalan (umur 0, bukan tunggakan)
-            $roll < 90 => 2 + (crc32($unit->id.'-a') % 3),         // umur tunggakan tertua 1-3 bulan (ringan)
-            $roll < 97 => 5 + (crc32($unit->id.'-b') % 8),         // umur tunggakan tertua 4-11 bulan (sedang)
-            default => 13 + (crc32($unit->id.'-c') % 13),          // umur tunggakan tertua 12-24 bulan (berat)
+        $start = match (true) {
+            $unit->handover_date !== null => $unit->handover_date->format('Y-m'),
+            $paid !== [] => min(array_map(fn (array $row) => sprintf('%04d-%02d', $row['year'], $row['month']), $paid)),
+            default => IplData::START_PERIOD,
         };
+
+        return max(IplData::START_PERIOD, $start);
+    }
+
+    /** Nilai yang paling sering muncul; bila seri, yang muncul terakhir (pembayaran terbaru). */
+    private function mostFrequent(array $values): ?float
+    {
+        $counts = [];
+        foreach ($values as $value) {
+            $count = ($counts[(string) $value] ?? 0) + 1;
+            unset($counts[(string) $value]);
+            $counts[(string) $value] = $count;
+        }
+
+        return $counts === [] ? null : (float) array_key_last(array_filter($counts, fn (int $count) => $count === max($counts)));
+    }
+
+    /**
+     * PaymentFlowTest dan test loket lain butuh unit 07012 punya tagihan Belum Bayar yang sudah
+     * di-approve. Data aslinya memang menunggak sejak Mei 2026 - ini hanya jaring pengaman bila
+     * data IPL berubah.
+     */
+    private function ensureLegacyCustomerHasUnpaidBilling(?User $finance): void
+    {
+        $unit = Unit::with('cluster')->find(UnitSeeder::LEGACY_CUSTOMER_UNIT);
+        $hasUnpaid = Billing::where('unit_id', UnitSeeder::LEGACY_CUSTOMER_UNIT)
+            ->where('status_id', Billing::STATUS_UNPAID)->whereNotNull('approved_at')->exists();
+
+        if (! $unit || $hasUnpaid) {
+            return;
+        }
+
+        $period = now();
+        Billing::firstOrCreate(
+            ['unit_id' => $unit->id, 'year' => $period->year, 'month' => $period->month],
+            [
+                'amount' => (float) $unit->cluster->monthly_rate,
+                'penalty' => 0,
+                'discount' => 0,
+                'status_id' => Billing::STATUS_UNPAID,
+                'billing_type' => 'regular',
+                'approved_by' => $finance?->id,
+                'approved_at' => now()->subDays(5),
+                'approval_notes' => 'Tagihan wajib untuk PaymentFlowTest.',
+                'created_by' => $finance?->id,
+            ]
+        );
     }
 }
