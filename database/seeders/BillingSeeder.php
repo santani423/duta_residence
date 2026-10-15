@@ -141,7 +141,7 @@ class BillingSeeder extends Seeder
 
         $skipped = IplData::skipped();
         if ($skipped && $this->command) {
-            $this->command->warn(count($skipped).' baris ipl.csv tidak diimpor: '.implode('; ', $skipped));
+            $this->command->warn(count($skipped).' baris sempelIpl.md tidak diimpor: '.implode('; ', $skipped));
         }
     }
 
@@ -202,8 +202,8 @@ class BillingSeeder extends Seeder
 
     /**
      * PaymentFlowTest dan test loket lain butuh unit 07012 punya tagihan Belum Bayar yang sudah
-     * di-approve. Data aslinya memang menunggak sejak Mei 2026 - ini hanya jaring pengaman bila
-     * data IPL berubah.
+     * di-approve. Unit ini tidak punya pembayaran di sempelIpl.md sehingga sudah menunggak -
+     * ini hanya jaring pengaman bila data IPL berubah.
      */
     private function ensureLegacyCustomerHasUnpaidBilling(?User $finance): void
     {
