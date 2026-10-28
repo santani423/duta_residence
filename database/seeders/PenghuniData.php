@@ -27,7 +27,7 @@ class PenghuniData
     ];
 
     /** Tiga huruf awal nama bulan (Indonesia/Inggris) => nomor bulan. */
-    private const MONTHS = [
+    public const MONTHS = [
         'jan' => 1, 'feb' => 2, 'peb' => 2, 'mar' => 3, 'apr' => 4, 'mei' => 5, 'may' => 5, 'jun' => 6, 'jul' => 7,
         'agt' => 8, 'ags' => 8, 'agu' => 8, 'aug' => 8, 'sep' => 9, 'okt' => 10, 'oct' => 10, 'nov' => 11, 'nop' => 11,
         'des' => 12, 'dec' => 12,
@@ -64,7 +64,7 @@ class PenghuniData
         $nameRank = [];
         $occupancyRank = [];
 
-        foreach (self::rows() as $line => $row) {
+        foreach (self::rows(self::COLUMNS) as $line => $row) {
             $name = preg_replace('/\s+/', ' ', $row['name']);
             // "8&9" atau "6,7,8,9" dicatat ke kavling pertama, sama seperti IplData.
             $lot = ltrim(strtoupper(preg_split('/\s*[&,]\s*/', $row['lot'])[0]), '0');
@@ -124,7 +124,7 @@ class PenghuniData
      * Selain ISO, buku IPL memakai "10 Mei 2012", "29 Des 17", "11 Apr'18", "Maret 2012",
      * "26/01/2016", dan "24-08-22" (hari-bulan-tahun).
      */
-    private static function date(string $value): string
+    public static function date(string $value): string
     {
         $value = strtolower(trim($value));
 
@@ -145,16 +145,20 @@ class PenghuniData
     }
 
     /**
-     * Baris tabel transaksi, di-key nomor baris file.
+     * Baris tabel buku IPL, di-key nomor baris file, dengan kolom dinamai menurut $columns
+     * (header => field). Dibaca per baris karena filenya berisi ~38 ribu transaksi.
      *
-     * @return array<int, array<string, string>>
+     * @param  array<string, string>  $columns
+     * @return \Generator<int, array<string, string>>
      */
-    private static function rows(): array
+    public static function rows(array $columns): \Generator
     {
-        $rows = [];
+        $handle = fopen(base_path(self::SOURCE), 'r');
         $fields = null;
+        $line = 0;
 
-        foreach (file(base_path(self::SOURCE), FILE_IGNORE_NEW_LINES) as $index => $text) {
+        while (($text = fgets($handle)) !== false) {
+            $line++;
             $text = trim($text);
             if (! str_starts_with($text, '|')) {
                 $fields = null;
@@ -166,7 +170,7 @@ class PenghuniData
 
             if ($fields === null) {
                 // Baris pertama tabel = header.
-                $fields = array_map(fn ($header) => self::COLUMNS[$header] ?? null, $cells);
+                $fields = array_map(fn ($header) => $columns[$header] ?? null, $cells);
 
                 continue;
             }
@@ -174,15 +178,16 @@ class PenghuniData
                 continue;
             }
 
-            $row = array_fill_keys(self::COLUMNS, '');
+            $row = array_fill_keys($columns, '');
             foreach ($fields as $position => $field) {
                 if ($field !== null) {
                     $row[$field] = $cells[$position] ?? '';
                 }
             }
-            $rows[$index + 1] = $row;
+
+            yield $line => $row;
         }
 
-        return $rows;
+        fclose($handle);
     }
 }
