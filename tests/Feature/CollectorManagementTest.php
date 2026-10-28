@@ -29,7 +29,7 @@ class CollectorManagementTest extends TestCase
             ->assertCreated()->json('data.resident.id');
 
         $unitId = $this->postJson('/api/v1/units', [
-            'resident_id' => $residentId, 'cluster_id' => '07', 'block' => 'Z',
+            'resident_id' => $residentId, 'cluster_id' => '07', 'block' => 'AL1',
             'lot_number' => substr($lotSeed, -2), 'property_type_id' => 'B', 'occupancy_id' => '1', 'status_id' => 'AK',
         ])->assertCreated()->json('data.id');
 

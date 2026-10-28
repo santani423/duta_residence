@@ -66,7 +66,7 @@ class CollectorLifecycleTest extends TestCase
             ->assertCreated()->json('data.resident.id');
 
         return $this->postJson('/api/v1/units', [
-            'resident_id' => $residentId, 'cluster_id' => $cluster, 'block' => 'Y',
+            'resident_id' => $residentId, 'cluster_id' => $cluster, 'block' => 'AL1',
             'lot_number' => (string) $this->lotSeq, 'property_type_id' => 'B', 'occupancy_id' => '1', 'status_id' => 'AK',
         ])->assertCreated()->json('data.id');
     }

@@ -68,15 +68,61 @@ export function VaSuffixInput({ vaFormat, currentVaNumber, required = false, ext
   );
 }
 
+// Cluster berprefix (D, E, AX, ...): blok dipilih sebagai nomor, kode gabungan (mis. E3) disusun backend.
+function BlockField({ form, clusters }) {
+  const clusterId = Form.useWatch('cluster_id', form);
+  const legacyBlock = Form.useWatch('block', form);
+  const blockNumber = Form.useWatch('block_number', form);
+  const cluster = clusters.find((item) => item.id === clusterId);
+
+  if (!cluster?.code_prefix) {
+    return (
+      <Form.Item label="Blok" name="block" rules={[{ required: true }]}>
+        <Input placeholder="A" />
+      </Form.Item>
+    );
+  }
+
+  const allowed = cluster.allowed_blocks;
+  let extra;
+  if (blockNumber != null) extra = `Kode blok: ${cluster.code_prefix}${blockNumber}`;
+  else if (legacyBlock) extra = `Kode lama "${legacyBlock}" tidak sesuai konfigurasi ${cluster.name}; pilih blok baru untuk memperbaikinya.`;
+
+  return (
+    <>
+      <Form.Item name="block" hidden>
+        <Input />
+      </Form.Item>
+      <Form.Item
+        label={`Blok (${cluster.name})`}
+        name="block_number"
+        rules={[{ required: !legacyBlock, message: 'Blok wajib dipilih' }]}
+        extra={extra}
+      >
+        {allowed ? (
+          <Select placeholder="Pilih blok" options={allowed.map((number) => ({ value: number, label: `Blok ${number}` }))} />
+        ) : (
+          <InputNumber min={1} precision={0} placeholder="1" style={{ width: '100%' }} />
+        )}
+      </Form.Item>
+    </>
+  );
+}
+
 export default function UnitForm({ form, clusters = [], residents = [], vaFormat, currentVaNumber, onFinish, loading, isEdit = false }) {
   return (
     <Form
       form={form}
       layout="vertical"
-      onFinish={(values) => onFinish({
-        ...values,
-        lot_number: values.lot_number != null ? String(values.lot_number) : values.lot_number,
-      })}
+      onFinish={(values) => {
+        const payload = { ...values, lot_number: values.lot_number != null ? String(values.lot_number) : values.lot_number };
+        // Nomor blok terpilih = sumber kebenaran; kode lama hanya dikirim saat blok tidak diubah.
+        if (payload.block_number != null) delete payload.block;
+        onFinish(payload);
+      }}
+      onValuesChange={(changed) => {
+        if ('cluster_id' in changed) form.setFieldsValue({ block_number: undefined, block: undefined });
+      }}
       className="responsive-form"
       initialValues={{
         property_type_id: 'B',
@@ -97,9 +143,7 @@ export default function UnitForm({ form, clusters = [], residents = [], vaFormat
       <Form.Item label="Cluster" name="cluster_id" rules={[{ required: true }]}>
         <Select showSearch optionFilterProp="label" options={clusters.map((item) => ({ value: item.id, label: `${item.id} - ${item.name}` }))} />
       </Form.Item>
-      <Form.Item label="Blok" name="block" rules={[{ required: true }]}>
-        <Input placeholder="A" />
-      </Form.Item>
+      <BlockField form={form} clusters={clusters} />
       <Form.Item
         label="Nomor Unit"
         name="lot_number"

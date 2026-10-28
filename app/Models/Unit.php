@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasStringPrimaryKey;
+use App\Services\ClusterCodeService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -62,7 +63,7 @@ class Unit extends Model
     }
 
     protected $fillable = [
-        'id', 'va_number', 'resident_id', 'tenant_resident_id', 'billing_payer', 'cluster_id', 'block', 'lot_number', 'property_type_id',
+        'id', 'va_number', 'resident_id', 'tenant_resident_id', 'billing_payer', 'cluster_id', 'block', 'block_number', 'lot_number', 'property_type_id',
         'building_area', 'land_area', 'handover_date', 'occupancy_id', 'status_id',
         'occupancy_role', 'tenancy_start_date', 'tenancy_end_date', 'latitude', 'longitude',
         'is_penalty_eligible', 'is_discount_eligible', 'discount_rule_id', 'notes', 'created_by', 'updated_by',
@@ -80,6 +81,17 @@ class Unit extends Model
         'is_discount_eligible' => 'boolean',
         'balance' => 'decimal:2',
     ];
+
+    protected static function booted(): void
+    {
+        // block tetap menyimpan kode gabungan (mis. "E3"); block_number diturunkan darinya
+        // berdasarkan prefix cluster, kecuali diisi eksplisit (lihat UnitController).
+        static::saving(function (Unit $unit) {
+            if (($unit->isDirty('block') || $unit->isDirty('cluster_id')) && ! $unit->isDirty('block_number')) {
+                $unit->block_number = app(ClusterCodeService::class)->blockNumberFor($unit->cluster_id, $unit->block);
+            }
+        });
+    }
 
     protected $appends = ['deposit_balance', 'occupancy_status', 'occupancy_status_label'];
 
@@ -314,10 +326,18 @@ class Unit extends Model
         });
     }
 
+    /** Kode gabungan seperti "E3" diarahkan ke cluster + nomor blok yang tepat (E3 = Emerald 48, E7 = Ruko Emerald). */
+    private static function codeLookup(?string $term): ?array
+    {
+        return filled($term) ? app(ClusterCodeService::class)->parse($term) : null;
+    }
+
     public function scopeSearch(Builder $query, ?string $search): Builder
     {
         return $query->when($search, fn (Builder $q) => $q->where(function (Builder $inner) use ($search) {
             $inner->where('id', 'like', "%{$search}%")
+                ->when(self::codeLookup($search), fn (Builder $code, array $hit) => $code->orWhere(fn (Builder $pair) => $pair
+                    ->where('units.cluster_id', $hit['cluster']->id)->where('units.block_number', $hit['block_number'])))
                 ->orWhere('block', 'like', "%{$search}%")
                 ->orWhere('lot_number', 'like', "%{$search}%")
                 ->orWhere('va_number', 'like', "%{$search}%")
@@ -337,6 +357,7 @@ class Unit extends Model
         return $query
             ->when($filters['cluster_id'] ?? null, fn (Builder $q, $value) => $q->where('units.cluster_id', $value))
             ->when($filters['block'] ?? null, fn (Builder $q, $value) => $q->whereRaw('LOWER(units.block) = ?', [mb_strtolower(trim($value))]))
+            ->when($filters['block_number'] ?? null, fn (Builder $q, $value) => $q->where('units.block_number', (int) $value))
             ->when($filters['unit_id'] ?? null, fn (Builder $q, $value) => $q->whereRaw('LOWER(units.id) = ?', [mb_strtolower(trim($value))]))
             ->when($filters['resident_id'] ?? null, fn (Builder $q, $value) => $q->where('units.resident_id', $value))
             ->when($filters['customer'] ?? null, fn (Builder $q, $value) => $q->where(fn (Builder $inner) => $inner
@@ -347,7 +368,9 @@ class Unit extends Model
                 $parts = preg_split('/[\s\/\-]+/', trim($value), -1, PREG_SPLIT_NO_EMPTY);
 
                 return $q->where(fn (Builder $inner) => $inner
-                    ->where('units.block', 'like', "%{$value}%")
+                    ->when(self::codeLookup($value), fn (Builder $code, array $hit) => $code->orWhere(fn (Builder $pair) => $pair
+                        ->where('units.cluster_id', $hit['cluster']->id)->where('units.block_number', $hit['block_number'])))
+                    ->orWhere('units.block', 'like', "%{$value}%")
                     ->orWhere('units.lot_number', 'like', "%{$value}%")
                     ->orWhereHas('cluster', fn (Builder $c) => $c->where('name', 'like', "%{$value}%"))
                     ->when(count($parts) === 2, fn (Builder $combo) => $combo->orWhere(fn (Builder $pair) => $pair

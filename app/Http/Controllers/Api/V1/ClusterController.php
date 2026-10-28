@@ -9,6 +9,7 @@ use App\Models\Cluster;
 use App\Models\ClusterRateSchedule;
 use App\Models\Unit;
 use App\Services\AuditService;
+use App\Services\ClusterCodeService;
 use App\Services\CollectorAssignmentService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -34,10 +35,15 @@ class ClusterController extends Controller
         $data = $request->validate([
             'id' => ['required', 'string', 'size:2', Rule::unique('clusters', 'id')],
             'name' => ['required', 'string', 'max:50'],
+            ...$this->codeRules(),
             'monthly_rate' => ['required', 'numeric', 'min:0'],
             'description' => ['nullable', 'string'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
+
+        if (! empty($data['code_prefix'])) {
+            app(ClusterCodeService::class)->assertNoCodeConflict($data['code_prefix'], $data['allowed_blocks'] ?? null);
+        }
 
         $cluster = Cluster::query()->create($data);
         ClusterRateSchedule::query()->create([
@@ -73,16 +79,72 @@ class ClusterController extends Controller
     public function update(Request $request, Cluster $cluster, AuditService $auditService)
     {
         $data = $request->validate([
+            ...$this->codeRules(),
             'monthly_rate' => ['required', 'numeric', 'min:0'],
             'description' => ['nullable', 'string'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
+        $codeService = app(ClusterCodeService::class);
+        $codeChanged = $this->codeConfigChanged($cluster, $data);
+
+        if ($codeChanged) {
+            // Prefix/blok yang sudah dipakai unit tidak diubah diam-diam karena kode unit lama bisa jadi tidak valid.
+            if ($cluster->code_prefix !== null && $cluster->units()->exists()) {
+                return $this->error('Prefix dan konfigurasi blok tidak dapat diubah karena cluster sudah memiliki unit.', 422);
+            }
+
+            $newPrefix = array_key_exists('code_prefix', $data) ? $data['code_prefix'] : $cluster->code_prefix;
+            if ($newPrefix !== null) {
+                $codeService->assertNoCodeConflict($newPrefix, array_key_exists('allowed_blocks', $data) ? $data['allowed_blocks'] : $cluster->allowed_blocks, $cluster->id);
+            }
+        }
+
         $old = $cluster->toArray();
         $cluster->update($data);
+
+        if ($codeChanged) {
+            // Cluster yang baru diberi prefix: isi nomor blok unit lama yang kodenya valid (sisanya dibiarkan NULL).
+            $codeService->flush();
+            $codeService->backfillUnitBlockNumbers();
+        }
         $auditService->log('cluster_updated', 'clusters', 'UPDATE', $cluster, $old, $cluster->toArray());
 
         return $this->success($cluster->refresh(), 'Tarif klaster berhasil diperbarui.');
+    }
+
+    /** Daftar nomor blok yang valid untuk cluster (dropdown Blok pada form unit/filter). */
+    public function blocks(Cluster $cluster, ClusterCodeService $codeService)
+    {
+        return $this->success([
+            'cluster_id' => $cluster->id,
+            'code_prefix' => $cluster->code_prefix,
+            'area_type' => $cluster->area_type,
+            'blocks' => collect($codeService->blockNumbersFor($cluster))
+                ->map(fn (int $number) => ['block_number' => $number, 'code' => $cluster->code_prefix ? $codeService->compose($cluster, $number) : (string) $number, 'label' => "Blok {$number}"])
+                ->values(),
+        ]);
+    }
+
+    private function codeRules(): array
+    {
+        return [
+            'code_prefix' => ['sometimes', 'nullable', 'string', 'regex:/^[A-Z]{1,5}$/'],
+            'area_type' => ['sometimes', Rule::in(Cluster::AREA_TYPES)],
+            'allowed_blocks' => ['sometimes', 'nullable', 'array', 'min:1'],
+            'allowed_blocks.*' => ['integer', 'min:1', 'max:99999', 'distinct'],
+        ];
+    }
+
+    private function codeConfigChanged(Cluster $cluster, array $data): bool
+    {
+        foreach (['code_prefix', 'allowed_blocks'] as $field) {
+            if (array_key_exists($field, $data) && $data[$field] != $cluster->{$field}) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

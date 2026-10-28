@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Unit;
+use App\Services\ClusterCodeService;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -19,15 +20,17 @@ class UnitSeeder extends Seeder
     public const LEGACY_CUSTOMER_UNIT = '07012';
 
     /**
-     * Unit diambil dari database/data/pelanggan.csv (lihat PelangganData). Ditulis secara
-     * bulk (upsert per 500 baris) karena jumlahnya ~1.400 unit dan seeder dijalankan ke
-     * database remote - updateOrCreate per baris terlalu lambat.
+     * Unit diambil dari database/data/pelanggan.csv ditambah unit yang hanya ada di buku IPL
+     * docs/final_revisi_1.md (lihat PelangganData). Ditulis secara bulk (upsert per 500 baris)
+     * karena jumlahnya ~1.700 unit dan seeder dijalankan ke database remote - updateOrCreate
+     * per baris terlalu lambat.
      */
     public function run(): void
     {
         $creator = User::where('username', 'admin.estate')->first() ?: User::where('username', 'root')->first();
         $now = now();
         $units = collect(PelangganData::units());
+        $codes = app(ClusterCodeService::class);
 
         $rows = $units->map(fn (array $unit) => [
             'id' => $unit['id'],
@@ -36,6 +39,7 @@ class UnitSeeder extends Seeder
             'resident_id' => $unit['resident']['id'] ?? null,
             'cluster_id' => $unit['cluster_id'],
             'block' => $unit['block'],
+            'block_number' => $codes->blockNumberFor($unit['cluster_id'], $unit['block']),
             'lot_number' => $unit['lot_number'],
             'property_type_id' => $unit['property_type_id'],
             'building_area' => $unit['building_area'],
@@ -53,7 +57,7 @@ class UnitSeeder extends Seeder
 
         foreach ($rows->chunk(500) as $chunk) {
             Unit::upsert($chunk->all(), ['id'], [
-                'resident_id', 'cluster_id', 'block', 'lot_number', 'property_type_id', 'building_area',
+                'resident_id', 'cluster_id', 'block', 'block_number', 'lot_number', 'property_type_id', 'building_area',
                 'land_area', 'handover_date', 'occupancy_id', 'status_id', 'updated_by', 'updated_at',
             ]);
         }

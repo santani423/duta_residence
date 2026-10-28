@@ -16,7 +16,7 @@ use Illuminate\Http\Request;
  */
 final class UnitFilters
 {
-    public const KEYS = ['cluster_id', 'block', 'unit_id', 'resident_id', 'customer', 'address'];
+    public const KEYS = ['cluster_id', 'block', 'block_number', 'unit_id', 'resident_id', 'customer', 'address'];
 
     /** Hanya filter yang benar-benar diisi (string kosong/spasi diabaikan). */
     public static function from(Request|array $source, array $except = []): array

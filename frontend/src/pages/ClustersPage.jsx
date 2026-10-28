@@ -120,6 +120,8 @@ export default function ClustersPage() {
           columns={[
             { title: 'Kode', dataIndex: 'id', width: 90 },
             { title: 'Nama Cluster', dataIndex: 'name' },
+            { title: 'Prefix', dataIndex: 'code_prefix', width: 90, render: (value) => value || '-' },
+            { title: 'Tipe', dataIndex: 'area_type', width: 90, render: (value) => (value === 'ruko' ? 'Ruko' : 'Cluster') },
             { title: 'Tarif Bulanan', dataIndex: 'monthly_rate', render: formatCurrency },
             { title: 'Status', dataIndex: 'is_active', render: (value) => <StatusBadge type="active" value={value} /> },
             { title: 'Deskripsi', dataIndex: 'description' },

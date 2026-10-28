@@ -18,7 +18,7 @@ class UnitPropertyTypeTest extends TestCase
     {
         return array_merge([
             'cluster_id' => '07',
-            'block' => 'Z',
+            'block' => 'AL1',
             'lot_number' => '91',
             'property_type_id' => 'K',
             'status_id' => 'TA',

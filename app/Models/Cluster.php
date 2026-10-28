@@ -10,12 +10,25 @@ class Cluster extends Model
 {
     use HasFactory, HasStringPrimaryKey;
 
-    protected $fillable = ['id', 'name', 'monthly_rate', 'description', 'is_active'];
+    public const AREA_TYPES = ['cluster', 'ruko'];
+
+    protected $fillable = ['id', 'name', 'code_prefix', 'area_type', 'allowed_blocks', 'monthly_rate', 'description', 'is_active'];
 
     protected $casts = [
         'monthly_rate' => 'decimal:2',
         'is_active' => 'boolean',
+        'allowed_blocks' => 'array',
     ];
+
+    /**
+     * Apakah nomor blok diizinkan untuk cluster ini. allowed_blocks null = sesuai data blok
+     * (tidak dibatasi); nomor blok tidak diasumsikan mulai dari 1 atau berurutan.
+     */
+    public function allowsBlock(int $blockNumber): bool
+    {
+        return $blockNumber >= 1
+            && ($this->allowed_blocks === null || in_array($blockNumber, $this->allowed_blocks, true));
+    }
 
     public function units()
     {

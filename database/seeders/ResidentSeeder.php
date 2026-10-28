@@ -9,9 +9,10 @@ use Illuminate\Database\Seeder;
 class ResidentSeeder extends Seeder
 {
     /**
-     * Penghuni diambil dari database/data/pelanggan.csv (lihat PelangganData). Sistem lama
-     * mencatat satu pemilik per unit, jadi setiap unit berpemilik mendapat satu record
-     * penghuni dengan id RS + kode unit (mis. RS001002 untuk unit 01002).
+     * Penghuni diambil dari database/data/pelanggan.csv dengan nama terbaru dari buku IPL
+     * docs/final_revisi_1.md (lihat PelangganData dan PenghuniData). Sistem lama mencatat
+     * satu pemilik per unit, jadi setiap unit berpemilik mendapat satu record penghuni dengan
+     * id RS + kode unit (mis. RS001002 untuk unit 01002).
      */
     public function run(): void
     {

@@ -3,11 +3,17 @@
 namespace Database\Seeders;
 
 use App\Models\PropertyType;
+use App\Services\ClusterCodeService;
 
 /**
- * Data pelanggan (unit + penghuni) dari ekspor sistem lama: database/data/pelanggan.csv.
+ * Data pelanggan (unit + penghuni) dari ekspor sistem lama: database/data/pelanggan.csv,
+ * digabung dengan buku pembayaran IPL docs/final_revisi_1.md (lihat PenghuniData):
+ *  - nama penghuni diambil dari pembayaran terakhir di buku IPL bila unitnya tercatat di sana
+ *    (data kontak, luas, dan serah terima tetap dari pelanggan.csv);
+ *  - unit yang hanya ada di buku IPL (sebagian besar Emerald 48) ditambahkan, cluster-nya dari
+ *    kode blok (E1 = Emerald 48 blok 1, E7 = Ruko Emerald blok 7).
  *
- * Format kolom (tanpa header):
+ * Format kolom pelanggan.csv (tanpa header):
  *  0 kode unit, 1 nama penghuni, 2 kode cluster, 3 blok, 4 nomor, 5 tipe properti (B/K/P),
  *  6 HP, 7 telepon, 8 alamat KTP, 9 kode kelurahan lama, 10 luas bangunan, 11 luas tanah,
  *  12 email, 13 tanggal serah terima, 14 hunian (1 dihuni / 2 kosong),
@@ -40,13 +46,16 @@ class PelangganData
         }
 
         $clusterIds = array_column(EstateSeeder::clusters(), 'id');
+        $ledger = PenghuniData::units();
         $handle = fopen(database_path(self::CSV), 'r');
         $bySlot = [];
+        $csvIds = [];
 
         while (($row = fgetcsv($handle, escape: '\\')) !== false) {
             $row = array_pad(array_map(fn ($value) => trim((string) $value), $row), 17, '');
             [$id, $name, $clusterId, $block, $lot] = $row;
             $block = strtoupper($block);
+            $csvIds[] = $id;
 
             // Baris uji/contoh di sistem lama: kode bukan 5 digit, kode "00xxx", ditandai 12,
             // atau tidak punya cluster/blok/nomor yang valid.
@@ -57,6 +66,8 @@ class PelangganData
                 continue;
             }
 
+            // Nama penghuni terbaru dari buku IPL menggantikan nama di ekspor lama.
+            $name = $ledger[PenghuniData::key($block, $lot)]['name'] ?? $name;
             $hasResident = ! in_array(strtolower($name), self::EMPTY_NAMES, true);
             $statusId = match (true) {
                 ! $hasResident => 'RK',
@@ -104,9 +115,84 @@ class PelangganData
         fclose($handle);
 
         $units = array_column($bySlot, null, 'id');
+        $units += self::ledgerOnlyUnits($ledger, $units, $csvIds);
         ksort($units);
 
         return self::$units = $units;
+    }
+
+    /**
+     * Unit yang hanya tercatat di buku IPL. Cluster dibaca dari kode blok lewat ClusterCodeService;
+     * kode tanpa nomor blok (mis. "JA") memakai cluster blok yang sama di pelanggan.csv. Kode unit
+     * baru melanjutkan nomor urut tertinggi cluster tersebut di pelanggan.csv.
+     */
+    private static function ledgerOnlyUnits(array $ledger, array $units, array $csvIds): array
+    {
+        $known = [];
+        $blockClusters = [];
+        $types = [];
+        foreach ($units as $unit) {
+            $known[PenghuniData::key($unit['block'], $unit['lot_number'])] = true;
+            $blockClusters[PenghuniData::block($unit['block'])][$unit['cluster_id']] = true;
+            $types[$unit['cluster_id']][$unit['property_type_id']] = ($types[$unit['cluster_id']][$unit['property_type_id']] ?? 0) + 1;
+        }
+
+        $codes = app(ClusterCodeService::class);
+        $lastSequence = [];
+        $unknown = [];
+        $added = [];
+
+        foreach (array_diff_key($ledger, $known) as $entry) {
+            $parsed = $codes->parse($entry['block']);
+            $sameBlock = array_keys($blockClusters[$entry['block']] ?? []);
+            $clusterId = $parsed['cluster']->id ?? (count($sameBlock) === 1 ? (string) $sameBlock[0] : null);
+
+            if ($clusterId !== null) {
+                $lastSequence[$clusterId] ??= collect($csvIds)->filter(fn ($id) => preg_match('/^\d{5}$/', $id) && str_starts_with($id, $clusterId))
+                    ->map(fn ($id) => (int) substr($id, 2))->max() ?? 0;
+            }
+
+            if ($clusterId === null || $lastSequence[$clusterId] >= 999) {
+                $unknown[] = "{$entry['block']}/{$entry['lot']} {$entry['name']}";
+
+                continue;
+            }
+
+            $id = $clusterId.str_pad((string) ++$lastSequence[$clusterId], 3, '0', STR_PAD_LEFT);
+            // Tipe properti mengikuti tipe terbanyak di cluster yang sama.
+            $clusterTypes = $types[$clusterId] ?? [PropertyType::BANGUNAN => 1];
+            arsort($clusterTypes);
+
+            $added[$id] = [
+                'id' => $id,
+                'cluster_id' => $clusterId,
+                'block' => $parsed['code'] ?? $entry['block'],
+                'lot_number' => $entry['lot'],
+                'property_type_id' => (string) array_key_first($clusterTypes),
+                'building_area' => null,
+                'land_area' => null,
+                'handover_date' => null,
+                'occupancy_id' => $entry['occupancy_id'],
+                'status_id' => 'AK',
+                'resident' => [
+                    'id' => 'RS'.str_pad($id, 6, '0', STR_PAD_LEFT),
+                    'name' => $entry['name'],
+                    'phone' => null,
+                    'telephone' => null,
+                    'id_card_address' => null,
+                    'email' => null,
+                ],
+            ];
+        }
+
+        if ($unknown) {
+            self::$skipped[] = PenghuniData::SOURCE.': '.count($unknown).' unit tidak dikenali cluster-nya, tidak diimpor ('.implode(', ', $unknown).')';
+        }
+        if ($ignored = PenghuniData::ignoredRows()) {
+            self::$skipped[] = PenghuniData::SOURCE.": {$ignored} baris dilewati (nama batal/salah atau blok/nomor unit kosong)";
+        }
+
+        return $added;
     }
 
     /**

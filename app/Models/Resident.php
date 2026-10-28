@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasStringPrimaryKey;
+use App\Services\ClusterCodeService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -124,8 +125,17 @@ class Resident extends Model
         return $query->when($clusterId, fn (Builder $q) => $q->whereHas('units', fn (Builder $inner) => $inner->where('cluster_id', $clusterId)));
     }
 
+    /** Kode blok seperti "E1" (Emerald 48 blok 1) atau "E7" (Ruko Emerald blok 7) dicocokkan lewat cluster + nomor blok. */
     public function scopeBlock(Builder $query, ?string $block): Builder
     {
-        return $query->when($block, fn (Builder $q) => $q->whereHas('units', fn (Builder $inner) => $inner->where('block', 'like', "%{$block}%")));
+        return $query->when($block, function (Builder $q) use ($block) {
+            $hit = app(ClusterCodeService::class)->parse($block);
+
+            return $q->whereHas('units', fn (Builder $inner) => $hit
+                ? $inner->where(fn (Builder $code) => $code
+                    ->where(fn (Builder $pair) => $pair->where('cluster_id', $hit['cluster']->id)->where('block_number', $hit['block_number']))
+                    ->orWhereRaw('LOWER(block) = ?', [mb_strtolower(trim($block))]))
+                : $inner->where('block', 'like', "%{$block}%"));
+        });
     }
 }

@@ -30,7 +30,7 @@ class CollectorScopingTest extends TestCase
         $unitId = $this->postJson('/api/v1/units', [
             'resident_id' => $residentId,
             'cluster_id' => '07',
-            'block' => 'Z',
+            'block' => 'AL1',
             'lot_number' => substr($lotSeed, -2),
             'property_type_id' => 'B',
             'occupancy_id' => '1',

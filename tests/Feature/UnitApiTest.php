@@ -30,7 +30,7 @@ class UnitApiTest extends TestCase
         $unitId = $this->postJson('/api/v1/units', [
             'resident_id' => $residentId,
             'cluster_id' => '07',
-            'block' => 'Z',
+            'block' => 'AL1',
             'lot_number' => '99',
             'property_type_id' => 'B',
             'occupancy_id' => '1',
@@ -57,7 +57,7 @@ class UnitApiTest extends TestCase
             $createdUnitIds[] = $this->postJson('/api/v1/units', [
                 'resident_id' => $residentId,
                 'cluster_id' => '07',
-                'block' => 'Z',
+                'block' => 'AL1',
                 'lot_number' => $lotNumber,
                 'property_type_id' => 'B',
                 'occupancy_id' => '1',
@@ -85,7 +85,7 @@ class UnitApiTest extends TestCase
         $unitId = $this->postJson('/api/v1/units', [
             'resident_id' => $oldResidentId,
             'cluster_id' => '07',
-            'block' => 'Z',
+            'block' => 'AL1',
             'lot_number' => '96',
             'property_type_id' => 'B',
             'occupancy_id' => '1',
@@ -101,7 +101,7 @@ class UnitApiTest extends TestCase
         $this->putJson("/api/v1/units/{$unitId}", [
             'resident_id' => $newResidentId,
             'cluster_id' => '07',
-            'block' => 'Z',
+            'block' => 'AL1',
             'lot_number' => '96',
             'property_type_id' => 'B',
             'occupancy_id' => '1',
@@ -128,7 +128,7 @@ class UnitApiTest extends TestCase
         // units created for it must continue the sequence without gaps or manual input.
         $firstId = $this->postJson('/api/v1/units', [
             'cluster_id' => '04',
-            'block' => 'Z',
+            'block' => 'AR1',
             'lot_number' => '04',
             'property_type_id' => 'B',
             'occupancy_id' => '1',
@@ -137,7 +137,7 @@ class UnitApiTest extends TestCase
 
         $secondId = $this->postJson('/api/v1/units', [
             'cluster_id' => '04',
-            'block' => 'Z',
+            'block' => 'AR1',
             'lot_number' => '05',
             'property_type_id' => 'B',
             'occupancy_id' => '1',
@@ -157,7 +157,7 @@ class UnitApiTest extends TestCase
         $response = $this->postJson('/api/v1/units', [
             'id' => 'ZZ999',
             'cluster_id' => '04',
-            'block' => 'Z',
+            'block' => 'AR1',
             'lot_number' => '04',
             'property_type_id' => 'B',
             'occupancy_id' => '1',
@@ -176,7 +176,7 @@ class UnitApiTest extends TestCase
 
         $firstId = $this->postJson('/api/v1/units', [
             'cluster_id' => '04',
-            'block' => 'Z',
+            'block' => 'AR1',
             'lot_number' => '04',
             'property_type_id' => 'B',
             'occupancy_id' => '1',
@@ -188,7 +188,7 @@ class UnitApiTest extends TestCase
 
         $secondId = $this->postJson('/api/v1/units', [
             'cluster_id' => '04',
-            'block' => 'Z',
+            'block' => 'AR1',
             'lot_number' => '05',
             'property_type_id' => 'B',
             'occupancy_id' => '1',
@@ -206,7 +206,7 @@ class UnitApiTest extends TestCase
 
         $response = $this->postJson('/api/v1/units', [
             'cluster_id' => '04',
-            'block' => 'Z',
+            'block' => 'AR1',
             'lot_number' => '04',
             'property_type_id' => 'B',
             'occupancy_id' => '1',
@@ -225,7 +225,7 @@ class UnitApiTest extends TestCase
 
         $response = $this->postJson('/api/v1/units', [
             'cluster_id' => '04',
-            'block' => 'Z',
+            'block' => 'AR1',
             'lot_number' => '05',
             'property_type_id' => 'B',
             'status_id' => 'TA',
@@ -243,7 +243,7 @@ class UnitApiTest extends TestCase
 
         $unitId = $this->postJson('/api/v1/units', [
             'cluster_id' => '07',
-            'block' => 'Z',
+            'block' => 'AL1',
             'lot_number' => '97',
             'property_type_id' => 'B',
             'status_id' => 'RK',
@@ -254,7 +254,7 @@ class UnitApiTest extends TestCase
         $this->putJson("/api/v1/units/{$unitId}", [
             'resident_id' => $residentId,
             'cluster_id' => '07',
-            'block' => 'Z',
+            'block' => 'AL1',
             'lot_number' => '97',
             'property_type_id' => 'B',
             'status_id' => 'RK',
@@ -273,7 +273,7 @@ class UnitApiTest extends TestCase
         // took 04100 by the time this request's transaction commits, so the retry loop in
         // UnitController@store must fall back to the generator's next code (04101) instead
         // of failing the whole request with a duplicate-key error.
-        Unit::factory()->create(['id' => '04100', 'cluster_id' => '04', 'block' => 'X', 'lot_number' => '01']);
+        Unit::factory()->create(['id' => '04100', 'cluster_id' => '04', 'block' => 'AR9', 'lot_number' => '01']);
 
         $this->app->bind(UnitCodeGeneratorService::class, function () {
             return new class extends UnitCodeGeneratorService
@@ -291,7 +291,7 @@ class UnitApiTest extends TestCase
 
         $response = $this->postJson('/api/v1/units', [
             'cluster_id' => '04',
-            'block' => 'Z',
+            'block' => 'AR1',
             'lot_number' => '06',
             'property_type_id' => 'B',
             'occupancy_id' => '1',
@@ -308,11 +308,11 @@ class UnitApiTest extends TestCase
 
         Sanctum::actingAs(User::where('username', 'root')->first());
 
-        Unit::factory()->create(['id' => '04200', 'cluster_id' => '04', 'block' => 'A', 'lot_number' => '90']);
+        Unit::factory()->create(['id' => '04200', 'cluster_id' => '04', 'block' => 'AR1', 'lot_number' => '90']);
 
         $payload = [
             'cluster_id' => '04',
-            'block' => 'A',
+            'block' => 'AR1',
             'lot_number' => '90',
             'property_type_id' => 'B',
             'occupancy_id' => '1',
@@ -323,16 +323,16 @@ class UnitApiTest extends TestCase
         $this->postJson('/api/v1/units', $payload)
             ->assertUnprocessable()
             ->assertJsonValidationErrors('lot_number')
-            ->assertJsonFragment(['lot_number' => ['Unit dengan Blok A Nomor 90 sudah terdaftar di Cluster Amber. Silakan gunakan Blok atau Nomor Unit lain.']]);
+            ->assertJsonFragment(['lot_number' => ['Unit dengan Blok AR1 Nomor 90 sudah terdaftar di Cluster Amber. Silakan gunakan Blok atau Nomor Unit lain.']]);
 
         // Same cluster + block but a different lot number is allowed.
         $this->postJson('/api/v1/units', [...$payload, 'lot_number' => '91'])->assertCreated();
 
         // Same cluster + lot number but a different block is allowed.
-        $this->postJson('/api/v1/units', [...$payload, 'block' => 'B'])->assertCreated();
+        $this->postJson('/api/v1/units', [...$payload, 'block' => 'AR2'])->assertCreated();
 
         // Same block + lot number but a different cluster is allowed.
-        $this->postJson('/api/v1/units', [...$payload, 'cluster_id' => '07'])->assertCreated();
+        $this->postJson('/api/v1/units', [...$payload, 'cluster_id' => '07', 'block' => 'AL1'])->assertCreated();
     }
 
     public function test_updating_unit_to_an_already_used_combination_is_rejected_but_keeping_its_own_is_allowed(): void
@@ -341,13 +341,13 @@ class UnitApiTest extends TestCase
 
         Sanctum::actingAs(User::where('username', 'root')->first());
 
-        Unit::factory()->create(['id' => '04210', 'cluster_id' => '04', 'block' => 'A', 'lot_number' => '90']);
-        $otherId = Unit::factory()->create(['id' => '04211', 'cluster_id' => '04', 'block' => 'A', 'lot_number' => '91'])->id;
+        Unit::factory()->create(['id' => '04210', 'cluster_id' => '04', 'block' => 'AR1', 'lot_number' => '90']);
+        $otherId = Unit::factory()->create(['id' => '04211', 'cluster_id' => '04', 'block' => 'AR1', 'lot_number' => '91'])->id;
 
         // Editing a unit to collide with another unit's combination must be rejected.
         $this->putJson("/api/v1/units/{$otherId}", [
             'cluster_id' => '04',
-            'block' => 'A',
+            'block' => 'AR1',
             'lot_number' => '90',
             'property_type_id' => 'B',
             'occupancy_id' => '1',
@@ -357,7 +357,7 @@ class UnitApiTest extends TestCase
         // Saving a unit with its own unchanged combination must not be flagged as a duplicate.
         $this->putJson("/api/v1/units/{$otherId}", [
             'cluster_id' => '04',
-            'block' => 'A',
+            'block' => 'AR1',
             'lot_number' => '91',
             'property_type_id' => 'B',
             'occupancy_id' => '1',

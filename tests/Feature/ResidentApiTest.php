@@ -76,7 +76,7 @@ class ResidentApiTest extends TestCase
 
         $emptyUnitId = $this->postJson('/api/v1/units', [
             'cluster_id' => '07',
-            'block' => 'Z',
+            'block' => 'AL1',
             'lot_number' => '01',
             'property_type_id' => 'B',
             'occupancy_id' => '2',
@@ -89,7 +89,7 @@ class ResidentApiTest extends TestCase
         $this->postJson('/api/v1/units', [
             'resident_id' => $occupiedResidentId,
             'cluster_id' => '07',
-            'block' => 'Z',
+            'block' => 'AL1',
             'lot_number' => '02',
             'property_type_id' => 'B',
             'occupancy_id' => '1',
@@ -112,7 +112,7 @@ class ResidentApiTest extends TestCase
 
         $unitId = $this->postJson('/api/v1/units', [
             'cluster_id' => '07',
-            'block' => 'Z',
+            'block' => 'AL1',
             'lot_number' => '03',
             'property_type_id' => 'B',
             'occupancy_id' => '2',
@@ -146,7 +146,7 @@ class ResidentApiTest extends TestCase
     {
         return $this->postJson('/api/v1/units', [
             'cluster_id' => '07',
-            'block' => 'Z',
+            'block' => 'AL1',
             'lot_number' => $lot,
             'property_type_id' => 'B',
             'occupancy_id' => '2',
@@ -255,7 +255,7 @@ class ResidentApiTest extends TestCase
         $unitId = $this->postJson('/api/v1/units', [
             'resident_id' => $existingResidentId,
             'cluster_id' => '07',
-            'block' => 'Z',
+            'block' => 'AL1',
             'lot_number' => '04',
             'property_type_id' => 'B',
             'occupancy_id' => '1',
@@ -284,7 +284,7 @@ class ResidentApiTest extends TestCase
 
         $unitPayload = [
             'cluster_id' => '07',
-            'block' => 'Y',
+            'block' => 'AL1',
             'lot_number' => '1',
             'property_type_id' => 'B',
             'status_id' => 'RK',
@@ -321,7 +321,7 @@ class ResidentApiTest extends TestCase
         $residentId = $this->postJson('/api/v1/residents', ['name' => 'Dua Unit'])
             ->assertCreated()->json('data.resident.id');
 
-        $base = ['cluster_id' => '07', 'block' => 'X', 'property_type_id' => 'B', 'status_id' => 'RK'];
+        $base = ['cluster_id' => '07', 'block' => 'AL1', 'property_type_id' => 'B', 'status_id' => 'RK'];
         $first = $this->postJson('/api/v1/units', $base + ['lot_number' => '1', 'resident_id' => $residentId])->json('data.id');
         $this->postJson('/api/v1/units', $base + ['lot_number' => '2', 'resident_id' => $residentId])->assertCreated();
 

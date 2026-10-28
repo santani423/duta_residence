@@ -11,6 +11,7 @@ use App\Models\PaymentGatewaySetting;
 use App\Models\PropertyType;
 use App\Models\Unit;
 use App\Services\AuditService;
+use App\Services\ClusterCodeService;
 use App\Services\CollectorAssignmentService;
 use App\Services\DiscountService;
 use App\Services\PenaltyService;
@@ -300,7 +301,8 @@ class UnitController extends Controller
         $data = $request->validate([
             'resident_id' => ['nullable', 'exists:residents,id'],
             'cluster_id' => ['required', 'exists:clusters,id'],
-            'block' => ['required', 'string', 'max:5'],
+            'block' => ['required_without:block_number', 'nullable', 'string', 'max:5'],
+            'block_number' => ['nullable', 'integer', 'min:1', 'max:99999'],
             'lot_number' => ['required', 'regex:/^[0-9]{1,10}$/'],
             'property_type_id' => ['required', Rule::in([PropertyType::BANGUNAN, PropertyType::KAVLING, PropertyType::RUKO])],
             'building_area' => ['nullable', 'numeric', 'min:0'],
@@ -323,6 +325,8 @@ class UnitController extends Controller
             $data['va_number'] = $vaNumber;
         }
 
+        $data = [...$data, ...$this->resolveBlock($data, $unit)];
+
         $this->assertLotNumberAvailable($data['cluster_id'], $data['block'], $data['lot_number'], $unit);
 
         // Memasang aturan diskon ke unit = menerapkan diskon; Admin dibatasi maksimum diskon.
@@ -333,6 +337,29 @@ class UnitController extends Controller
         }
 
         return $data;
+    }
+
+    /**
+     * Blok disimpan sebagai kode gabungan (units.block, mis. "E3") plus nomor blok terpisah
+     * (units.block_number), divalidasi terhadap konfigurasi cluster. Unit lama yang kodenya tidak
+     * sesuai konfigurasi tetap bisa diedit selama cluster dan bloknya tidak diubah.
+     */
+    private function resolveBlock(array $data, ?Unit $unit): array
+    {
+        $unchangedLegacy = $unit
+            && ! isset($data['block_number'])
+            && $unit->cluster_id === $data['cluster_id']
+            && mb_strtolower((string) $unit->block) === mb_strtolower(trim((string) ($data['block'] ?? '')));
+
+        if ($unchangedLegacy) {
+            return ['block' => $unit->block, 'block_number' => $unit->block_number];
+        }
+
+        return app(ClusterCodeService::class)->resolveBlockInput(
+            Cluster::query()->findOrFail($data['cluster_id']),
+            $data['block'] ?? null,
+            $data['block_number'] ?? null,
+        );
     }
 
     private function assertLotNumberAvailable(string $clusterId, string $block, string $lotNumber, ?Unit $unit): void

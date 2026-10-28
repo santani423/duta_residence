@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\BillingStatus;
 use App\Models\Cluster;
+use App\Services\ClusterCodeService;
 use App\Models\ClusterRateSchedule;
 use App\Models\ResidentStatus;
 use App\Models\District;
@@ -135,5 +136,8 @@ class EstateSeeder extends Seeder
                 );
             }
         }
+
+        // Prefix kode cluster, tipe area, dan blok yang diizinkan (config/cluster_codes.php).
+        app(ClusterCodeService::class)->syncClusters();
     }
 }

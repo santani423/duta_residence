@@ -43,7 +43,7 @@ class CollectorVisitSignatureTest extends TestCase
         $unitId = $this->postJson('/api/v1/units', [
             'resident_id' => $residentId,
             'cluster_id' => '07',
-            'block' => 'Z',
+            'block' => 'AL1',
             'lot_number' => substr($lotSeed, -2),
             'property_type_id' => 'B',
             'occupancy_id' => '1',
@@ -561,7 +561,7 @@ class CollectorVisitSignatureTest extends TestCase
         Sanctum::actingAs(User::where('username', 'root')->first());
         $residentId = $this->postJson('/api/v1/residents', ['name' => 'Outside Cluster Resident'])->assertCreated()->json('data.resident.id');
         $outsideUnitId = $this->postJson('/api/v1/units', [
-            'resident_id' => $residentId, 'cluster_id' => '01', 'block' => 'Z', 'lot_number' => '14',
+            'resident_id' => $residentId, 'cluster_id' => '01', 'block' => 'D1', 'lot_number' => '14',
             'property_type_id' => 'B', 'occupancy_id' => '1', 'status_id' => 'AK',
         ])->assertCreated()->json('data.id');
         $this->assignCollectorToUnit($collector, $outsideUnitId);
