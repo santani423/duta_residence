@@ -1,0 +1,85 @@
+Kode Blok	Nama Cluster	Nomor Blok	Jenis Properti	Status	Unit	Transaksi
+(kosong)	-	-	-	Tidak Teridentifikasi	0	234
+??	-	-	-	Tidak Teridentifikasi	0	3
+AL2	-	-	-	Tidak Teridentifikasi (Ambigu)	14	499
+Al2	-	-	-	Tidak Teridentifikasi (Ambigu)	1	1
+AM1	Ruko Amber	1	Ruko	Valid	14	1053
+Am1	Ruko Amber	1	Ruko	Format Tidak Valid	5	6
+AM2	Ruko Amber	2	Ruko	Valid	16	1119
+Am2	Ruko Amber	2	Ruko	Format Tidak Valid	2	2
+am2	Ruko Amber	2	Ruko	Format Tidak Valid	3	3
+AR1	Amber	1	Perumahan	Valid	8	45
+AR2	Amber	2	Perumahan	Valid	9	49
+AR3	Amber	3	Perumahan	Valid	9	71
+AR5	Amber	5	Perumahan	Valid	17	105
+AX2	Alexandrite	2	Perumahan	Valid	2	52
+AX3	Alexandrite	3	Perumahan	Valid	41	1677
+Ax3	Alexandrite	3	Perumahan	Format Tidak Valid	2	2
+AX5	Alexandrite	5	Perumahan	Valid	67	2331
+ax5	Alexandrite	5	Perumahan	Format Tidak Valid	2	2
+Ax5	Alexandrite	5	Perumahan	Format Tidak Valid	5	5
+AX6	Alexandrite	6	Perumahan	Valid	32	421
+AX7	Alexandrite	7	Perumahan	Valid	30	780
+AX8	Alexandrite	8	Perumahan	Valid	41	1606
+ax8	Alexandrite	8	Perumahan	Format Tidak Valid	1	1
+Ax8	Alexandrite	8	Perumahan	Format Tidak Valid	1	1
+AX9	Alexandrite	9	Perumahan	Valid	2	164
+B7	Beryl	7	Perumahan	Valid	8	62
+B8	Beryl	8	Perumahan	Valid	32	449
+B9	Beryl	9	Perumahan	Valid	45	694
+B10	Beryl	10	Perumahan	Valid	52	880
+C1	Chrysocolla	1	Perumahan	Valid	17	913
+C2	Chrysocolla	2	Perumahan	Valid	10	355
+c2	Chrysocolla	2	Perumahan	Format Tidak Valid	1	1
+C3	Chrysocolla	3	Perumahan	Valid	10	374
+c3	Chrysocolla	3	Perumahan	Format Tidak Valid	1	1
+C5	Chrysocolla	5	Perumahan	Valid	9	449
+c5	Chrysocolla	5	Perumahan	Format Tidak Valid	1	1
+C6	Chrysocolla	6	Perumahan	Valid	18	1001
+c6	Chrysocolla	6	Perumahan	Format Tidak Valid	3	3
+C7	Chrysocolla	7	Perumahan	Valid	15	634
+C8	Chrysocolla	8	Perumahan	Valid	11	685
+c8	Chrysocolla	8	Perumahan	Format Tidak Valid	2	2
+C9	Chrysocolla	9	Perumahan	Valid	11	658
+C10	Chrysocolla	10	Perumahan	Valid	6	301
+C11	Chrysocolla	11	Perumahan	Valid	11	729
+c11	Chrysocolla	11	Perumahan	Format Tidak Valid	1	1
+Cafe	-	-	-	Tidak Teridentifikasi	0	3
+cafe	-	-	-	Tidak Teridentifikasi	0	1
+Cancel	-	-	-	Tidak Teridentifikasi	0	9
+cancel	-	-	-	Tidak Teridentifikasi	0	2
+D1	Dolomite	1	Perumahan	Valid	84	1365
+D2	Dolomite	2	Perumahan	Valid	72	977
+D3	Dolomite	3	Perumahan	Valid	56	779
+D4	Dolomite	4	Perumahan	Valid	33	319
+D5	Dolomite	5	Perumahan	Valid	25	457
+d5	Dolomite	5	Perumahan	Format Tidak Valid	1	1
+D6	Dolomite	6	Perumahan	Valid	35	601
+D7	Ruko Dolomite	7	Ruko	Valid	7	31
+D8	Ruko Dolomite	8	Ruko	Valid	11	144
+DD1	Diamond	1	Perumahan	Valid	17	1502
+DD2	Diamond	2	Perumahan	Valid	15	941
+DD3	Diamond	3	Perumahan	Valid	9	618
+DR3	-	-	-	Tidak Teridentifikasi	1	2
+E1	Emerald 48	1	Perumahan	Valid	55	265
+E2	Emerald 48	2	Perumahan	Valid	64	349
+E3	Emerald 48	3	Perumahan	Valid	68	279
+E4	Emerald 48	4	Perumahan	Valid	41	157
+E5	Emerald 48	5	Perumahan	Valid	31	107
+E6	-	-	-	Tidak Teridentifikasi (Ambigu)	35	85
+E7	Ruko Emerald	7	Ruko	Valid	36	809
+G1	Garnet	1	Perumahan	Valid	79	1060
+G2	Garnet	2	Perumahan	Valid	113	1247
+J1	Jade	1	Perumahan	Valid	14	580
+J2	Jade	2	Perumahan	Valid	15	615
+J3	Jade	3	Perumahan	Valid	19	579
+J5	Jade	5	Perumahan	Valid	22	597
+j5	Jade	5	Perumahan	Format Tidak Valid	1	1
+J6	Jade	6	Perumahan	Valid	24	818
+J7	Jade	7	Perumahan	Valid	22	713
+J8	Jade	8	Perumahan	Valid	13	535
+J9	Jade	9	Perumahan	Valid	27	1051
+J10	Jade	10	Perumahan	Valid	11	353
+JA	Ruko Jade Arcade	-	Ruko	Format Tidak Valid	27	1683
+ja	Ruko Jade Arcade	-	Ruko	Format Tidak Valid	3	6
+Unit	-	-	-	Tidak Teridentifikasi	0	9
