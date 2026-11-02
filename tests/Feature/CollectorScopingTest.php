@@ -29,7 +29,7 @@ class CollectorScopingTest extends TestCase
 
         $unitId = $this->postJson('/api/v1/units', [
             'resident_id' => $residentId,
-            'cluster_id' => '07',
+            'cluster_id' => 'AL',
             'block' => 'AL1',
             'lot_number' => substr($lotSeed, -2),
             'property_type_id' => 'B',
@@ -155,7 +155,7 @@ class CollectorScopingTest extends TestCase
         $this->postJson('/api/v1/collector-assignments', [
             'collector_id' => $collector->id,
             'scope_type' => 'cluster',
-            'cluster_id' => '07',
+            'cluster_id' => 'AL',
         ])->assertCreated();
 
         Sanctum::actingAs($collector);

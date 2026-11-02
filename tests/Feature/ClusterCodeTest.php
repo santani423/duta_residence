@@ -7,7 +7,9 @@ use App\Models\Cluster;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\ClusterCodeService;
+use App\Services\UnitCodeGeneratorService;
 use Database\Seeders\EstateSeeder;
+use Database\Seeders\PelangganData;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Database\Seeders\AdminUserSeeder;
@@ -36,20 +38,20 @@ class ClusterCodeTest extends TestCase
     public static function officialCodes(): array
     {
         return [
-            'AX1 Alexandrite' => ['AX1', '11', 1],
-            'AL1 Ruko Alexandrite' => ['AL1', '07', 1],
-            'AR1 Amber' => ['AR1', '04', 1],
-            'AM1 Ruko Amber' => ['AM1', '06', 1],
-            'E3 Emerald 48' => ['E3', '10', 3],
-            'E6 Emerald 48' => ['E6', '10', 6],
-            'E7 Ruko Emerald' => ['E7', '12', 7],
-            'D6 Dolomite' => ['D6', '01', 6],
-            'D7 Ruko Dolomite' => ['D7', '14', 7],
-            'D8 Ruko Dolomite' => ['D8', '14', 8],
-            'B10 prefix 1 huruf' => ['B10', '13', 10],
-            'DD2 prefix DD bukan D' => ['DD2', '05', 2],
-            'JA3 prefix JA' => ['JA3', '08', 3],
-            'huruf kecil dan pemisah' => ['al-2', '07', 2],
+            'AX1 Alexandrite' => ['AX1', 'AX', 1],
+            'AL1 Ruko Alexandrite' => ['AL1', 'AL', 1],
+            'AR1 Amber' => ['AR1', 'AR', 1],
+            'AM1 Ruko Amber' => ['AM1', 'AM', 1],
+            'E3 Emerald 48' => ['E3', 'E', 3],
+            'E6 Emerald 48' => ['E6', 'E', 6],
+            'E7 Ruko Emerald' => ['E7', 'RE', 7],
+            'D6 Dolomite' => ['D6', 'D', 6],
+            'D7 Ruko Dolomite' => ['D7', 'RD', 7],
+            'D8 Ruko Dolomite' => ['D8', 'RD', 8],
+            'B10 prefix 1 huruf' => ['B10', 'B', 10],
+            'DD2 prefix DD bukan D' => ['DD2', 'DD', 2],
+            'JA3 prefix JA' => ['JA3', 'JA', 3],
+            'huruf kecil dan pemisah' => ['al-2', 'AL', 2],
         ];
     }
 
@@ -87,18 +89,18 @@ class ClusterCodeTest extends TestCase
 
     public function test_hinting_the_cluster_disambiguates_shared_prefixes(): void
     {
-        $this->assertSame('01', $this->codes->parse('D6', '01')['cluster']->id);
-        $this->assertNull($this->codes->parse('D6', '14'));
-        $this->assertNull($this->codes->parse('E3', '12'));
+        $this->assertSame('D', $this->codes->parse('D6', 'D')['cluster']->id);
+        $this->assertNull($this->codes->parse('D6', 'RD'));
+        $this->assertNull($this->codes->parse('E3', 'RE'));
     }
 
     public function test_cluster_configuration_is_synced_and_prefix_conflicts_are_detected(): void
     {
-        $emerald = Cluster::query()->find('10');
+        $emerald = Cluster::query()->find('E');
         $this->assertSame('E', $emerald->code_prefix);
         $this->assertSame([1, 2, 3, 4, 5, 6], $emerald->allowed_blocks);
-        $this->assertSame('ruko', Cluster::query()->find('12')->area_type);
-        $this->assertNull(Cluster::query()->find('11')->allowed_blocks);
+        $this->assertSame('ruko', Cluster::query()->find('RE')->area_type);
+        $this->assertNull(Cluster::query()->find('AX')->allowed_blocks);
 
         // Prefix E dengan blok yang tumpang tindih (5) atau tanpa batas bentrok dengan Emerald 48.
         $this->expectException(\Illuminate\Validation\ValidationException::class);
@@ -121,7 +123,7 @@ class ClusterCodeTest extends TestCase
     private function unitPayload(array $overrides = []): array
     {
         return [
-            'cluster_id' => '10',
+            'cluster_id' => 'E',
             'block' => 'E3',
             'lot_number' => '905',
             'property_type_id' => 'B',
@@ -142,10 +144,10 @@ class ClusterCodeTest extends TestCase
             ->assertJsonPath('data.cluster.code_prefix', 'E');
 
         // Hanya nomor blok: kode gabungan disusun backend dari prefix cluster.
-        $this->postJson('/api/v1/units', $this->unitPayload(['cluster_id' => '12', 'block' => null, 'block_number' => 7, 'lot_number' => '906']))
+        $this->postJson('/api/v1/units', $this->unitPayload(['cluster_id' => 'RE', 'block' => null, 'block_number' => 7, 'lot_number' => '906']))
             ->assertCreated()
             ->assertJsonPath('data.block', 'E7')
-            ->assertJsonPath('data.cluster_id', '12');
+            ->assertJsonPath('data.cluster_id', 'RE');
     }
 
     public function test_invalid_block_for_the_selected_cluster_is_rejected_by_the_backend(): void
@@ -155,7 +157,7 @@ class ClusterCodeTest extends TestCase
         // Blok 7 milik Ruko Emerald, bukan Emerald 48; blok 8 di luar konfigurasi.
         $this->postJson('/api/v1/units', $this->unitPayload(['block' => 'E7']))->assertUnprocessable()->assertJsonValidationErrors('block_number');
         $this->postJson('/api/v1/units', $this->unitPayload(['block' => 'E8']))->assertUnprocessable()->assertJsonValidationErrors('block_number');
-        $this->postJson('/api/v1/units', $this->unitPayload(['cluster_id' => '12', 'block' => 'E3']))->assertUnprocessable();
+        $this->postJson('/api/v1/units', $this->unitPayload(['cluster_id' => 'RE', 'block' => 'E3']))->assertUnprocessable();
         $this->postJson('/api/v1/units', $this->unitPayload(['block' => 'D3']))->assertUnprocessable()->assertJsonValidationErrors('block');
         $this->postJson('/api/v1/units', $this->unitPayload(['block' => null, 'block_number' => 0]))->assertUnprocessable();
 
@@ -166,25 +168,25 @@ class ClusterCodeTest extends TestCase
     {
         $this->actAsRoot();
 
-        $this->getJson('/api/v1/clusters/14/blocks')
+        $this->getJson('/api/v1/clusters/RD/blocks')
             ->assertOk()
             ->assertJsonPath('data.code_prefix', 'D')
             ->assertJsonPath('data.blocks.0.code', 'D7')
             ->assertJsonPath('data.blocks.1.block_number', 8)
             ->assertJsonCount(2, 'data.blocks');
 
-        $this->getJson('/api/v1/clusters/10/blocks')->assertJsonCount(6, 'data.blocks');
+        $this->getJson('/api/v1/clusters/E/blocks')->assertJsonCount(6, 'data.blocks');
     }
 
     public function test_code_search_and_filters_resolve_to_the_right_cluster_and_block(): void
     {
         $this->actAsRoot();
 
-        $e3 = Unit::factory()->create(['id' => 'ZE901', 'cluster_id' => '10', 'block' => 'E3', 'lot_number' => '901']);
-        $e5 = Unit::factory()->create(['id' => 'ZE902', 'cluster_id' => '10', 'block' => 'E5', 'lot_number' => '901']);
-        $e7 = Unit::factory()->create(['id' => 'ZE903', 'cluster_id' => '12', 'block' => 'E7', 'lot_number' => '901']);
-        $d7 = Unit::factory()->create(['id' => 'ZE904', 'cluster_id' => '14', 'block' => 'D7', 'lot_number' => '901']);
-        $d6 = Unit::factory()->create(['id' => 'ZE905', 'cluster_id' => '01', 'block' => 'D6', 'lot_number' => '901']);
+        $e3 = Unit::factory()->create(['id' => 'ZE901', 'cluster_id' => 'E', 'block' => 'E3', 'lot_number' => '901']);
+        $e5 = Unit::factory()->create(['id' => 'ZE902', 'cluster_id' => 'E', 'block' => 'E5', 'lot_number' => '901']);
+        $e7 = Unit::factory()->create(['id' => 'ZE903', 'cluster_id' => 'RE', 'block' => 'E7', 'lot_number' => '901']);
+        $d7 = Unit::factory()->create(['id' => 'ZE904', 'cluster_id' => 'RD', 'block' => 'D7', 'lot_number' => '901']);
+        $d6 = Unit::factory()->create(['id' => 'ZE905', 'cluster_id' => 'D', 'block' => 'D6', 'lot_number' => '901']);
 
         $this->assertSame(3, $e3->refresh()->block_number);
 
@@ -200,18 +202,18 @@ class ClusterCodeTest extends TestCase
         $this->assertNotContains($d6->id, $ids('search=D7'));
 
         // Filter cluster + blok saling terhubung.
-        $this->assertSame([$e3->id], $ids('cluster_id=10&block=E3'));
-        $this->assertSame([$e3->id], $ids('cluster_id=10&block_number=3'));
-        $this->assertSame([], $ids('cluster_id=12&block=E3'));
-        $this->assertSame([$d7->id], $ids('cluster_id=14&block_number=7'));
-        $this->assertNotContains($e5->id, $ids('cluster_id=10&block_number=3'));
+        $this->assertSame([$e3->id], $ids('cluster_id=E&block=E3'));
+        $this->assertSame([$e3->id], $ids('cluster_id=E&block_number=3'));
+        $this->assertSame([], $ids('cluster_id=RE&block=E3'));
+        $this->assertSame([$d7->id], $ids('cluster_id=RD&block_number=7'));
+        $this->assertNotContains($e5->id, $ids('cluster_id=E&block_number=3'));
     }
 
     public function test_billing_and_payment_history_stay_linked_to_the_unit_after_block_edit(): void
     {
         $this->actAsRoot();
 
-        $unit = Unit::factory()->create(['id' => 'ZE906', 'cluster_id' => '10', 'block' => 'E3', 'lot_number' => '909']);
+        $unit = Unit::factory()->create(['id' => 'ZE906', 'cluster_id' => 'E', 'block' => 'E3', 'lot_number' => '909']);
         $billing = Billing::factory()->create(['unit_id' => $unit->id, 'year' => 2026, 'month' => 1]);
 
         $this->putJson("/api/v1/units/{$unit->id}", $this->unitPayload(['block' => 'E4', 'lot_number' => '909']))
@@ -228,7 +230,7 @@ class ClusterCodeTest extends TestCase
         $this->actAsRoot();
 
         // E8 di Emerald 48 (di luar blok 1-6): tidak dipetakan, block_number NULL.
-        $legacy = Unit::factory()->create(['id' => 'ZE907', 'cluster_id' => '10', 'block' => 'E8', 'lot_number' => '902']);
+        $legacy = Unit::factory()->create(['id' => 'ZE907', 'cluster_id' => 'E', 'block' => 'E8', 'lot_number' => '902']);
         $this->assertNull($legacy->refresh()->block_number);
 
         $this->getJson("/api/v1/units/{$legacy->id}")->assertOk()->assertJsonPath('data.block', 'E8');
@@ -248,10 +250,10 @@ class ClusterCodeTest extends TestCase
     public function test_backfill_fills_only_valid_codes_and_audit_reports_the_rest_without_changing_them(): void
     {
         $units = [
-            ['ZE911', '11', 'AX3'],
-            ['ZE912', '10', 'E8'],
-            ['ZE913', '07', 'AL-'],
-            ['ZE914', '01', 'D7'],
+            ['ZE911', 'AX', 'AX3'],
+            ['ZE912', 'E', 'E8'],
+            ['ZE913', 'AL', 'AL-'],
+            ['ZE914', 'D', 'D7'],
         ];
         foreach ($units as $i => [$id, $cluster, $block]) {
             Unit::factory()->create(['id' => $id, 'cluster_id' => $cluster, 'block' => $block, 'lot_number' => (string) (900 + $i)]);
@@ -267,8 +269,8 @@ class ClusterCodeTest extends TestCase
         $issues = collect($service->auditUnits())->keyBy('unit_id');
         $this->assertSame(['ZE912', 'ZE913', 'ZE914'], $issues->keys()->sort()->values()->all());
         // D7 di Dolomite sebenarnya kode Ruko Dolomite: dilaporkan sebagai saran, tidak dipindah otomatis.
-        $this->assertSame('14', $issues['ZE914']['suggestion']);
-        $this->assertSame('01', DB::table('units')->where('id', 'ZE914')->value('cluster_id'));
+        $this->assertSame('RD', $issues['ZE914']['suggestion']);
+        $this->assertSame('D', DB::table('units')->where('id', 'ZE914')->value('cluster_id'));
         $this->assertSame('D7', DB::table('units')->where('id', 'ZE914')->value('block'));
     }
 
@@ -282,8 +284,64 @@ class ClusterCodeTest extends TestCase
         $this->postJson('/api/v1/clusters', ['id' => 'ZA', 'name' => 'Zircon', 'monthly_rate' => 100000, 'code_prefix' => 'ZR', 'area_type' => 'cluster'])
             ->assertCreated()->assertJsonPath('data.code_prefix', 'ZR');
 
-        Unit::factory()->create(['id' => 'ZE908', 'cluster_id' => '10', 'block' => 'E1', 'lot_number' => '903']);
-        $this->putJson('/api/v1/clusters/10', ['monthly_rate' => 150000, 'code_prefix' => 'EX'])->assertUnprocessable();
-        $this->assertSame('E', Cluster::query()->find('10')->code_prefix);
+        Unit::factory()->create(['id' => 'ZE908', 'cluster_id' => 'E', 'block' => 'E1', 'lot_number' => '903']);
+        $this->putJson('/api/v1/clusters/E', ['monthly_rate' => 150000, 'code_prefix' => 'EX'])->assertUnprocessable();
+        $this->assertSame('E', Cluster::query()->find('E')->code_prefix);
+    }
+
+    public function test_cluster_ids_are_letter_codes_and_ruko_with_shared_prefix_get_their_own(): void
+    {
+        $this->assertSame([
+            'Alexandrite' => 'AX', 'Amber' => 'AR', 'Beryl' => 'B', 'Chrysocolla' => 'C', 'Diamond' => 'DD',
+            'Dolomite' => 'D', 'Emerald 48' => 'E', 'Garnet' => 'G', 'Jade' => 'J', 'Ruko Alexandrite' => 'AL',
+            'Ruko Amber' => 'AM', 'Ruko Dolomite' => 'RD', 'Ruko Emerald' => 'RE', 'Ruko Jade Arcade' => 'JA',
+        ], Cluster::query()->orderBy('name')->pluck('id', 'name')->all());
+
+        // Id ruko berbeda, tetapi kode propertinya tetap D7 dan E7.
+        $this->assertSame('D7', $this->codes->compose(Cluster::query()->find('RD'), 7));
+        $this->assertSame('E7', $this->codes->compose(Cluster::query()->find('RE'), 7));
+    }
+
+    #[DataProvider('invalidClusterIds')]
+    public function test_cluster_api_only_accepts_letter_codes(string $id): void
+    {
+        $this->actAsRoot();
+
+        $this->postJson('/api/v1/clusters', ['id' => $id, 'name' => 'Zircon', 'monthly_rate' => 100000])
+            ->assertUnprocessable()->assertJsonValidationErrors('id');
+    }
+
+    /** @return array<string, array{string}> */
+    public static function invalidClusterIds(): array
+    {
+        return [
+            'angka' => ['15'],
+            'huruf dan angka' => ['Z1'],
+            'huruf kecil' => ['za'],
+            'lebih dari 2 huruf' => ['ZAB'],
+        ];
+    }
+
+    public function test_new_unit_codes_follow_the_cluster_code(): void
+    {
+        $generate = fn (string $clusterId) => DB::transaction(fn () => app(UnitCodeGeneratorService::class)->generate($clusterId));
+
+        $this->assertSame('AX001', $generate('AX'));
+        $this->assertSame('D0001', $generate('D'));
+
+        Unit::factory()->create(['id' => 'D0001', 'cluster_id' => 'D', 'block' => 'D1', 'lot_number' => '904']);
+        $this->assertSame('D0002', $generate('D'));
+        // Nomor urut D tidak tercampur unit cluster berawalan sama (DD).
+        $this->assertSame('DD001', $generate('DD'));
+    }
+
+    public function test_imported_units_keep_their_numeric_codes_under_letter_clusters(): void
+    {
+        $units = PelangganData::units();
+
+        $this->assertSame('AL', $units['07012']['cluster_id']);
+        $this->assertSame('C', $units['09005']['cluster_id']);
+        $this->assertSame([], array_values(array_filter(array_keys($units), fn ($id) => ! preg_match('/^\d{5}$/', (string) $id))));
+        $this->assertSame([], array_values(array_diff(array_unique(array_column($units, 'cluster_id')), array_keys(config('cluster_codes.clusters')))));
     }
 }

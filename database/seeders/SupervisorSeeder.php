@@ -49,11 +49,11 @@ class SupervisorSeeder extends Seeder
         $hendra = $this->makeSupervisor('supervisor.hendra', 'Hendra Kusuma', 'SPV-0002', '081234600002', SupervisorProfile::STATUS_ACTIVE, $admin);
         $wati = $this->makeSupervisor('supervisor.wati', 'Wati Purnama', 'SPV-0003', '081234600003', SupervisorProfile::STATUS_INACTIVE, $admin);
 
-        $this->assignCluster($rina, '01', $admin);
-        $this->assignCluster($rina, '02', $admin);
-        $this->assignCluster($hendra, '03', $admin);
-        $this->assignCluster($hendra, '04', $admin);
-        $this->assignCluster($wati, '05', $admin);
+        $this->assignCluster($rina, 'D', $admin);
+        $this->assignCluster($rina, 'G', $admin);
+        $this->assignCluster($hendra, 'J', $admin);
+        $this->assignCluster($hendra, 'AR', $admin);
+        $this->assignCluster($wati, 'DD', $admin);
 
         // --- Approval Center: Reversal (pending only, real receipt, never approved here) ---
         $receipt = Receipt::query()->where('status', '!=', 'cancelled')->latest('transaction_date')->first();
@@ -136,7 +136,7 @@ class SupervisorSeeder extends Seeder
 
         $failedBroadcast = Broadcast::query()->firstOrCreate(
             ['sender_id' => $admin->id, 'type' => Broadcast::TYPE_RESIDENT, 'message' => 'Pengingat: mohon segera menyelesaikan tunggakan IPL bulan ini.'],
-            ['target_criteria' => ['cluster_id' => '03'], 'recipient_count' => 1, 'success_count' => 0, 'fail_count' => 1]
+            ['target_criteria' => ['cluster_id' => 'J'], 'recipient_count' => 1, 'success_count' => 0, 'fail_count' => 1]
         );
         if ($failedBroadcast->wasRecentlyCreated) {
             BroadcastRecipient::query()->create(['broadcast_id' => $failedBroadcast->id, 'recipient_type' => 'resident', 'recipient_id' => null, 'name' => 'Contoh Penghuni', 'phone' => '', 'delivery_status' => 'failed', 'provider_response' => 'invalid_phone_number', 'sent_at' => now()->subHours(2)]);

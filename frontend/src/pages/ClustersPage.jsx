@@ -154,8 +154,13 @@ export default function ClustersPage() {
         <Form form={form} layout="vertical" onFinish={(values) => (modal.mode === 'edit' ? update.mutate(values) : create.mutate(values))}>
           {modal.mode === 'create' && (
             <>
-              <Form.Item label="Kode Cluster" name="id" rules={[{ required: true }, { max: 2, message: 'Maksimal 2 karakter' }]}>
-                <Input maxLength={2} style={{ textTransform: 'uppercase' }} />
+              <Form.Item
+                label="Kode Cluster"
+                name="id"
+                normalize={(value) => value?.toUpperCase()}
+                rules={[{ required: true }, { pattern: /^[A-Z]{1,2}$/, message: 'Kode cluster harus 1-2 huruf tanpa angka' }]}
+              >
+                <Input maxLength={2} />
               </Form.Item>
               <Form.Item label="Nama Cluster" name="name" rules={[{ required: true }]}>
                 <Input maxLength={50} />

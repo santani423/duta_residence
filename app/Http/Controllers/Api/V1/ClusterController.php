@@ -33,13 +33,13 @@ class ClusterController extends Controller
     public function store(Request $request, AuditService $auditService)
     {
         $data = $request->validate([
-            'id' => ['required', 'string', 'size:2', Rule::unique('clusters', 'id')],
+            'id' => ['required', 'string', 'regex:/^[A-Z]{1,2}$/', Rule::unique('clusters', 'id')],
             'name' => ['required', 'string', 'max:50'],
             ...$this->codeRules(),
             'monthly_rate' => ['required', 'numeric', 'min:0'],
             'description' => ['nullable', 'string'],
             'is_active' => ['sometimes', 'boolean'],
-        ]);
+        ], ['id.regex' => 'Kode cluster harus 1-2 huruf kapital tanpa angka.']);
 
         if (! empty($data['code_prefix'])) {
             app(ClusterCodeService::class)->assertNoCodeConflict($data['code_prefix'], $data['allowed_blocks'] ?? null);

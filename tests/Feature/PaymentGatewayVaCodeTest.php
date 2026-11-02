@@ -62,7 +62,7 @@ class PaymentGatewayVaCodeTest extends TestCase
     private function unitPayload(array $overrides = []): array
     {
         return array_merge([
-            'cluster_id' => '07',
+            'cluster_id' => 'AL',
             'block' => 'AL1',
             'lot_number' => '98',
             'property_type_id' => 'B',

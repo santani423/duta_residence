@@ -20,11 +20,11 @@ class IplData
     public const START_PERIOD = '2024-01';
 
     /**
-     * Cluster yang IPL-nya ditagih lewat buku ini. Cluster 01-04 dan 10 (Dolomite, Garnet, Jade,
-     * Amber, Emerald 48) tidak punya pembayaran lagi sejak 2017/2018, jadi tidak dibuatkan
+     * Cluster yang IPL-nya ditagih lewat buku ini. Cluster D, G, J, AR, dan E (Dolomite, Garnet,
+     * Jade, Amber, Emerald 48) tidak punya pembayaran lagi sejak 2017/2018, jadi tidak dibuatkan
      * tunggakan - hanya bulan yang memang tercatat dibayar.
      */
-    public const BILLED_CLUSTERS = ['05', '06', '07', '08', '09', '11', '12', '13', '14'];
+    public const BILLED_CLUSTERS = ['DD', 'AM', 'AL', 'JA', 'C', 'AX', 'RE', 'B', 'RD'];
 
     /**
      * Tahun saat buku dikonversi. Teks "Des-23" di kolom Bulan Tagihan ada yang terbaca sebagai

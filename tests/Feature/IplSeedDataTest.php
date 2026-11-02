@@ -56,8 +56,8 @@ class IplSeedDataTest extends TestCase
         $this->assertSame(8383, Receipt::where('notes', 'like', 'Impor buku IPL manual.%')->count());
 
         // Cluster tanpa pembayaran di buku IPL 2024+ tidak dibuatkan tunggakan.
-        $this->assertFalse(Billing::whereHas('unit', fn ($q) => $q->where('cluster_id', '01'))->where('status_id', Billing::STATUS_UNPAID)->exists());
+        $this->assertFalse(Billing::whereHas('unit', fn ($q) => $q->where('cluster_id', 'D'))->where('status_id', Billing::STATUS_UNPAID)->exists());
 
-        $this->assertEquals(250000, ClusterRateSchedule::where('cluster_id', '09')->whereDate('effective_date', '2025-11-01')->value('rate'));
+        $this->assertEquals(250000, ClusterRateSchedule::where('cluster_id', 'C')->whereDate('effective_date', '2025-11-01')->value('rate'));
     }
 }

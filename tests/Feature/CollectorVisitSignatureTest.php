@@ -42,7 +42,7 @@ class CollectorVisitSignatureTest extends TestCase
 
         $unitId = $this->postJson('/api/v1/units', [
             'resident_id' => $residentId,
-            'cluster_id' => '07',
+            'cluster_id' => 'AL',
             'block' => 'AL1',
             'lot_number' => substr($lotSeed, -2),
             'property_type_id' => 'B',
@@ -230,7 +230,7 @@ class CollectorVisitSignatureTest extends TestCase
             ->assertJsonPath('data.awaiting_signature', true)
             ->assertJsonPath('data.has_signature', false)
             ->assertJsonPath('data.finished_at', null)
-            ->assertJsonPath('data.unit.cluster.id', '07')
+            ->assertJsonPath('data.unit.cluster.id', 'AL')
             ->assertJsonPath('data.collector.id', $collector->id)
             ->json('data.id');
 
@@ -283,7 +283,7 @@ class CollectorVisitSignatureTest extends TestCase
             ->assertJsonPath('data.visit.lifecycle', 'completed')
             ->assertJsonPath('data.visit.awaiting_signature', false)
             ->assertJsonPath('data.visit.has_signature', true)
-            ->assertJsonPath('data.visit.unit.cluster.id', '07');
+            ->assertJsonPath('data.visit.unit.cluster.id', 'AL');
         $this->assertNotNull($response->json('data.visit.finished_at'));
         $this->assertSame("visit-evidence/{$response->json('data.id')}/file", $response->json('data.file_url'));
 
@@ -386,7 +386,7 @@ class CollectorVisitSignatureTest extends TestCase
             ->assertJsonPath('data.lifecycle', 'completed')
             ->assertJsonPath('data.awaiting_signature', false)
             ->assertJsonPath('data.has_signature', true)
-            ->assertJsonPath('data.unit.cluster.id', '07');
+            ->assertJsonPath('data.unit.cluster.id', 'AL');
 
         $visit = CollectorVisit::query()->findOrFail($visitId);
         $this->assertNotNull($visit->finished_at);
@@ -491,7 +491,7 @@ class CollectorVisitSignatureTest extends TestCase
         $this->seed();
         ['unit_id' => $unitId, 'collector' => $collector] = $this->collectorWithUnit('SG916');
         $visitId = $this->createVisit($unitId)->assertCreated()->json('data.id');
-        $supervisor = $this->makeSupervisor('07');
+        $supervisor = $this->makeSupervisor('AL');
 
         // metricsFor() gagal → detail collector memakai jalur cadangan metrik bulan berjalan.
         Exceptions::fake([RuntimeException::class]);
@@ -532,7 +532,7 @@ class CollectorVisitSignatureTest extends TestCase
         $signedId = $this->createVisit($scope['unit_id'], 'completed', ['visit_date' => now()->subDay()->toDateTimeString()])
             ->assertCreated()->json('data.id');
         $this->uploadEvidence($signedId)->assertCreated();
-        $supervisor = $this->makeSupervisor('07');
+        $supervisor = $this->makeSupervisor('AL');
 
         $assertRecentVisits = function (array $recentVisits) use ($awaitingId, $signedId, $scope) {
             $visits = collect($recentVisits)->keyBy('id');
@@ -557,18 +557,18 @@ class CollectorVisitSignatureTest extends TestCase
         $collector = $scope['collector'];
         $insideId = $this->createVisit($scope['unit_id'])->assertCreated()->json('data.id');
 
-        // Kolektor yang sama juga memegang unit di cluster 01, di luar wewenang supervisor 07.
+        // Kolektor yang sama juga memegang unit di cluster D, di luar wewenang supervisor AL.
         Sanctum::actingAs(User::where('username', 'root')->first());
         $residentId = $this->postJson('/api/v1/residents', ['name' => 'Outside Cluster Resident'])->assertCreated()->json('data.resident.id');
         $outsideUnitId = $this->postJson('/api/v1/units', [
-            'resident_id' => $residentId, 'cluster_id' => '01', 'block' => 'D1', 'lot_number' => '14',
+            'resident_id' => $residentId, 'cluster_id' => 'D', 'block' => 'D1', 'lot_number' => '14',
             'property_type_id' => 'B', 'occupancy_id' => '1', 'status_id' => 'AK',
         ])->assertCreated()->json('data.id');
         $this->assignCollectorToUnit($collector, $outsideUnitId);
         Sanctum::actingAs($collector);
         $outsideId = $this->createVisit($outsideUnitId)->assertCreated()->json('data.id');
 
-        Sanctum::actingAs($this->makeSupervisor('07'));
+        Sanctum::actingAs($this->makeSupervisor('AL'));
         $data = $this->getJson("/api/v1/supervisor/collectors/{$collector->id}")->assertOk()->json('data');
         $this->assertSame([$insideId], collect($data['recent_visits'])->pluck('id')->all());
         $this->assertSame(1, $data['summary']['total_visits']);

@@ -24,29 +24,29 @@ class ClusterMapApiTest extends TestCase
     private function createMapForGa(): ClusterMap
     {
         Sanctum::actingAs(User::where('username', 'root')->first());
-        $this->postJson('/api/v1/clusters/07/map', ['canvas_type' => 'blank'])->assertCreated();
+        $this->postJson('/api/v1/clusters/AL/map', ['canvas_type' => 'blank'])->assertCreated();
 
-        return ClusterMap::query()->where('cluster_id', '07')->firstOrFail();
+        return ClusterMap::query()->where('cluster_id', 'AL')->firstOrFail();
     }
 
     public function test_creating_a_map_twice_for_the_same_cluster_returns_the_existing_one(): void
     {
         Sanctum::actingAs(User::where('username', 'root')->first());
 
-        $firstId = $this->postJson('/api/v1/clusters/07/map', ['canvas_type' => 'blank'])
+        $firstId = $this->postJson('/api/v1/clusters/AL/map', ['canvas_type' => 'blank'])
             ->assertCreated()->json('data.id');
 
-        $response = $this->postJson('/api/v1/clusters/07/map', ['canvas_type' => 'blank'])->assertOk();
+        $response = $this->postJson('/api/v1/clusters/AL/map', ['canvas_type' => 'blank'])->assertOk();
 
         $this->assertSame($firstId, $response->json('data.id'));
-        $this->assertSame(1, ClusterMap::query()->where('cluster_id', '07')->count());
+        $this->assertSame(1, ClusterMap::query()->where('cluster_id', 'AL')->count());
     }
 
     public function test_show_lists_available_units_and_seeded_component_types_before_any_object_is_placed(): void
     {
         $map = $this->createMapForGa();
 
-        $response = $this->getJson('/api/v1/clusters/07/map')->assertOk();
+        $response = $this->getJson('/api/v1/clusters/AL/map')->assertOk();
 
         $unitIds = collect($response->json('data.available_units'))->pluck('id')->all();
         $this->assertContains('07001', $unitIds);
@@ -103,7 +103,7 @@ class ClusterMapApiTest extends TestCase
     public function test_placing_a_unit_from_a_different_cluster_is_rejected(): void
     {
         $map = $this->createMapForGa();
-        $otherClusterUnit = Unit::query()->where('cluster_id', '!=', '07')->firstOrFail();
+        $otherClusterUnit = Unit::query()->where('cluster_id', '!=', 'AL')->firstOrFail();
 
         $this->putJson("/api/v1/cluster-maps/{$map->id}/objects", [
             'objects' => [
@@ -118,7 +118,7 @@ class ClusterMapApiTest extends TestCase
 
         Sanctum::actingAs(User::where('username', 'loket')->first());
 
-        $this->getJson('/api/v1/clusters/07/map')->assertOk();
+        $this->getJson('/api/v1/clusters/AL/map')->assertOk();
         $this->putJson("/api/v1/cluster-maps/{$map->id}/objects", ['objects' => []])->assertForbidden();
     }
 

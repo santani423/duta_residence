@@ -42,7 +42,7 @@ class PenghuniDataTest extends TestCase
         $this->assertGreaterThan(300, $units->count());
         foreach ($units as $unit) {
             $number = (int) substr($unit->block, 1);
-            $this->assertSame($number === 7 ? '12' : '10', $unit->cluster_id, "{$unit->id} {$unit->block}");
+            $this->assertSame($number === 7 ? 'RE' : 'E', $unit->cluster_id, "{$unit->id} {$unit->block}");
             $this->assertEquals($number, $unit->block_number, "{$unit->id} {$unit->block}");
         }
     }
@@ -51,7 +51,7 @@ class PenghuniDataTest extends TestCase
     {
         $unit = $this->unit('E3', '28');
 
-        $this->assertSame('10', $unit->cluster_id);
+        $this->assertSame('E', $unit->cluster_id);
         $this->assertSame('Silvana Anita', $unit->resident->name);
         $this->assertSame('2', $unit->occupancy_id);
         $this->assertSame('AK', $unit->status_id);
@@ -79,10 +79,10 @@ class PenghuniDataTest extends TestCase
         $expected = fn (string $clusterId, int $number) => Unit::query()->where('cluster_id', $clusterId)->where('block_number', $number)
             ->whereNotNull('resident_id')->pluck('resident_id')->unique()->sort()->values()->all();
 
-        $this->assertNotEmpty($expected('12', 7));
-        $this->assertSame($expected('12', 7), $listed('E7'));
-        $this->assertSame($expected('10', 1), $listed('E1'));
+        $this->assertNotEmpty($expected('RE', 7));
+        $this->assertSame($expected('RE', 7), $listed('E7'));
+        $this->assertSame($expected('E', 1), $listed('E1'));
         // C1 tidak lagi ikut menampilkan penghuni blok C10/C11.
-        $this->assertSame($expected('09', 1), $listed('C1'));
+        $this->assertSame($expected('C', 1), $listed('C1'));
     }
 }

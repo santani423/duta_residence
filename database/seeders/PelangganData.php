@@ -14,7 +14,8 @@ use App\Services\ClusterCodeService;
  *    kode blok (E1 = Emerald 48 blok 1, E7 = Ruko Emerald blok 7).
  *
  * Format kolom pelanggan.csv (tanpa header):
- *  0 kode unit, 1 nama penghuni, 2 kode cluster, 3 blok, 4 nomor, 5 tipe properti (B/K/P),
+ *  0 kode unit, 1 nama penghuni, 2 kode angka cluster (legacy_id di config/cluster_codes.php),
+ *  3 blok, 4 nomor, 5 tipe properti (B/K/P),
  *  6 HP, 7 telepon, 8 alamat KTP, 9 kode kelurahan lama, 10 luas bangunan, 11 luas tanah,
  *  12 email, 13 tanggal serah terima, 14 hunian (1 dihuni / 2 kosong),
  *  15 status (1/2 aktif, 3/0 tidak aktif), 16 kode lain (12 = data uji di sistem lama).
@@ -45,7 +46,7 @@ class PelangganData
             return self::$units;
         }
 
-        $clusterIds = array_column(EstateSeeder::clusters(), 'id');
+        $clusterIds = array_flip(self::legacyClusterIds());
         $ledger = PenghuniData::units();
         $handle = fopen(database_path(self::CSV), 'r');
         $bySlot = [];
@@ -53,14 +54,15 @@ class PelangganData
 
         while (($row = fgetcsv($handle, escape: '\\')) !== false) {
             $row = array_pad(array_map(fn ($value) => trim((string) $value), $row), 17, '');
-            [$id, $name, $clusterId, $block, $lot] = $row;
+            [$id, $name, $legacyClusterId, $block, $lot] = $row;
+            $clusterId = $clusterIds[$legacyClusterId] ?? null;
             $block = strtoupper($block);
             $csvIds[] = $id;
 
             // Baris uji/contoh di sistem lama: kode bukan 5 digit, kode "00xxx", ditandai 12,
             // atau tidak punya cluster/blok/nomor yang valid.
             if (! preg_match('/^\d{5}$/', $id) || str_starts_with($id, '00') || $row[16] === '12'
-                || ! in_array($clusterId, $clusterIds, true) || $block === '' || $lot === '') {
+                || $clusterId === null || $block === '' || $lot === '') {
                 self::$skipped[] = $id === '' ? "(tanpa kode) {$name}" : "{$id} {$name}";
 
                 continue;
@@ -124,10 +126,12 @@ class PelangganData
     /**
      * Unit yang hanya tercatat di buku IPL. Cluster dibaca dari kode blok lewat ClusterCodeService;
      * kode tanpa nomor blok (mis. "JA") memakai cluster blok yang sama di pelanggan.csv. Kode unit
-     * baru melanjutkan nomor urut tertinggi cluster tersebut di pelanggan.csv.
+     * baru melanjutkan nomor urut tertinggi cluster tersebut di pelanggan.csv, dengan awalan kode
+     * angka lama seperti unit lain di file itu.
      */
     private static function ledgerOnlyUnits(array $ledger, array $units, array $csvIds): array
     {
+        $legacyIds = self::legacyClusterIds();
         $known = [];
         $blockClusters = [];
         $types = [];
@@ -148,7 +152,7 @@ class PelangganData
             $clusterId = $parsed['cluster']->id ?? (count($sameBlock) === 1 ? (string) $sameBlock[0] : null);
 
             if ($clusterId !== null) {
-                $lastSequence[$clusterId] ??= collect($csvIds)->filter(fn ($id) => preg_match('/^\d{5}$/', $id) && str_starts_with($id, $clusterId))
+                $lastSequence[$clusterId] ??= collect($csvIds)->filter(fn ($id) => preg_match('/^\d{5}$/', $id) && str_starts_with($id, $legacyIds[$clusterId]))
                     ->map(fn ($id) => (int) substr($id, 2))->max() ?? 0;
             }
 
@@ -158,7 +162,7 @@ class PelangganData
                 continue;
             }
 
-            $id = $clusterId.str_pad((string) ++$lastSequence[$clusterId], 3, '0', STR_PAD_LEFT);
+            $id = $legacyIds[$clusterId].str_pad((string) ++$lastSequence[$clusterId], 3, '0', STR_PAD_LEFT);
             // Tipe properti mengikuti tipe terbanyak di cluster yang sama.
             $clusterTypes = $types[$clusterId] ?? [PropertyType::BANGUNAN => 1];
             arsort($clusterTypes);
@@ -205,6 +209,12 @@ class PelangganData
         self::units();
 
         return self::$skipped;
+    }
+
+    /** @return array<string, string> kode cluster => kode angka sistem lama */
+    private static function legacyClusterIds(): array
+    {
+        return array_map(fn (array $cluster) => $cluster['legacy_id'], config('cluster_codes.clusters'));
     }
 
     private static function rank(array $unit): array

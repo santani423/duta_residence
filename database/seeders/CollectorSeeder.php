@@ -61,13 +61,13 @@ class CollectorSeeder extends Seeder
         $auditService = app(AuditService::class);
 
         // --- Active assignments: cluster / block / unit / resident scopes ---
-        $this->assign($budi, 'cluster', ['cluster_id' => '01'], $admin, 'high', 'Wilayah utama Dolomite.');
-        $this->assign($siti, 'cluster', ['cluster_id' => '02'], $admin, 'normal', 'Wilayah utama Garnet.');
+        $this->assign($budi, 'cluster', ['cluster_id' => 'D'], $admin, 'high', 'Wilayah utama Dolomite.');
+        $this->assign($siti, 'cluster', ['cluster_id' => 'G'], $admin, 'normal', 'Wilayah utama Garnet.');
         foreach (['03001', '03002', '03003'] as $unitId) {
             $this->assign($ahmad, 'unit', ['unit_id' => $unitId], $admin, 'normal', 'Unit prioritas tunggakan lama.');
         }
-        $this->assign($dewi, 'block', ['cluster_id' => '04', 'block' => 'AR1'], $admin, 'low', 'Blok AR1 Amber.');
-        $residentId = Unit::whereNotNull('resident_id')->where('cluster_id', '05')->first()?->resident_id;
+        $this->assign($dewi, 'block', ['cluster_id' => 'AR', 'block' => 'AR1'], $admin, 'low', 'Blok AR1 Amber.');
+        $residentId = Unit::whereNotNull('resident_id')->where('cluster_id', 'DD')->first()?->resident_id;
         if ($residentId) {
             $this->assign($maya, 'resident', ['resident_id' => $residentId], $admin, 'normal', 'Penghuni VIP, tetap diikuti selama cuti.');
         }

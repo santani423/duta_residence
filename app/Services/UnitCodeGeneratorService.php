@@ -8,9 +8,10 @@ use App\Models\Unit;
 class UnitCodeGeneratorService
 {
     /**
-     * Kode unit mengikuti pola yang sudah dipakai sistem sejak awal: prefix cluster_id
-     * (2 karakter) diikuti nomor urut 3 digit, mis. 07001, 07002, ... (lihat UnitSeeder).
-     * Kolom units.id adalah primary key string(5), jadi nomor urut dibatasi 3 digit.
+     * Kode unit baru = kode cluster diikuti nomor urut sampai total 5 karakter, mis. AX001 atau
+     * D0001 (kolom units.id adalah primary key string(5)). Unit hasil impor sistem lama tetap
+     * memakai kode angka (mis. 07001, lihat UnitSeeder) karena sudah menjadi username penghuni
+     * dan nomor VA, jadi nomor urut di sini tidak melanjutkan kode angka tersebut.
      *
      * Harus dipanggil di dalam DB::transaction() yang sama dengan Unit::create()-nya.
      * Untuk mencegah dua request Add Unit bersamaan mendapat kode yang sama, kita kunci
