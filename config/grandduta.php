@@ -9,6 +9,9 @@ return [
     ],
     'fonnte_token' => env('FONNTE_TOKEN'),
     'receipt_prefix' => env('RECEIPT_PREFIX', 'GD'),
+    // Kosong = seeder mengimpor seluruh buku IPL (2010 ke atas). Hanya untuk mempercepat seeding berulang
+    // di test (phpunit.xml): kuitansi yang seluruh periodenya sebelum nilai ini (YYYY-MM) dilewati.
+    'ipl_seed_from_period' => env('IPL_SEED_FROM_PERIOD'),
     'max_upload_size' => env('MAX_UPLOAD_SIZE', 5120),
     'app_version' => env('APP_VERSION', '1.0.0'),
     'support' => [

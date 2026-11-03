@@ -17,6 +17,15 @@ class PenghuniData
 {
     public const SOURCE = 'docs/final_revisi_1.md';
 
+    /** Buku IPL dimulai Januari 2010; tanggal sebelum tahun ini salah ketik (mis. "14 Feb 0202", "1944-02-17"). */
+    public const FIRST_YEAR = 2010;
+
+    /**
+     * Tahun saat buku dikonversi. Teks tanpa tahun lengkap seperti "Des-23" di kolom tanggal/periode
+     * ada yang terbaca sebagai tanggal di tahun ini ("2026-12-23").
+     */
+    public const CONVERTED_YEAR = 2026;
+
     /** Penulisan blok di pelanggan.csv yang berbeda dengan buku IPL. */
     private const BLOCK_ALIASES = ['AL-' => 'AL2'];
 
@@ -26,10 +35,19 @@ class PenghuniData
         'kwitansi ga ada', 'system error', 'unit available', 'unit available / grand duta', 'rumah contoh',
     ];
 
-    /** Tiga huruf awal nama bulan (Indonesia/Inggris) => nomor bulan. */
+    /** Tiga huruf awal nama bulan (Indonesia/Inggris, termasuk salah ketik yang ada di buku) => nomor bulan. */
     public const MONTHS = [
-        'jan' => 1, 'feb' => 2, 'peb' => 2, 'mar' => 3, 'apr' => 4, 'mei' => 5, 'may' => 5, 'jun' => 6, 'jul' => 7,
-        'agt' => 8, 'ags' => 8, 'agu' => 8, 'aug' => 8, 'sep' => 9, 'okt' => 10, 'oct' => 10, 'nov' => 11, 'nop' => 11,
+        'jan' => 1, 'jna' => 1, 'jau' => 1, 'jam' => 1,
+        'feb' => 2, 'peb' => 2, 'per' => 2, 'frb' => 2, 'fab' => 2, 'ffe' => 2, 'fev' => 2,
+        'mar' => 3, 'mat' => 3, 'mre' => 3, 'mae' => 3,
+        'apr' => 4, 'app' => 4, 'arp' => 4, 'apt' => 4, 'ape' => 4,
+        'mei' => 5, 'may' => 5, 'mai' => 5, 'mey' => 5, 'mer' => 5,
+        'jun' => 6, 'juu' => 6, 'jju' => 6,
+        'jul' => 7,
+        'agt' => 8, 'ags' => 8, 'agu' => 8, 'aug' => 8, 'ahu' => 8, 'aag' => 8,
+        'sep' => 9, 'srp' => 9, 'seo' => 9, 'spr' => 9, 'dep' => 9,
+        'okt' => 10, 'oct' => 10, 'okr' => 10, 'otk' => 10, 'ook' => 10,
+        'nov' => 11, 'nop' => 11,
         'des' => 12, 'dec' => 12,
     ];
 
@@ -47,6 +65,8 @@ class PenghuniData
 
     private static ?array $units = null;
 
+    private static ?array $paidDates = null;
+
     private static int $ignoredRows = 0;
 
     /**
@@ -63,6 +83,7 @@ class PenghuniData
         $units = [];
         $nameRank = [];
         $occupancyRank = [];
+        $paidDates = self::paidDates();
 
         foreach (self::rows(self::COLUMNS) as $line => $row) {
             $name = preg_replace('/\s+/', ' ', $row['name']);
@@ -77,7 +98,7 @@ class PenghuniData
             }
 
             $key = self::key($row['block'], $lot);
-            $rank = [self::date($row['paid_at']), $line];
+            $rank = [$paidDates[$line], $line];
             $units[$key] ??= ['block' => self::block($row['block']), 'lot' => $lot, 'name' => '', 'occupancy_id' => null];
 
             if ($rank >= ($nameRank[$key] ?? $rank)) {
@@ -120,9 +141,38 @@ class PenghuniData
     }
 
     /**
-     * Tanggal bayar sebagai YYYY-MM-DD untuk mengurutkan; '' bila tidak terbaca atau setelah hari ini.
-     * Selain ISO, buku IPL memakai "10 Mei 2012", "29 Des 17", "11 Apr'18", "Maret 2012",
-     * "26/01/2016", dan "24-08-22" (hari-bulan-tahun).
+     * Tanggal bayar yang bisa dipakai, di-key nomor baris file ('' bila tidak ada). Buku IPL urut
+     * kronologis, jadi tanggal di tahun konversi yang muncul jauh sebelum baris tahun itu (mis.
+     * "2026-01-12" di antara baris 2012) adalah hasil konversi yang kehilangan tahun aslinya.
+     *
+     * @return array<int, string>
+     */
+    public static function paidDates(): array
+    {
+        if (self::$paidDates !== null) {
+            return self::$paidDates;
+        }
+
+        $dates = [];
+        $previousYear = self::FIRST_YEAR;
+
+        foreach (self::rows(['TGL Pembayaran' => 'paid_at']) as $line => $row) {
+            $date = self::date($row['paid_at']);
+            if ($date !== '' && (int) substr($date, 0, 4) === self::CONVERTED_YEAR && $previousYear < self::CONVERTED_YEAR - 1) {
+                $date = '';
+            }
+
+            $dates[$line] = $date;
+            $previousYear = $date === '' ? $previousYear : (int) substr($date, 0, 4);
+        }
+
+        return self::$paidDates = $dates;
+    }
+
+    /**
+     * Tanggal bayar sebagai YYYY-MM-DD untuk mengurutkan; '' bila tidak terbaca, sebelum buku dimulai,
+     * atau setelah hari ini. Selain ISO, buku IPL memakai "10 Mei 2012", "29 Des 17", "11 Apr'18",
+     * "Maret 2012", "26/01/2016", dan "24-08-22" (hari-bulan-tahun).
      */
     public static function date(string $value): string
     {
@@ -130,9 +180,9 @@ class PenghuniData
 
         if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $value, $m)) {
             [, $year, $month, $day] = $m;
-        } elseif (preg_match('/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2}|\d{4})$/', $value, $m)) {
+        } elseif (preg_match('/^(\d{1,2})[\/-]+(\d{1,2})[\/-]+(\d{2}|\d{4})$/', $value, $m)) {
             [, $day, $month, $year] = $m;
-        } elseif (preg_match('/^(\d{1,2})?\s*-?\s*([a-z]{3})[a-z]*\s*[-\'=]?\s*(\d{2}|\d{4})$/', $value, $m) && isset(self::MONTHS[$m[2]])) {
+        } elseif (preg_match('/^(\d{1,2})?[\s=-]*([a-z]{3})[a-z]*\s*[-\'=]?\s*(\d{2}|\d{4})$/', $value, $m) && isset(self::MONTHS[$m[2]])) {
             [$day, $month, $year] = [$m[1] ?: 1, self::MONTHS[$m[2]], $m[3]];
         } else {
             return '';
@@ -141,7 +191,7 @@ class PenghuniData
         $year = strlen($year) === 2 ? '20'.$year : $year;
         $date = sprintf('%04d-%02d-%02d', $year, $month, $day);
 
-        return checkdate((int) $month, (int) $day, (int) $year) && $date <= date('Y-m-d') ? $date : '';
+        return (int) $year >= self::FIRST_YEAR && checkdate((int) $month, (int) $day, (int) $year) && $date <= date('Y-m-d') ? $date : '';
     }
 
     /**

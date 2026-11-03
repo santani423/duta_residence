@@ -22,6 +22,8 @@ class PaymentSeeder extends Seeder
      */
     public function run(): void
     {
+        IplData::ensureMemoryLimit();
+
         $loket = User::where('username', 'loket')->first() ?: User::where('username', 'root')->first();
         $payments = collect(IplData::payments());
         $units = Unit::with(['cluster', 'resident'])->whereIn('id', $payments->pluck('unit_id')->unique())->get()->keyBy('id');
@@ -30,34 +32,32 @@ class PaymentSeeder extends Seeder
         $code = fn (array $payment) => str_replace('.', '', substr($payment['receipt_number'], $prefixLength));
         $now = now();
 
-        $transactions = $payments->map(fn (array $payment) => [
-            'transaction_number' => self::TRANSACTION_PREFIX.$code($payment),
-            'invoice_number' => 'INV-IPL-'.$code($payment),
-            'unit_id' => $payment['unit_id'],
-            'subtotal' => $payment['amount'],
-            'tax' => 0,
-            'admin_fee' => 0,
-            'total' => $payment['amount'],
-            'currency' => 'IDR',
-            'payment_provider' => 'loket',
-            'payment_method' => $payment['payment_method_id'],
-            'status' => 'paid',
-            'paid_at' => $payment['paid_at'],
-            'created_by' => $loket?->id,
-            'created_at' => $now,
-            'updated_at' => $now,
-        ]);
-
-        // Bulk upsert (bukan PaymentService) karena jumlahnya ribuan dan seeder dijalankan ke
+        // Bulk upsert (bukan PaymentService) karena jumlahnya puluhan ribu dan seeder dijalankan ke
         // database remote. Timeline penagihan untuk transaksi ini bisa diisi belakangan lewat
         // `php artisan collection:backfill-activities`.
-        foreach ($transactions->chunk(500) as $chunk) {
-            PaymentTransaction::upsert($chunk->values()->all(), ['transaction_number'], ['unit_id', 'subtotal', 'total', 'payment_method', 'status', 'paid_at', 'updated_at']);
+        foreach ($payments->chunk(500) as $chunk) {
+            PaymentTransaction::upsert($chunk->map(fn (array $payment) => [
+                'transaction_number' => self::TRANSACTION_PREFIX.$code($payment),
+                'invoice_number' => 'INV-IPL-'.$code($payment),
+                'unit_id' => $payment['unit_id'],
+                'subtotal' => $payment['amount'],
+                'tax' => 0,
+                'admin_fee' => 0,
+                'total' => $payment['amount'],
+                'currency' => 'IDR',
+                'payment_provider' => 'loket',
+                'payment_method' => $payment['payment_method_id'],
+                'status' => 'paid',
+                'paid_at' => $payment['paid_at'],
+                'created_by' => $loket?->id,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ])->values()->all(), ['transaction_number'], ['unit_id', 'subtotal', 'total', 'payment_method', 'status', 'paid_at', 'updated_at']);
         }
 
         $transactionIds = PaymentTransaction::query()->where('transaction_number', 'like', self::TRANSACTION_PREFIX.'%')->pluck('id', 'transaction_number');
 
-        $receipts = $payments->map(function (array $payment) use ($units, $transactionIds, $code, $loket, $now) {
+        $receipt = function (array $payment) use ($units, $transactionIds, $code, $loket, $now) {
             $unit = $units->get($payment['unit_id']);
             $periods = array_keys($payment['shares']);
             $periodList = implode(', ', $periods);
@@ -88,10 +88,11 @@ class PaymentSeeder extends Seeder
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
-        });
+        };
 
-        foreach ($receipts->chunk(500) as $chunk) {
-            Receipt::upsert($chunk->values()->all(), ['number'], array_diff(array_keys($chunk->first()), ['number', 'created_at']));
+        foreach ($payments->chunk(500) as $chunk) {
+            $rows = $chunk->map($receipt)->values()->all();
+            Receipt::upsert($rows, ['number'], array_diff(array_keys($rows[0]), ['number', 'created_at']));
         }
 
         $this->seedAllocations($payments, $transactionIds, $code, $now);
@@ -103,13 +104,27 @@ class PaymentSeeder extends Seeder
      */
     private function seedAllocations($payments, $transactionIds, callable $code, $now): void
     {
+        // toBase: puluhan ribu tagihan terlalu boros memori bila dihidrasi menjadi model.
         $billingIds = Billing::query()
             ->whereIn('unit_id', $payments->pluck('unit_id')->unique())
+            ->toBase()
             ->get(['id', 'unit_id', 'year', 'month'])
-            ->mapWithKeys(fn (Billing $billing) => [sprintf('%s|%04d-%02d', $billing->unit_id, $billing->year, $billing->month) => $billing->id]);
+            ->mapWithKeys(fn (object $billing) => [sprintf('%s|%04d-%02d', $billing->unit_id, $billing->year, $billing->month) => $billing->id]);
+
+        // Nomor transaksi mengikuti urutan bayar per bulan, jadi bisa bergeser bila isi buku bertambah:
+        // pivot lama harus ikut dihapus supaya tagihan tidak tertaut ke pembayaran yang salah.
+        $seeded = PaymentTransaction::query()->where('transaction_number', 'like', self::TRANSACTION_PREFIX.'%')->select('id');
+        PaymentAllocation::query()->whereIn('payment_transaction_id', $seeded)->delete();
+        DB::table('billing_payment_transaction')->whereIn('payment_transaction_id', $seeded)->delete();
 
         $pivot = [];
         $allocations = [];
+        $flush = function () use (&$pivot, &$allocations): void {
+            DB::table('billing_payment_transaction')->insertOrIgnore($pivot);
+            PaymentAllocation::insert($allocations);
+            $pivot = [];
+            $allocations = [];
+        };
 
         foreach ($payments as $payment) {
             $transactionId = $transactionIds[self::TRANSACTION_PREFIX.$code($payment)] ?? null;
@@ -136,18 +151,13 @@ class PaymentSeeder extends Seeder
                     'created_at' => $now,
                     'updated_at' => $now,
                 ];
+
+                if (count($allocations) >= 500) {
+                    $flush();
+                }
             }
         }
 
-        PaymentAllocation::query()
-            ->whereIn('payment_transaction_id', PaymentTransaction::query()->where('transaction_number', 'like', self::TRANSACTION_PREFIX.'%')->select('id'))
-            ->delete();
-
-        foreach (array_chunk($pivot, 500) as $chunk) {
-            DB::table('billing_payment_transaction')->insertOrIgnore($chunk);
-        }
-        foreach (array_chunk($allocations, 500) as $chunk) {
-            PaymentAllocation::insert($chunk);
-        }
+        $flush();
     }
 }

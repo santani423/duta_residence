@@ -13,7 +13,7 @@ use Illuminate\Database\Seeder;
 class BillingSeeder extends Seeder
 {
     /**
-     * Tagihan IPL dari buku IPL manual 2024 sampai data terbaru (lihat IplData):
+     * Tagihan IPL dari seluruh buku IPL manual, 2010 sampai data terbaru (lihat IplData):
      *  - setiap bulan yang tercatat dibayar menjadi tagihan Lunas senilai uang yang dibayar
      *    (bulan yang dibayar lebih dari sekali - kekurangan/penambahan tagihan - digabung);
      *  - unit aktif di cluster yang ditagih lewat buku itu mendapat tagihan Belum Bayar untuk
@@ -23,6 +23,8 @@ class BillingSeeder extends Seeder
      */
     public function run(): void
     {
+        IplData::ensureMemoryLimit();
+
         $finance = User::where('username', 'finance')->first() ?: User::where('username', 'root')->first();
         $loket = User::where('username', 'loket')->first() ?: $finance;
         $rateScheduleService = app(ClusterRateScheduleService::class);
@@ -57,14 +59,11 @@ class BillingSeeder extends Seeder
                     continue;
                 }
 
-                $periodStart = CarbonImmutable::parse("{$period}-01");
-                $paidAt = CarbonImmutable::parse($payment['paid_at']);
-
                 $rows[$key] = $this->row($unit, $period, $share, $now, $finance) + [
                     'principal_paid' => $share,
                     'status_id' => Billing::STATUS_PAID,
                     // Pembayaran dimuka: tagihannya dianggap sudah diterbitkan saat dibayar.
-                    'approved_at' => $periodStart->min($paidAt),
+                    'approved_at' => min("{$period}-01", $payment['paid_at']),
                     'approval_notes' => 'Impor buku IPL manual.',
                     'paid_at' => $payment['paid_at'],
                     'receipt_number' => $payment['receipt_number'],
@@ -87,8 +86,12 @@ class BillingSeeder extends Seeder
             $period = sprintf('%04d-%02d', $row['year'], $row['month']);
             $paidByUnit[$unit->id][] = $row;
 
+            if ($period < IplData::ARREARS_START_PERIOD) {
+                continue;
+            }
+
             $rate = round($row['amount'] * $clusterRate($unit, $currentPeriod) / max(1, $clusterRate($unit, $period)));
-            if ($period >= IplData::START_PERIOD && $rate > 0 && fmod($rate, 2500) == 0) {
+            if ($rate > 0 && fmod($rate, 2500) == 0) {
                 $unitRates[$unit->id][] = $rate;
                 $blockRates[$unit->block][] = $rate;
             }
@@ -115,7 +118,7 @@ class BillingSeeder extends Seeder
                 $rows[$key] = $this->row($unit, $period, $rate($period), $now, $finance) + [
                     'principal_paid' => 0,
                     'status_id' => Billing::STATUS_UNPAID,
-                    'approved_at' => CarbonImmutable::parse("{$period}-01"),
+                    'approved_at' => "{$period}-01",
                     'approval_notes' => $period === $currentPeriod ? 'Tagihan bulan berjalan.' : 'Menunggak - belum tercatat di buku IPL manual.',
                     'paid_at' => null,
                     'receipt_number' => null,
@@ -182,10 +185,10 @@ class BillingSeeder extends Seeder
         $start = match (true) {
             $unit->handover_date !== null => $unit->handover_date->format('Y-m'),
             $paid !== [] => min(array_map(fn (array $row) => sprintf('%04d-%02d', $row['year'], $row['month']), $paid)),
-            default => IplData::START_PERIOD,
+            default => IplData::ARREARS_START_PERIOD,
         };
 
-        return max(IplData::START_PERIOD, $start);
+        return max(IplData::ARREARS_START_PERIOD, $start);
     }
 
     /** Nilai yang paling sering muncul; bila seri, yang muncul terakhir (pembayaran terbaru). */
