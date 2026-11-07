@@ -58,6 +58,12 @@ class IplData
         '/\b(?:ipkl|ipl|cicilan|ke|bulan|bln|tagihan|kekurangan|pembayaran|penambahan|tambahan|pelunasan|periode|status|huni|belum|blm|tidak|tdk|tunggakan|lunas|sisa|total|utang|terakhir|kavling|sblmny|free|disk|charge|biaya|iii|ii|iv)\b/',
     ];
 
+    /**
+     * Format kode NO. KWTANSI 2 yang dipakai sebagai nomor kuitansi: NN.YYYY.MM.n (buku manual),
+     * GD.YYYY.M.n (loket 2015-2020, bulan tanpa nol di depan), dan KW.YYYY.MM.nnnn (2024 sampai sekarang).
+     */
+    private const MANUAL_RECEIPT = '/^(?:NN\.20(?:1\d|2[0-6])\.(?:0[1-9]|1[0-2])\.\d+|GD\.20(?:1[5-9]|20)\.(?:[1-9]|1[0-2])\.\d+|KW\.202[4-6]\.(?:0[1-9]|1[0-2])\.\d{4})$/';
+
     /** Header tabel di final_revisi_1.md => nama field. */
     private const COLUMNS = [
         'Nama Penghuni' => 'name',
@@ -88,7 +94,7 @@ class IplData
      * Pembayaran hasil impor, urut tanggal bayar. shares berisi bulan yang dibayar (YYYY-MM) dengan
      * bagian nominalnya; sisa pembagian masuk ke bulan terakhir.
      *
-     * @return array<int, array{line: int, receipt_number: string, unit_id: string, payer_name: string, paid_at: string, amount: int, shares: array<string, int>, payment_method_id: string, payment_channel_id: string, cashier_name: ?string, notes: string}>
+     * @return array<int, array{line: int, receipt_number: string, manual_receipt: string, unit_id: string, payer_name: string, paid_at: string, amount: int, shares: array<string, int>, payment_method_id: string, payment_channel_id: string, cashier_name: ?string, notes: string}>
      */
     public static function payments(): array
     {
@@ -160,6 +166,7 @@ class IplData
 
             $payments[] = [
                 'line' => $line,
+                'manual_receipt' => $row['receipt'],
                 'unit_id' => $unitId,
                 'payer_name' => mb_substr(preg_replace('/\s+/', ' ', $row['name']), 0, 100),
                 'paid_at' => $paidAt,
@@ -398,21 +405,47 @@ class IplData
     }
 
     /**
-     * Nomor kuitansi mengikuti format ReceiptService (PREFIX.Y.m.urutan6digit), diurutkan per
-     * bulan tanggal bayar. Nomor kwitansi manual tidak dipakai langsung karena berulang setiap
-     * tahun dan ada yang ganda/kosong; nomor aslinya tetap tercatat di catatan kuitansi.
+     * Nomor kuitansi = NO. KWTANSI 2 dari buku bila formatnya dikenali (MANUAL_RECEIPT) dan belum
+     * dipakai pembayaran yang lebih dulu (urut tanggal bayar). Yang kosong, tidak dikenali, atau
+     * kodenya ganda di buku memakai nomor baru mengikuti format ReceiptService
+     * (PREFIX.Y.m.urutan6digit). Nomor buku tetap tercatat di catatan kuitansi.
      */
     private static function numberReceipts(array $payments): array
     {
         $prefix = config('grandduta.receipt_prefix', 'GD');
         $sequence = [];
+        $used = [];
 
-        foreach ($payments as &$payment) {
-            $base = $prefix.'.'.substr($payment['paid_at'], 0, 4).'.'.substr($payment['paid_at'], 5, 2).'.';
-            $sequence[$base] = ($sequence[$base] ?? 0) + 1;
-            $payment = ['receipt_number' => $base.str_pad((string) $sequence[$base], 6, '0', STR_PAD_LEFT)] + $payment;
+        $bookCodes = [];
+        foreach ($payments as $payment) {
+            if (($code = self::bookReceiptNumber($payment['manual_receipt'])) !== null) {
+                $bookCodes[$code] = true;
+            }
+        }
+
+        foreach ($payments as $index => $payment) {
+            $number = self::bookReceiptNumber($payment['manual_receipt']);
+
+            if ($number === null || isset($used[$number])) {
+                $base = $prefix.'.'.substr($payment['paid_at'], 0, 4).'.'.substr($payment['paid_at'], 5, 2).'.';
+                do {
+                    $sequence[$base] = ($sequence[$base] ?? 0) + 1;
+                    $number = $base.str_pad((string) $sequence[$base], 6, '0', STR_PAD_LEFT);
+                } while (isset($used[$number]) || isset($bookCodes[$number]));
+            }
+
+            $used[$number] = true;
+            $payments[$index] = ['receipt_number' => $number] + $payment;
         }
 
         return $payments;
+    }
+
+    /** Kode pertama di kolom NO. KWTANSI 2 bila formatnya dikenali; null bila tidak (kosong, "lompat", dll.). */
+    private static function bookReceiptNumber(string $cell): ?string
+    {
+        $code = trim(explode(' & ', $cell)[0]);
+
+        return preg_match(self::MANUAL_RECEIPT, $code) === 1 ? $code : null;
     }
 }

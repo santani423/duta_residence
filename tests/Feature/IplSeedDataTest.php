@@ -56,6 +56,14 @@ class IplSeedDataTest extends TestCase
         $this->assertSame('2010-01-01', Receipt::min('transaction_date'));
         $this->assertSame('2026-10-07', Receipt::max('transaction_date'));
 
+        // Nomor kuitansi = NO. KWTANSI 2 buku (seperti CSV final revisi 1), bukan nomor buatan.
+        $this->assertTrue(Receipt::where('number', 'KW.2026.10.0135')->where('resident_name', 'Djony')->exists());
+        $this->assertSame('Lim Luan Tju', Receipt::where('number', 'GD.2016.11.4564')->value('resident_name'));
+        // Kode yang sudah dipakai pembayaran lain (buku ganda) tidak ditimpa: Sujono dapat nomor baru.
+        $sujono = Receipt::where('resident_name', 'Sujono')->whereDate('transaction_date', '2016-11-04')->sole();
+        $this->assertStringStartsWith('GD.2016.11.', $sujono->number);
+        $this->assertNotSame('GD.2016.11.4564', $sujono->number);
+
         // Baris pertama buku: Dewi, E4/19, Rp112.500 untuk "Januari - Maret 2010".
         $unitId = $this->unitId('E4', '19');
         $billing = Billing::where('unit_id', $unitId)->where('year', 2010)->where('month', 2)->firstOrFail();

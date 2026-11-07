@@ -12056,21 +12056,21 @@
 | Agus Purwanto | J5 | 33 |  | 800.000,00 | 22/09/2016 | Sep s/d Des 2016 |  | NN.2016.09.63 |  |  |  |  | 1 |
 | Fredy Winata | J5 | 37 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2026.09.76 |  |  |  |  | 1 |
 | Albert Lauratius | J5 | 51 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2026.09.77 |  |  |  |  | 1 |
-| Firman Nugraha | J6 | 8 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2026.09.78 |  |  |  |  | 1 |
-| Dady Hagitianto | J6 | 10 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2026.09.79 |  |  |  |  | 1 |
-| Toni | J6 | 12 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2026.09.80 |  |  |  |  | 1 |
-| Willyanto | J6 | 16 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2026.09.81 |  |  |  |  | 1 |
-| Ari Agus | J6 | 18 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2026.09.82 |  |  |  |  | 1 |
-| Hardy Gunawan | J6 | 22 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2026.09.83 |  |  |  |  | 1 |
-| Candra Tan Dono | J6 | 26 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2026.09.84 |  |  |  |  | 1 |
-| Irwan Jaya Saputra | J6 | 28 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2026.09.85 |  |  |  |  | 1 |
-| Steven Setiawan | J6 | 32 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2026.09.86 |  |  |  |  | 1 |
-| Hendra Gunawan | J7 | 38 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2026.09.87 |  |  |  |  | 1 |
-| Femi Antonius | J7 | 52 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2026.09.88 |  |  |  |  | 1 |
-| Dedi Hermanto | J7 | 56 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2026.09.89 |  |  |  |  | 1 |
+| Firman Nugraha | J6 | 8 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2016.09.78 |  |  |  |  | 1 |
+| Dady Hagitianto | J6 | 10 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2016.09.79 |  |  |  |  | 1 |
+| Toni | J6 | 12 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2016.09.80 |  |  |  |  | 1 |
+| Willyanto | J6 | 16 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2016.09.81 |  |  |  |  | 1 |
+| Ari Agus | J6 | 18 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2016.09.82 |  |  |  |  | 1 |
+| Hardy Gunawan | J6 | 22 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2016.09.83 |  |  |  |  | 1 |
+| Candra Tan Dono | J6 | 26 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2016.09.84 |  |  |  |  | 1 |
+| Irwan Jaya Saputra | J6 | 28 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2016.09.85 |  |  |  |  | 1 |
+| Steven Setiawan | J6 | 32 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2016.09.86 |  |  |  |  | 1 |
+| Hendra Gunawan | J7 | 38 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2016.09.87 |  |  |  |  | 1 |
+| Femi Antonius | J7 | 52 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2016.09.88 |  |  |  |  | 1 |
+| Dedi Hermanto | J7 | 56 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2016.09.89 |  |  |  |  | 1 |
 | Semi | J7 | 58 |  | 400.000,00 | 22/09/2016 | Agst s/d Sept 2016 |  | NN.2016.09.64 |  |  |  |  | 2 |
-| Sandy Siswanto | J7 | 62 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2026.09.90 |  |  |  |  | 1 |
-| Asmuranto | J7 | 68 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2026.09.91 |  |  |  |  | 1 |
+| Sandy Siswanto | J7 | 62 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2016.09.90 |  |  |  |  | 1 |
+| Asmuranto | J7 | 68 |  | 200.000,00 | 22/09/2016 | 2026-09-16 |  | NN.2016.09.91 |  |  |  |  | 1 |
 | Danu Arimansyah | J6 | 3 |  | 200.000,00 |  | 2026-09-16 |  | NN.2026.09.92 |  |  |  |  | 1 |
 | Joko | J6 | 5 |  | 200.000,00 |  | 2026-09-16 |  | NN.2026.09.93 |  |  |  |  | 1 |
 | Ari Wibowo | J6 | 7 |  | 200.000,00 |  | 2026-09-16 |  | NN.2026.09.94 |  |  |  |  | 1 |
@@ -12151,7 +12151,7 @@
 | Insan Gunandar | C9 | 10 |  | 675.000,00 | 2016-10-25 | Agst s/d Okt 2016 | 579 | GD.2016.10.4535 | Tunai | Loket | Dwi |  |  |
 | Henry Tulus | DD2 | 5 |  | 250.000,00 | 2016-10-26 | Oktober 2016 | 580 | GD.2016.10.4536 | Transfer | Loket | Dwi |  |  |
 | E. A Yuliastried | J10 | 2 |  | 900.000,00 | 2016-10-28 | Juli s/d Desember 2016 | 581 | GD.2016.10.4537 | Transfer | Loket | Dwi |  |  |
-| Tjoa Giok Liang | C1 | 9 |  | 900.000,00 | 2016-10-28 | Juli s/d Oktober 2016 | 582 | GD. 2016.10.4538 | Tunai | Loket | Dwi |  |  |
+| Tjoa Giok Liang | C1 | 9 |  | 900.000,00 | 2016-10-28 | Juli s/d Oktober 2016 | 582 | GD.2016.10.4538 | Tunai | Loket | Dwi |  |  |
 | Octavianus | J1 | 3 |  | 200.000,00 | 29 Oktober 2016 | Okt 2016 |  | NN.2016.10.78 |  |  |  |  | 1 |
 | Rohmad | J1 | 5 |  | 200.000,00 | 29 Oktober 2016 | Okt 2016 |  | NN.2016.10.79 |  |  |  |  | 1 |
 | Sony | J1 | 7 |  | 200.000,00 | 29 Oktober 2016 | Okt 2016 |  | NN.2016.10.80 |  |  |  |  | 1 |
@@ -12203,7 +12203,7 @@
 | Johan | J8 | 8 |  | 200.000,00 | 2016-10-12 | Okt 2016 |  | NN.2016.10.122 |  |  |  | Kosong | 1 |
 | Winardi | J8 | 9 |  | 200.000,00 | 2016-10-12 | Okt 2016 |  | NN.2016.10.123 |  |  |  |  | 1 |
 | Yeng Min / Aphin | J8 | 10 |  | 200.000,00 | 30/9/2016 | Okt 2016 |  | NN.2016.10.124 |  |  |  |  | 1 |
-| Kiki Setiadi | J8 | 11 |  | 200.000,00 | 23/10/2016 | 2026-04-16 |  | NN.2026.04.35 |  |  |  |  | 1 |
+| Kiki Setiadi | J8 | 11 |  | 200.000,00 | 23/10/2016 | 2026-04-16 |  | NN.2016.04.35 |  |  |  |  | 1 |
 | Riki Setiawan | J8 | 12 |  | 200.000,00 | 23/10/2016 | Okt 2016 |  | NN.2016.10.125 |  |  |  |  | 1 |
 | Hendri Suwandi | J8 | 15 |  | 200.000,00 | 2016-10-09 | Okt 2016 |  | NN.2016.10.126 |  |  |  |  | 1 |
 | Lucky / Susan | J8 | 16 |  | 200.000,00 | 13/10/2016 | Okt 2016 |  | NN.2016.10.127 |  |  |  |  |  |
@@ -12268,14 +12268,14 @@
 | Ali | J9 | 60 |  | 200.000,00 | 29/10/2016 | Oktober 2016 |  | NN.2016.10.181 |  |  |  |  | 1 |
 | Johan Toni | J9 | 62 |  | 200.000,00 | 29/10/2016 | Oktober 2016 |  | NN.2016.10.182 |  |  |  |  | 1 |
 | Irvan Saputra | J9 | 66 |  | 200.000,00 | 29/10/2016 | Oktober 2016 |  | NN.2016.10.183 |  |  |  |  | 1 |
-| Hardi | J9 | 68 |  | 200.000,00 | 29/10/2016 | 2026-09-16 |  | NN.2026.09.128 |  |  |  |  | 1 |
+| Hardi | J9 | 68 |  | 200.000,00 | 29/10/2016 | 2026-09-16 |  | NN.2016.09.128 |  |  |  |  | 1 |
 | Justin / Bambang | J9 | 70 |  | 200.000,00 | 29/10/2016 | Oktober 2016 |  | NN.2016.10.184 |  |  |  |  | 1 |
 | Firmansyah | J9 | 72 |  | 200.000,00 | 29/10/2016 | Oktober 2016 |  | NN.2016.10.185 |  |  |  |  | 1 |
 | Denny | J9 | 76 |  | 200.000,00 | 29/10/2016 | Oktober 2016 |  | NN.2016.10.186 |  |  |  |  | 1 |
 | Antonius Darmawan | J9 | 78 |  | 400.000,00 | 29/10/2016 | Sep 2016 s/d Okt 2016 |  | NN.2016.09.77 |  |  |  |  | 2 |
-| Gugun | J9 | 80 |  | 200.000,00 | 29/10/2016 | 2026-09-16 |  | NN.2026.09.129 |  |  |  |  | 1 |
+| Gugun | J9 | 80 |  | 200.000,00 | 29/10/2016 | 2026-09-16 |  | NN.2016.09.129 |  |  |  |  | 1 |
 | Giok Hwa | Am1 | 1 |  | 250.000,00 | 2016-11-07 | November | 615 | NN.2016.11.02 |  |  |  |  |  |
-| Anto / Silviana Victoria | DD1 | 16 |  | 250.000,00 | 2016-10-31 | 2026-11-16 | 604 | GD. 2016.11.4550 | Transfer | Loket | Dwi |  |  |
+| Anto / Silviana Victoria | DD1 | 16 |  | 250.000,00 | 2016-10-31 | 2026-11-16 | 604 | GD.2016.11.4550 | Transfer | Loket | Dwi |  |  |
 | David Erwin Gunawan | C7 | 36 |  | 225.000,00 | 2016-10-31 | Oktober 2016 | 583 | GD.2016.10.4539 | Tunai | Loket | Dwi |  |  |
 | Kiki / Lucki | J5 | 53 |  | 200.000,00 | 2016-10-31 | Oktober 2016 | 584 | GD.2016.10.4540 | Tunai | Loket | Dwi |  |  |
 | Paristha Hary Utami | C7 | 60 |  | 1.350.000,00 | 2016-10-31 | Maret 2016 s/d Oktober 2016 | 585 | GD.2016.10.4541 | Debit | Loket | Dwi |  |  |
@@ -12308,7 +12308,7 @@
 | Sandi | E1 | 50 |  | 450.000,00 | 2016-11-05 | Nov s/d Jan 2017 | 612 | NN.2016.11.06 | Debit | Loket | Rini |  |  |
 | Herman | DD3 | 10 |  | 250.000,00 | 2016-11-05 | 2026-11-16 | 613 | GD.2016.11.4572 | Tunai | Loket | Rini |  |  |
 | Hendrian Wijaya | DD1 | 5 |  | 250.000,00 | 2016-11-05 | 2026-11-16 | 614 | GD.2016.11.4574 | Debit | Loket | Rini |  |  |
-| Giok Hwa | AM1 | 1 |  | 250.000,00 | 2016-11-07 | 2026-11-16 | 615 | GD.2016.11.4568. | Tunai | Loket | Fitri |  |  |
+| Giok Hwa | AM1 | 1 |  | 250.000,00 | 2016-11-07 | 2026-11-16 | 615 | GD.2016.11.4568 | Tunai | Loket | Fitri |  |  |
 | Edi Sugianto | JA | 10 |  | 250.000,00 | 2016-11-07 | 2026-11-16 | 616 | GD.2016.11.4566 | Tunai | Loket | Fitri |  |  |
 | Edi Sugianto | JA | 11 |  | 250.000,00 | 2016-11-07 | 2026-11-16 | 617 | GD.2016.11.4567 | Tunai | Loket | Fitri |  |  |
 | Francisca Magdalena | C5 | 6 |  | 225.000,00 | 2016-11-07 | 2026-11-16 | 618 | GD.2016.11.4569 | Tunai | Loket | Fitri |  |  |
@@ -12364,7 +12364,7 @@
 | Andreas Rusli | C2 | 21 |  | 1.012.500,00 | 2016-11-17 | Juni s/d Nov 2016 | 672 | GD.2016.11.4620 | Tunai | Loket | Fitri |  |  |
 | Erny Pohan/ Rita raura | JA | 19 |  | 1.000.000,00 | 2016-11-17 | Juni s/d Sept 2016 | 673 | GD.2016.11.4619 | Tunai | Loket | Fitri |  |  |
 | Djauhari | C7 | 32 |  | 675.000,00 | 2016-11-18 | Okt s/d Des 2016 | 674 | GD.2016.11.4621 | Tunai | Loket | Dwi |  |  |
-| Bunfong | C1 | 15 |  | 225.000,00 | 2016-11-19 | 2026-11-16 | 675 | Gd.2016.11.4622 | Debit | Loket | Budi |  |  |
+| Bunfong | C1 | 15 |  | 225.000,00 | 2016-11-19 | 2026-11-16 | 675 | GD.2016.11.4622 | Debit | Loket | Budi |  |  |
 | Rochmat Hajati | C10 | 5 |  | 225.000,00 | 2016-11-21 | 2026-11-16 | 676 | GD.2016.11.4623 | Transfer | Loket | Dwi |  |  |
 | Keng Sioe Nio | DD1 | 9 |  | 250.000,00 | 2016-11-21 | 2026-11-16 | 677 | GD.2016.11.4624 | Transfer | Loket | Dwi |  |  |
 | Solehudin | C8 | 7 |  | 3.262.500,00 | 2016-11-22 | Agst 2015 s/d Nov 2016 | 678 | GD.2016.11.4625 | Transfer | Loket | Dwi |  |  |
@@ -12591,7 +12591,7 @@
 | Bun Fong | C1 | 15 |  | 225.000,00 | 2016-12-19 | Desember 2016 | 768 | GD.2016.12.4824 | Debit | Loket | Dwi |  |  |
 | Rudy | DD1 | 12 |  | 250.000,00 | 2016-12-20 | Desember 2016 | 769 | GD.2016.12.4825 | Tunai | Loket | Dwi |  |  |
 | Rosia Daeli | C6 | 27 |  | 450.000,00 | 2016-12-20 | November s/d Desember 2016 | 770 | GD.2016.12.4826 | Debit | Loket | Dwi |  |  |
-| Hendri Handaka | DD3 | 7 |  | 250.000,00 | 2016-12-20 | Desember 2016 | 771 | Gd.2016.12.4827 | Debit | Loket | Dwi |  |  |
+| Hendri Handaka | DD3 | 7 |  | 250.000,00 | 2016-12-20 | Desember 2016 | 771 | GD.2016.12.4827 | Debit | Loket | Dwi |  |  |
 | Yohan Mangela | J3 | 12 |  | 1.000.000,00 | 2016-12-21 | Sept 2016 s/d Januari 2017 | 773 | GD.2016.12.4828 | Tunai | Loket | Dwi |  |  |
 | Widya Manggala Darma | AM2 | 15 |  | 250.000,00 | 2016-12-09 | Desember 2016 | 713 | GD.2016.12.4829 | Tunai | Door To Door | Safari |  |  |
 | Jovianto | AM2 | 12 |  | 250.000,00 | 2016-12-16 | Desember 2016 | 714 | GD.2016.12.4830 | Tunai | Door To Door | Safari |  |  |
@@ -12609,7 +12609,7 @@
 | Yohana | DD3 | 8 |  | 1.000.000,00 | 2016-12-29 | Nov 2016 s/d Feb 2017 | 794 | GD.2016.12.4840 | Tunai | Loket | Dwi |  |  |
 | Tjoa Giok Liang | C1 | 9 |  | 450.000,00 | 2016-12-29 | Nov s/d Des 2016 | 795 | GD.2016.12.4841 | Tunai | Loket | Dwi |  |  |
 | Ronald Yahya Mursalim | C1 | 2 |  | 675.000,00 | 2016-12-29 | Okt s/d Des 2016 | 796 | GD.2016.12.4842 | Debit | Loket | Dwi |  |  |
-| Pramudito Aji Wicaksono | E5 | 11 |  | 150.000,00 | 2016-12-30 | Januari 2017 | 797 | GF.2016.12.4843 | Tunai | Loket | Dwi |  |  |
+| Pramudito Aji Wicaksono | E5 | 11 |  | 150.000,00 | 2016-12-30 | Januari 2017 | 797 | GD.2016.12.4843 | Tunai | Loket | Dwi |  |  |
 | Astrid Amalia Noeraini | AL2 | 10 |  | 2.507.500,00 | 2016-12-30 | Jan 2016 s/d Des 2016 | 798 | GD.2016.12.4844 | Tunai | Loket | Dwi |  |  |
 | Sujono | DD2 | 15 |  | 250.000,00 | 2016-12-31 | Desember 2016 | 799 | GD.2016.12.4845 | Debit | Loket | Dwi |  |  |
 | Henri Tulus | DD2 | 5 |  | 250.000,00 | 2016-12-31 | Desember 2016 | 800 | GD.2016.12.4846 | Tunai | Loket | Dwi |  |  |
@@ -12841,7 +12841,7 @@
 | Maruli Tampubolon | E6 | 12 |  | 150.000,00 | 2017-01-30 | Januari 2017 | 898 | NN.2017.01.06 | Tunai | Loket | Dwi |  |  |
 | Vanny Afrialy | C5 | 7 |  | 675.000,00 | 2017-01-31 | Nov 16 - Jan 2017 | 899 | GD.2017.1.4936 | Debit | Loket | Dwi |  |  |
 | Jeffrey Bernard | AM2 | 19 |  | 4.560.000,00 | 2017-01-31 | Maret 2014 - Jan 2017 | 900 | GD.2017.1.4937 | TRF | Loket | Dwi |  |  |
-| Anto | DD1 | 16 |  | 250.000,00 | 2017-01-31 | 2026-02-17 | 901 | GD.2017.14938 | TRF | Loket | Dwi |  |  |
+| Anto | DD1 | 16 |  | 250.000,00 | 2017-01-31 | 2026-02-17 | 901 | GD.2017.1.4938 | TRF | Loket | Dwi |  |  |
 | Budi Dharma | C8 | 12 |  | 675.000,00 | 2017-02-01 | Oktober 2016-Desember 2016 | 902 | NN.2017.02.01 | tunai | loket | rini |  |  |
 | Fransisca | C5 | 6 |  | 225.000,00 | 2017-02-02 | 2026-02-17 | 903 | NN.2017.02.02 | tunai | loket | Budi |  |  |
 | Binawan Tandanu | JA | 8 |  | 250.000,00 | 2017-02-02 | 2026-02-17 | 904 | NN.2017.02.03 | tunai | loket | Budi |  |  |
@@ -12863,7 +12863,7 @@
 | Pramudito Aji Wicaksono | E5 | 11 |  | 150.000,00 | 2017-02-08 | Februari 2017 | 885 | NN.2017.02.19 | Tunai | loket | rini |  |  |
 | Ameng | C11 | 18 |  | 450.000,00 | 2017-02-08 | Desember 2016 - January 2017 | 886 | NN.2017.02.20 | Debit | loket | rini |  |  |
 | Rosia Deli | C6 | 27 |  | 225.000,00 | 2017-02-08 | 2026-01-17 | 887 | NN.2017.02.21 | Tunai | loket | rini |  |  |
-| Fitria Agustina | C1 | 8 |  | 4.027.500,00 | 2017-02-09 | Juli 2015 JANUARY 2016 (DISK 30% TDK HUNI) FEBRUARY 2016-February 2017 | 888 | No : GD.2017.2.4990 | Tunai | loket | rini |  |  |
+| Fitria Agustina | C1 | 8 |  | 4.027.500,00 | 2017-02-09 | Juli 2015 JANUARY 2016 (DISK 30% TDK HUNI) FEBRUARY 2016-February 2017 | 888 | GD.2017.2.4990 | Tunai | loket | rini |  |  |
 | Davin | DD1 | 7 |  | 250.000,00 | 2017-02-09 | 2026-02-17 | 889 | NN.2017.02.22 | Tunai | loket | rini |  |  |
 | Else | DD1 | 2 |  | 250.000,00 | 2017-02-09 | 2026-02-17 | 913 | NN.2017.02.23 | Transfer | loket |  |  |  |
 | Eksan Lombo | DD1 | 18 |  | 250.000,00 | 2017-02-09 | Februari 2017 | 914 | NN.2017.02.24 | Debit | Loket | Rini |  |  |
@@ -13107,8 +13107,8 @@
 | Soe Yin Ken | AX8 | 35 |  | 900.000,00 | 04-Maret-2017 | Maret 2017-Mei 2017 | 109 | GD.2017.3.5081 | Tunai | Loket | Noviya |  |  |
 | Pramudito Aji Wicaksono | E5 | 11 |  | 150.000,00 | 04-Maret-2017 | Maret 2017 | 110 | GD.2017.3.5082 | Tunai | Loket | Noviya |  |  |
 | Davin | DD1 | 7 |  | 250.000,00 | 06-Maret-2017 | Maret 2017 | 111 | GD.2017.3.5068 | Tunai | Loket | Noviya |  |  |
-| Tony Tanuwidjaya | AM2 | 1 |  | 400.000,00 | 06-Maret-2017 | February 2017- Maret 2017 | 112 | GD.2017.3.5069 dan GD.2017.3.5072 | Tunai | Loket | Noviya |  |  |
-| Sylvia Racharudin | AM2 | 2 |  | 400.000,00 | 06-Maret-2017 | February 2017- Maret 2017 | 113 | GD.2017.3.5070 dan GD.2017.3.5071 | Tunai | Loket | Noviya |  |  |
+| Tony Tanuwidjaya | AM2 | 1 |  | 400.000,00 | 06-Maret-2017 | February 2017- Maret 2017 | 112 | GD.2017.3.5069 & GD.2017.3.5072 | Tunai | Loket | Noviya |  |  |
+| Sylvia Racharudin | AM2 | 2 |  | 400.000,00 | 06-Maret-2017 | February 2017- Maret 2017 | 113 | GD.2017.3.5070 & GD.2017.3.5071 | Tunai | Loket | Noviya |  |  |
 | Nurul Hidayat | E5 | 7 |  | 450.000,00 | 06-Maret-2017 | January 2017-Maret 2017 | 115 | GD.2017.3.5073 | Debit | loket | Noviya |  |  |
 | Lili Indrawati | C6 | 51 |  | 225.000,00 | 07-Maret-2017 | Maret 2017 | 116 | GD.2017.3.5083 | Tunai | Loket | Noviya |  |  |
 | Teteng Periyanto | C3 | 9 |  | 900.000,00 | 07-Maret-2017 | Desember 2016 - Maret 2017 | 117 | GD.2017.3.5074 | Tunai | Loket | Noviya |  |  |
@@ -13855,7 +13855,7 @@
 | Lucky Setiandika | C5 | 3 |  | 450.000,00 | 2017-06-09 | May'17 - Jun'17 | 382 | GD.2017.6.5356 | Tunai | Loket | Metta |  |  |
 | Teteng Periyanto | C3 | 9 |  | 675.000,00 | 2017-06-09 | Apr'17 - Jun'17 | 383 | GD.2017.6.5357 | Debit | Loket | Metta |  |  |
 | Tan Yan Moy | C9 | 11 |  | 675.000,00 | 2017-06-09 | Apr'17 - Jun'17 | 384 | GD.2017.6.5358 | Tunai | Loket | Metta |  |  |
-| Jaya Iskandar | C9 | 8 |  | 225.000,00 | 2017-06-09 | 2026-05-17 | 385 | GD.2017.5359 | Debit | Loket | Metta |  |  |
+| Jaya Iskandar | C9 | 8 |  | 225.000,00 | 2017-06-09 | 2026-05-17 | 385 | GD.2017.6.5359 | Debit | Loket | Metta |  |  |
 | Dr. Rosita Hutadjulu | C2 | 23 |  | 675.000,00 | 2017-06-09 | Apr'17 - Jun'17 | 386 | GD.2017.6.5360 | Tunai | Loket | Metta |  |  |
 | Tanty Oktavia | C6 | 35 |  | 675.000,00 | 2017-06-09 | Jun'17 - Agst'17 | 387 | GD.2017.6.5361 | Debit | Loket | Metta |  |  |
 | Iwan Simatupang | C5 | 9 |  | 150.000,00 | 2017-06-09 | Apr'17 - May'17 | 388 | GD.2017.6.5362 | Tunai | Loket | Metta |  |  |
@@ -14030,7 +14030,7 @@
 | Davin | DD1 | 7 |  | 250.000,00 | 2017-07-21 | 2026-07-17 | 579 | GD.2017.7.5514 | Tunai | Loket | Metta |  |  |
 | Cancel |  |  |  |  |  |  | 580 | NN.YYYY.00.240 |  |  |  |  |  |
 | Endah Siwi Kurniasih | C5 | 10 |  | 1.575.000,00 | 2017-07-21 | Jan'17 - Jul'17 | 581 | GD.2017.7.5515 | Transfer | Loket | Metta |  |  |
-| Bong Lu En | AM2 | 9 |  | 250.000,00 | 2017-07-21 | 2026-06-17 | 582 | GD.2017.7..5516 | Tunai | Loket | Metta |  |  |
+| Bong Lu En | AM2 | 9 |  | 250.000,00 | 2017-07-21 | 2026-06-17 | 582 | GD.2017.7.5516 | Tunai | Loket | Metta |  |  |
 | Tintin Surya | AM2 | 10 |  | 250.000,00 | 2017-07-28 | 2026-06-17 | 523 | NN.2017.07.12 | Tunai | DTD | Safari | Ok |  |
 | Listiani | C6 | 61 |  | 225.000,00 | 2017-07-24 | 2026-07-17 | 583 | GD.2017.7.5517 | Tunai | Loket | Metta |  |  |
 | Erik Sagita | DD2 | 16 |  | 250.000,00 | 2017-07-25 | 2026-07-17 | 584 | GD.2017.7.5518 | Debit | Loket | Metta |  |  |
@@ -14173,7 +14173,7 @@
 | Ricky Nurdiansyah | C10 | 8 |  | 1.350.000,00 | 2017-08-29 | Apr'17 - Sept'17 | 693 | GD.2017.8.5625 | Debit | Loket | Metta |  |  |
 | Francisca Magdalena | C5 | 6 |  | 225.000,00 | 2017-08-30 | 2026-09-17 | 694 | GD.2017.8.5626 | Tunai | Loket | Metta |  |  |
 | Hadianto | C8 | 11 |  | 225.000,00 | 2017-08-30 | 2026-08-17 | 695 | GD.2017.8.5627 | Tunai | Loket | Metta |  |  |
-| Bambang Supriyadi | C7 | 38 |  | 450.000,00 | 2017-08-31 | Jun'17 - Jul'17 | 696 | GD.2017.85628 | Debit | Loket | Metta |  |  |
+| Bambang Supriyadi | C7 | 38 |  | 450.000,00 | 2017-08-31 | Jun'17 - Jul'17 | 696 | GD.2017.8.5628 | Debit | Loket | Metta |  |  |
 | Dariyono | E1 | 26 |  | 300.000,00 | 2017-09-04 | Jan'17 - Feb'17 | 697 | GD.2017.9.5629 | Tunai | Loket | Metta |  |  |
 | Anita Tanuwidjaya | C1 | 1 |  | 225.000,00 | 2017-09-04 | 2026-08-17 | 698 | NN.2017.09.01 | Tunai | Loket | Metta |  |  |
 | Meyin | AX8 | 10 |  | 1.200.000,00 | 2017-09-04 | Jun'17 - Sept'17 | 699 | GD.2017.9.5620 | Debit | Loket | Metta |  |  |
@@ -15627,8 +15627,8 @@
 | Andreas Budiman Sugiarto | J7 | 62 |  | 200.000,00 | 19 Des 2017 | Des'17 | 1254 | GD.2017.12.5934 | Tunai | Loket | Metta |  |  |
 | Bun Fong | C1 | 15 |  | 225.000,00 | 19 Des 2017 | Des'17 | 1255 | GD.2017.12.5935 | Tunai | Loket | Metta |  |  |
 | Hajati | JA | 20 |  | 250.000,00 | 19 Des 2017 | Des'17 | 1256 | GD.2017.12.5936 | Tunai | Loket | Metta |  |  |
-| Yenni Susanti | C2 | 21 |  | 225.000,00 | 20 Des 2017 | Des'17 | 1257 | GD.2017.12'5937 | Tunai | Loket | Ratu |  |  |
-| Ferry | DD2 | 12 |  | 1.875.000,00 | 20 Des 2017 | Okt'16 - Des'17 | 1258 | GD..2017.12.5938 | Tunai | Loket | Ratu |  |  |
+| Yenni Susanti | C2 | 21 |  | 225.000,00 | 20 Des 2017 | Des'17 | 1257 | GD.2017.12.5937 | Tunai | Loket | Ratu |  |  |
+| Ferry | DD2 | 12 |  | 1.875.000,00 | 20 Des 2017 | Okt'16 - Des'17 | 1258 | GD.2017.12.5938 | Tunai | Loket | Ratu |  |  |
 | Anastasia Megawati/ Lilis | AL2 | 7 |  | 315.000,00 | 21 Des 2017 | Cicilan 2 ( Des'15 - Mei'16 ) | 1259 | NN.2017.12.47 | Transfer | loket | Ratu |  |  |
 | Budhi Cahyadi | DD3 | 9 |  | 250.000,00 | 21 Des 2017 | Des'17 | 1260 | GD.2017.12.5939 | Tunai | Loket | Ratu |  |  |
 | Wagimin | AL2 | 12 |  | 250.000,00 | 21 Des 2017 | Des'17 | 1261 | GD.2017.12.5940 | Tunai | Loket | Ratu |  |  |
@@ -15812,7 +15812,7 @@
 | Euis Tuty | JA | 21 |  | 250.000,00 | 2018-01-04 | Januari 2018 | 1305 | GD.2018.1.5979 | Tunai | Loket | Ratu |  |  |
 | Francisca Magdalena | C5 | 6 |  | 225.000,00 | 05 Januari 2018 | Januari 2018 | 1306 | GD.2018.1.5980 | Tunai | Loket | Ratu |  |  |
 | Navis Mei Herawati | E5 | 16 |  | 150.000,00 | 05 Januari 2018 | Januari 2018 | 1307 | GD.2018.1.5981 | Tunai | Loket | Ratu |  |  |
-| Menywati Swatan | C7 | 52 |  | 450.000,00 | 05 Januari 2018 | Des'17 - Jan'18 | 1308 | GD.2018.1.5982/3 | Debit | Loket | Ratu |  |  |
+| Menywati Swatan | C7 | 52 |  | 450.000,00 | 05 Januari 2018 | Des'17 - Jan'18 | 1308 | GD.2018.1.5982 & GD.2018.1.5983 | Debit | Loket | Ratu |  |  |
 | Tanty Oktavia | C6 | 35 |  | 675.000,00 | 05 Januari 2018 | Jan'18 - Mar'18 | 1309 | GD.2018.1.5984 | Debit | Loket | Ratu |  |  |
 | Gilang Andrian | C9 | 3 |  | 450.000,00 | 06 Januari 2018 | Nov'17 - Des'17 | 1310 | GD.2018.1.5985 | Transfer | Loket | Ratu |  |  |
 | Risma Dian Yonatha | C6 | 39 |  | 450.000,00 | 06 Januari 2018 | Des'17 - Jan'18 | 1311 | GD.2018.1.5986 | Transfer | Loket | Ratu |  |  |
@@ -15864,7 +15864,7 @@
 | Leo Baratanata | DD1 | 15 |  | 250.000,00 | 2018-01-11 | Jan'18 | 1323 | GD.2018.1.5998 | Transfer | Loket | Ratu |  |  |
 | Lucky Setiandika | C5 | 3 |  | 450.000,00 | 2018-01-11 | Jan'18 - Feb'18 | 1324 | GD.2018.1.5999 | Tunai | Loket | Ratu |  |  |
 | Binawan Tandanu | JA | 8 |  | 250.000,00 | 2018-01-11 | Des'17 | 1325 | GD.2018.1.6000 | Tunai | Loket | Ratu |  |  |
-| Go Wie Gwan | AX8 | 12 |  | 3.000.000,00 | 2018-01-11 | April '17 - Jan'18 | 1326 | GD.2018.16001 | Tunai | Loket | Ratu |  |  |
+| Go Wie Gwan | AX8 | 12 |  | 3.000.000,00 | 2018-01-11 | April '17 - Jan'18 | 1326 | GD.2018.1.6001 | Tunai | Loket | Ratu |  |  |
 | Heri | DD3 | 8 |  | 250.000,00 | 2018-01-11 | Jan'18 | 1327 | GD.2018.1.6002 | Tunai | Loket | Ratu |  |  |
 | Ristianti | C3 | 17 |  | 225.000,00 | 2018-01-11 | Des'17 | 1328 | GD.2018.1.6003 | Tunai | Loket | Ratu |  |  |
 | Rochmat Hajati | C10 | 5 |  | 225.000,00 | 2018-01-12 | Jan'18 | 1329 | GD.2018.1.6004 | Transfer | Loket | Ratu |  |  |
@@ -15873,7 +15873,7 @@
 | Rudianto Jap | JA | 23 |  | 800.000,00 | 2018-01-12 | Sep'15 - Des'15 | 1332 | NN.2018.01.39 | Debet | Loket | Ratu |  |  |
 | Rudianto Jap | JA | 23 |  | 200.000,00 | 2018-01-10 | Agustus'15 | 1333 | NN.2018.01.40 | Transfer | loket | Ratu |  |  |
 | Handrian Wijaya | DD1 | 5 |  | 250.000,00 | 2018-01-13 | 2026-01-18 | 1334 | GD.2018.1.6007 | Tunai | Loket | Ratu |  |  |
-| Bambang Supriyadi | C7 | 38 |  | 225.000,00 | 2018-01-13 | 2026-01-18 | 1335 | GD..2018.16008 | Debet | Loket | Ratu |  |  |
+| Bambang Supriyadi | C7 | 38 |  | 225.000,00 | 2018-01-13 | 2026-01-18 | 1335 | GD.2018.1.6008 | Debet | Loket | Ratu |  |  |
 | Linah | DD2 | 19 |  | 250.000,00 | 2018-01-13 | Des'17 | 1336 | GD.2018.1.6009 | Tunai | Loket | Ratu |  |  |
 | Anita Darsono Hadi | C1 | 7 |  | 2.700.000,00 | 2018-01-15 | Feb'17 - Jan'18 | 1337 | GD.2018.1.6010 | Transfer | Loket | Ratu |  |  |
 | Jolinna Desmiany | C1 | 6 |  | 225.000,00 | 2018-01-15 | Jan'18 | 1338 | GD.2018.1.6011 | Transfer | Loket | Ratu |  |  |
@@ -15883,7 +15883,7 @@
 | Tonny Tanuwidjaja | AM2 | 1 |  | 200.000,00 | 2018-01-15 | Jan'18 | 1342 | GD.2018.1.6015 | Tunai | Loket | Ratu |  |  |
 | Silvia Racharudin | AM2 | 2 |  | 200.000,00 | 2018-01-15 | jan'18 | 1343 | GD.2018.1.6016 | Tunai | Loket | Ratu |  |  |
 | Ernest Kurniawan | DD2 | 8 |  | 250.000,00 | 2018-01-16 | Jan'18 | 1344 | GD.2018.1.6017 | Transfer | Loket | Ratu |  |  |
-| Rudy | DD1 | 12 |  | 250.000,00 | 2018-01-16 | Jan'18 | 1345 | GD..2018.1.6018 | Tunai | Loket | Ratu |  |  |
+| Rudy | DD1 | 12 |  | 250.000,00 | 2018-01-16 | Jan'18 | 1345 | GD.2018.1.6018 | Tunai | Loket | Ratu |  |  |
 | Rudianto Jap ( ko Leo ) | JA | 23 |  | 257.500,00 | 2018-01-16 | Jan'18 | 1346 | NN.2018.01.41 | Debit | Loket | Ratu |  |  |
 | Fastin Solicha | C11 | 30 |  | 675.000,00 | 2018-01-16 | Nov'17 - Jan'18 | 1347 | GD.2018.1.6019 | Tunai | Loket | Ratu |  |  |
 | Alfin | C8 | 16 |  | 675.000,00 | 2018-01-16 | Nov'17 - Jan'18 | 1348 | GD.2018.1.6020 | Tunai | Loket | Ratu |  |  |
@@ -15891,11 +15891,11 @@
 | Herawati | AM1 | 8 |  | 500.000,00 | 2018-01-17 | Jan'18 - Feb'18 | 1350 | GD.2018.1.6022 | Debit | Loket | Mba Rini |  |  |
 | Rosia Daeli | C6 | 27 |  | 225.000,00 | 2018-01-17 | Jan'18 | 1351 | GD.2018.1.6023 | Tunai | Loket | Mba Rini |  |  |
 | Ola | C9 | 16 |  | 450.000,00 | 2018-01-18 | jan'18 - Feb'18 | 1352 | GD.2018.1.6024 | Tunai | Loket | Ratu |  |  |
-| Hendry Handaka | DD3 | 7 |  | 500.000,00 | 2018-01-18 | Des'17 - Jan'18 | 1353 | GD. 2018.1.6025 | Debet | Loket | Ratu |  |  |
+| Hendry Handaka | DD3 | 7 |  | 500.000,00 | 2018-01-18 | Des'17 - Jan'18 | 1353 | GD.2018.1.6025 | Debet | Loket | Ratu |  |  |
 | Anders Budiman | J7 | 62 |  | 200.000,00 | 2018-01-18 | Jan'18 | 1354 | GD.2018.1.6026 | Tunai | Loket | Ratu |  |  |
 | Donny Jacobus | DD1 | 8 |  | 250.000,00 | 2018-01-18 | Jan'18 | 1355 | GD.2018.1.6027 | Tunai | Loket | Ratu |  |  |
 | Wagimin | AL2 | 12 |  | 250.000,00 | 2018-01-19 | Januari 2018 | 1356 | GD.2018.1.6028 | Tunai | Loket | Ratu |  |  |
-| Prasojo Eko Susilo | AX8 | 16 |  | 2.700.000,00 | 2018-01-19 | April'17 - Maret'18 | 1358 | GD..2018.1.6029 | Tunai | Loket | Ratu |  |  |
+| Prasojo Eko Susilo | AX8 | 16 |  | 2.700.000,00 | 2018-01-19 | April'17 - Maret'18 | 1358 | GD.2018.1.6029 | Tunai | Loket | Ratu |  |  |
 | Indra Afriana | AX8 | 17 |  | 1.200.000,00 | 2018-01-19 | Juni'17 - Sep'17 | 1359 | GD.2018.1.6030 | Tunai | Loket | Ratu |  |  |
 | Lisa Loandha Loa | C11 | 20 |  | 225.000,00 | 2018-01-20 | Jan'18 | 1360 | GD.2018.1.6031 | Tunai | Loket | Ratu |  |  |
 | Dedi Sugiarto | DD1 | 19 |  | 250.000,00 | 2018-01-20 | Jan'18 | 1361 | GD.2018.1.6032 | Transfer | Loket | Ratu |  |  |
@@ -16068,7 +16068,7 @@
 | Antinnius Darmawan | J9 | 78 |  | 200.000,00 | 2018-01-30 | Jan'18 |  | NN.2018.01.185 |  |  |  |  |  |
 | Gugun | J9 | 80 |  | 200.000,00 | 2018-01-30 | Jan'18 |  | NN.2018.01.186 |  |  |  |  |  |
 | Syamsul Musbahul | DD2 | 20 |  | 500.000,00 | 2018-01-30 | Jan'18 - Feb'18 | 1387 | GD.2018.1.6056 | Debit | Loket | Ratu |  |  |
-| Soe Yin Ken | AX8 | 35 |  | 2.100.000,00 | 2018-01-30 | Agus'17 - Feb'18 | 1388 | GD.2018..1.6057 | Tunai | Loket | Ratu |  |  |
+| Soe Yin Ken | AX8 | 35 |  | 2.100.000,00 | 2018-01-30 | Agus'17 - Feb'18 | 1388 | GD.2018.1.6057 | Tunai | Loket | Ratu |  |  |
 | Teguh Santoso | C3 | 3 |  | 225.000,00 | 2018-01-31 | 2026-01-18 | 1389 | GD.2018.1.6058 | tunai | Loket | Ratu |  |  |
 | Hadiyanto | C8 | 11 |  | 225.000,00 | 2018-01-31 | 2026-01-18 | 1390 | GD.2018.1.6059 | Tunai | Loket | Ratu |  |  |
 | Silviana Victoria | DD1 | 16 |  | 250.000,00 | 2018-02-01 | 2026-02-18 | 1391 | GD.2018.2.6061 | Transfer | Loket | Ratu |  |  |
@@ -16167,7 +16167,7 @@
 | Purnama Sari Djajalaksana | DD3 | 6 |  | 1.000.000,00 | 2018-02-13 | Des'17 - Mart'18 | 1502 | GD.2018.2.6112 | Debet | Loket | Ratu |  |  |
 | Yosafat Setiawan | AX5 | 18 |  | 300.000,00 | 2018-02-14 | 2026-02-18 | 1503 | GD.2018.2.6113 | Tunai | Loket | Ratu |  |  |
 | Tan Yan Moy | C9 | 11 |  | 450.000,00 | 2018-02-15 | Jan'18 - Feb'18 | 1504 | GD.2018.2.6114 | Tunai | Loket | Ratu |  |  |
-| Franciska Magdalena | C5 | 6 |  | 225.000,00 | 2018-02-15 | Feb'18 | 1505 | GD..2018.2.6115 | Tunai | Loket | Ratu |  |  |
+| Franciska Magdalena | C5 | 6 |  | 225.000,00 | 2018-02-15 | Feb'18 | 1505 | GD.2018.2.6115 | Tunai | Loket | Ratu |  |  |
 | Menywati Swatan | C7 | 52 |  | 225.000,00 | 2018-02-15 | Feb'18 | 1506 | GD.2018.2.6116 | Tunai | Loket | Ratu |  |  |
 | Ernest Kurniawan | DD2 | 8 |  | 250.000,00 | 2018-02-15 | Feb'18 | 1607 | GD.2018.2.6117 | Tunai | Loket | Ratu |  |  |
 | Darma | E7 | 3 |  | 600.000,00 | 2018-02-15 | Jan'18 - Feb'18 | 1508 | GD.2018.2.6118 | Tunai | Loket | Ratu |  |  |
@@ -16213,7 +16213,7 @@
 | Teguh Santoso | C3 | 3 |  | 225.000,00 | 2018-02-28 | 2026-02-18 | 1547 | GD.2018.2.6152 | Tunai | Loket | Ratu |  |  |
 | Aulia Ayu Lestari | AX3 | 31 |  | 900.000,00 | 2018-02-28 | Maret'18 - Mei'18 | 1548 | GD.2018.2.6153 | Transfer | Loket | Ratu |  |  |
 | Andrew | C8 | 3 |  | 225.000,00 | 2018-03-03 | Des'17 | 1549 | GD.2018.3.6154 | Transfer | Loket | Ratu |  |  |
-| Yulin Chusnul Chotimah | AX8 | 39 |  | 900.000,00 | 2018-03-03 | Jan'18 - Mar'18 | 1550 | GD..2018.3.6155 | Tunai | Loket | Ratu |  |  |
+| Yulin Chusnul Chotimah | AX8 | 39 |  | 900.000,00 | 2018-03-03 | Jan'18 - Mar'18 | 1550 | GD.2018.3.6155 | Tunai | Loket | Ratu |  |  |
 | Lili Indrawati | C6 | 51 |  | 225.000,00 | 2018-03-03 | Feb'18 | 1551 | GD.2018.3.6156 | Tunai | Loket | Ratu |  |  |
 | Hidayat Halim | J6 | 30 |  | 400.000,00 | 2018-03-03 | Jan'18 - Feb'18 | 1552 | GD.2018.3.6157 | Tunai | Loket | Ratu |  |  |
 | Leo Baranata | DD1 | 15 |  | 250.000,00 | 2018-03-03 | Mar'18 | 1553 | GD.2018.3.6158 | Transfer | Loket | Ratu |  |  |
@@ -16260,7 +16260,7 @@
 | Buddy Jaya Negara | C1 | 11 |  | 225.000,00 | 2018-03-07 | Mar'18 | 1575 | NN.2018.03.22 | Tunai | Loket | Ratu |  |  |
 | Hendry Handaka | DD3 | 7 |  | 500.000,00 | 2018-03-08 | Feb'18 - Mar'18 | 1576 | GD.2018.3.6177 | Debit | Loket | Ratu |  |  |
 | Rheza Novianto | DD3 | 1 |  | 1.000.000,00 | 2018-03-08 | Des'17 - Mar'18 | 1577 | GD.2018.3.6178 | Transfer | Loket | Ratu |  |  |
-| Lucky Setiandika | C5 | 3 |  | 450.000,00 | 2018-03-08 | Mar'18 - Apr'18 | 1578 | GD.2018..3.6179 | Tunai | Loket | Ratu |  |  |
+| Lucky Setiandika | C5 | 3 |  | 450.000,00 | 2018-03-08 | Mar'18 - Apr'18 | 1578 | GD.2018.3.6179 | Tunai | Loket | Ratu |  |  |
 | Yuliani | C3 | 5 |  | 450.000,00 | 2018-03-08 | Feb'18 - Mar'18 | 1579 | GD.2018.3.6180 | Debit | Loket | Ratu |  |  |
 | Vina Karya | AL2 | 11 |  | 250.000,00 | 2018-03-08 | Feb'18 | 1495 | NN.2018.03.23 | Tunai | Loket | Sobari |  |  |
 | Kloris Gym | AM2 | 7 |  | 250.000,00 | 2018-03-08 | Feb'18 | 1496 | NN.2018.03.24 | Tunai | Loket | Sobari |  |  |
@@ -16621,7 +16621,7 @@
 | Petris | C6 | 23 |  | 225.000,00 | 2018-06-02 | Jun'18 | 2023 | NN.2018.06.01 | Tunai | Loket | Ratu |  |  |
 | Sofyan Riawan | AX3 | 7 |  | 900.000,00 | 2018-06-02 | Apr'18 - Jun'18 | 2024 | NN.2018.06.02 | Tunai | Loket | Ratu |  |  |
 | Ernest | DD2 | 8 |  | 250.000,00 | 2018-06-04 | Juni 2018 | 2025 | GD.2018.6.6428 | Debit | Loket | Ratu |  |  |
-| Chalid Hendra | C11 | 28 |  | 675.000,00 | 2018-06-04 | Apr'18 - Jun'18 | 2026 | GD.2018.6.64.29 | Debit | Loket | Ratu |  |  |
+| Chalid Hendra | C11 | 28 |  | 675.000,00 | 2018-06-04 | Apr'18 - Jun'18 | 2026 | GD.2018.6.6429 | Debit | Loket | Ratu |  |  |
 | Ronald Yahya | C1 | 2 |  | 225.000,00 | 2018-06-04 | May'18 | 2027 | GD.2018.6.6430 | Transfer | Loket | Ratu |  |  |
 | Leo Baratanata | DD1 | 15 |  | 250.000,00 | 2018-06-04 | Juni 2018 | 2028 | GD.2018.6.6431 | Transfer | Loket | Ratu |  |  |
 | Andrew | C8 | 3 |  | 450.000,00 | 2018-06-04 | Apr'18 - May'18 | 2029 | GD.2018.6.6432 | Transfer | Loket | Ratu |  |  |
@@ -16645,7 +16645,7 @@
 | Noviani Haryanto | C11 | 10 |  | 225.000,00 | 2018-06-06 | Jun'18 | 2047 | GD.2018.6.6445 | Tunai | Loket | Ratu |  |  |
 | Febri Kurniawan | DD3 | 5 |  | 750.000,00 | 2018-06-06 | May'18 - Jul'18 | 2048 | GD.2018.6.6446 | Debit | Loket | Ratu |  |  |
 | Ameng | C11 | 18 |  | 450.000,00 | 2018-06-06 | May'18 - Jun'18 | 2049 | GD.2018.6.6447 | Debit | Loket | Ratu |  |  |
-| Meyin | AX8 | 10 |  | 1.200.000,00 | 2018-06-06 | Feb'18 - May'18 | 2050 | GF.2018.6.6448 | Debit | Loket | Ratu |  |  |
+| Meyin | AX8 | 10 |  | 1.200.000,00 | 2018-06-06 | Feb'18 - May'18 | 2050 | GD.2018.6.6448 | Debit | Loket | Ratu |  |  |
 | Ristianti | C3 | 17 |  | 225.000,00 | 2018-06-06 | Jun'18 | 2051 | GD.2018.6.6451 | Tunai | Loket | Ratu |  |  |
 | Sonya Elia Candra | AX5 | 20 |  | 300.000,00 | 2018-06-07 | Jun'18 | 2052 | GD.2018.6.6449 | Tunai | Loket | Ratu |  |  |
 | Marliana Sari | AX5 | 6 |  | 300.000,00 | 2018-06-07 | Jun'18 | 2053 | GD.2018.6.6450 | Tunai | Loket | Ratu |  |  |
@@ -16792,7 +16792,7 @@
 | Tjoan Moy | C2 | 22 |  | 225.000,00 | 2018-07-14 | Jul'18 | 2172 | GD.2018.7.6543 | Tunai | Loket | Ratu |  |  |
 | Dedi Sugiarto | DD1 | 19 |  | 250.000,00 | 2018-07-14 | Jul'18 | 2173 | GD.2018.7.6544 | Debit | Loket | Ratu |  |  |
 | Bambang Supriyadi | C7 | 38 |  | 225.000,00 | 2018-07-16 | Jul'18 | 2174 | GD.2018.7.6545 | Transfer | Loket | Ratu |  |  |
-| Insan Gunandar | C9 | 10 |  | 225.000,00 | 2018-07-16 | Jun'18 | 2175 | G.2018.7.6546 | Tunai | Loket | Ratu |  |  |
+| Insan Gunandar | C9 | 10 |  | 225.000,00 | 2018-07-16 | Jun'18 | 2175 | GD.2018.7.6546 | Tunai | Loket | Ratu |  |  |
 | Nurdin | C11 | 22 |  | 1.350.000,00 | 2018-07-16 | Jul'18 - Des'18 | 2176 | GD.2018.7.6549 | Tunai | Loket | Ratu |  |  |
 | Yosafat Setiawan | AX5 | 18 |  | 300.000,00 | 2018-07-16 | Jul'18 | 2177 | GD.2018.7.6547 | Tunai | Loket | Ratu |  |  |
 | Handrian Wijaya | DD1 | 5 |  | 750.000,00 | 2018-07-16 | May'18 - Jul'18 | 2178 | GD.2018.7.6548 | Debit | Loket | Ratu |  |  |
@@ -16836,7 +16836,7 @@
 | Suparmen | AX3 | 1 |  | 300.000,00 | 2018-07-30 | Jul'18 | 2258 | GD.2018.7.6572 | Tunai | Loket | Putri |  |  |
 | Swie Tjoan | C7 | 50 |  | 450.000,00 | 2018-07-30 | Jun'-Jul'18 | 2259 | GD.2018.7.6573 | Tunai | Loket | Putri |  |  |
 | Sukrisman | C3 | 11 |  | 450.000,00 | 2018-07-30 | Jul'-Agst'18 | 2260 | GD.2018.7.6575 | Tunai | Loket | Putri |  |  |
-| M.alfian Khairi | C9 | 7 |  | 675.000,00 | 2018-07-30 | Jun'-Agst'18 | 2261 | GD.2018.7.6576/77 | Tunai | Loket | Putri |  |  |
+| M.alfian Khairi | C9 | 7 |  | 675.000,00 | 2018-07-30 | Jun'-Agst'18 | 2261 | GD.2018.7.6576 & GD.2018.7.6577 | Tunai | Loket | Putri |  |  |
 | Riko Prasetyo | AX5 | 22 |  | 1.200.000,00 | 2018-07-31 | Apr'18 - Jul'18 | 2262 | GD.2018.7.6576 | Debit | Loket | Ratu |  |  |
 | Silviana Victoria | DD1 | 16 |  | 250.000,00 | 2018-07-31 | Agus'18 | 2263 | GD.2018.7.6579 | Transfer | Loket | Ratu |  |  |
 | Azmi | AX8 | 8 |  | 300.000,00 | 2018-07-31 | Agus'18 | 2264 | GD.2018.7.6580 | Tunai | Loket | Ratu |  |  |
@@ -16848,7 +16848,7 @@
 | Noviani Hariyanto | C11 | 10 |  | 225.000,00 | 2 Agst 18 | Agst'18 | 2272 | GD.2018.8.6586 | Debit | Loket | Putri |  |  |
 | Handoko Wahyudi | AX8 | 15 |  | 300.000,00 | 2 Agst 18 | Agst'18 | 2273 | GD.2018.8.6587 | Tunai | Loket | Putri |  |  |
 | Yusron Fauzi | C8 | 12 |  | 225.000,00 | 2 Agst 18 | Agst'18 | 2274 | GD.2018.8.6588 | Tunai | Loket | Ratu |  |  |
-| Ronald Yahya | C1 | 2 |  | 225.000,00 | 3 Agst 18 | Jul'18 | 2276 | GD.2018.78.6589 | Transfer | Loket | Putri |  |  |
+| Ronald Yahya | C1 | 2 |  | 225.000,00 | 3 Agst 18 | Jul'18 | 2276 | GD.2018.8.6589 | Transfer | Loket | Putri |  |  |
 | Bargani | C10 | 6 |  | 225.000,00 | 3 Agst 18 | Agst'18 | 2277 | GD.2018.8.6590 | Tunai | Loket | Putri |  |  |
 | Alvina Ristania | C9 | 5 |  | 225.000,00 | 3 Agst 18 | Agst'18 | 2278 | GD.2018.8.6591 | Tunai | Loket | Putri |  |  |
 | Leo Baratanata | DD1 | 15 |  | 250.000,00 | 3 Agst 18 | Agst'18 | 2279 | GD.2018.8.6592 | Transfer | Loket | Ratu |  |  |
@@ -16924,7 +16924,7 @@
 | Sugeng Rochili | DD3 | 2 |  | 250.000,00 | 2018-08-13 | Agst'18 | 2306 | GD.2018.8.6616 | Tranfer | Loket | Putri |  |  |
 | Jefri Septian Permana | C7 | 22 |  | 450.000,00 | 2018-08-13 | Jun'-Jul'18 | 2307 | GD.2018.8.6615 | Tunai | Loket | Putri |  |  |
 | Marliana Sari | AX5 | 6 |  | 300.000,00 | 2018-08-13 | Agst'18 | 2308 | GD.2018.8.6617 | Tunai | Loket | Putri |  |  |
-| Jaya Iskandar | C9 | 8 |  | 225.000,00 | 2018-08-13 | Jul'18 | 2309 | GD'2018.8.6618 | Tunai | Loket | Putri |  |  |
+| Jaya Iskandar | C9 | 8 |  | 225.000,00 | 2018-08-13 | Jul'18 | 2309 | GD.2018.8.6618 | Tunai | Loket | Putri |  |  |
 | Hadiyanto | C8 | 11 |  | 225.000,00 | 2018-08-14 | 2026-08-18 | 2311 | GD.2018.8.6621 | Tunai | Loket | Putri |  |  |
 | Rochmat Hajati | C10 | 5 |  | 225.000,00 | 2018-08-14 | 2026-08-18 | 2312 | GD.2018.8.6622 | Transfer | Loket | Ratu |  |  |
 | Ameng | C11 | 18 |  | 225.000,00 | 2018-08-14 | 2026-08-18 | 2313 | GD.2018.8.6220 | Tunai | Loket | Ratu |  |  |
@@ -16949,7 +16949,7 @@
 | Donny Jocobus | DD1 | 8 |  | 250.000,00 | 2018-08-21 | Aug'18 | 2332 | GD.2018.8.6641 | Debit | Loket | Putri |  |  |
 | Heri | C7 | 62 |  | 900.000,00 | 2018-08-21 | Jun'18 - Sep'18 | 2333 | GD.2018.8.6642 | Tunai | Loket | Putri |  |  |
 | Chalid Hendra | C11 | 28 |  | 225.000,00 | 2018-08-23 | Aug'18 | 2334 | GD.2018.8.6642 | Tunai | Loket | Ratu |  |  |
-| Dewi | C2 | 27 |  | 225.000,00 | 2018-08-23 | Aug'18 | 2335 | GD.2018.86643 | Tunai | Loket | Ratu |  |  |
+| Dewi | C2 | 27 |  | 225.000,00 | 2018-08-23 | Aug'18 | 2335 | GD.2018.8.6643 | Tunai | Loket | Ratu |  |  |
 | Herlina/ Sandra | C8 | 5 |  | 225.000,00 | 2018-08-23 | Apr'18 | 2336 | GD.2018.8.6644 | Transfer | Loket | Ratu |  |  |
 | Gilang Andrian | C9 | 3 |  | 450.000,00 | 2018-08-23 | Jul'18 - Aug'18 | 2337 | GD.2018.8.6645 | Transfer | Loket | Ratu |  |  |
 | Tjoeng Miet Tjen | DD2 | 3 |  | 500.000,00 | 2018-08-24 | Jun'18 - Jul'18 | 2338 | NN.2018.08.44 | Tunai | Loket | Putri |  |  |
@@ -17015,7 +17015,7 @@
 | Buddy Jaya Negara | C1 | 11 |  | 225.000,00 | 2018-09-06 | Sep'18 | 2390 | GD.2018.9.6686 | Tunai | Loket | Putri |  |  |
 | Bargani | C10 | 6 |  | 225.000,00 | 2018-09-07 | 2026-09-18 | 2394 | GD.2018.9.6687 | Tunai | Loket | Putri |  |  |
 | Giok Hoa | AM1 | 1 |  | 500.000,00 | 2018-09-07 | May'18 - Aug'18 | 2395 | GD.2018.9.6688 | Tunai | Loket | Putri |  |  |
-| Jollina Desmiany | C1 | 6 |  | 1.350.000,00 | 2018-09-07 | Apr'18 - Sep'18 | 2396 | GD.2018.96689 | Transfer | Loket | Putri |  |  |
+| Jollina Desmiany | C1 | 6 |  | 1.350.000,00 | 2018-09-07 | Apr'18 - Sep'18 | 2396 | GD.2018.9.6689 | Transfer | Loket | Putri |  |  |
 | Topan Al Akbar | AX3 | 3 |  | 300.000,00 | 2018-09-06 | Sep'18 | 2391 | NN.2018.09.06 | Tunai | Loket | Putri |  |  |
 | Heri | DD3 | 8 |  | 500.000,00 | 2018-09-05 | Aug'18 - Sep'18 | 2381 | GD.2018.9.6678 | Tunai | Loket | Putri |  |  |
 | Lisa Loandha Loa | C11 | 20 |  | 450.000,00 | 2018-09-01 | Aug'18 - Sep'18 | 2363 | NN.2018.09.07 | Debit | Loket | Ratu |  |  |
@@ -17104,7 +17104,7 @@
 | Chailid Hendra | C11 | 28 |  | 225.000,00 | 2018-09-27 | Sep'18 | 2490 | GD.2018.9.6727 | Transfer | Loket | Putri |  |  |
 | Iwan Irawan | C6 | 57 |  | 225.000,00 | 2018-09-27 | Sep'18 | 2491 | GD.2018.9.6728 | Transfer | Loket | Putri |  |  |
 | Silviana Victoria | DD1 | 16 |  | 250.000,00 | 2018-09-28 | Okt'18 | 2492 | GD.2018.9.6729 | Transfer | Loket | Ratu |  |  |
-| Erik Oktaviano | C10 | 7 |  | 675.000,00 | 2018-09-28 | Aug'18 - Okt'18 | 2493 | GD.2018.9.6730/31 | Debit | Loket | Putri |  |  |
+| Erik Oktaviano | C10 | 7 |  | 675.000,00 | 2018-09-28 | Aug'18 - Okt'18 | 2493 | GD.2018.9.6730 & GD.2018.9.6731 | Debit | Loket | Putri |  |  |
 | Dedi Sugiarto | DD1 | 19 |  | 250.000,00 | 2018-09-28 | Sep'18 | 2494 | GD.2018.9.6732 | Transfer | Loket | Putri |  |  |
 | Yusron Fauzi | C8 | 12 |  | 225.000,00 | 1 Okt 2018 | Okt'18 | 2500 | NN.2018.10.01 | Tunai | Loket | Putri |  |  |
 | Carolina | C1 | 10 |  | 225.000,00 | 1 Okt 2018 | Sep'18 | 2501 | GD.2018.10.6733 | Transfer | Loket | Putri |  |  |
@@ -17323,7 +17323,7 @@
 | Davin | DD1 | 7 |  | 250.000,00 | 2018-11-19 | Nov'18 | 2720 | GD.2018.11.6859 | Debit | Loket | Ratu |  |  |
 | Yulin | AX8 | 39 |  | 900.000,00 | 2018-11-19 | Okt'18 - Des'18 | 2721 | NN.2018.11.26 | Debit | Loket | Ratu |  |  |
 | Lisa Loandha Loa | C11 | 20 |  | 450.000,00 | 2018-11-19 | Okt'18 - Nov'18 | 2722 | GD.2018.11.6860 | Tunai | Loket | Ratu |  |  |
-| Bung Fong | C1 | 15 |  | 225.000,00 | 2018-11-19 | Nov'18 | 2723 | gd.2018.11.6861 | Tunai | Loket | Ratu |  |  |
+| Bung Fong | C1 | 15 |  | 225.000,00 | 2018-11-19 | Nov'18 | 2723 | GD.2018.11.6861 | Tunai | Loket | Ratu |  |  |
 | Rizky Tri Nugroho | C6 | 25 |  | 675.000,00 | 2018-11-19 | Sep'18 - Nov'18 | 2724 | NN.2018.11.27 | Tunai | Loket | Ratu |  |  |
 | Rahmat Subagio | AX8 | 29 |  | 900.000,00 | 2018-11-19 | Okt'18 - Des'18 | 2725 | NN.2018.11.28 | Tunai | Loket | Ratu |  |  |
 | Edi Sugiarto | JA | 10 |  | 250.000,00 | 2018-11-06 | Nov'18 | 2445 | NN.2018.11.29 | Tunai | Loket | Sobari |  |  |
@@ -17345,7 +17345,7 @@
 | Rochmat Hajati | C10 | 5 |  | 225.000,00 | 2018-11-21 | Nov'18 | 2726 | GD.2018.11.6862 | Transfer | Loket | Ratu |  |  |
 | Wendra | C6 | 29 |  | 225.000,00 | 2018-11-21 | Nov'18 | 2727 | GD.2018.11.6863 | Debit | Loket | Ratu |  |  |
 | Lucyana Afden | AX8 | 27 |  | 900.000,00 | 2018-11-21 | Des'18 - Feb'18 | 2728 | NN.2018.11.45 | Debit | Loket | Ratu |  |  |
-| Noviani Hariyanto | C11 | 10 |  | 225.000,00 | 2018-11-22 | Nov'18 | 2729 | GD.2018,11.6864 | Transfer | Loket | Ratu |  |  |
+| Noviani Hariyanto | C11 | 10 |  | 225.000,00 | 2018-11-22 | Nov'18 | 2729 | GD.2018.11.6864 | Transfer | Loket | Ratu |  |  |
 | Hendry | DD1 | 9 |  | 250.000,00 | 2018-11-22 | Nov'18 | 2730 | GD.2018.11.6865 | Tunai | Loket | Ratu |  |  |
 | Oktavianus | J1 | 3 |  | 200.000,00 | 2018-02-28 | 2026-02-18 |  | NN.2018.02.46 |  |  |  |  |  |
 | Rohmad | J1 | 5 |  | 200.000,00 | 2018-02-28 | 2026-02-18 |  | NN.2018.02.47 |  |  |  |  |  |
@@ -18326,7 +18326,7 @@
 | Topan Al Akbar | AX3 | 3 |  | 900.000,00 | 9 Okt 18 | Okt'18 - Okt'18 | 2538 | GD.2018.10.6761 | DEBIT | LOKET | RATU |  |  |
 | OLA | C9 | 16 |  | 450.000,00 | 3 Des 18 | Okt'18 - Sep'18 | 2764 | NN.2018.12.02 | Debit | Loket | RATU |  |  |
 | Fastin | C11 | 30 |  | 450.000,00 | 4 Des 18 | Sep'18 - Okt'18 | 2771 | GD.2018.12.6711 | Tunai | Loket | Ratu |  |  |
-| Handoko Wahyudi | AX8 | 15 |  | 300.000,00 | 4 Des 18 | Des'18 | 2768 | GD.2018.126741 | Tunai | Loket | Ratu |  |  |
+| Handoko Wahyudi | AX8 | 15 |  | 300.000,00 | 4 Des 18 | Des'18 | 2768 | GD.2018.12.6741 | Tunai | Loket | Ratu |  |  |
 | Oktavianus | J1 | 3 |  | 200.000,00 | 2018-09-28 | 2026-09-18 |  | NN.2018.09.56 |  |  |  |  |  |
 | Rohmad | J1 | 5 |  | 200.000,00 | 2018-09-28 | 2026-09-18 |  | NN.2018.09.57 |  |  |  |  |  |
 | Sonny | J1 | 7 |  | 200.000,00 | 2018-09-28 | 2026-09-18 |  | NN.2018.09.58 |  |  |  |  |  |
@@ -18695,7 +18695,7 @@
 | Hendry | DD1 | 9 |  | 250.000,00 | 26 Des 2018 | Des'18 | 2882 | GD.2018.12.6914 | Tunai | Loket | Ratu |  |  |
 | Francisca Magdalena | C5 | 6 |  | 225.000,00 | 26 Des 2018 | Des'18 | 2883 | GD.2018.12.6916 | Tunai | Loket | Ratu |  |  |
 | Daniel Setiawan | DD1 | 6 |  | 250.000,00 | 26 Des 2018 | Des'18 | 2884 | GD.2018.12.6917 | Tunai | Loket | Ratu |  |  |
-| Iwan Irawan | C6 | 57 |  | 225.000,00 | 26 Des 2018 | Des'18 | 2885 | GD..2018.12.6918 | Transfer | Loket | Ratu |  |  |
+| Iwan Irawan | C6 | 57 |  | 225.000,00 | 26 Des 2018 | Des'18 | 2885 | GD.2018.12.6918 | Transfer | Loket | Ratu |  |  |
 | Dewi/ Siti Nurhayati | C2 | 27 |  | 225.000,00 | 27 Des 18 | Des'18 | 2886 | NN.2018.12.37 | Tunai | Loket | Ratu |  |  |
 | Wendra | C6 | 29 |  | 225.000,00 | 27 Des 18 | Des'18 | 2887 | GD.2018.12.6919 | Transfer | Loket | Ratu |  |  |
 | Dedi Sugiarto | DD1 | 19 |  | 250.000,00 | 27 Des 18 | Des'18 | 2888 | GD.2018.12.6920 | Debit | Loket | Ratu |  |  |
@@ -18730,7 +18730,7 @@
 | Fam Se San | AX5 | 12 |  | 300.000,00 | 2019-01-03 | Nov'18 | 2905 | NN.2019.01.11 | Tunai | Loket | Pa Budi |  |  |
 | Yusron Fauzi | C8 | 12 |  | 225.000,00 | 2019-01-07 | Jan'18 | 2916 | GD.2018.1.2938 | Tunai | Loket | Ratu |  |  |
 | Topan | AX3 | 3 |  | 300.000,00 | 2019-01-07 | Jan'18 | 2917 | NN.2019.01.12 | Tunai | Loket | Ratu |  |  |
-| Rudianto JAP | JA | 25 |  | 3.000.000,00 | 2019-01-07 | Nov'18 - Okt'19 | 2918 | GD.2018,1.6939 | Debit | Loket | Ratu |  |  |
+| Rudianto JAP | JA | 25 |  | 3.000.000,00 | 2019-01-07 | Nov'18 - Okt'19 | 2918 | GD.2019.1.6939 | Debit | Loket | Ratu |  |  |
 | Sia Juk Jin | C5 | 5 |  | 225.000,00 | 2019-01-08 | Nov'18 | 2921 | GD.2019.1.6940 | Tunai | Loket | Ratu |  |  |
 | Wida Maryani | C8 | 6 |  | 225.000,00 | 2019-01-08 | Des'18 | 2922 | GD.2019.1.6941 | Tunai | Loket | Ratu |  |  |
 | Tan Lidyawati | C8 | 2 |  | 112.500,00 | 2019-01-08 | Des'18 | 2923 | GD.2019.1.6942 | Tunai | Loket | Ratu |  |  |
@@ -18751,7 +18751,7 @@
 | David Erwin Gunawan | C7 | 36 |  | 900.000,00 | 2019-01-09 | Okt'18 - Jan'19 | 2929 | GD.2019.1.6946 | Debit | Loket | Ratu |  |  |
 | Lucky | C5 | 3 |  | 450.000,00 | 2019-01-09 | Jan'19 - Feb'19 | 2930 | GD.2019.1.6947 | Tunai | Loket | Ratu |  |  |
 | Cancel | Cancel | Cancel |  | Cancel | Cancel | Cancel | 2931 | NN.YYYY.00.391 | Cancel | Cancel | Cancel | Cancel |  |
-| Bargani | C10 | 6 |  | 225.000,00 | 2019-01-09 | Jan'19 | 2932 | GD.2018.1.6948/9 | Tunai | Loket | Ratu |  |  |
+| Bargani | C10 | 6 |  | 225.000,00 | 2019-01-09 | Jan'19 | 2932 | GD.2019.1.6948 & GD.2019.1.6949 | Tunai | Loket | Ratu |  |  |
 | Jaya Iskandar | C9 | 8 |  | 225.000,00 | 2019-01-09 | Des'18 | 2934 | GD.2019.1.6950 | Tunai | Loket | Ratu |  |  |
 | Leo Baratanata | DD1 | 15 |  | 250.000,00 | 2019-01-09 | Jan'19 | 2935 | GD.2019.1.6951 | Transfer | Loket | Ratu |  |  |
 | Hermawansyah | C1 | 3 |  | 2.700.000,00 | 2019-01-09 | Jan'19 - Des'19 | 2936 | GD.2019.1.6952 | Transfer | Loket | Ratu |  |  |
@@ -18773,7 +18773,7 @@
 | Stefanus Andre | AX9 | 50 |  | 300.000,00 | 2019-01-07 | Jan'19 | 2920 | NN.2019.01.26 | Tunai | Loket | Ratu | - |  |
 | Lisa Loandha Loa | C11 | 20 |  | 450.000,00 | 2019-01-07 | Des'18 - Jan'19 | 2913 | NN.2019.01.27 | Tunai | Loket | Ratu | ok |  |
 | Yoseph Agustiar | AX5 | 16 |  | 300.000,00 | 2019-01-11 | Jan'19 | 2943 | NN.2019.01.28 | Debit | Loket | Ratu |  |  |
-| Lukimin | AX3 | 23 |  | 600.000,00 | 2019-01-11 | Nov'18 - Des'18 | 2944 | GD.2019.6957 | Transfer | Loket | Ratu |  |  |
+| Lukimin | AX3 | 23 |  | 600.000,00 | 2019-01-11 | Nov'18 - Des'18 | 2944 | GD.2019.1.6957 | Transfer | Loket | Ratu |  |  |
 | Ardi | C9 | 12A |  | 450.000,00 | 2019-01-11 | Jan'19 - Apr'19 | 2945 | GD.2019.1.6958 | Transfer | Loket | Ratu |  |  |
 | Bambang Supriadi | C7 | 38 |  | 225.000,00 | 2019-01-11 | Jan'19 | 2946 | GD.2019.1.6959 | Transfer | Loket | Ratu |  |  |
 | Ernest Kurniawan | DD2 | 8 |  | 250.000,00 | 2019-01-11 | Jan'19 | 2947 | GD.2019.1.6960 | Transfer | Loket | Ratu |  |  |
@@ -19012,7 +19012,7 @@
 | Yosafat Setiawan | AX5 | 18 |  | 600.000,00 | 2019-02-28 | Feb'19 - Mar'19 | 3210 | GD.2019.2.7072 | Debit | Loket | Ratu |  |  |
 | Chalid Hendra | C11 | 28 |  | 225.000,00 | 2019-02-28 | Feb'19 | 3211 | GD.2019.2.7073 | Transfer | Loket | Ratu |  |  |
 | Iwan Irawan | C6 | 57 |  | 225.000,00 | 2019-02-28 | Feb'19 | 3212 | GD.2019.2.7074 | Transfer | Loket | Ratu |  |  |
-| Syamsul Musbahul | DD2 | 20 |  | 750.000,00 | 2019-02-28 | Jan'19 - mar'19 | 3213 | GD.2019.2.7075/76 | Debit | Loket | Ratu |  | 2 |
+| Syamsul Musbahul | DD2 | 20 |  | 750.000,00 | 2019-02-28 | Jan'19 - mar'19 | 3213 | GD.2019.2.7075 & GD.2019.2.7076 | Debit | Loket | Ratu |  | 2 |
 | Ajeng | DD1 | 17 |  | 250.000,00 | 2019-02-28 | Feb'19 | 3215 | GD.2019.2.7077 | Tunai | Loket | Ratu |  |  |
 | Handrian Wijaya | DD1 | 5 |  | 750.000,00 | 2019-03-01 | Jan'19 - Mar'19 | 3216 | GD.2019.3.7086 | Debit | Loket | Ratu |  |  |
 | Shilviana ( Anto ) | DD1 | 16 |  | 250.000,00 | 2019-03-01 | Mar'19 | 3217 | GD.2019.3.7078 | Transfer | Loket | Ratu |  |  |
@@ -19127,7 +19127,7 @@
 | Hadiyanto | C8 | 11 |  | 225.000,00 | 2019-03-19 | Mar'19 | 3274 | GD.2019.3.7116 | Tunai | Loket | Ratu |  |  |
 | Jaya Laksana | AX8 | 20 |  | 600.000,00 | 2019-03-20 | Feb'19 - Mar'19 | 3275 | NN.2019.03.44 | Debit | Loket | Ratu | Ok |  |
 | Teddy | AX3 | 53 |  | 300.000,00 | 2019-03-20 | mar'19 | 3276 | GD.2019.3.7117 | Tunai | Loket | Ratu |  |  |
-| William Thomas | C5 | 12 |  | 225.000,00 | 2019-03-20 | Mar'19 | 3277 | DG.2019.3.7118 | Tunai | Loket | Ratu |  |  |
+| William Thomas | C5 | 12 |  | 225.000,00 | 2019-03-20 | Mar'19 | 3277 | GD.2019.3.7118 | Tunai | Loket | Ratu |  |  |
 | Maria Tenesia | C9 | 6 |  | 450.000,00 | 2019-03-20 | Feb'19 - Mar'19 | 3278 | GD.2019.3.7119 | Tunai | loket | Ratu |  |  |
 | lisa Loandha | C11 | 20 |  | 225.000,00 | 2019-03-20 | Mar'19 | 3279 | NN.2019.03.45 | Debit | Loket | Ratu | OK |  |
 | Donny Jocobush | DD1 | 8 |  | 250.000,00 | 2019-03-20 | Mar'19 | 3280 | GD.2019.3.7120 | Tunai | loket | Ratu |  |  |
@@ -19186,7 +19186,7 @@
 | Handoko Wahyudi | AX8 | 15 |  | 300.000,00 | 2019-04-05 | Apr'19 | 3329 | GD.2019.4.7155 | Debit | Loket | Ratu |  |  |
 | Lukimin | AX3 | 23 |  | 600.000,00 | 2019-04-05 | Mar'19 - Apr'19 | 3330 | GD.2019.4.7156 | Transfer | Loket | Ratu |  |  |
 | Alvina | C9 | 5 |  | 225.000,00 | 2019-04-05 | Apr'19 | 3331 | NN.2019.04.06 | Debit | Loket | Ratu | zzzzz |  |
-| Ameng | C11 | 18 |  | 450.000,00 | 2019-04-05 | Mar'19 - Apr'19 | 3332 | gd.2019.4.4157 | dEBIT | Loket | Ratu |  |  |
+| Ameng | C11 | 18 |  | 450.000,00 | 2019-04-05 | Mar'19 - Apr'19 | 3332 | GD.2019.4.7157 | dEBIT | Loket | Ratu |  |  |
 | Hans Jakal Perdan | C1 | 12 |  | 225.000,00 | 2019-04-06 | Apr'19 | 3333 | GD.2019.4.7158 | Tunai | Loket | Ratu |  |  |
 | Ediana Sigaingging | AM2 | 1 |  | 200.000,00 | 2019-04-06 | Apr'19 | 3334 | NN.2019.04.07 | Tunai | Loket | Ratu | - |  |
 | Ediana Sigaingging | AM2 | 2 |  | 200.000,00 | 2019-04-06 | Apr'19 | 3335 | NN.2019.04.08 | Tunai | Loket | Ratu | - |  |
@@ -19307,7 +19307,7 @@
 | Riesta Yulianti | C8 | 8 |  | 2.700.000,00 | 2019-04-25 | Jan;19 - Des'19 | 3508 | GD.2019.4.7205 | Debit | Loket | Ratu |  |  |
 | Euis Tuty | JA | 21 |  | 250.000,00 | 2019-04-25 | Apr'19 | 3509 | GD.2019.4.7206 | Tunai | Loket | Ratu |  |  |
 | Hendry | DD1 | 9 |  | 250.000,00 | 2019-04-26 | APR'19 | 3513 | GD.2019.4.7207 | Tunai | Loket | Icha |  |  |
-| Jolinna Desmiany | C1 | 6 |  | 225.000,00 | 2019-04-26 | APR'19 | 3514 | gd.2019.4.7208 | TRANSFER | Loket | Ratu |  |  |
+| Jolinna Desmiany | C1 | 6 |  | 225.000,00 | 2019-04-26 | APR'19 | 3514 | GD.2019.4.7208 | TRANSFER | Loket | Ratu |  |  |
 | Rani | C1 | 8 |  | 225.000,00 | 2019-05-02 | May'19 | 3528 | NN.2019.05.01 | Debit | Loket | Ratu |  |  |
 | Teguh Santoso | C3 | 3 |  | 225.000,00 | 2019-05-02 | Apr'19 | 3529 | GD.2019.5.7218 | Tunai | Loket | Ratu |  |  |
 | Handrian Wijaya | DD1 | 5 |  | 250.000,00 | 2019-05-02 | Apr'19 | 3530 | GD.2019.5.7219 | dEBIT | Loket | Ratu |  |  |
@@ -19328,7 +19328,7 @@
 | Yudhistira ilorent | AX8 | 58 |  | 300.000,00 | 2019-04-30 | APR'19 | 3523 | GD.2019.4.7214 | TRANSFER | LOKET | RATU |  |  |
 | Sunarti | AX8 | 26 |  | 300.000,00 | 2019-04-30 | APR'19 | 3525 | GD.2019.4.7215 | TRANSFER | Loket | Icha |  |  |
 | Chailid Hendra | C11 | 28 |  | 225.000,00 | 2019-04-30 | Apr'19 | 3526 | GD.2019.4.7216 | Transfer | Loket | Icha |  |  |
-| Jonathan | AX3 | 5 |  | 300.000,00 | 2019-04-30 | APR'19 | 3527 | gd.2019.4.7217 | TRANSFER | Loket | ICHA |  |  |
+| Jonathan | AX3 | 5 |  | 300.000,00 | 2019-04-30 | APR'19 | 3527 | GD.2019.4.7217 | TRANSFER | Loket | ICHA |  |  |
 | Budhi Mulyadi | DD3 | 3 |  | 250.000,00 | 2019-05-04 | MAY'19 | 3545 | NN.2019.05.04 | TUNAI | LOKET | ANGGI |  |  |
 | Hengky | C11 | 6 |  | 225.000,00 | 2019-05-04 | MAY'19 | 3543 | NN.2019.05.05 | dEBIT | Loket | ANGGI |  |  |
 | Gusti Rarasati | C6 | 17 |  | 900.000,00 | 2019-05-04 | Jul'17 - Okt'17 | 3541 | NN.2019.05.06 | Debit | Loket | ANGGI |  |  |
@@ -19603,7 +19603,7 @@
 | Ni amah | AX5 | 28 |  | 1.800.000,00 | 2019-07-02 | Feb'19 - Jul'19 | 3795 | GD.2019.7.7358 | Debit | Loket | Ratu |  |  |
 | Indrawan | AX3 | 39 |  | 300.000,00 | 2019-07-02 | Jul'19 | 3796 | GD.2019.7.7359 | Transfer | Loket | Ratu |  |  |
 | Jolinna | C1 | 6 |  | 225.000,00 | 2019-07-02 | Jun'19 | 3797 | NN.2019.07.07 | Transfer | Loket | Ratu | OK |  |
-| Leo Baratanata | DD1 | 15 |  | 250.000,00 | 2019-07-02 | Jul'19 | 3798 | GD.20119.7.7360 | Transfer | loket | Ratu |  |  |
+| Leo Baratanata | DD1 | 15 |  | 250.000,00 | 2019-07-02 | Jul'19 | 3798 | GD.2019.7.7360 | Transfer | loket | Ratu |  |  |
 | Selvi/ Gerawati | AM1 | 8 |  | 200.000,00 | 2019-07-02 | Jul'19 | 3799 | GD.2019.7.7361 | Transfer | Loket | Ratu |  |  |
 | Iing Wirawan | AX3 | 51 |  | 600.000,00 | 2019-07-02 | Apr'19 - May'19 | 38000 | GD.2019.7.7362 | Transfer | Loket | Ratu |  |  |
 | Andrew | C8 | 3 |  | 450.000,00 | 2019-07-02 | Apr'19 - May'19 | 3801 | GD.2019.7.7363 | Transfer | Loket | Ratu |  |  |
@@ -19671,7 +19671,7 @@
 | Ediana Sigaingging | AM2 | 2 |  | 200.000,00 | 2019-07-10 | Jul'19 | 3857 | NN.2019.07.21 | Tunai | Loket | Ratu | - |  |
 | Seftiningtyas Lindri | AX3 | 17 |  | 300.000,00 | 2019-07-13 | JUL'19 | 3867 | NN.2019.07.22 | Debit | LOKET | Ratu | - |  |
 | Bp Adi | AX3 | 1 |  | 300.000,00 | 2019-07-13 | Jul'19 | 3655 | NN.2019.07.23 | Tunai | Loket | Sobari | - |  |
-| Iwan Irawan | C6 | 57 |  | 225.000,00 | 2019-07-12 | Jul'19 | 3865 | GD2019.7.7411 | Tunai | Loket | Ratu |  |  |
+| Iwan Irawan | C6 | 57 |  | 225.000,00 | 2019-07-12 | Jul'19 | 3865 | GD.2019.7.7411 | Tunai | Loket | Ratu |  |  |
 | Ami | JA | 1 |  | 250.000,00 | 2019-07-12 | Jul'19 | 3866 | GD.2019.7.7412 | Tranfer | Loket | Ratu |  |  |
 | Nurwanto | AM2 | 17 |  | 250.000,00 | 2019-07-13 | Jul'18 | 3683 | NN.2019.07.24 | Transfer | Loket | Ratu | - |  |
 | Nurwanto | AM2 | 17 |  | 250.000,00 | 2019-07-13 | Aug'18 | 3684 | NN.2019.07.25 | Transfer | Loket | Ratu | - |  |
@@ -19723,7 +19723,7 @@
 | Budhi Mulyadi | DD3 | 3 |  | 250.000,00 | 2019-07-19 | Jul'19 | 3885 | GD.2019.7.7427 | Debit | Loket | Ratu |  |  |
 | septian | ax8 | 18 |  | 900.000,00 | 2019-05-11 | Feb'19 - Apr'19 | 3580 | NN.2019.05.69 | Debit | Loket | Ratu |  |  |
 | Sabeth | AX8 | 30 |  | 600.000,00 | 2019-07-23 | Jul'19 - Aug'19 | 3696 | NN.2019.07.54 | Debit | Loket | Ratu |  |  |
-| Lucky Setiandika | C5 | 3 |  | 450.000,00 | 2019-07-22 | Jul'19- Aug'19 | 3886 | GD32019.7.7428 | Tunai | Loket | Ratu |  |  |
+| Lucky Setiandika | C5 | 3 |  | 450.000,00 | 2019-07-22 | Jul'19- Aug'19 | 3886 | GD.2019.7.7428 | Tunai | Loket | Ratu |  |  |
 | Yohanes Kevin | AX5 | 62 |  | 300.000,00 | 2019-07-23 | Jul'19 | 3890 | GD.2019.7.7428 | Tunai | Loket | Ratu |  |  |
 | My Music | AM1 | 7 |  | 250.000,00 | 2019-07-23 | Jul'19 | 3891 | GD.2019.7.7429 | Transfer | Loket | Ratu |  |  |
 | Swie Tjoan | C7 | 50 |  | 450.000,00 | 2019-07-23 | Jun'19 - Jul'19 | 3892 | GD.2019.7.7430 | Tunai | Loket | Ratu |  |  |
@@ -19975,7 +19975,7 @@
 | Septian Perdana | AX8 | 18 |  | 1.500.000,00 | 2019-09-07 | May'19 - Sep'19 | 4188 | GD.2019.7.7516 | Tunai | Loket | Ratu |  |  |
 | Hans Jakal Perdana | C1 | 12 |  | 225.000,00 | 7 Sprt 2019 | Sep'19 | 4187 | GD.2019.9.7515 | Tunai | Loket | Ratu |  |  |
 | Riko Prasetyo | AX5 | 22 |  | 1.200.000,00 | 7 Sprt 2019 | Jun'19 - Sep'19 | 4189 | GD.2019.9.7517 | Debit | Loket | Ratu |  |  |
-| Santa Sesilla | AX8 | 60 |  | 600.000,00 | 7 Sprt 2019 | Agust'19 - Sep'19 | 4190 | GD.2019.9.7518/19 | Transfer | Loket | Ratu |  |  |
+| Santa Sesilla | AX8 | 60 |  | 600.000,00 | 7 Sprt 2019 | Agust'19 - Sep'19 | 4190 | GD.2019.9.7518 & GD.2019.9.7519 | Transfer | Loket | Ratu |  |  |
 | Fam Se San | AX5 | 12 |  | 300.000,00 | 2019-09-09 | Agust'19 | 4195 | NN.2019.09.20 | Debit | Loket | ratu | ok |  |
 | Stefanus Andre | AX9 | 50 |  | 300.000,00 | 2019-09-09 | Sep'19 | 4196 | NN.2019.09.21 | Tunai | Loket | ratu | ok |  |
 | Hadiyanto | C8 | 11 |  | 225.000,00 | 2019-09-09 | Agust'19 | 4191 | GD.2019.9.7520 | Tunai | Loket | Ratu |  |  |
@@ -20088,7 +20088,7 @@
 | Loe Baratanata | DD1 | 15 |  | 250.000,00 | 01 Okt 2019 | Okt'19 | 4336 | GD.2019.10.7575 | Transfer | Loket | Ratu |  |  |
 | Laura Lorenza | AX3 | 67 |  | 300.000,00 | 01 Okt 2019 | Okt'19 | 4337 | NN.2019.10.05 | Tunai | Loket | Mfebi |  |  |
 | Selvi/ Herawati | AM1 | 8 |  | 200.000,00 | 01 Okt 2019 | Okt'19 | 4338 | GD.2019.10.7576 | Transfer | Loket | Ratu |  |  |
-| Teddy | AX3 | 53 |  | 600.000,00 | 3 Okt 2019 | Sep'19 - Okt'19 | 4343 | GD.2019.120.7580 | Debit | Loket | Ratu |  |  |
+| Teddy | AX3 | 53 |  | 600.000,00 | 3 Okt 2019 | Sep'19 - Okt'19 | 4343 | GD.2019.10.7580 | Debit | Loket | Ratu |  |  |
 | Yosafat Setiawan | AX5 | 18 |  | 300.000,00 | 3 Okt 2019 | Okt'19 | 4344 | GD.2019.10.7581 | Tunai | Loket | Ratu |  |  |
 | Sonya Elia Chandra | AX5 | 20 |  | 300.000,00 | 3 Okt 2019 | Okt'19 | 4345 | GD.2019.10.7582 | Tunai | Loket | Ratu |  |  |
 | AMI ( BGI ) | JA | 1 |  | 250.000,00 | 3 Okt 2019 | Okt'19 | 4346 | NN.2019.10.06 | Transfer | Loket | Ratu | OK |  |
@@ -20158,7 +20158,7 @@
 | Seftiningtyas Lindri | AX3 | 17 |  | 300.000,00 | 14 Okt 2019 | Okt'19 | 4420 | GD.2019.10.7622 | Tunai | Loket | Ratu |  |  |
 | Handoko Wahyudi | AX8 | 15 |  | 600.000,00 | 14 Okt 2019 | Okt'19 - Nov'19 | 4422 | GD.2019.10.7623 | Tunai | Loket | Ratu |  |  |
 | Sukrisman | C3 | 11 |  | 1.125.000,00 | 14 Okt 2019 | AUG'19 - Des'19 | 4423 | GD.2019.10.7624 | Debit | Loket | Ratu |  |  |
-| Linah | DD2 | 19 |  | 500.000,00 | 16 Okt 2019 | Sep'19 -Okt'19 | 4432 | GD.2019.10.7629/30 | tUNAI | lOKET | ratu |  |  |
+| Linah | DD2 | 19 |  | 500.000,00 | 16 Okt 2019 | Sep'19 -Okt'19 | 4432 | GD.2019.10.7629 & GD.2019.10.7630 | tUNAI | lOKET | ratu |  |  |
 | Supermen Purba | C6 | 21 |  | 450.000,00 | 16 Okt 2019 | Sep'19 - Okt'19 | 4431 | GD.2019.10.7628 | Tunai | Loket | Ratu |  |  |
 | Tandiono | C9 | 9 |  | 1.350.000,00 | 16 Okt 2019 | Jul'19 - Des'19 | 4430 | NN.2019.10.25 | Debit | Loket | Ratu | ok |  |
 | Septian Perdana | AX8 | 18 |  | 600.000,00 | 12 Okt 2019 | Okt'19 - Nov'19 | 4404 | NN.2019.10.26 | Transfer | Loket | Putri |  |  |
@@ -20180,7 +20180,7 @@
 | Daniel Setiawa | DD1 | 6 |  | 250.000,00 | 21 Okt 2019 | Okt'19 | 4443 | GD.2019.10.7636 | Debit | Loket | Ratu |  |  |
 | Jolina Desmiany | C1 | 6 |  | 675.000,00 | 21 Okt 2019 | Aug'19 - Nov'19 | 4444 | GD.2019.10.7637 | Transfer | Loket | Ratu |  |  |
 | MyMusic | AM1 | 7 |  | 250.000,00 | 21 Okt 2019 | Okt'19 | 4445 | NN.2019.10.31 | Transfer | Loket | Ratu |  |  |
-| Yjahyadi Theodora | C7 | 56 |  | 6.300.000,00 | 22 Okt 2019 | Feb'16 - Okt'19 | 4446 | GG.2019.10.7638 | Transfer | Loket | Ratu |  |  |
+| Yjahyadi Theodora | C7 | 56 |  | 6.300.000,00 | 22 Okt 2019 | Feb'16 - Okt'19 | 4446 | GD.2019.10.7638 | Transfer | Loket | Ratu |  |  |
 | Davin | DD1 | 7 |  | 500.000,00 | 22 Okt 2019 | Jul'19 - Aug'19 | 4447 | GD.2019.10.7639 | Transfer | Loket | Ratu |  |  |
 | Lika Safina | AX5 | 86 |  | 900.000,00 | 22 Okt 2019 | Nov'19 - Jan'20 | 4448 | NN.2019.10.32 | Tunai | Loket | Ratu |  |  |
 | Bun Fong | C1 | 15 |  | 225.000,00 | 23 Okt 2019 | Okt'19 | 4449 | GD.2019.10.7640 | Tunai | Loket | Ratu |  |  |
@@ -20233,7 +20233,7 @@
 | Meliyanto | AX3 | 75 |  | 600.000,00 | 2019-11-04 | Nov'19 - Des'19 | 4531 | GD.2019.11.7658 | Tranfer | Loket | Ratu |  |  |
 | Lisa Loandha | C11 | 20 |  | 225.000,00 | 2019-11-04 | Nov'19 | 4532 | NN.2019.11.10 | Tunai | Loket | Ratu |  |  |
 | Rizky Tri Nugroho | C6 | 25 |  | 900.000,00 | 2019-11-04 | Jun'19 - Sep'19 | 4533 | GD.2019.11.7659 | Tunai | Loket | Ratu |  |  |
-| Alvina | C9 | 5 |  | 225.000,00 | 2019-11-04 | Nov'19 | 4534 | GD.20109.11.7658 | Tunai | Loket | Ratu |  |  |
+| Alvina | C9 | 5 |  | 225.000,00 | 2019-11-04 | Nov'19 | 4534 | GD.2019.11.7658 | Tunai | Loket | Ratu |  |  |
 | Rahmat Subagio | AX8 | 29 |  | 300.000,00 | 2019-11-04 | Nov'19 | 4535 | GD.2019.11.7660 | Tunai | Loket | Ratu |  |  |
 | Indra Afriana | AX8 | 17 |  | 1.275.000,00 | 2019-11-04 | Nov'19 ( Okt'17-Jan'18) | 4536 | NN.2019.11.11 | Transfer | Loket | Ratu |  |  |
 | Yusron Fauzi | C8 | 12 |  | 450.000,00 | 2019-11-04 | Nov'19-Des'19 | 4537 | GD.2019.11.7661 | Tunai | Loket | Ratu |  |  |
@@ -20410,7 +20410,7 @@
 | Teddy | AX3 | 53 |  | 600.000,00 | 6 Des 2019 | Nov'19 - Des'19 | 4693 | NN.2019.12.15 | Debit | Loket | Ratu |  |  |
 | Purnama Sari | DD3 | 6 |  | 500.000,00 | 6 Des 2019 | Nov'19 - Des'19 | 4694 | GD.2019.12.7760 | Transfer | Loket | Ratu |  |  |
 | AMI ( GBI ) | JA | 1 |  | 250.000,00 | 6 Des 2019 | Des'19 | 4695 | NN.2019.12.16 | Transfer | Loket | Ratu |  |  |
-| Ferry Sofianto | DD2 | 12 |  | 1.500.000,00 | 6 Des 2019 | Jul'19 - Des'19 | 4696 | GD.2049.12.7761 | Transfer | Loket | Ratu |  |  |
+| Ferry Sofianto | DD2 | 12 |  | 1.500.000,00 | 6 Des 2019 | Jul'19 - Des'19 | 4696 | GD.2019.12.7761 | Transfer | Loket | Ratu |  |  |
 | M Alfian Khairi | C9 | 7 |  | 600.000,00 | 6 Des 2019 | Novv'19 - Des'19 | 4697 | NN.2019.12.17 | Debit | Loket | Ratu |  |  |
 | Edi Sugianto | JA | 10 |  | 250.000,00 | 6 Des 2019 | Des'19 | 4698 | GD.2019.12.7762 | Tunai | Loket | Ratu |  |  |
 | Edi Sugianto | JA | 11 |  | 250.000,00 | 6 Des 2019 | Des'19 | 4699 | GD.2019.12.7763 | Tunai | Loket | Ratu |  |  |
@@ -20599,7 +20599,7 @@
 | Stefanus Andre | AX9 | 50 |  | 300.000,00 | 2020-01-13 | Jan'20 | 4856 | NN.2020.01.17 | Tunai | Loket | Ratu |  |  |
 | Yudhistira Ilorent | AX8 | 58 |  | 300.000,00 | 2020-01-13 | Jan'20 | 4857 | NN.2020.01.18 | Transfer | Loket | Ratu |  |  |
 | Shilviana | C6 | 59 |  | 1.800.000,00 | 2020-01-13 | Apr'19 - Nov'19 | 4858 | GD.2020.1.7859 | Transfer | Loket | Ratu |  |  |
-| Hendra | AX3 | 19 |  | 300.000,00 | 2020-01-13 | Jan'20 | 4859 | GD.2020.17860 | Tunai | Loket | Ratu |  |  |
+| Hendra | AX3 | 19 |  | 300.000,00 | 2020-01-13 | Jan'20 | 4859 | GD.2020.1.7860 | Tunai | Loket | Ratu |  |  |
 | Henky | C11 | 6 |  | 225.000,00 | 2020-01-13 | Jan'20 | 4860 | GD.2020.17860 | Debit | Loket | Ratu |  |  |
 | Aulia Ayu | AX3 | 31 |  | 300.000,00 | 2020-01-13 | Jan'20 | 4861 | GD.2020.1.7861 | Tunai | Loket | Ratu |  |  |
 | Chalid Hendra | C11 | 28 |  | 225.000,00 | 2020-01-13 | Des'19 | 4862 | GD.2020.1.7862 | Transfer | Loket | Ratu |  |  |
@@ -20616,7 +20616,7 @@
 | Tan Yan Moy | C9 | 11 |  | 450.000,00 | 2020-01-15 | Sep'19 - Okt'19 | 4873 | GD.2020.1.7867 | Tunai | Loket | Ratu |  |  |
 | Al Fatah | AM2 | 10 |  | 250.000,00 | 2020-01-15 | Jan'20 | 4874 | NN.2020.01.24 | Tunai | Loket | Ratu |  |  |
 | Enen | AM1 | 17 |  | 250.000,00 | 2020-01-15 | Jan'20 | 4875 | NN.2020.01.25 | Tunai | Loket | Ratu |  |  |
-| Fam Se San | AX5 | 12 |  | 300.000,00 | 2020-01-15 | Des'19 | 4876 | GD.2020.7868 | Tunai | Loket | Ratu |  |  |
+| Fam Se San | AX5 | 12 |  | 300.000,00 | 2020-01-15 | Des'19 | 4876 | GD.2020.1.7868 | Tunai | Loket | Ratu |  |  |
 | Henri Tulus | DD2 | 5 |  | 1.000.000,00 | 2020-01-16 | Sep'19 - Des'19 | 4875 | NN.2020.01.26 | Transfer | Loket | Ratu |  |  |
 | Febri Kurniawan | DD3 | 5 |  | 1.000.000,00 | 2020-01-17 | Jan'20 - Apr'20 | 4878 | NN.2020.01.27 | Debit | Loket | Ratu |  |  |
 | Ardi | C9 | 12A |  | 450.000,00 | 2020-01-17 | Jan'20 - Apr'20 | 4879 | GD.2020.1.7869 | Transfer | Loket | Ratu |  |  |
@@ -20734,7 +20734,7 @@
 | Yosafat | AX5 | 18 |  | 300.000,00 | 10 Fev 20 | Feb'20 | 56026 | NN.2020.02.16 | Debit | Loket | Ratu |  |  |
 | Davin | DD1 | 7 |  | 500.000,00 | 2020-02-10 | Nov'19 - Des'19 | 5027 | NN.2020.02.17 | Debit | Loket | Ratu |  |  |
 | Lisa Loandha Loa | C11 | 20 |  | 225.000,00 | 2020-02-11 | Feb'20 | 5028 | NN.2020.02.18 | Transfer | Loket | Ratu |  |  |
-| Leo Baratanata | DD1 | 15 |  | 250.000,00 | 2020-02-11 | Feb'20 | 5029 | GD.202.2.7931 | Transfer | Loket | Ratu |  |  |
+| Leo Baratanata | DD1 | 15 |  | 250.000,00 | 2020-02-11 | Feb'20 | 5029 | GD.2020.2.7931 | Transfer | Loket | Ratu |  |  |
 | Siti Fatonah | AX5 | 32 |  | 300.000,00 | 2020-02-11 | Feb'20 | 5030 | GD.2020.2.7932 | Tunai | Loket | Ratu |  |  |
 | Teddy | AX3 | 53 |  | 600.000,00 | 2020-02-11 | Jan'20 - Feb'20 | 5031 | NN.2020.02.19 | Debit | Loket | Ratu |  |  |
 | Anita Tanuwidyata | C1 | 1 |  | 225.000,00 | 2020-02-11 | Feb'20 | 5032 | GD.2020.2.7933 | Tunai | Loket | Ratu |  |  |
