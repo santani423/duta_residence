@@ -17,7 +17,7 @@ Duta Indah Residences adalah aplikasi estate/property management berbasis Larave
 
 ```text
 .
-├── app/                    # Backend Laravel 12 API
+├── app/                    # Backend Laravel 13 API
 ├── config/
 ├── database/
 ├── docs/

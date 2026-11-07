@@ -2,7 +2,7 @@
 
 ## Server Minimum
 
-- PHP 8.2+
+- PHP 8.3+ (minimum Laravel 13)
 - MySQL 8 atau MariaDB kompatibel
 - Composer 2
 - Node.js 20+
