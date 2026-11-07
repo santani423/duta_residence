@@ -13,11 +13,19 @@ class HelpSetting extends Model
         'is_enabled' => 'boolean',
     ];
 
-    public const CACHE_KEY = 'help_settings.all';
+    // v2: cache berisi atribut mentah; entri lama berisi Eloquent Collection.
+    public const CACHE_KEY = 'help_settings.all.v2';
 
+    /**
+     * Cache hanya menyimpan atribut mentah (array skalar) lalu di-hydrate kembali menjadi model,
+     * karena `cache.serializable_classes = false` menolak unserialize objek apa pun dari cache.
+     */
     public static function allCached()
     {
-        return Cache::rememberForever(self::CACHE_KEY, fn () => static::query()->get());
+        return static::hydrate(Cache::rememberForever(
+            self::CACHE_KEY,
+            fn () => static::query()->get()->map(fn (self $setting) => $setting->getAttributes())->all()
+        ));
     }
 
     public static function forgetCache(): void

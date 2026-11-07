@@ -73,8 +73,7 @@ class LandingController extends Controller
             ];
         });
 
-        $payload['statistics'] = collect($payload['statistics'])->map(function ($statistic) {
-            $statistic = $statistic->toArray();
+        $payload['statistics'] = collect($payload['statistics'])->map(function (array $statistic) {
             $statistic['resolved_value'] = $this->resolveStatisticValue($statistic);
 
             return $statistic;
