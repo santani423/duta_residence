@@ -1,0 +1,1 @@
+import{g as r,r as a,aW as c}from"./index-BqdPHbSr.js";function o(t,u){const e=r(),s=e.getQueryCache();return a.useSyncExternalStore(a.useCallback(n=>s.subscribe(c.batchCalls(n)),[s]),()=>e.isFetching(t),()=>e.isFetching(t))}export{o as u};
