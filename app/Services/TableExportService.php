@@ -424,7 +424,7 @@ class TableExportService
                 $i + 1,
                 $receipt->number,
                 $receipt->transaction_date?->format('H:i') ?? '-',
-                $receipt->resident_name,
+                $receipt->payer_name ? "{$receipt->resident_name} (dibayar oleh {$receipt->payer_name})" : $receipt->resident_name,
                 $receipt->unit_id,
                 $receipt->billing_periods,
                 $this->money($receipt->grand_total),

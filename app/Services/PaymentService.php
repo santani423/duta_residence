@@ -10,6 +10,7 @@ use App\Models\PenaltySetting;
 use App\Models\Receipt;
 use App\Models\Unit;
 use App\Models\UnitDeposit;
+use App\Support\PayerName;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -154,12 +155,15 @@ class PaymentService
             $totalPrincipalPaid = round($allocations->sum('principal_amount'), 2);
             $totalPenaltyPaid = round($allocations->sum('penalty_amount'), 2);
             $receiptNumber = $this->receiptService->generateReceiptNumber();
+            // Pembayar hanya dicatat bila diisi; tidak pernah menyalin nama pemilik unit (resident_name).
+            $payerName = PayerName::normalize($data['payer_name'] ?? null);
 
             $receipt = Receipt::query()->create([
                 'number' => $receiptNumber,
                 'unit_id' => $lockedUnit->id,
                 'transaction_date' => $now,
                 'resident_name' => $lockedUnit->resident?->name ?? '-',
+                'payer_name' => $payerName,
                 'cluster_name' => $lockedUnit->cluster->name,
                 'block' => $lockedUnit->block,
                 'lot_number' => $lockedUnit->lot_number,
@@ -193,6 +197,7 @@ class PaymentService
                 'tax' => 0,
                 'admin_fee' => 0,
                 'total' => round($totalPrincipalPaid + $totalPenaltyPaid, 2),
+                'payer_name' => $payerName,
                 'payment_provider' => 'loket',
                 'payment_method' => $data['payment_method_id'] ?? 'C',
                 'status' => 'paid',

@@ -23,6 +23,8 @@ import { invalidatePaymentQueries } from '../utils/queryInvalidation.js';
 import { downloadBlob, printPdf } from '../utils/download.js';
 import MoneyInput from '../components/common/MoneyInput.jsx';
 import PaymentPrintMenu from '../components/common/PaymentPrintMenu.jsx';
+import PayerNameField from '../components/common/PayerNameField.jsx';
+import { cleanPayerName } from '../utils/payerName.js';
 import { useAuth } from '../state/AuthContext.jsx';
 
 const PAYMENT_METHOD_LABELS = { C: 'Cash', D: 'Debit/Transfer' };
@@ -49,6 +51,7 @@ export default function PaymentsPage() {
   const [selectedReceiptNumbers, setSelectedReceiptNumbers] = useState([]);
   const [searchForm] = Form.useForm();
   const [loketForm] = Form.useForm();
+  const [gatewayForm] = Form.useForm();
   const [proofForm] = Form.useForm();
   const [verifyForm] = Form.useForm();
   const pendingVerificationCount = usePendingPaymentVerificationCount();
@@ -121,6 +124,7 @@ export default function PaymentsPage() {
       payment_channel_id: values.payment_channel_id,
       loket_code: values.loket_code,
       cashier_name: values.cashier_name,
+      payer_name: cleanPayerName(values.payer_name),
       notes: values.notes,
     }),
     onSuccess: (response) => {
@@ -161,6 +165,8 @@ export default function PaymentsPage() {
       formData.append('manual_transfer_date', values.manual_transfer_date.format('YYYY-MM-DD'));
       if (values.amount) formData.append('amount', values.amount);
       if (values.manual_notes) formData.append('manual_notes', values.manual_notes);
+      const payerName = cleanPayerName(values.payer_name);
+      if (payerName) formData.append('payer_name', payerName);
       return api.payments.uploadManualProof(proofOpen.id, formData);
     },
     onSuccess: () => {
@@ -314,6 +320,7 @@ export default function PaymentsPage() {
     setUnitFilters({});
     searchForm.resetFields();
     loketForm.resetFields();
+    gatewayForm.resetFields();
   }
 
   const unpaidBillings = unit?.billings || [];
@@ -499,6 +506,7 @@ export default function PaymentsPage() {
                                 <Form.Item label="Nama Kasir" name="cashier_name" tooltip="Otomatis sesuai akun yang login, tidak dapat diubah.">
                                   <Input disabled />
                                 </Form.Item>
+                                <PayerNameField />
                                 <Form.Item label="Catatan" name="notes" className="full-span"><Input.TextArea rows={2} /></Form.Item>
 
                                 {preview ? (
@@ -530,7 +538,10 @@ export default function PaymentsPage() {
                                 message={`Via: ${viaLabel}`}
                                 description={via === 'manual' ? `${manualInfo.bank_name || '-'} ${manualInfo.account_number || ''} a.n. ${manualInfo.account_name || '-'}` : 'Transaksi akan menghasilkan payment URL. Transaksi gateway melunasi seluruh tagihan yang dipilih.'}
                               />
-                              <Button className="section-row" type="primary" disabled={!selectedBillingIds.length} loading={createGateway.isPending} onClick={() => confirmPayment({ title: 'Buat transaksi pembayaran?', content: `Transaksi ${via} untuk ${selectedBillingIds.length} tagihan unit ${unit.id} akan dibuat.`, okText: 'Ya, Buat', onOk: () => createGateway.mutateAsync({ provider: via }) })}>Buat Transaksi</Button>
+                              <Form form={gatewayForm} layout="vertical" className="section-row" onFinish={(values) => confirmPayment({ title: 'Buat transaksi pembayaran?', content: `Transaksi ${via} untuk ${selectedBillingIds.length} tagihan unit ${unit.id} akan dibuat.`, okText: 'Ya, Buat', onOk: () => createGateway.mutateAsync({ provider: via, payer_name: cleanPayerName(values.payer_name) }) })}>
+                                <PayerNameField />
+                                <Button htmlType="submit" type="primary" disabled={!selectedBillingIds.length} loading={createGateway.isPending}>Buat Transaksi</Button>
+                              </Form>
                               {transaction ? (
                                 <Card className="section-row" title={transaction.invoice_number}>
                                   <Space direction="vertical">
@@ -570,7 +581,7 @@ export default function PaymentsPage() {
                     </Can>
                   }
                 >
-                  <Input allowClear placeholder="Cari invoice, transaksi, penghuni" value={transactionTable.search} onChange={(event) => transactionTable.setSearch(event.target.value)} className="filter-input" />
+                  <Input allowClear placeholder="Cari invoice, transaksi, penghuni, pembayar" value={transactionTable.search} onChange={(event) => transactionTable.setSearch(event.target.value)} className="filter-input" />
                   <UnitFilterFields value={transactionTable.filters} onChange={transactionTable.setFilters} />
                   <Select allowClear placeholder="Via" value={transactionTable.filters.provider} onChange={(value) => transactionTable.setFilters({ ...transactionTable.filters, provider: value })} className="filter-input" options={viaOptions.filter((option) => option.value !== 'loket')} />
                   <Select allowClear placeholder="Status" value={transactionTable.filters.status} onChange={(value) => transactionTable.setFilters({ ...transactionTable.filters, status: value })} className="filter-input" options={['pending', 'waiting_verification', 'paid', 'rejected', 'failed', 'expired'].map((value) => ({ value, label: value }))} />
@@ -593,10 +604,11 @@ export default function PaymentsPage() {
                   <ResponsiveTable
                     query={transactions}
                     onChange={transactionTable.handleTableChange}
-                    scrollX={2100}
+                    scrollX={2280}
                     columns={[
                       { title: 'Invoice', dataIndex: 'invoice_number', width: 190, fixed: 'left' },
                       { title: 'Penghuni', dataIndex: ['unit', 'resident', 'name'], width: 200 },
+                      { title: 'Nama Pembayar', dataIndex: 'payer_name', render: (value) => value || '-', width: 180 },
                       { title: 'Alamat Unit', render: (_, row) => `${row.unit?.cluster?.name || ''} ${row.unit?.block || ''}/${row.unit?.lot_number || ''}`, width: 180 },
                       { title: 'Via', dataIndex: 'payment_provider', width: 110 },
                       { title: 'Metode', dataIndex: 'payment_method', render: (value) => formatPaymentMethod(value), width: 110 },
@@ -645,7 +657,7 @@ export default function PaymentsPage() {
                     </Can>
                   }
                 >
-                  <Input allowClear placeholder="Cari nomor kuitansi, penghuni, ID unit" value={receiptTable.search} onChange={(event) => receiptTable.setSearch(event.target.value)} className="filter-input" />
+                  <Input allowClear placeholder="Cari nomor kuitansi, penghuni, pembayar, ID unit" value={receiptTable.search} onChange={(event) => receiptTable.setSearch(event.target.value)} className="filter-input" />
                   <UnitFilterFields value={receiptTable.filters} onChange={receiptTable.setFilters} />
                   <DatePicker.RangePicker
                     allowClear
@@ -675,7 +687,7 @@ export default function PaymentsPage() {
                   <ResponsiveTable
                     query={receipts}
                     onChange={receiptTable.handleTableChange}
-                    scrollX={1440}
+                    scrollX={1620}
                     rowKey="number"
                     rowSelection={{
                       selectedRowKeys: selectedReceiptNumbers,
@@ -685,6 +697,7 @@ export default function PaymentsPage() {
                     columns={[
                       { title: 'Nomor', dataIndex: 'number', width: 190, fixed: 'left' },
                       { title: 'Penghuni', dataIndex: 'resident_name', width: 220 },
+                      { title: 'Nama Pembayar', dataIndex: 'payer_name', render: (value) => value || '-', width: 180 },
                       { title: 'Alamat Unit', render: (_, row) => `${row.cluster_name || ''} ${row.block || ''}/${row.lot_number || ''}`, width: 180 },
                       { title: 'Tanggal', dataIndex: 'transaction_date', render: formatDateTime, width: 170 },
                       { title: 'Periode', dataIndex: 'billing_periods', width: 150 },
@@ -712,7 +725,7 @@ export default function PaymentsPage() {
 
       <Drawer title="Upload Bukti Pembayaran Manual" open={Boolean(proofOpen)} onClose={() => setProofOpen(null)} width={520} extra={<Button type="primary" onClick={() => proofForm.submit()} loading={uploadProof.isPending}>Upload</Button>} destroyOnHidden>
         <Alert type="info" showIcon message={proofOpen?.invoice_number} description={`Total transfer: ${formatCurrency(proofOpen?.total)}`} />
-        <Form form={proofForm} layout="vertical" className="section-row" onFinish={uploadProof.mutate} initialValues={{ manual_transfer_date: dayjs(), amount: proofOpen?.total }}>
+        <Form form={proofForm} layout="vertical" className="section-row" onFinish={uploadProof.mutate} initialValues={{ manual_transfer_date: dayjs(), amount: proofOpen?.total, payer_name: proofOpen?.payer_name }}>
           <Form.Item label="Nominal Dibayar" name="amount" rules={[{ type: 'number', min: Number(proofOpen?.total) || 0, message: `Nominal minimal ${formatCurrency(proofOpen?.total)}` }]}>
             <MoneyInput step={1000} min={Number(proofOpen?.total) || 0} />
           </Form.Item>
@@ -732,6 +745,7 @@ export default function PaymentsPage() {
               <p className="ant-upload-hint">Format: JPG, PNG, PDF. Maksimal mengikuti konfigurasi backend.</p>
             </Upload.Dragger>
           </Form.Item>
+          <PayerNameField />
           <Form.Item label="Catatan" name="manual_notes">
             <Input.TextArea rows={3} />
           </Form.Item>
@@ -764,6 +778,7 @@ export default function PaymentsPage() {
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
             <Descriptions bordered size="small" column={2}>
               <Descriptions.Item label="Penghuni">{detailOpen.unit?.resident?.name || '-'}</Descriptions.Item>
+              <Descriptions.Item label="Nama Pembayar">{detailOpen.payer_name || '-'}</Descriptions.Item>
               <Descriptions.Item label="Unit">{detailOpen.unit_id}</Descriptions.Item>
               <Descriptions.Item label="Nomor Tagihan" span={2}>
                 {(detailOpen.billings || []).map((billing) => `BIL-${billing.id}`).join(', ') || '-'}
@@ -859,6 +874,7 @@ export default function PaymentsPage() {
             <div>
               <Typography.Text strong>{successReceipt.resident_name}</Typography.Text><br />
               <Typography.Text>{successReceipt.cluster_name} {successReceipt.block}/{successReceipt.lot_number}</Typography.Text>
+              {successReceipt.payer_name ? <><br /><Typography.Text>Dibayar oleh: {successReceipt.payer_name}</Typography.Text></> : null}
             </div>
             <div>
               <Typography.Text>Periode: {successReceipt.billing_periods}</Typography.Text><br />

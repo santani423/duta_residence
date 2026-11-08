@@ -14,6 +14,8 @@ import { confirmPayment } from '../utils/confirmPayment.js';
 import MoneyInput from '../components/common/MoneyInput.jsx';
 import StatusBadge from '../components/common/StatusBadge.jsx';
 import PaymentPrintMenu from '../components/common/PaymentPrintMenu.jsx';
+import PayerNameField from '../components/common/PayerNameField.jsx';
+import { cleanPayerName } from '../utils/payerName.js';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
 import { api } from '../services/estateApi.js';
 import { useTableState } from '../hooks/useTableState.js';
@@ -714,6 +716,7 @@ function PaySchemeDrawer({ scheme, onClose }) {
   const [proofOpen, setProofOpen] = useState(false);
   const [successReceipt, setSuccessReceipt] = useState(null);
   const [loketForm] = Form.useForm();
+  const [gatewayForm] = Form.useForm();
   const [proofForm] = Form.useForm();
 
   const config = useQuery({ queryKey: ['payment-gateway-config'], queryFn: api.payments.gatewayConfig, enabled: Boolean(scheme) });
@@ -772,6 +775,7 @@ function PaySchemeDrawer({ scheme, onClose }) {
       payment_channel_id: values.payment_channel_id,
       loket_code: values.loket_code,
       cashier_name: values.cashier_name,
+      payer_name: cleanPayerName(values.payer_name),
       notes: values.notes,
     }),
     onSuccess: (response) => {
@@ -789,7 +793,7 @@ function PaySchemeDrawer({ scheme, onClose }) {
   });
 
   const createGateway = useMutation({
-    mutationFn: () => api.payments.createGateway({ provider: via, unit_id: scheme.unit_id, billing_ids: billingIds }),
+    mutationFn: (payerName) => api.payments.createGateway({ provider: via, unit_id: scheme.unit_id, billing_ids: billingIds, payer_name: payerName }),
     onSuccess: (response) => {
       message.success('Transaksi gateway berhasil dibuat');
       setTransaction(response.data);
@@ -805,6 +809,8 @@ function PaySchemeDrawer({ scheme, onClose }) {
       formData.append('manual_transfer_date', values.manual_transfer_date.format('YYYY-MM-DD'));
       if (values.amount) formData.append('amount', values.amount);
       if (values.manual_notes) formData.append('manual_notes', values.manual_notes);
+      const payerName = cleanPayerName(values.payer_name);
+      if (payerName) formData.append('payer_name', payerName);
       return api.payments.uploadManualProof(transaction.id, formData);
     },
     onSuccess: () => {
@@ -826,6 +832,7 @@ function PaySchemeDrawer({ scheme, onClose }) {
     setProofOpen(false);
     setSuccessReceipt(null);
     loketForm.resetFields();
+    gatewayForm.resetFields();
     proofForm.resetFields();
     onClose();
   }
@@ -915,6 +922,7 @@ function PaySchemeDrawer({ scheme, onClose }) {
                   <div>
                     <Typography.Title level={5} style={{ margin: 0 }}>{successReceipt.number}</Typography.Title>
                     <Typography.Text type="secondary">{formatDateTime(successReceipt.transaction_date)}</Typography.Text>
+                    {successReceipt.payer_name ? <><br /><Typography.Text>Dibayar oleh: {successReceipt.payer_name}</Typography.Text></> : null}
                   </div>
                   <Typography.Text>Total Tagihan: {formatCurrency(successReceipt.total_billing)}</Typography.Text><br />
                   <Typography.Text strong>Grand Total: {formatCurrency(successReceipt.grand_total)}</Typography.Text>
@@ -961,6 +969,7 @@ function PaySchemeDrawer({ scheme, onClose }) {
                       <Form.Item label="Nama Kasir" name="cashier_name" tooltip="Otomatis sesuai akun yang login, tidak dapat diubah.">
                         <Input disabled />
                       </Form.Item>
+                      <PayerNameField />
                       <Form.Item label="Catatan" name="notes" className="full-span"><Input.TextArea rows={2} /></Form.Item>
 
                       {preview ? (
@@ -992,7 +1001,10 @@ function PaySchemeDrawer({ scheme, onClose }) {
                       message={`Via: ${viaLabel}`}
                       description={via === 'manual' ? `${manualInfo.bank_name || '-'} ${manualInfo.account_number || ''} a.n. ${manualInfo.account_name || '-'}` : 'Transaksi akan menghasilkan payment URL. Transaksi gateway melunasi seluruh tagihan skema ini.'}
                     />
-                    <Button className="section-row" type="primary" disabled={!billingIds.length} loading={createGateway.isPending} onClick={() => confirmPayment({ title: 'Buat transaksi pembayaran?', content: `Transaksi ${via} untuk ${billingIds.length} tagihan unit ${scheme.unit_id} akan dibuat.`, okText: 'Ya, Buat', onOk: () => createGateway.mutateAsync() })}>Buat Transaksi</Button>
+                    <Form form={gatewayForm} layout="vertical" className="section-row" onFinish={(values) => confirmPayment({ title: 'Buat transaksi pembayaran?', content: `Transaksi ${via} untuk ${billingIds.length} tagihan unit ${scheme.unit_id} akan dibuat.`, okText: 'Ya, Buat', onOk: () => createGateway.mutateAsync(cleanPayerName(values.payer_name)) })}>
+                      <PayerNameField />
+                      <Button htmlType="submit" type="primary" disabled={!billingIds.length} loading={createGateway.isPending}>Buat Transaksi</Button>
+                    </Form>
                     {transaction ? (
                       <Card className="section-row" title={transaction.invoice_number}>
                         <Space direction="vertical">
@@ -1020,7 +1032,7 @@ function PaySchemeDrawer({ scheme, onClose }) {
         destroyOnHidden
       >
         <Alert type="info" showIcon message={transaction?.invoice_number} description={`Total transfer: ${formatCurrency(transaction?.total)}`} />
-        <Form form={proofForm} layout="vertical" className="section-row" onFinish={uploadProof.mutate} initialValues={{ manual_transfer_date: dayjs(), amount: transaction?.total }}>
+        <Form form={proofForm} layout="vertical" className="section-row" onFinish={uploadProof.mutate} initialValues={{ manual_transfer_date: dayjs(), amount: transaction?.total, payer_name: transaction?.payer_name }}>
           <Form.Item label="Nominal Dibayar" name="amount" rules={[{ type: 'number', min: Number(transaction?.total) || 0, message: `Nominal minimal ${formatCurrency(transaction?.total)}` }]}>
             <MoneyInput step={1000} min={Number(transaction?.total) || 0} />
           </Form.Item>
@@ -1040,6 +1052,7 @@ function PaySchemeDrawer({ scheme, onClose }) {
               <p className="ant-upload-hint">Format: JPG, PNG, PDF. Maksimal mengikuti konfigurasi backend.</p>
             </Upload.Dragger>
           </Form.Item>
+          <PayerNameField />
           <Form.Item label="Catatan" name="manual_notes">
             <Input.TextArea rows={3} />
           </Form.Item>

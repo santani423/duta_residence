@@ -8,7 +8,7 @@
             @foreach ($receipts as $receipt)
                 <tr>
                     <td>{{ $receipt->number }}</td>
-                    <td>{{ $receipt->resident_name }}</td>
+                    <td>{{ $receipt->resident_name }}@if ($receipt->payer_name)<br><span class="muted">Pembayar: {{ $receipt->payer_name }}</span>@endif</td>
                     <td>{{ trim(($receipt->cluster_name ?? '').' '.($receipt->block ?? '').'/'.($receipt->lot_number ?? '')) }}</td>
                     <td>{{ $receipt->transaction_date?->format('d-m-Y H:i') ?? '-' }}</td>
                     <td>{{ $receipt->billing_periods }}</td>

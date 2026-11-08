@@ -32,6 +32,7 @@ use App\Services\ResidentAccountService;
 use App\Services\UnitBalanceLedgerService;
 use App\Services\UnitOwnershipSyncService;
 use App\Support\DashboardDateRange;
+use App\Support\PayerName;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -355,8 +356,10 @@ class ResidentPortalController extends Controller
         $setting = PaymentGatewaySetting::current();
         $data = $request->validate([
             'provider' => ['nullable', Rule::in(['manual', 'xendit', 'midtrans'])],
+            'payer_name' => PayerName::rules(),
         ]);
         $provider = $data['provider'] ?? $setting->defaultGateway();
+        $payerName = PayerName::normalize($data['payer_name'] ?? null);
 
         if (! $setting->allows($provider)) {
             throw ValidationException::withMessages(['provider' => ['Metode pembayaran sedang tidak tersedia.']]);
@@ -375,7 +378,7 @@ class ResidentPortalController extends Controller
 
         $this->assertSequentialSelection($unit, $billings);
 
-        $transaction = DB::transaction(function () use ($billings, $request, $setting, $provider, $factory, $unit) {
+        $transaction = DB::transaction(function () use ($billings, $request, $setting, $provider, $factory, $unit, $payerName) {
             $ids = $billings->pluck('id')->all();
             $schemes = app(PaymentSchemeService::class);
             $schemes->assertSchemeBillsComplete($ids);
@@ -393,6 +396,7 @@ class ResidentPortalController extends Controller
                 'transaction_number' => 'TRX-'.now()->format('YmdHis').'-'.Str::upper(Str::random(6)),
                 'invoice_number' => 'INV-'.now()->format('YmdHis').'-'.Str::upper(Str::random(6)),
                 'unit_id' => $unit->id,
+                'payer_name' => $payerName,
                 'subtotal' => $subtotal,
                 'tax' => 0,
                 'admin_fee' => (float) $setting->admin_fee,
@@ -496,6 +500,7 @@ class ResidentPortalController extends Controller
             'manual_transfer_date' => ['required', 'date'],
             'proof' => ['required', 'file', "mimes:{$extensions}", 'max:'.$setting->proof_max_size_kb],
             'manual_notes' => ['nullable', 'string'],
+            'payer_name' => PayerName::rules(),
         ]);
 
         if ($payment->payment_provider !== 'manual' || ! in_array($payment->status, ['pending', 'rejected'], true)) {
@@ -513,6 +518,8 @@ class ResidentPortalController extends Controller
             'manual_amount' => $data['amount'],
             'manual_transfer_date' => $data['manual_transfer_date'],
             'manual_notes' => $data['manual_notes'] ?? null,
+            // Nama pembayar yang sudah dicatat saat transaksi dibuat dipertahankan bila tidak diisi ulang.
+            'payer_name' => PayerName::normalize($data['payer_name'] ?? null) ?? $payment->payer_name,
             'manual_proof_uploaded_at' => now(),
             'payment_method' => PaymentTransaction::METHOD_BANK_TRANSFER,
             'status' => 'waiting_verification',
@@ -1281,6 +1288,7 @@ class ResidentPortalController extends Controller
                     'total_amount' => round($principal + $penalty, 2),
                 ];
             })->values(),
+            'payer_name' => $transaction->payer_name,
             'payment_gateway' => $transaction->payment_provider,
             'payment_method' => $transaction->payment_method,
             'payment_method_label' => $transaction->payment_method_label,

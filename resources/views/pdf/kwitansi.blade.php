@@ -67,6 +67,7 @@
         <tr><td>No</td><td class="right">{{ $data['number'] }}</td></tr>
         <tr><td>Tanggal</td><td class="right">{{ $data['date']?->format('d/m/Y H:i') ?? '-' }}</td></tr>
         <tr><td>Nama</td><td class="right">{{ $data['resident_name'] }}</td></tr>
+        @if ($data['payer_name'] ?? null)<tr><td>Pembayar</td><td class="right">{{ $data['payer_name'] }}</td></tr>@endif
         <tr><td>Unit</td><td class="right">{{ $data['unit_id'] }}</td></tr>
         <tr><td>Alamat</td><td class="right">{{ $data['address'] }}</td></tr>
         <tr><td>Metode</td><td class="right">{{ $data['method'] }}</td></tr>
@@ -123,7 +124,8 @@
         <div class="rule"></div>
 
         <table class="info">
-            <tr><td class="k">Sudah terima dari</td><td class="c">:</td><td><b>{{ $data['resident_name'] }}</b></td></tr>
+            <tr><td class="k">Sudah terima dari</td><td class="c">:</td><td><b>{{ $data['payer_name'] ?? $data['resident_name'] }}</b></td></tr>
+            @if ($data['payer_name'] ?? null)<tr><td class="k">Atas nama pemilik unit</td><td class="c">:</td><td>{{ $data['resident_name'] }}</td></tr>@endif
             <tr><td class="k">Unit / Alamat</td><td class="c">:</td><td>{{ $data['unit_id'] }} &mdash; {{ $data['address'] }}</td></tr>
             <tr><td class="k">Untuk pembayaran</td><td class="c">:</td><td>{{ $data['description'] }}</td></tr>
             <tr><td class="k">Tanggal pembayaran</td><td class="c">:</td><td>{{ $data['date']?->format('d/m/Y H:i') ?? '-' }}</td></tr>
@@ -173,7 +175,7 @@
         <table class="sign">
             <tr>
                 <td>Penerima,<div class="space">@if ($cancelled)<br><span class="stamp">DIBATALKAN</span>@endif</div><span class="line">{{ $data['cashier'] ?: '( ........................ )' }}</span></td>
-                <td>Pembayar,<div class="space"></div><span class="line">{{ $data['resident_name'] }}</span></td>
+                <td>Pembayar,<div class="space"></div><span class="line">{{ $data['payer_name'] ?? $data['resident_name'] }}</span></td>
             </tr>
         </table>
         <div class="note" style="text-align: center;">Kuitansi ini sah sebagai bukti pembayaran. Dicetak {{ now()->format('d/m/Y H:i') }}.</div>

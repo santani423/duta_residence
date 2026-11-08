@@ -55,6 +55,8 @@ import { confirmPayment } from '../../utils/confirmPayment.js';
 import { downloadBlob } from '../../utils/download.js';
 import { useThemeMode } from '../../state/ThemeContext.jsx';
 import MoneyInput from '../../components/common/MoneyInput.jsx';
+import PayerNameField, { PayerNameInput } from '../../components/common/PayerNameField.jsx';
+import { cleanPayerName } from '../../utils/payerName.js';
 
 // Download errors used to surface as unhandled promise rejections (the button just did nothing).
 async function saveDownload(request, filename) {
@@ -117,7 +119,7 @@ function InfoList({ data = {} }) {
   );
 }
 
-function PaymentConfigCard({ config, total, invoiceNumber, onProvider, vaNumber }) {
+function PaymentConfigCard({ config, total, invoiceNumber, onProvider, vaNumber, payerName, onPayerNameChange }) {
   const available = config?.available_methods || config?.enabled_gateways || [config?.active_gateway].filter(Boolean);
   const manual = config?.manual_payment;
 
@@ -150,12 +152,17 @@ function PaymentConfigCard({ config, total, invoiceNumber, onProvider, vaNumber 
         ) : null}
         {invoiceNumber ? <Typography.Text>Total {invoiceNumber}: {formatCurrency(total)}</Typography.Text> : null}
         {onProvider ? (
-          <Space wrap>
-            {available.map((provider) => (
-              <Button key={provider} type={provider === config?.active_gateway ? 'primary' : 'default'} onClick={() => onProvider(provider)}>
-                Bayar via {gateways.find((item) => item.value === provider)?.label || provider}
-              </Button>
-            ))}
+          <Space direction="vertical" style={{ width: '100%' }} size="small">
+            <Typography.Text strong>Nama Pembayar</Typography.Text>
+            <PayerNameInput value={payerName} onChange={(event) => onPayerNameChange?.(event.target.value)} />
+            <Typography.Text type="secondary">Opsional. Isi jika yang membayar bukan pemilik unit, misalnya penyewa atau keluarga.</Typography.Text>
+            <Space wrap>
+              {available.map((provider) => (
+                <Button key={provider} type={provider === config?.active_gateway ? 'primary' : 'default'} onClick={() => onProvider(provider)}>
+                  Bayar via {gateways.find((item) => item.value === provider)?.label || provider}
+                </Button>
+              ))}
+            </Space>
           </Space>
         ) : null}
       </Space>
@@ -202,6 +209,8 @@ function ManualProofDrawer({ payment, open, onClose }) {
       formData.append('manual_transfer_date', values.manual_transfer_date.format('YYYY-MM-DD'));
       formData.append('proof', values.proof[0].originFileObj);
       if (values.manual_notes) formData.append('manual_notes', values.manual_notes);
+      const payerName = cleanPayerName(values.payer_name);
+      if (payerName) formData.append('payer_name', payerName);
       return api.resident.uploadManualProof(payment.id, formData);
     },
     onSuccess: () => {
@@ -240,10 +249,11 @@ function ManualProofDrawer({ payment, open, onClose }) {
           ))}
         </Descriptions>
       ) : null}
-      <Form form={form} layout="vertical" className="section-row" initialValues={{ amount: payment?.total, manual_transfer_date: dayjs() }} onFinish={confirmSubmit}>
+      <Form form={form} layout="vertical" className="section-row" initialValues={{ amount: payment?.total, manual_transfer_date: dayjs(), payer_name: payment?.payer_name }} onFinish={confirmSubmit}>
         <Form.Item label="Nama pengirim" name="sender_name" rules={[{ required: true }]}><Input /></Form.Item>
         <Form.Item label="Bank pengirim" name="sender_bank" rules={[{ required: true }]}><Input /></Form.Item>
         <Form.Item label="Nomor rekening pengirim" name="sender_account_number" rules={[{ required: true }]}><Input /></Form.Item>
+        <PayerNameField />
         <Form.Item label="Nominal transfer" name="amount" rules={[{ required: true, type: 'number', min: Number(payment?.total) || 0, message: `Nominal minimal ${formatCurrency(payment?.total)}` }]}>
           <MoneyInput min={Number(payment?.total) || 0} />
         </Form.Item>
@@ -273,11 +283,12 @@ function useResidentPaymentActions() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ invoiceId, invoiceIds, provider }) => {
+    mutationFn: ({ invoiceId, invoiceIds, provider, payerName }) => {
       const ids = invoiceIds || (invoiceId ? [invoiceId] : []);
+      const payload = { provider, payer_name: cleanPayerName(payerName) };
       return ids.length > 1
-        ? api.resident.createBulkPayment(ids, { provider })
-        : api.resident.createPayment(ids[0], { provider });
+        ? api.resident.createBulkPayment(ids, payload)
+        : api.resident.createPayment(ids[0], payload);
     },
     onSuccess: (response) => {
       const payment = response.data;
@@ -551,6 +562,7 @@ function ResidentBills() {
   const createPayment = useResidentPaymentActions();
   const [paying, setPaying] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [payerName, setPayerName] = useState('');
   const configData = unwrapQuery(config);
   const tenantData = unwrapQuery(tenantQuery) || {};
   const rows = query.data?.data || [];
@@ -562,10 +574,12 @@ function ResidentBills() {
   const selectedTotal = selectedRows.reduce((sum, row) => sum + Number(row.total || 0), 0);
 
   function payRow(row) {
+    setPayerName('');
     setPaying({ invoiceIds: [row.id], invoice_number: row.invoice_number, total: row.total });
   }
 
   function paySelected() {
+    setPayerName('');
     setPaying({ invoiceIds: selectedIds, invoice_number: `${selectedIds.length} tagihan`, total: selectedTotal });
   }
 
@@ -576,7 +590,7 @@ function ResidentBills() {
       onOk: () => {
         setPaying(null);
         setSelectedIds([]);
-        return createPayment.mutateAsync({ invoiceIds: target.invoiceIds, provider });
+        return createPayment.mutateAsync({ invoiceIds: target.invoiceIds, provider, payerName });
       },
     });
   }
@@ -605,7 +619,7 @@ function ResidentBills() {
       ) : null}
       <InvoiceTable query={query} onChange={table.handleTableChange} onPay={payRow} payDisabledReason={payDisabledReason} selectedIds={selectedIds} onSelectionChange={setSelectedIds} />
       <Modal title="Pilih Metode Pembayaran" open={Boolean(paying)} onCancel={() => setPaying(null)} footer={null}>
-        <PaymentConfigCard config={configData} total={paying?.total} invoiceNumber={paying?.invoice_number} onProvider={pay} />
+        <PaymentConfigCard config={configData} total={paying?.total} invoiceNumber={paying?.invoice_number} onProvider={pay} payerName={payerName} onPayerNameChange={setPayerName} />
       </Modal>
     </section>
   );
@@ -732,6 +746,7 @@ function ResidentInvoiceDetail() {
   const config = useQuery({ queryKey: ['resident-payment-config'], queryFn: api.resident.paymentConfig });
   const tenantQuery = useQuery({ queryKey: ['resident-tenant'], queryFn: api.resident.tenantInfo, ...OWNERSHIP_SENSITIVE_QUERY_OPTIONS });
   const createPayment = useResidentPaymentActions();
+  const [payerName, setPayerName] = useState('');
   const data = unwrapQuery(query) || {};
   const configData = unwrapQuery(config);
   const tenantData = unwrapQuery(tenantQuery) || {};
@@ -746,7 +761,7 @@ function ResidentInvoiceDetail() {
   function payInvoice(provider) {
     confirmPayment({
       content: `Pembayaran ${data.invoice_number} senilai ${formatCurrency(data.total)}${provider ? ` via ${provider}` : ''} akan diproses.`,
-      onOk: () => createPayment.mutateAsync({ invoiceId: data.id, provider }),
+      onOk: () => createPayment.mutateAsync({ invoiceId: data.id, provider, payerName }),
     });
   }
 
@@ -785,7 +800,7 @@ function ResidentInvoiceDetail() {
               </Tooltip>
             </Space>
           </Card>
-          <PaymentConfigCard config={configData} total={data.total} invoiceNumber={data.invoice_number} vaNumber={data.unit?.va_number} onProvider={canPayInvoice ? payInvoice : undefined} />
+          <PaymentConfigCard config={configData} total={data.total} invoiceNumber={data.invoice_number} vaNumber={data.unit?.va_number} onProvider={canPayInvoice ? payInvoice : undefined} payerName={payerName} onPayerNameChange={setPayerName} />
           <Card title="Riwayat Pembayaran" className="resident-wide"><PaymentTable data={data.payment_history} /></Card>
         </div>
       )}
@@ -880,6 +895,7 @@ function ResidentPaymentDetail() {
             <InfoList data={{
               Invoice: data.invoice_number,
               Penghuni: data.resident?.name,
+              'Nama Pembayar': data.payer_name || undefined,
               Gateway: data.payment_gateway,
               Metode: formatPaymentMethod(data.payment_method),
               Subtotal: formatCurrency(data.fee_breakdown?.subtotal),

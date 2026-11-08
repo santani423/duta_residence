@@ -282,6 +282,20 @@ a {
   color: rgba(0, 0, 0, 0.88);
 }
 
+.income-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+}
+
+/* Teks khusus cetak (nama cluster & tanggal cetak); disembunyikan di layar. */
+.print-only {
+  display: none;
+}
+
 .action-row {
   margin-top: 16px;
   margin-bottom: 16px;
@@ -497,16 +511,39 @@ a {
     flex: 0 0 100%;
   }
 
-  .cluster-detail-page.printing > .page-header,
-  .cluster-detail-page.printing > .ant-card:not(.print-area),
-  .cluster-detail-page.printing > .ant-row {
+  .print-only {
+    display: block !important;
+  }
+
+  /* Cetak detail cluster: hanya kartu target (data-print-target) yang tampil. */
+  .cluster-detail-page[data-print-target] > * {
     display: none !important;
   }
 
-  .cluster-detail-page.printing .print-area .filter-card,
-  .cluster-detail-page.printing .print-area .filter-mobile,
-  .cluster-detail-page.printing .print-area .ant-card-extra,
-  .cluster-detail-page.printing .print-area .ant-pagination {
+  .cluster-detail-page[data-print-target='units'] > .print-area,
+  .cluster-detail-page[data-print-target='income'] > .print-income {
+    display: block !important;
+  }
+
+  /* Hasil cetak selalu berlatar putih dengan teks gelap, termasuk saat tema gelap aktif di layar. */
+  .cluster-detail-page[data-print-target] > :is(.print-area, .print-income) {
+    background: #fff !important;
+    box-shadow: none !important;
+    color: #111827 !important;
+  }
+
+  .cluster-detail-page[data-print-target] > :is(.print-area, .print-income) * {
+    color: #111827 !important;
+    background-color: transparent !important;
+    border-color: #d1d5db !important;
+    box-shadow: none !important;
+  }
+
+  .cluster-detail-page[data-print-target] .no-print,
+  .cluster-detail-page[data-print-target] .filter-card,
+  .cluster-detail-page[data-print-target] .filter-mobile,
+  .cluster-detail-page[data-print-target] .ant-card-extra,
+  .cluster-detail-page[data-print-target] .ant-pagination {
     display: none !important;
   }
 }

@@ -8,7 +8,7 @@
             @foreach ($transactions as $transaction)
                 <tr>
                     <td>{{ $transaction->invoice_number }}</td>
-                    <td>{{ $transaction->unit->resident->name ?? '-' }}</td>
+                    <td>{{ $transaction->unit->resident->name ?? '-' }}@if ($transaction->payer_name)<br><span class="muted">Pembayar: {{ $transaction->payer_name }}</span>@endif</td>
                     <td>{{ trim(($transaction->unit->cluster->name ?? '').' '.($transaction->unit->block ?? '').'/'.($transaction->unit->lot_number ?? '')) }}</td>
                     <td>{{ $transaction->payment_provider }}</td>
                     <td class="right">Rp {{ number_format($transaction->total, 0, ',', '.') }}</td>

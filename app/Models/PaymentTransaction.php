@@ -32,7 +32,7 @@ class PaymentTransaction extends Model
     protected $fillable = [
         'transaction_number', 'invoice_number', 'unit_id', 'subtotal', 'tax',
         'admin_fee', 'total', 'currency', 'payment_provider', 'payment_method',
-        'provider_reference', 'status', 'payment_url', 'expired_at', 'paid_at',
+        'provider_reference', 'status', 'payment_url', 'expired_at', 'paid_at', 'payer_name',
         'manual_proof_path', 'manual_sender_name', 'manual_sender_bank',
         'manual_sender_account_number', 'manual_amount', 'manual_transfer_date',
         'manual_notes', 'manual_proof_uploaded_at',

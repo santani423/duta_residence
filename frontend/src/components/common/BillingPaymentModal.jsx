@@ -13,6 +13,8 @@ import { confirmPayment } from '../../utils/confirmPayment.js';
 import ResponsiveTable from '../tables/ResponsiveTable.jsx';
 import MoneyInput from './MoneyInput.jsx';
 import PaymentPrintMenu from './PaymentPrintMenu.jsx';
+import PayerNameField from './PayerNameField.jsx';
+import { cleanPayerName } from '../../utils/payerName.js';
 
 // Pembayaran loket langsung dari daftar tagihan: satu unit, satu atau beberapa tagihan yang sudah disetujui.
 export default function BillingPaymentModal({ unitId, billingIds = [], open, onClose }) {
@@ -85,6 +87,7 @@ export default function BillingPaymentModal({ unitId, billingIds = [], open, onC
       payment_channel_id: 'L',
       loket_code: values.loket_code,
       cashier_name: values.cashier_name,
+      payer_name: cleanPayerName(values.payer_name),
       notes: values.notes,
     }),
     onSuccess: (response) => {
@@ -102,9 +105,10 @@ export default function BillingPaymentModal({ unitId, billingIds = [], open, onC
   // Transaksi disimpan agar bila unggah gagal, percobaan ulang tidak membuat transaksi ganda.
   const transfer = useMutation({
     mutationFn: async (values) => {
+      const payerName = cleanPayerName(values.payer_name);
       let current = transaction;
       if (!current) {
-        current = (await api.payments.createGateway({ unit_id: unitId, billing_ids: selectedIds, provider: 'manual' })).data;
+        current = (await api.payments.createGateway({ unit_id: unitId, billing_ids: selectedIds, provider: 'manual', payer_name: payerName })).data;
         setTransaction(current);
       }
       const formData = new FormData();
@@ -112,6 +116,7 @@ export default function BillingPaymentModal({ unitId, billingIds = [], open, onC
       formData.append('manual_transfer_date', values.manual_transfer_date.format('YYYY-MM-DD'));
       if (values.manual_amount) formData.append('amount', values.manual_amount);
       if (values.manual_notes) formData.append('manual_notes', values.manual_notes);
+      if (payerName) formData.append('payer_name', payerName);
       return api.payments.uploadManualProof(current.id, formData);
     },
     onSuccess: (response) => {
@@ -183,6 +188,7 @@ export default function BillingPaymentModal({ unitId, billingIds = [], open, onC
           <Typography.Title level={4} style={{ margin: 0 }}>{receipt.number}</Typography.Title>
           <Typography.Text type="secondary">{formatDateTime(receipt.transaction_date)}</Typography.Text>
           <Typography.Text>{receipt.resident_name} — {receipt.cluster_name} {receipt.block}/{receipt.lot_number}</Typography.Text>
+          {receipt.payer_name ? <Typography.Text>Dibayar oleh: {receipt.payer_name}</Typography.Text> : null}
           <Typography.Text>Periode: {receipt.billing_periods} ({receipt.billing_count} tagihan)</Typography.Text>
           <Typography.Text strong>Grand Total: {formatCurrency(receipt.grand_total)}</Typography.Text>
           {Number(receipt.deposit_amount) > 0 ? <Alert type="success" showIcon message={`Kelebihan pembayaran ${formatCurrency(receipt.deposit_amount)} dicatat sebagai saldo unit.`} /> : null}
@@ -232,6 +238,7 @@ export default function BillingPaymentModal({ unitId, billingIds = [], open, onC
                             <DatePicker style={{ width: 220 }} />
                           </Form.Item>
                         </Space>
+                        <PayerNameField />
                         <Form.Item
                           label="Bukti Transfer"
                           name="proof"
@@ -263,6 +270,7 @@ export default function BillingPaymentModal({ unitId, billingIds = [], open, onC
                           <Form.Item label="Nama Kasir" name="cashier_name" tooltip="Otomatis sesuai akun yang login, tidak dapat diubah.">
                             <Input style={{ width: 220 }} disabled />
                           </Form.Item>
+                          <PayerNameField inputStyle={{ width: 220 }} />
                         </Space>
                         <Form.Item label="Catatan" name="notes"><Input.TextArea rows={2} /></Form.Item>
                       </>

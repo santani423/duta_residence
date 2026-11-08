@@ -11,6 +11,7 @@ use App\Services\CollectionScopeService;
 use App\Services\CollectorAssignmentService;
 use App\Services\PaymentService;
 use App\Services\PenaltyService;
+use App\Support\PayerName;
 use App\Support\UnitFilters;
 use Illuminate\Http\Request;
 
@@ -114,6 +115,7 @@ class PaymentController extends Controller
             'payment_method_id' => ['required', 'exists:payment_methods,id'],
             'payment_channel_id' => ['nullable', 'exists:payment_channels,id'],
             'loket_code' => ['nullable', 'string', 'max:20'],
+            'payer_name' => PayerName::rules(),
             'notes' => ['nullable', 'string'],
         ]);
 
@@ -138,7 +140,8 @@ class PaymentController extends Controller
             ->when($request->query('search'), fn ($q, $value) => $q->where(fn ($inner) => $inner
                 ->where('number', 'like', "%{$value}%")
                 ->orWhere('unit_id', 'like', "%{$value}%")
-                ->orWhere('resident_name', 'like', "%{$value}%")))
+                ->orWhere('resident_name', 'like', "%{$value}%")
+                ->orWhere('payer_name', 'like', "%{$value}%")))
             ->when($request->query('address'), fn ($q, $value) => $q->where(fn ($inner) => $inner
                 ->where('cluster_name', 'like', "%{$value}%")
                 ->orWhere('block', 'like', "%{$value}%")

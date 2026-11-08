@@ -18,6 +18,7 @@ use App\Services\PaymentSchemeService;
 use App\Services\PaymentService;
 use App\Services\PaymentStaffNotifier;
 use App\Services\PenaltyService;
+use App\Support\PayerName;
 use App\Support\UnitFilters;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -43,6 +44,7 @@ class PaymentGatewayController extends Controller
                 ->where('transaction_number', 'like', "%{$value}%")
                 ->orWhere('invoice_number', 'like', "%{$value}%")
                 ->orWhere('provider_reference', 'like', "%{$value}%")
+                ->orWhere('payer_name', 'like', "%{$value}%")
                 ->orWhere('unit_id', 'like', "%{$value}%")
                 ->orWhereHas('unit', fn ($u) => $u
                     ->where('block', 'like', "%{$value}%")
@@ -77,6 +79,7 @@ class PaymentGatewayController extends Controller
             'billing_ids' => ['required', 'array', 'min:1'],
             'billing_ids.*' => ['integer', 'exists:billings,id'],
             'provider' => ['nullable', 'in:manual,xendit,midtrans'],
+            'payer_name' => PayerName::rules(),
         ]);
 
         $setting = PaymentGatewaySetting::current();
@@ -86,7 +89,9 @@ class PaymentGatewayController extends Controller
             throw ValidationException::withMessages(['provider' => ['Metode pembayaran sedang tidak tersedia.']]);
         }
 
-        $transaction = DB::transaction(function () use ($data, $request, $factory, $setting, $provider, $penaltyService) {
+        $payerName = PayerName::normalize($data['payer_name'] ?? null);
+
+        $transaction = DB::transaction(function () use ($data, $request, $factory, $setting, $provider, $penaltyService, $payerName) {
             $billings = Billing::query()
                 ->whereIn('id', $data['billing_ids'])
                 ->where('unit_id', $data['unit_id'])
@@ -110,6 +115,7 @@ class PaymentGatewayController extends Controller
                 'transaction_number' => 'TRX-'.now()->format('YmdHis').'-'.Str::upper(Str::random(6)),
                 'invoice_number' => 'INV-'.now()->format('YmdHis').'-'.Str::upper(Str::random(6)),
                 'unit_id' => $data['unit_id'],
+                'payer_name' => $payerName,
                 'subtotal' => $subtotal,
                 'tax' => 0,
                 'admin_fee' => $adminFee,
@@ -136,6 +142,7 @@ class PaymentGatewayController extends Controller
             'amount' => ['nullable', 'numeric', 'min:1'],
             'manual_transfer_date' => ['required', 'date'],
             'manual_notes' => ['nullable', 'string'],
+            'payer_name' => PayerName::rules(),
         ]);
 
         $file = $data['proof'];
@@ -159,6 +166,8 @@ class PaymentGatewayController extends Controller
             'manual_amount' => $data['amount'] ?? $transaction->manual_amount,
             'manual_transfer_date' => $data['manual_transfer_date'],
             'manual_notes' => $data['manual_notes'] ?? null,
+            // Nama pembayar yang sudah dicatat saat transaksi dibuat dipertahankan bila tidak diisi ulang.
+            'payer_name' => PayerName::normalize($data['payer_name'] ?? null) ?? $transaction->payer_name,
             'manual_proof_uploaded_at' => now(),
             'payment_method' => PaymentTransaction::METHOD_BANK_TRANSFER,
             'status' => 'waiting_verification',

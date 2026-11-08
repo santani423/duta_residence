@@ -1,11 +1,12 @@
 import { Button, Card, Col, DatePicker, Descriptions, Drawer, Dropdown, Empty, Form, Input, Modal, Row, Select, Space, Statistic, Switch, Tag, message } from 'antd';
 import { DeleteOutlined, EditOutlined, EnvironmentOutlined, MoreOutlined, PlusOutlined, PrinterOutlined } from '@ant-design/icons';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import PageHeader from '../components/common/PageHeader.jsx';
+import DashboardRangePicker from '../components/common/DashboardRangePicker.jsx';
 import Can from '../components/common/Can.jsx';
 import FilterBar from '../components/common/FilterBar.jsx';
 import ResponsiveTable from '../components/tables/ResponsiveTable.jsx';
@@ -22,6 +23,21 @@ const DONUT_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100'];
 const MONTHLY_RATE_MONTHS_PAST = 6;
 const MONTHLY_RATE_MONTHS_FUTURE = 6;
 const INCOME_LINE_COLOR = '#2563eb';
+const INCOME_MAX_RANGE_MONTHS = 60; // harus sama dengan ClusterController::MAX_INCOME_RANGE_MONTHS
+// Palet grafik penghasilan: layar memakai warna semula; cetak memakai garis lebih tebal dan
+// kontras tinggi (latar putih, label & sumbu gelap) agar terbaca jelas di kertas.
+const SCREEN_CHART_PALETTE = { line: INCOME_LINE_COLOR, lineWidth: 2, dot: { r: 4 }, grid: '#ccc', axis: '#666', tick: '#666' };
+const PRINT_CHART_PALETTE = {
+  line: '#1e40af',
+  lineWidth: 2.5,
+  dot: { r: 4, fill: '#ffffff', stroke: '#1e40af', strokeWidth: 2 },
+  grid: '#9ca3af',
+  axis: '#111827',
+  tick: '#111827',
+};
+// Ukuran tetap saat cetak agar grafik tidak terpotong oleh lebar layar (A4 portrait).
+const PRINT_CHART_WIDTH = 640;
+const PRINT_CHART_HEIGHT = 300;
 const ID_MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
 function shortMonthLabel(month) {
@@ -40,33 +56,82 @@ function IncomeTooltip({ active, payload }) {
   );
 }
 
-function ClusterIncomeChart({ query }) {
+// Default: 12 bulan terakhir (dari awal bulan 11 bulan lalu sampai hari ini).
+function defaultIncomeRange() {
+  const today = dayjs().startOf('day');
+  return [today.subtract(11, 'month').startOf('month'), today];
+}
+
+function incomeRangePresets() {
+  const today = dayjs().startOf('day');
+  const lastYear = today.subtract(1, 'year');
+  return [
+    { label: '12 bulan terakhir', value: defaultIncomeRange() },
+    { label: 'Tahun ini', value: [today.startOf('year'), today] },
+    { label: 'Tahun lalu', value: [lastYear.startOf('year'), lastYear.endOf('year').startOf('day')] },
+  ];
+}
+
+function ClusterIncomeChart({ query, range, onRangeChange, clusterName, printing, onPrint }) {
   const payload = query.data?.data;
   const monthlyIncome = (payload?.monthly_income || []).map((row) => ({ ...row, shortLabel: shortMonthLabel(row.month) }));
   const hasIncome = monthlyIncome.some((row) => Number(row.income) > 0);
+  const palette = printing ? PRINT_CHART_PALETTE : SCREEN_CHART_PALETTE;
+  const periodLabel = `${formatDate(range[0])} s/d ${formatDate(range[1])}`;
+
+  // Definisi grafik yang sama untuk layar (ikut lebar kontainer) dan cetak (ukuran tetap).
+  const lineChart = (size) => (
+    <LineChart data={monthlyIncome} margin={{ top: 8, right: 16, left: 8, bottom: 24 }} {...size}>
+      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={palette.grid} />
+      <XAxis dataKey="shortLabel" tick={{ fontSize: 12, fill: palette.tick }} stroke={palette.axis} angle={-35} textAnchor="end" height={56} />
+      <YAxis tickFormatter={(value) => `${(Number(value) / 1000000).toLocaleString('id-ID')} jt`} width={70} tick={{ fontSize: 12, fill: palette.tick }} stroke={palette.axis} />
+      <Tooltip content={<IncomeTooltip />} />
+      <Line
+        type="monotone"
+        dataKey="income"
+        name="Penghasilan"
+        stroke={palette.line}
+        strokeWidth={palette.lineWidth}
+        dot={palette.dot}
+        activeDot={{ r: 6 }}
+        isAnimationActive={!printing}
+      />
+    </LineChart>
+  );
 
   return (
     <Card
-      className="section-row"
+      className="section-row print-income"
       title="Penghasilan Cluster"
       loading={query.isLoading}
-      extra={payload ? <Statistic title="Total 12 Bulan Terakhir" value={formatCurrency(payload.total_income)} valueStyle={{ fontSize: 18 }} /> : null}
+      extra={(
+        <Space wrap className="no-print">
+          <DashboardRangePicker value={range} onChange={onRangeChange} presets={incomeRangePresets()} />
+          <Button icon={<PrinterOutlined />} onClick={onPrint}>Cetak</Button>
+        </Space>
+      )}
     >
+      <div className="print-only income-print-meta">{clusterName} · dicetak {formatDate(dayjs())}</div>
       {query.isError ? (
         <ErrorState error={query.error} onRetry={query.refetch} />
-      ) : !hasIncome ? (
-        <Empty description="Belum ada transaksi penghasilan yang tercatat." image={Empty.PRESENTED_IMAGE_SIMPLE} />
       ) : (
-        <div className="chart-box">
-          <ResponsiveContainer>
-            <LineChart data={monthlyIncome} margin={{ top: 8, right: 16, left: 8, bottom: 24 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="shortLabel" tick={{ fontSize: 12 }} angle={-35} textAnchor="end" height={56} />
-              <YAxis tickFormatter={(value) => `${(Number(value) / 1000000).toLocaleString('id-ID')} jt`} width={70} tick={{ fontSize: 12 }} />
-              <Tooltip content={<IncomeTooltip />} />
-              <Line type="monotone" dataKey="income" name="Penghasilan" stroke={INCOME_LINE_COLOR} strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-            </LineChart>
-          </ResponsiveContainer>
+        // Saat pindah rentang, data lama ditampilkan redup sampai data rentang baru tiba.
+        <div style={{ opacity: query.isPlaceholderData ? 0.5 : 1, transition: 'opacity 0.2s' }}>
+          {payload && (
+            <div className="income-summary">
+              <Statistic title="Total Penghasilan" value={formatCurrency(payload.total_income)} valueStyle={{ fontSize: 18 }} />
+              <div className="muted">Periode {periodLabel}</div>
+            </div>
+          )}
+          {!hasIncome ? (
+            <Empty description="Belum ada transaksi penghasilan yang tercatat." image={Empty.PRESENTED_IMAGE_SIMPLE} />
+          ) : printing ? (
+            <div className="income-chart-print">{lineChart({ width: PRINT_CHART_WIDTH, height: PRINT_CHART_HEIGHT })}</div>
+          ) : (
+            <div className="chart-box">
+              <ResponsiveContainer>{lineChart()}</ResponsiveContainer>
+            </div>
+          )}
         </div>
       )}
     </Card>
@@ -130,26 +195,43 @@ export default function ClusterDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [drawer, setDrawer] = useState({ mode: null, record: null });
-  const [isPrinting, setIsPrinting] = useState(false);
+  const [printTarget, setPrintTarget] = useState(null);
+  const [incomeRange, setIncomeRange] = useState(defaultIncomeRange);
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
   const unitsTable = useTableState();
+  const incomeStart = incomeRange[0].format('YYYY-MM-DD');
+  const incomeEnd = incomeRange[1].format('YYYY-MM-DD');
 
   useEffect(() => {
     function handleAfterPrint() {
-      setIsPrinting(false);
+      setPrintTarget(null);
     }
     window.addEventListener('afterprint', handleAfterPrint);
     return () => window.removeEventListener('afterprint', handleAfterPrint);
   }, []);
 
-  function printUnitsSection() {
-    setIsPrinting(true);
+  // Cetak satu bagian halaman: hanya kartu target yang tampil (lihat aturan @media print di styles.css).
+  function printSection(target) {
+    setPrintTarget(target);
     setTimeout(() => window.print(), 50);
   }
 
+  function changeIncomeRange(next) {
+    const months = next[1].startOf('month').diff(next[0].startOf('month'), 'month') + 1;
+    if (months > INCOME_MAX_RANGE_MONTHS) {
+      message.warning(`Rentang maksimal ${INCOME_MAX_RANGE_MONTHS} bulan.`);
+      return;
+    }
+    setIncomeRange(next);
+  }
+
   const detail = useQuery({ queryKey: ['clusters', id], queryFn: () => api.clusters.detail(id) });
-  const incomeStatistics = useQuery({ queryKey: ['clusters', id, 'income-statistics'], queryFn: () => api.clusters.incomeStatistics(id) });
+  const incomeStatistics = useQuery({
+    queryKey: ['clusters', id, 'income-statistics', incomeStart, incomeEnd],
+    queryFn: () => api.clusters.incomeStatistics(id, { start: incomeStart, end: incomeEnd }),
+    placeholderData: keepPreviousData,
+  });
   const schedules = useQuery({ queryKey: ['clusters', id, 'rate-schedules'], queryFn: () => api.clusters.rateSchedules(id) });
   const units = useQuery({
     queryKey: ['clusters', id, 'units', unitsTable.params],
@@ -231,7 +313,7 @@ export default function ClusterDetailPage() {
   }));
 
   return (
-    <section className={isPrinting ? 'cluster-detail-page printing' : 'cluster-detail-page'}>
+    <section className="cluster-detail-page" data-print-target={printTarget ?? undefined}>
       <PageHeader
         title={cluster.name || 'Detail Cluster'}
         subtitle="Detail cluster dan penjadwalan perubahan tarif."
@@ -281,7 +363,14 @@ export default function ClusterDetailPage() {
         </Col>
       </Row>
 
-      <ClusterIncomeChart query={incomeStatistics} />
+      <ClusterIncomeChart
+        query={incomeStatistics}
+        range={incomeRange}
+        onRangeChange={changeIncomeRange}
+        clusterName={cluster.name}
+        printing={printTarget === 'income'}
+        onPrint={() => printSection('income')}
+      />
 
       <Card className="section-row" title="Riwayat Biaya IPL Bulanan">
         <ResponsiveTable
@@ -309,7 +398,7 @@ export default function ClusterDetailPage() {
       <Card
         className="section-row print-area"
         title={`Unit & Penghuni (${units.data?.meta?.total ?? cluster.units_count ?? 0})`}
-        extra={<Button icon={<PrinterOutlined />} onClick={printUnitsSection}>Cetak</Button>}
+        extra={<Button icon={<PrinterOutlined />} onClick={() => printSection('units')}>Cetak</Button>}
       >
         <Row gutter={[16, 16]} className="section-row">
           <Col xs={24} md={12}>

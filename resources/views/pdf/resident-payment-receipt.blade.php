@@ -8,6 +8,7 @@
     <table>
         <tr><th>Invoice Gateway</th><td>{{ $payment->invoice_number }}</td></tr>
         <tr><th>Penghuni</th><td>{{ $payment->unit->resident->name ?? '-' }}</td></tr>
+        @if ($payment->payer_name)<tr><th>Nama Pembayar</th><td>{{ $payment->payer_name }}</td></tr>@endif
         <tr><th>Gateway</th><td>{{ $payment->payment_provider }}</td></tr>
         <tr><th>Status</th><td>{{ $payment->status }}</td></tr>
         <tr><th>Tanggal Transaksi</th><td>{{ optional($payment->created_at)->format('d/m/Y H:i') }}</td></tr>

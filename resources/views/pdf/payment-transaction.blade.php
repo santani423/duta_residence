@@ -26,6 +26,9 @@
         <tr><th style="width: 32%;">Status</th><td>{{ $transaction->statusLabel() }}</td></tr>
         <tr><th>Via</th><td>{{ ['loket' => 'Loket', 'manual' => 'Transfer', 'xendit' => 'Xendit', 'midtrans' => 'Midtrans'][$transaction->payment_provider] ?? $transaction->payment_provider }}</td></tr>
         <tr><th>Metode</th><td>{{ $print['method'] ?: '-' }}</td></tr>
+        @if ($transaction->payer_name)
+            <tr><th>Nama Pembayar</th><td>{{ $transaction->payer_name }}</td></tr>
+        @endif
         <tr><th>Tanggal Transaksi</th><td>{{ $transaction->created_at?->format('d/m/Y H:i') ?? '-' }}</td></tr>
         <tr><th>Tanggal Bayar</th><td>{{ $transaction->paid_at?->format('d/m/Y H:i') ?? '-' }}</td></tr>
         @if ($transaction->manual_transfer_date)

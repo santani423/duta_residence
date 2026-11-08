@@ -183,7 +183,7 @@ class DocumentController extends Controller
         return response()->streamDownload(function () use ($transactions) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, ['Invoice', 'Penghuni', 'Unit', 'Alamat Unit', 'Via', 'Total', 'Status', 'Dibuat']);
+            fputcsv($out, ['Invoice', 'Penghuni', 'Unit', 'Alamat Unit', 'Via', 'Total', 'Status', 'Dibuat', 'Nama Pembayar']);
 
             foreach ($transactions as $transaction) {
                 fputcsv($out, [
@@ -195,6 +195,7 @@ class DocumentController extends Controller
                     (float) $transaction->total,
                     $transaction->status,
                     $transaction->created_at?->format('Y-m-d H:i') ?? '-',
+                    $transaction->payer_name ?? '-',
                 ]);
             }
 
@@ -210,6 +211,7 @@ class DocumentController extends Controller
                 ->where('transaction_number', 'like', "%{$value}%")
                 ->orWhere('invoice_number', 'like', "%{$value}%")
                 ->orWhere('provider_reference', 'like', "%{$value}%")
+                ->orWhere('payer_name', 'like', "%{$value}%")
                 ->orWhere('unit_id', 'like', "%{$value}%")
                 ->orWhereHas('unit', fn ($u) => $u
                     ->where('block', 'like', "%{$value}%")
@@ -246,7 +248,7 @@ class DocumentController extends Controller
         return response()->streamDownload(function () use ($receipts) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, ['Nomor', 'Penghuni', 'Unit', 'Alamat Unit', 'Tanggal', 'Periode', 'Total', 'Status', 'Kasir']);
+            fputcsv($out, ['Nomor', 'Penghuni', 'Unit', 'Alamat Unit', 'Tanggal', 'Periode', 'Total', 'Status', 'Kasir', 'Nama Pembayar']);
 
             foreach ($receipts as $receipt) {
                 fputcsv($out, [
@@ -259,6 +261,7 @@ class DocumentController extends Controller
                     (float) $receipt->grand_total,
                     $receipt->status,
                     $receipt->cashier_name,
+                    $receipt->payer_name ?? '-',
                 ]);
             }
 
@@ -272,7 +275,8 @@ class DocumentController extends Controller
             ->when($request->query('search'), fn ($q, $value) => $q->where(fn ($inner) => $inner
                 ->where('number', 'like', "%{$value}%")
                 ->orWhere('unit_id', 'like', "%{$value}%")
-                ->orWhere('resident_name', 'like', "%{$value}%")))
+                ->orWhere('resident_name', 'like', "%{$value}%")
+                ->orWhere('payer_name', 'like', "%{$value}%")))
             ->when($request->query('address'), fn ($q, $value) => $q->where(fn ($inner) => $inner
                 ->where('cluster_name', 'like', "%{$value}%")
                 ->orWhere('block', 'like', "%{$value}%")

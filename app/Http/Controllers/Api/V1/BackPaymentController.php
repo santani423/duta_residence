@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\PaymentService;
 use App\Models\Unit;
 use App\Http\Responses\ApiResponse;
+use App\Support\PayerName;
 use Illuminate\Http\Request;
 
 class BackPaymentController extends Controller
@@ -20,6 +21,7 @@ class BackPaymentController extends Controller
             'billing_ids.*' => ['integer', 'exists:billings,id'],
             'payment_method_id' => ['required', 'exists:payment_methods,id'],
             'loket_code' => ['nullable', 'string', 'max:20'],
+            'payer_name' => PayerName::rules(),
         ]);
 
         // Kasir selalu tercatat sebagai petugas yang login, tidak pernah dari input klien.

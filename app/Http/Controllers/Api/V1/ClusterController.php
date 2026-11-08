@@ -11,12 +11,17 @@ use App\Models\Unit;
 use App\Services\AuditService;
 use App\Services\ClusterCodeService;
 use App\Services\CollectorAssignmentService;
+use App\Support\DashboardDateRange;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ClusterController extends Controller
 {
     use ApiResponse;
+
+    /** Batas jumlah bulan untuk grafik penghasilan cluster (mencegah query per bulan yang tak terbatas). */
+    private const MAX_INCOME_RANGE_MONTHS = 60;
 
     public function index(Request $request, CollectorAssignmentService $assignmentService)
     {
@@ -148,11 +153,13 @@ class ClusterController extends Controller
     }
 
     /**
-     * Penghasilan cluster per bulan untuk 12 bulan terakhir (bergeser otomatis mengikuti bulan
-     * berjalan). Hanya menghitung billing yang benar-benar lunas (STATUS_PAID) berdasarkan
-     * tanggal pelunasan (paid_at) - bukan periode tagihan (year/month) - dan dijumlahkan dari
-     * principal_paid + penalty_paid per baris billing sehingga tidak ada double counting
-     * meskipun satu billing dibayar lewat beberapa transaksi/cicilan.
+     * Penghasilan cluster per bulan dalam rentang tanggal (`start` & `end`, YYYY-MM-DD, inklusif).
+     * Tanpa parameter: 12 bulan terakhir (bergeser otomatis mengikuti bulan berjalan). Hanya
+     * menghitung billing yang benar-benar lunas (STATUS_PAID) berdasarkan tanggal pelunasan
+     * (paid_at) - bukan periode tagihan (year/month) - dan dijumlahkan dari principal_paid +
+     * penalty_paid per baris billing sehingga tidak ada double counting meskipun satu billing
+     * dibayar lewat beberapa transaksi/cicilan. Bulan parsial di ujung rentang hanya menghitung
+     * pelunasan yang jatuh di dalam rentang, sehingga total = jumlah seluruh pelunasan dalam rentang.
      */
     public function incomeStatistics(Request $request, Cluster $cluster, CollectorAssignmentService $assignmentService)
     {
@@ -161,17 +168,30 @@ class ClusterController extends Controller
             abort_unless($clusterIds->contains($cluster->id), 403, 'Cluster ini tidak ditugaskan kepada Anda.');
         }
 
-        $end = now()->startOfMonth();
-        $start = $end->copy()->subMonths(11);
+        [$start, $rangeEnd] = DashboardDateRange::fromRequest(
+            $request,
+            now()->subMonths(11)->startOfMonth(),
+            now()->endOfMonth(),
+        );
+        $end = $rangeEnd->endOfDay();
+
+        $months = (int) $start->copy()->startOfMonth()->diffInMonths($end->copy()->startOfMonth()) + 1;
+        if ($months > self::MAX_INCOME_RANGE_MONTHS) {
+            throw ValidationException::withMessages(['start' => 'Rentang maksimal '.self::MAX_INCOME_RANGE_MONTHS.' bulan.']);
+        }
 
         $monthlyIncome = collect();
-        for ($cursor = $start->copy(); $cursor->lte($end); $cursor->addMonth()) {
+        for ($cursor = $start->copy()->startOfMonth(); $cursor->lte($end); $cursor->addMonth()) {
+            $monthStart = $cursor->copy()->startOfMonth();
+            $monthEnd = $cursor->copy()->endOfMonth();
+            $from = $monthStart->lt($start) ? $start : $monthStart;
+            $to = $monthEnd->gt($end) ? $end : $monthEnd;
+
             $income = Billing::query()
                 ->join('units', 'units.id', '=', 'billings.unit_id')
                 ->where('units.cluster_id', $cluster->id)
                 ->where('billings.status_id', Billing::STATUS_PAID)
-                ->whereYear('billings.paid_at', $cursor->year)
-                ->whereMonth('billings.paid_at', $cursor->month)
+                ->whereBetween('billings.paid_at', [$from, $to])
                 ->selectRaw('COALESCE(SUM(billings.principal_paid + billings.penalty_paid), 0) as income')
                 ->value('income');
 
@@ -186,7 +206,7 @@ class ClusterController extends Controller
             'cluster_id' => $cluster->id,
             'period' => [
                 'start' => $start->toDateString(),
-                'end' => $end->copy()->endOfMonth()->toDateString(),
+                'end' => $rangeEnd->toDateString(),
             ],
             'monthly_income' => $monthlyIncome->values(),
             'total_income' => round($monthlyIncome->sum('income'), 2),

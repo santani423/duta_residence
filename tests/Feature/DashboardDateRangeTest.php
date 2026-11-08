@@ -11,7 +11,6 @@ use Database\Seeders\AdminUserSeeder;
 use Database\Seeders\EstateSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class DashboardDateRangeTest extends TestCase
@@ -24,7 +23,8 @@ class DashboardDateRangeTest extends TestCase
         $this->seed(RolePermissionSeeder::class);
         $this->seed(EstateSeeder::class);
         $this->seed(AdminUserSeeder::class);
-        Sanctum::actingAs(User::where('username', 'admin.estate')->firstOrFail());
+        // Token sesi aktif (bukan Sanctum::actingAs) agar lolos middleware single-session.
+        $this->withToken($this->apiTokenFor(User::where('username', 'admin.estate')->firstOrFail()));
     }
 
     private function receipt(string $number, Unit $unit, string $transactionDate, int $amount): void

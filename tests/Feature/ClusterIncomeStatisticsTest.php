@@ -11,7 +11,6 @@ use Database\Seeders\EstateSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class ClusterIncomeStatisticsTest extends TestCase
@@ -32,10 +31,14 @@ class ClusterIncomeStatisticsTest extends TestCase
         $this->seed(AdminUserSeeder::class);
     }
 
+    /**
+     * Token lewat jalur login-single-session (apiTokenFor), bukan Sanctum::actingAs: token test
+     * tanpa sesi aktif akan ditolak middleware single-session (401 SESSION_REVOKED).
+     */
     private function as(string $username): User
     {
         $user = User::where('username', $username)->firstOrFail();
-        Sanctum::actingAs($user);
+        $this->withToken($this->apiTokenFor($user));
 
         return $user;
     }
@@ -123,6 +126,65 @@ class ClusterIncomeStatisticsTest extends TestCase
             ->reject(fn ($row) => in_array($row['month'], [$thisMonth->format('Y-m'), $twoMonthsAgo->format('Y-m')], true));
         $this->assertCount(10, $zeroMonths);
         $this->assertTrue($zeroMonths->every(fn ($row) => (float) $row['income'] === 0.0));
+    }
+
+    /**
+     * Rentang tanggal kustom: batas awal & akhir inklusif (pelunasan tepat di start/end ikut),
+     * bulan parsial di ujung hanya menghitung pelunasan di dalam rentang, dan total = jumlah
+     * seluruh pelunasan dalam rentang.
+     */
+    public function test_income_statistics_filters_by_custom_date_range(): void
+    {
+        $finance = User::where('username', 'admin.estate')->firstOrFail();
+        $makeUnit = fn (string $clusterId) => Unit::factory()->create(['cluster_id' => $clusterId, 'resident_id' => Resident::factory()->create()->id]);
+
+        $paid = fn (string $clusterId, int $year, int $month, int $amount, string $paidAt) => Billing::factory()->create([
+            'unit_id' => $makeUnit($clusterId)->id, 'year' => $year, 'month' => $month,
+            'amount' => $amount, 'status_id' => Billing::STATUS_PAID,
+            'principal_paid' => $amount, 'penalty_paid' => 0,
+            'paid_at' => $paidAt, 'created_by' => $finance->id,
+        ]);
+
+        $paid('D', 2024, 2, 900000, '2024-02-29 23:59:00');   // sebelum rentang -> tidak masuk
+        $paid('D', 2024, 3, 200000, '2024-03-10 08:00:00');   // tepat di start -> masuk (Mar)
+        $paid('D', 2024, 4, 300000, '2024-04-15 12:00:00');   // Apr -> masuk
+        $paid('D', 2024, 5, 400000, '2024-05-20 23:30:00');   // tepat di end -> masuk (May)
+        $paid('D', 2024, 5, 500000, '2024-05-21 00:10:00');   // sesudah rentang -> tidak masuk
+        $paid('G', 2024, 4, 600000, '2024-04-15 12:00:00');   // cluster lain -> tidak masuk
+
+        $this->as('admin.estate');
+        $data = $this->getJson('/api/v1/clusters/D/income-statistics?start=2024-03-10&end=2024-05-20')
+            ->assertOk()
+            ->json('data');
+
+        $this->assertSame('2024-03-10', $data['period']['start']);
+        $this->assertSame('2024-05-20', $data['period']['end']);
+        $this->assertCount(3, $data['monthly_income']);
+
+        $byMonth = collect($data['monthly_income'])->keyBy('month');
+        $this->assertSame(200000.0, (float) $byMonth['2024-03']['income']);
+        $this->assertSame(300000.0, (float) $byMonth['2024-04']['income']);
+        $this->assertSame(400000.0, (float) $byMonth['2024-05']['income']);
+        $this->assertSame(900000.0, (float) $data['total_income']);
+    }
+
+    public function test_income_statistics_rejects_end_before_start(): void
+    {
+        $this->as('admin.estate');
+
+        $this->getJson('/api/v1/clusters/D/income-statistics?start=2024-05-01&end=2024-04-01')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['end']);
+    }
+
+    public function test_income_statistics_rejects_range_longer_than_max_months(): void
+    {
+        $this->as('admin.estate');
+
+        // 2019-01 s/d 2024-12 = 72 bulan, melebihi batas 60 bulan.
+        $this->getJson('/api/v1/clusters/D/income-statistics?start=2019-01-01&end=2024-12-31')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['start']);
     }
 
     public function test_income_statistics_requires_cluster_view_permission(): void

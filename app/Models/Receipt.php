@@ -12,7 +12,7 @@ class Receipt extends Model
     protected $primaryKey = 'number';
 
     protected $fillable = [
-        'number', 'payment_transaction_id', 'unit_id', 'transaction_date', 'resident_name', 'cluster_name',
+        'number', 'payment_transaction_id', 'unit_id', 'transaction_date', 'resident_name', 'payer_name', 'cluster_name',
         'block', 'lot_number', 'total_billing', 'total_penalty', 'grand_total', 'deposit_amount', 'balance_used',
         'billing_count', 'billing_periods', 'loket_code', 'cashier_name',
         'payment_method_id', 'payment_channel_id', 'status', 'notes', 'created_by',
