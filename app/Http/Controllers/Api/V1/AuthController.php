@@ -69,9 +69,12 @@ class AuthController extends Controller
         }
 
         $permissions = $user->getAllPermissions()->pluck('name')->values()->all();
-        $newToken = $user->createToken('api-token', $permissions, now()->addHours(8));
+        // Login baru menggantikan sesi aktif akun di perangkat mana pun (lihat User::startSingleSession).
+        $newToken = $user->startSingleSession($permissions, now()->addHours(8), [
+            'last_login_at' => now(),
+            'last_login_ip' => $request->ip(),
+        ]);
         $token = $newToken->plainTextToken;
-        $user->forceFill(['last_login_at' => now(), 'last_login_ip' => $request->ip(), 'active_token_id' => $newToken->accessToken->id])->save();
 
         $auditService->log('login_success', 'auth', 'LOGIN', $user);
 
@@ -159,7 +162,7 @@ class AuthController extends Controller
     public function logout(Request $request, AuditService $auditService)
     {
         $auditService->log('logout', 'auth', 'LOGOUT', $request->user());
-        $request->user()->currentAccessToken()?->delete();
+        $request->user()->endActiveSession();
 
         return $this->success(null, 'Logout berhasil.');
     }

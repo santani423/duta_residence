@@ -15,6 +15,7 @@ use App\Models\ResidentComplaint;
 use App\Models\SupervisorNotification;
 use App\Services\PenaltyService;
 use App\Services\SupervisorAssignmentService;
+use App\Support\DashboardDateRange;
 use Illuminate\Http\Request;
 
 /**
@@ -29,6 +30,9 @@ class SupervisorDashboardController extends Controller
     public function summary(Request $request, SupervisorAssignmentService $scopeService, PenaltyService $penaltyService)
     {
         $user = $request->user();
+        [$start, $end] = DashboardDateRange::fromRequest($request);
+        $from = $start->toDateString();
+        $to = $end->toDateString();
         $collectorIds = $scopeService->collectorIdsFor($user);
         $unitIds = $scopeService->unitIdsFor($user);
 
@@ -60,9 +64,13 @@ class SupervisorDashboardController extends Controller
                 'unpaid_units' => $unpaidUnitCount,
                 'total_receivables' => round($totalOutstanding, 2),
             ],
+            // `*_today` tetap dibaca aplikasi Flutter (tanpa parameter tanggal); `*_period` mengikuti rentang.
+            'period' => ['start' => $from, 'end' => $to],
             'payments' => [
                 'successful_today' => PaymentTransaction::query()->whereIn('created_by', $collectorIds)->where('status', 'paid')->whereDate('paid_at', now()->toDateString())->count(),
                 'on_site_today' => PaymentTransaction::query()->whereIn('created_by', $collectorIds)->where('payment_provider', 'loket')->where('status', 'paid')->whereDate('paid_at', now()->toDateString())->count(),
+                'successful_period' => PaymentTransaction::query()->whereIn('created_by', $collectorIds)->where('status', 'paid')->whereDate('paid_at', '>=', $from)->whereDate('paid_at', '<=', $to)->count(),
+                'on_site_period' => PaymentTransaction::query()->whereIn('created_by', $collectorIds)->where('payment_provider', 'loket')->where('status', 'paid')->whereDate('paid_at', '>=', $from)->whereDate('paid_at', '<=', $to)->count(),
             ],
             'promises' => [
                 'active_ptp' => PaymentPromise::query()->whereIn('unit_id', $unitIds)->where('status', 'pending')->count(),
@@ -74,6 +82,7 @@ class SupervisorDashboardController extends Controller
                 ->count(),
             // Hanya kunjungan final; kunjungan yang menunggu tanda tangan penghuni belum dihitung.
             'visits_today' => CollectorVisit::query()->finished()->whereIn('collector_id', $collectorIds)->whereDate('visit_date', now()->toDateString())->count(),
+            'visits_period' => CollectorVisit::query()->finished()->whereIn('collector_id', $collectorIds)->whereDate('visit_date', '>=', $from)->whereDate('visit_date', '<=', $to)->count(),
             'pending_approvals' => ApprovalRequest::query()->pending()->where(fn ($q) => $q->whereNull('related_collector_id')->orWhereIn('related_collector_id', $collectorIds))->count(),
             'unhandled_notifications' => SupervisorNotification::query()->unhandled()->where(fn ($q) => $q->whereNull('related_collector_id')->orWhereIn('related_collector_id', $collectorIds))->count(),
         ]);

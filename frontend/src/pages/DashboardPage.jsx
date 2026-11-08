@@ -1,22 +1,29 @@
-import { Card, Col, List, Row, Select, Space, Statistic, Typography } from 'antd';
-import { useQuery } from '@tanstack/react-query';
+import { Card, Col, List, Row, Space, Statistic, Typography } from 'antd';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Bar, BarChart, CartesianGrid, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import dayjs from 'dayjs';
 import PageHeader from '../components/common/PageHeader.jsx';
+import DashboardRangePicker from '../components/common/DashboardRangePicker.jsx';
 import { ErrorState, LoadingState } from '../components/common/ApiState.jsx';
 import StatusBadge from '../components/common/StatusBadge.jsx';
+import useDashboardRange from '../hooks/useDashboardRange.js';
 import { api } from '../services/estateApi.js';
 import { formatCurrency, formatDateTime } from '../utils/format.js';
 import { useAuth } from '../state/AuthContext.jsx';
 
 export default function DashboardPage() {
   const { can } = useAuth();
-  const now = dayjs();
-  const dashboard = useQuery({ queryKey: ['dashboard'], queryFn: api.dashboard.summary });
+  const { range, setRange, start, end, presets } = useDashboardRange();
+  // keepPreviousData: ganti rentang tidak mengosongkan halaman (dan pemilih tanggalnya).
+  const dashboard = useQuery({
+    queryKey: ['dashboard', start, end],
+    queryFn: () => api.dashboard.summary({ start, end }),
+    placeholderData: keepPreviousData,
+  });
   const monthly = useQuery({
-    queryKey: ['dashboard-monthly', now.year(), now.month() + 1],
-    queryFn: () => api.dashboard.monthly({ year: now.year(), month: now.month() + 1 }),
+    queryKey: ['dashboard-monthly', start, end],
+    queryFn: () => api.dashboard.monthly({ start, end }),
     enabled: can('reports.view'),
+    placeholderData: keepPreviousData,
   });
   const aging = useQuery({
     queryKey: ['receivable-aging'],
@@ -49,14 +56,19 @@ export default function DashboardPage() {
           monthly.refetch();
           aging.refetch();
         }}
-        extra={<Select value="bulan-ini" options={[{ value: 'bulan-ini', label: 'Bulan ini' }]} />}
+        extra={<DashboardRangePicker value={range} onChange={setRange} presets={presets} />}
       />
 
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}><Card><Statistic title="Total Cluster" value={data.total_clusters || 0} /></Card></Col>
         <Col xs={24} sm={12} lg={6}><Card><Statistic title="Total Penghuni" value={data.total_residents || 0} /></Card></Col>
         <Col xs={24} sm={12} lg={6}><Card><Statistic title="Tagihan" value={data.total_billings || 0} /></Card></Col>
-        <Col xs={24} sm={12} lg={6}><Card><Statistic title="Penerimaan Hari Ini" value={formatCurrency(data.today_receipts_total)} /></Card></Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic title="Penerimaan" value={formatCurrency(data.period_receipts_total)} />
+            <div className="muted">{start} s/d {end}</div>
+          </Card>
+        </Col>
       </Row>
 
       <Row gutter={[16, 16]} className="section-row">

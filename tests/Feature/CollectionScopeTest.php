@@ -199,7 +199,7 @@ class CollectionScopeTest extends TestCase
     public function test_deactivated_staff_token_is_rejected_with_account_inactive(): void
     {
         $supervisor = $this->makeUser('supervisor');
-        $token = $supervisor->createToken('api-token')->plainTextToken;
+        $token = $this->apiTokenFor($supervisor);
 
         $supervisor->forceFill(['is_active' => false])->save();
 

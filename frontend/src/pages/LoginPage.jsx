@@ -3,6 +3,7 @@ import { Alert, Button, Card, Form, Input, Space, Typography } from 'antd';
 import { useState } from 'react';
 import { Link, Navigate, useLocation } from 'react-router-dom';
 import { useSiteIdentity } from '../hooks/useSiteIdentity.js';
+import { SESSION_REPLACED_REASON, SESSION_REVOKED_MESSAGE } from '../constants/session.js';
 import { useAuth } from '../state/AuthContext.jsx';
 
 export default function LoginPage() {
@@ -11,6 +12,7 @@ export default function LoginPage() {
   const { login, token } = useAuth();
   const siteName = useSiteIdentity();
   const location = useLocation();
+  const sessionReplaced = new URLSearchParams(location.search).get('reason') === SESSION_REPLACED_REASON;
 
   async function submit(values) {
       setError(null);
@@ -40,6 +42,7 @@ export default function LoginPage() {
       <Card className="login-card">
         <Typography.Title level={2}>{siteName}</Typography.Title>
         <Typography.Paragraph type="secondary">Estate Management</Typography.Paragraph>
+        {sessionReplaced ? <Alert type="warning" message={SESSION_REVOKED_MESSAGE} showIcon style={{ marginBottom: 16 }} /> : null}
         {error ? <Alert type="error" message={error} showIcon /> : null}
         <Form layout="vertical" onFinish={submit}>
           <Form.Item label="Username, Email, atau No. HP" name="username" rules={[{ required: true, message: 'Username, email, atau no. HP wajib diisi' }]}>

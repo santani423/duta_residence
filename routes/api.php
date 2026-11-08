@@ -101,8 +101,9 @@ Route::get('landing/events/{slug}', [LandingController::class, 'event']);
 Route::get('landing/gallery-albums/{slug}', [LandingController::class, 'galleryAlbum']);
 Route::get('site-identity', [LandingController::class, 'identity']);
 
+// `single-session`: hanya sesi aktif akun yang diterima; token dari login di perangkat lain ditolak 401 SESSION_REVOKED.
 // `active-user`: token milik akun yang sudah dinonaktifkan/dihapus ditolak 401 ACCOUNT_INACTIVE.
-Route::middleware(['auth:sanctum', 'audit', 'active-user'])->group(function () {
+Route::middleware(['auth:sanctum', 'single-session', 'audit', 'active-user'])->group(function () {
     Route::post('auth/logout', [AuthController::class, 'logout']);
     Route::get('auth/me', [AuthController::class, 'me']);
     Route::post('auth/change-password', [AuthController::class, 'changePassword']);
@@ -497,7 +498,7 @@ Route::middleware(['auth:sanctum', 'audit', 'active-user'])->group(function () {
     });
 });
 
-Route::middleware(['auth:sanctum', 'audit', 'role:customer', 'single-session'])->prefix('resident')->group(function () {
+Route::middleware(['auth:sanctum', 'single-session', 'audit', 'role:customer'])->prefix('resident')->group(function () {
     Route::get('dashboard', [ResidentPortalController::class, 'dashboard']);
     Route::get('account', [ResidentPortalController::class, 'account']);
     Route::get('profile', [ResidentPortalController::class, 'profile']);

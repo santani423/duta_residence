@@ -222,8 +222,8 @@ class CollectorLifecycleTest extends TestCase
     public function test_deactivation_revokes_tokens_so_the_next_request_is_401(): void
     {
         $collector = $this->createCollector('lc.token.status');
-        $collectorToken = $collector->createToken('device', ['*'])->plainTextToken;
-        $adminToken = $this->root()->createToken('admin', ['*'])->plainTextToken;
+        $collectorToken = $this->apiTokenFor($collector);
+        $adminToken = $this->apiTokenFor($this->root());
 
         $this->freshAuth();
         $this->withToken($collectorToken)->getJson("/api/v1/collectors/{$collector->id}")->assertOk();
@@ -252,8 +252,8 @@ class CollectorLifecycleTest extends TestCase
     public function test_username_change_is_saved_revokes_tokens_and_new_username_logs_in(): void
     {
         $collector = $this->createCollector('lc.username.old');
-        $collectorToken = $collector->createToken('device', ['*'])->plainTextToken;
-        $adminToken = $this->root()->createToken('admin', ['*'])->plainTextToken;
+        $collectorToken = $this->apiTokenFor($collector);
+        $adminToken = $this->apiTokenFor($this->root());
 
         $this->freshAuth();
         $this->withToken($adminToken)->putJson("/api/v1/collectors/{$collector->id}", ['username' => 'lc.username.new'])->assertOk();

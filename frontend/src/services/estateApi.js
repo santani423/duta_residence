@@ -26,7 +26,7 @@ export const api = {
     resetPassword: (payload) => http.post('/auth/reset-password', payload),
   },
   dashboard: {
-    summary: () => http.get('/reports/dashboard'),
+    summary: (params) => http.get('/reports/dashboard', { params }),
     monthly: (params) => http.get('/reports/monthly', { params }),
     aging: () => http.get('/receivables/aging'),
   },
@@ -169,7 +169,7 @@ export const api = {
     unitReconciliation: (unitId) => http.get(`/units/${unitId}/balance/reconciliation`),
   },
   resident: {
-    dashboard: () => http.get('/resident/dashboard'),
+    dashboard: (params) => http.get('/resident/dashboard', { params }),
     account: () => http.get('/resident/account'),
     profile: () => http.get('/resident/profile'),
     updateProfile: (payload) => http.post('/resident/profile', payload, {
@@ -475,7 +475,7 @@ export const api = {
     reassign: (id, payload) => http.post(`/supervisor-assignments/${id}/reassign`, payload),
   },
   supervisorDashboard: {
-    summary: () => http.get('/supervisor/dashboard'),
+    summary: (params) => http.get('/supervisor/dashboard', { params }),
   },
   supervisorMonitoring: {
     collectors: (params) => http.get('/supervisor/collectors', { params }),

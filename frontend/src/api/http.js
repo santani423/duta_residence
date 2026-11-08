@@ -38,12 +38,16 @@ http.interceptors.response.use(
     const normalized = {
       status,
       message: payload?.message || error.message || 'Koneksi API gagal.',
+      code: payload?.code,
       errors: payload?.errors,
       data: payload?.data,
     };
 
     if (status === 401) {
-      window.dispatchEvent(new CustomEvent('gd:session-expired'));
+      // `code` membedakan sesi yang diambil alih perangkat lain (SESSION_REVOKED) dari token biasa yang habis.
+      window.dispatchEvent(new CustomEvent('gd:session-expired', {
+        detail: { code: normalized.code ?? null },
+      }));
     }
 
     if (status === 403) {

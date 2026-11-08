@@ -31,6 +31,7 @@ use App\Services\Payments\PaymentGatewayFactory;
 use App\Services\ResidentAccountService;
 use App\Services\UnitBalanceLedgerService;
 use App\Services\UnitOwnershipSyncService;
+use App\Support\DashboardDateRange;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -49,6 +50,7 @@ class ResidentPortalController extends Controller
     public function dashboard(Request $request)
     {
         $unit = $this->unit($request);
+        [$start, $end] = DashboardDateRange::fromRequest($request);
         $billings = $this->billingBaseQuery($unit)->get();
         // Hitung sekali per tagihan lalu pakai ulang, alih-alih memanggil PenaltyService
         // berkali-kali untuk baris yang sama di setiap filter/sum di bawah.
@@ -56,6 +58,11 @@ class ResidentPortalController extends Controller
         $outstanding = $billingCalcs->filter(fn (array $row) => $row['billing']->isOutstanding());
         $overdue = $billingCalcs->filter(fn (array $row) => $row['calc']['status'] === 'overdue');
         $payments = PaymentTransaction::query()->where('unit_id', $unit->id)->latest()->get();
+        $periodStart = $start->copy()->startOfDay();
+        $periodEnd = $end->copy()->endOfDay();
+        // Pembayaran berhasil yang dibayar dalam rentang; `successful_total` tetap total sepanjang waktu.
+        $successfulInPeriod = $payments->where('status', 'paid')
+            ->filter(fn (PaymentTransaction $transaction) => $transaction->paid_at?->between($periodStart, $periodEnd));
         $activeComplaints = $unit->complaints()->whereNotIn('status', ['closed', 'resolved', 'rejected'])->count();
         $activeMaintenance = $unit->maintenanceRequests()->whereNotIn('status', ['completed', 'closed', 'rejected'])->count();
 
@@ -82,8 +89,10 @@ class ResidentPortalController extends Controller
                 ],
                 'latest' => $billings->sortByDesc('created_at')->take(5)->map(fn (Billing $billing) => $this->invoicePayload($billing))->values(),
             ],
+            'period' => ['start' => $start->toDateString(), 'end' => $end->toDateString()],
             'payment_summary' => [
                 'successful_total' => $payments->where('status', 'paid')->sum('total'),
+                'successful_period' => $successfulInPeriod->sum('total'),
                 'processing_count' => $payments->whereIn('status', ['pending'])->count(),
                 'manual_waiting_count' => $payments->where('status', 'waiting_verification')->count(),
                 'latest' => $payments->take(5)->map(fn (PaymentTransaction $transaction) => $this->paymentPayload($transaction))->values(),

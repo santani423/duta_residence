@@ -1,12 +1,19 @@
 import { Card, Col, Row, Statistic } from 'antd';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import PageHeader from '../../components/common/PageHeader.jsx';
+import DashboardRangePicker from '../../components/common/DashboardRangePicker.jsx';
 import { ErrorState, LoadingState } from '../../components/common/ApiState.jsx';
+import useDashboardRange from '../../hooks/useDashboardRange.js';
 import { api } from '../../services/estateApi.js';
 import { formatCurrency } from '../../utils/format.js';
 
 export default function SupervisorDashboardPage() {
-  const summary = useQuery({ queryKey: ['supervisor-dashboard'], queryFn: () => api.supervisorDashboard.summary() });
+  const { range, setRange, start, end, presets } = useDashboardRange();
+  const summary = useQuery({
+    queryKey: ['supervisor-dashboard', start, end],
+    queryFn: () => api.supervisorDashboard.summary({ start, end }),
+    placeholderData: keepPreviousData,
+  });
 
   if (summary.isLoading) return <LoadingState rows={8} />;
   if (summary.isError) return <ErrorState error={summary.error} onRetry={summary.refetch} />;
@@ -24,6 +31,7 @@ export default function SupervisorDashboardPage() {
         subtitle="Ringkasan kinerja kolektor dan kondisi tunggakan di wilayah yang Anda awasi."
         breadcrumbs={[{ label: 'Supervisor' }, { label: 'Dashboard' }]}
         onRefresh={summary.refetch}
+        extra={<DashboardRangePicker value={range} onChange={setRange} presets={presets} />}
       />
 
       <Row gutter={[16, 16]}>
@@ -36,14 +44,14 @@ export default function SupervisorDashboardPage() {
         <Col xs={24} sm={12} md={6}><Card><Statistic title="Unit Belum Bayar" value={billing.unpaid_units ?? 0} /></Card></Col>
         <Col xs={24} sm={12} md={12}><Card><Statistic title="Total Piutang" value={formatCurrency(billing.total_receivables ?? 0)} /></Card></Col>
 
-        <Col xs={24} sm={12} md={6}><Card><Statistic title="Pembayaran Sukses Hari Ini" value={payments.successful_today ?? 0} /></Card></Col>
-        <Col xs={24} sm={12} md={6}><Card><Statistic title="Pembayaran On-Site Hari Ini" value={payments.on_site_today ?? 0} /></Card></Col>
+        <Col xs={24} sm={12} md={6}><Card><Statistic title="Pembayaran Sukses" value={payments.successful_period ?? 0} /></Card></Col>
+        <Col xs={24} sm={12} md={6}><Card><Statistic title="Pembayaran On-Site" value={payments.on_site_period ?? 0} /></Card></Col>
         <Col xs={24} sm={12} md={6}><Card><Statistic title="PTP Aktif" value={promises.active_ptp ?? 0} /></Card></Col>
         <Col xs={24} sm={12} md={6}><Card><Statistic title="Broken Promise" value={promises.broken_promise ?? 0} valueStyle={{ color: promises.broken_promise ? '#cf1322' : undefined }} /></Card></Col>
 
         <Col xs={24} sm={12} md={6}><Card><Statistic title="Komplain Terbuka" value={data.complaints ?? 0} /></Card></Col>
         <Col xs={24} sm={12} md={6}><Card><Statistic title="Kondisi Darurat Aktif" value={data.active_emergencies ?? 0} valueStyle={{ color: data.active_emergencies ? '#cf1322' : undefined }} /></Card></Col>
-        <Col xs={24} sm={12} md={6}><Card><Statistic title="Kunjungan Hari Ini" value={data.visits_today ?? 0} /></Card></Col>
+        <Col xs={24} sm={12} md={6}><Card><Statistic title="Kunjungan" value={data.visits_period ?? 0} /></Card></Col>
         <Col xs={24} sm={12} md={6}><Card><Statistic title="Persetujuan Menunggu" value={data.pending_approvals ?? 0} /></Card></Col>
 
         <Col xs={24} sm={12} md={6}><Card><Statistic title="Notifikasi Belum Ditangani" value={data.unhandled_notifications ?? 0} /></Card></Col>

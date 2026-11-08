@@ -33,11 +33,12 @@ import {
   PlusOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import PageHeader from '../../components/common/PageHeader.jsx';
+import DashboardRangePicker from '../../components/common/DashboardRangePicker.jsx';
 import FilterBar from '../../components/common/FilterBar.jsx';
 import { EmptyData, ErrorState, LoadingState } from '../../components/common/ApiState.jsx';
 import StatusBadge from '../../components/common/StatusBadge.jsx';
@@ -47,6 +48,7 @@ import { notificationSources } from '../../components/notifications/notification
 import ResponsiveTable from '../../components/tables/ResponsiveTable.jsx';
 import { api, storageUrl } from '../../services/estateApi.js';
 import { useTableState } from '../../hooks/useTableState.js';
+import useDashboardRange from '../../hooks/useDashboardRange.js';
 import { compactText, formatCurrency, formatDate, formatDateTime, formatNotificationType, formatPaymentMethod, formatPeriod } from '../../utils/format.js';
 import { getApiErrorMessage, mapValidationErrors } from '../../utils/apiError.js';
 import { confirmPayment } from '../../utils/confirmPayment.js';
@@ -295,7 +297,13 @@ function useResidentPaymentActions() {
 
 function ResidentDashboard() {
   const navigate = useNavigate();
-  const query = useQuery({ queryKey: ['resident-dashboard'], queryFn: api.resident.dashboard, ...OWNERSHIP_SENSITIVE_QUERY_OPTIONS });
+  const { range, setRange, start, end, presets } = useDashboardRange();
+  const query = useQuery({
+    queryKey: ['resident-dashboard', start, end],
+    queryFn: () => api.resident.dashboard({ start, end }),
+    placeholderData: keepPreviousData,
+    ...OWNERSHIP_SENSITIVE_QUERY_OPTIONS,
+  });
   const data = unwrapQuery(query) || {};
   const billing = data.billing_summary || {};
   const payment = data.payment_summary || {};
@@ -307,7 +315,13 @@ function ResidentDashboard() {
 
   return (
     <section>
-      <PageHeader title="Dashboard Penghuni" subtitle="Ringkasan akun, unit, tagihan, pembayaran, layanan, dan aktivitas Anda." breadcrumbs={[{ label: 'Penghuni' }, { label: 'Dashboard' }]} onRefresh={query.refetch} />
+      <PageHeader
+        title="Dashboard Penghuni"
+        subtitle="Ringkasan akun, unit, tagihan, pembayaran, layanan, dan aktivitas Anda."
+        breadcrumbs={[{ label: 'Penghuni' }, { label: 'Dashboard' }]}
+        onRefresh={query.refetch}
+        extra={<DashboardRangePicker value={range} onChange={setRange} presets={presets} />}
+      />
       {balance.available > 0 ? (
         <Card className="section-row">
           <Space align="center" wrap style={{ justifyContent: 'space-between', width: '100%' }}>
@@ -320,7 +334,7 @@ function ResidentDashboard() {
         <StatCard title="Total Tagihan Aktif" value={billing.active_total} loading={query.isFetching} />
         <StatCard title="Belum Dibayar" value={billing.unpaid_count} suffix="invoice" />
         <StatCard title="Jatuh Tempo" value={billing.overdue_count} suffix="invoice" />
-        <StatCard title="Pembayaran Berhasil" value={payment.successful_total} />
+        <StatCard title="Pembayaran Berhasil" value={payment.successful_period} />
         <StatCard title="Sedang Diproses" value={payment.processing_count} suffix="transaksi" />
         <StatCard title="Menunggu Verifikasi" value={payment.manual_waiting_count} suffix="manual" />
         <StatCard title="Komplain Aktif" value={services.active_complaints} />
