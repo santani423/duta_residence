@@ -1,0 +1,1 @@
+import{j as e}from"./index-DNDSt5SX.js";import{D as f}from"./index-CiFoFskz.js";function s({value:a,onChange:o,presets:t}){return e.jsx(f.RangePicker,{allowClear:!1,format:"YYYY-MM-DD",presets:t,value:a,onChange:r=>{r?.[0]&&r?.[1]&&o([r[0].startOf("day"),r[1].startOf("day")])}})}export{s as D};
