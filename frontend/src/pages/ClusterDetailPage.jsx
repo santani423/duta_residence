@@ -1,4 +1,4 @@
-import { Button, Card, Col, DatePicker, Descriptions, Drawer, Dropdown, Empty, Form, Input, Modal, Row, Select, Space, Statistic, Switch, Tag, message } from 'antd';
+import { Button, Card, Col, DatePicker, Descriptions, Drawer, Dropdown, Empty, Form, Input, Modal, Row, Select, Space, Statistic, Switch, Table, Tag, message } from 'antd';
 import { DeleteOutlined, EditOutlined, EnvironmentOutlined, MoreOutlined, PlusOutlined, PrinterOutlined } from '@ant-design/icons';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -124,13 +124,36 @@ function ClusterIncomeChart({ query, range, onRangeChange, clusterName, printing
             </div>
           )}
           {!hasIncome ? (
-            <Empty description="Belum ada transaksi penghasilan yang tercatat." image={Empty.PRESENTED_IMAGE_SIMPLE} />
-          ) : printing ? (
-            <div className="income-chart-print">{lineChart({ width: PRINT_CHART_WIDTH, height: PRINT_CHART_HEIGHT })}</div>
+            <Empty description="Belum ada pembayaran yang tercatat pada periode ini." image={Empty.PRESENTED_IMAGE_SIMPLE} />
           ) : (
-            <div className="chart-box">
-              <ResponsiveContainer>{lineChart()}</ResponsiveContainer>
-            </div>
+            <>
+              {printing ? (
+                <div className="income-chart-print">{lineChart({ width: PRINT_CHART_WIDTH, height: PRINT_CHART_HEIGHT })}</div>
+              ) : (
+                <div className="chart-box">
+                  <ResponsiveContainer>{lineChart()}</ResponsiveContainer>
+                </div>
+              )}
+              {/* Rincian per bulan: tampil di layar dan ikut tercetak bersama grafik. */}
+              <ResponsiveTable
+                className="income-table"
+                data={monthlyIncome}
+                rowKey="month"
+                size="small"
+                pagination={false}
+                scrollX={360}
+                columns={[
+                  { title: 'Bulan', dataIndex: 'label' },
+                  { title: 'Penghasilan', dataIndex: 'income', align: 'right', render: formatCurrency },
+                ]}
+                summary={() => (
+                  <Table.Summary.Row>
+                    <Table.Summary.Cell index={0}><strong>Total</strong></Table.Summary.Cell>
+                    <Table.Summary.Cell index={1} align="right"><strong>{formatCurrency(payload.total_income)}</strong></Table.Summary.Cell>
+                  </Table.Summary.Row>
+                )}
+              />
+            </>
           )}
         </div>
       )}
@@ -306,10 +329,10 @@ export default function ClusterDetailPage() {
     name: option.label,
     value: allUnits.filter((unit) => unit.occupancy_status === option.value).length,
   }));
-  const inactiveUnits = allUnits.filter((unit) => unit.status_id === 'TA');
-  const inactiveByTypeData = propertyTypeOptions.map((option) => ({
+  const activeUnits = allUnits.filter((unit) => unit.status_id === 'AK');
+  const activeByTypeData = propertyTypeOptions.map((option) => ({
     name: option.label,
-    value: inactiveUnits.filter((unit) => unit.property_type_id === option.value).length,
+    value: activeUnits.filter((unit) => unit.property_type_id === option.value).length,
   }));
 
   return (
@@ -405,7 +428,7 @@ export default function ClusterDetailPage() {
             <DonutChart title="Status Unit" data={occupancyData} loading={unitsAll.isLoading} />
           </Col>
           <Col xs={24} md={12}>
-            <DonutChart title="Unit Tidak Aktif Berdasarkan Tipe" data={inactiveByTypeData} loading={unitsAll.isLoading} />
+            <DonutChart title="Unit Aktif Berdasarkan Tipe" data={activeByTypeData} loading={unitsAll.isLoading} />
           </Col>
         </Row>
         <FilterBar>

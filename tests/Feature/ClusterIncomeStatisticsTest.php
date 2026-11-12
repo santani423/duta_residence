@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Billing;
+use App\Models\PaymentAllocation;
+use App\Models\PaymentTransaction;
 use App\Models\Resident;
 use App\Models\Unit;
 use App\Models\User;
@@ -166,6 +168,73 @@ class ClusterIncomeStatisticsTest extends TestCase
         $this->assertSame(300000.0, (float) $byMonth['2024-04']['income']);
         $this->assertSame(400000.0, (float) $byMonth['2024-05']['income']);
         $this->assertSame(900000.0, (float) $data['total_income']);
+    }
+
+    /**
+     * Pembayaran yang tercatat lewat transaksi (payment_allocations): cicilan pada tagihan yang
+     * belum lunas ikut dihitung per tanggal bayar transaksi, transaksi reversed/pending tidak
+     * dihitung, dan tagihan lunas yang sudah punya alokasi tidak dihitung dua kali lewat jalur
+     * data lama (paid_at billing).
+     */
+    public function test_income_statistics_counts_payment_allocations_including_partial_payments(): void
+    {
+        $finance = User::where('username', 'admin.estate')->firstOrFail();
+        $makeUnit = fn (string $clusterId) => Unit::factory()->create(['cluster_id' => $clusterId, 'resident_id' => Resident::factory()->create()->id]);
+
+        $allocate = function (Billing $billing, int $amount, string $paidAt, string $status = 'paid') {
+            $transaction = PaymentTransaction::factory()->create([
+                'unit_id' => $billing->unit_id, 'subtotal' => $amount, 'total' => $amount,
+                'payment_provider' => 'loket', 'status' => $status, 'paid_at' => $paidAt,
+            ]);
+            PaymentAllocation::query()->create([
+                'billing_id' => $billing->id, 'payment_transaction_id' => $transaction->id,
+                'principal_amount' => $amount, 'penalty_amount' => 0, 'total_amount' => $amount,
+            ]);
+        };
+
+        // Cicilan: tagihan masih sebagian (belum lunas) - dua pembayaran di bulan berbeda.
+        $partial = Billing::factory()->create([
+            'unit_id' => $makeUnit('D')->id, 'year' => 2024, 'month' => 3, 'amount' => 400000,
+            'status_id' => Billing::STATUS_PARTIAL, 'principal_paid' => 250000, 'paid_at' => null,
+            'created_by' => $finance->id,
+        ]);
+        $allocate($partial, 100000, '2024-03-05 09:00:00');
+        $allocate($partial, 150000, '2024-04-07 10:00:00');
+
+        // Lunas lewat transaksi: dihitung dari alokasinya saja (tidak ditambah lagi dari billing).
+        $settled = Billing::factory()->create([
+            'unit_id' => $makeUnit('D')->id, 'year' => 2024, 'month' => 4, 'amount' => 350000,
+            'status_id' => Billing::STATUS_PAID, 'principal_paid' => 350000, 'penalty_paid' => 0,
+            'paid_at' => '2024-04-20 11:00:00', 'created_by' => $finance->id,
+        ]);
+        $allocate($settled, 350000, '2024-04-20 11:00:00');
+
+        // Transaksi reversed & pending tidak termasuk penghasilan.
+        $reversed = Billing::factory()->create([
+            'unit_id' => $makeUnit('D')->id, 'year' => 2024, 'month' => 4, 'amount' => 350000,
+            'status_id' => Billing::STATUS_UNPAID, 'principal_paid' => 0, 'paid_at' => null,
+            'created_by' => $finance->id,
+        ]);
+        $allocate($reversed, 350000, '2024-04-10 08:00:00', 'reversed');
+        $allocate($reversed, 350000, '2024-04-11 08:00:00', 'pending');
+
+        // Cluster lain tidak ikut.
+        $other = Billing::factory()->create([
+            'unit_id' => $makeUnit('G')->id, 'year' => 2024, 'month' => 4, 'amount' => 500000,
+            'status_id' => Billing::STATUS_PARTIAL, 'principal_paid' => 200000, 'paid_at' => null,
+            'created_by' => $finance->id,
+        ]);
+        $allocate($other, 200000, '2024-04-12 08:00:00');
+
+        $this->as('admin.estate');
+        $data = $this->getJson('/api/v1/clusters/D/income-statistics?start=2024-03-01&end=2024-04-30')
+            ->assertOk()
+            ->json('data');
+
+        $byMonth = collect($data['monthly_income'])->keyBy('month');
+        $this->assertSame(100000.0, (float) $byMonth['2024-03']['income']);
+        $this->assertSame(500000.0, (float) $byMonth['2024-04']['income']);
+        $this->assertSame(600000.0, (float) $data['total_income']);
     }
 
     public function test_income_statistics_rejects_end_before_start(): void

@@ -291,6 +291,10 @@ a {
   margin-bottom: 12px;
 }
 
+.income-table {
+  margin-top: 16px;
+}
+
 /* Teks khusus cetak (nama cluster & tanggal cetak); disembunyikan di layar. */
 .print-only {
   display: none;
@@ -537,6 +541,19 @@ a {
     background-color: transparent !important;
     border-color: #d1d5db !important;
     box-shadow: none !important;
+  }
+
+  /* Grafik tidak terbelah antarhalaman; tabel rincian per bulan dicetak penuh tanpa scroll. */
+  .cluster-detail-page[data-print-target='income'] .income-chart-print {
+    break-inside: avoid;
+  }
+
+  .cluster-detail-page[data-print-target='income'] .income-table .ant-table-content {
+    overflow: visible !important;
+  }
+
+  .cluster-detail-page[data-print-target='income'] .income-table tr {
+    break-inside: avoid;
   }
 
   .cluster-detail-page[data-print-target] .no-print,

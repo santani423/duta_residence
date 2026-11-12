@@ -13,6 +13,8 @@ use App\Services\ClusterCodeService;
 use App\Services\CollectorAssignmentService;
 use App\Support\DashboardDateRange;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -154,12 +156,18 @@ class ClusterController extends Controller
 
     /**
      * Penghasilan cluster per bulan dalam rentang tanggal (`start` & `end`, YYYY-MM-DD, inklusif).
-     * Tanpa parameter: 12 bulan terakhir (bergeser otomatis mengikuti bulan berjalan). Hanya
-     * menghitung billing yang benar-benar lunas (STATUS_PAID) berdasarkan tanggal pelunasan
-     * (paid_at) - bukan periode tagihan (year/month) - dan dijumlahkan dari principal_paid +
-     * penalty_paid per baris billing sehingga tidak ada double counting meskipun satu billing
-     * dibayar lewat beberapa transaksi/cicilan. Bulan parsial di ujung rentang hanya menghitung
-     * pelunasan yang jatuh di dalam rentang, sehingga total = jumlah seluruh pelunasan dalam rentang.
+     * Tanpa parameter: 12 bulan terakhir (bergeser otomatis mengikuti bulan berjalan).
+     *
+     * Penghasilan = uang yang benar-benar diterima, dikelompokkan menurut tanggal bayar (bukan
+     * periode tagihan year/month):
+     * - Sumber utama: payment_allocations dari transaksi berstatus `paid`, per tanggal paid_at
+     *   transaksi. Cicilan/pembayaran sebagian ikut terhitung pada tanggal masing-masing, dan
+     *   transaksi yang di-reversal (status `reversed`) otomatis tidak terhitung.
+     * - Data lama tanpa baris alokasi: billing lunas (STATUS_PAID) per paid_at billing, dijumlahkan
+     *   dari principal_paid + penalty_paid. Billing yang sudah punya alokasi tidak dihitung lagi
+     *   di sini, jadi tidak ada double counting.
+     * Bulan parsial di ujung rentang hanya menghitung pembayaran yang jatuh di dalam rentang,
+     * sehingga total = jumlah seluruh pembayaran dalam rentang.
      */
     public function incomeStatistics(Request $request, Cluster $cluster, CollectorAssignmentService $assignmentService)
     {
@@ -180,25 +188,14 @@ class ClusterController extends Controller
             throw ValidationException::withMessages(['start' => 'Rentang maksimal '.self::MAX_INCOME_RANGE_MONTHS.' bulan.']);
         }
 
+        $incomeByMonth = $this->incomeByMonth($cluster, $start, $end);
+
         $monthlyIncome = collect();
         for ($cursor = $start->copy()->startOfMonth(); $cursor->lte($end); $cursor->addMonth()) {
-            $monthStart = $cursor->copy()->startOfMonth();
-            $monthEnd = $cursor->copy()->endOfMonth();
-            $from = $monthStart->lt($start) ? $start : $monthStart;
-            $to = $monthEnd->gt($end) ? $end : $monthEnd;
-
-            $income = Billing::query()
-                ->join('units', 'units.id', '=', 'billings.unit_id')
-                ->where('units.cluster_id', $cluster->id)
-                ->where('billings.status_id', Billing::STATUS_PAID)
-                ->whereBetween('billings.paid_at', [$from, $to])
-                ->selectRaw('COALESCE(SUM(billings.principal_paid + billings.penalty_paid), 0) as income')
-                ->value('income');
-
             $monthlyIncome->push([
                 'month' => $cursor->format('Y-m'),
                 'label' => $cursor->copy()->locale('id')->translatedFormat('F Y'),
-                'income' => round((float) $income, 2),
+                'income' => round($incomeByMonth[$cursor->format('Y-m')] ?? 0.0, 2),
             ]);
         }
 
@@ -211,6 +208,46 @@ class ClusterController extends Controller
             'monthly_income' => $monthlyIncome->values(),
             'total_income' => round($monthlyIncome->sum('income'), 2),
         ]);
+    }
+
+    /**
+     * Total pembayaran per bulan (kunci `Y-m`) untuk unit di cluster ini dalam rentang [$start, $end].
+     * Dijumlahkan per hari di SQL (DATE() berlaku di MySQL & SQLite), lalu digabung per bulan di PHP.
+     *
+     * @return array<string, float>
+     */
+    private function incomeByMonth(Cluster $cluster, Carbon $start, Carbon $end): array
+    {
+        $allocated = DB::table('payment_allocations')
+            ->join('payment_transactions', 'payment_transactions.id', '=', 'payment_allocations.payment_transaction_id')
+            ->join('billings', 'billings.id', '=', 'payment_allocations.billing_id')
+            ->join('units', 'units.id', '=', 'billings.unit_id')
+            ->where('units.cluster_id', $cluster->id)
+            ->where('payment_transactions.status', 'paid')
+            ->whereBetween('payment_transactions.paid_at', [$start, $end])
+            ->groupByRaw('DATE(payment_transactions.paid_at)')
+            ->selectRaw('DATE(payment_transactions.paid_at) as paid_date, SUM(payment_allocations.principal_amount + payment_allocations.penalty_amount) as income')
+            ->get();
+
+        $legacy = DB::table('billings')
+            ->join('units', 'units.id', '=', 'billings.unit_id')
+            ->where('units.cluster_id', $cluster->id)
+            ->where('billings.status_id', Billing::STATUS_PAID)
+            ->whereBetween('billings.paid_at', [$start, $end])
+            ->whereNotExists(fn ($query) => $query->selectRaw('1')
+                ->from('payment_allocations')
+                ->whereColumn('payment_allocations.billing_id', 'billings.id'))
+            ->groupByRaw('DATE(billings.paid_at)')
+            ->selectRaw('DATE(billings.paid_at) as paid_date, SUM(billings.principal_paid + billings.penalty_paid) as income')
+            ->get();
+
+        $byMonth = [];
+        foreach ($allocated->concat($legacy) as $row) {
+            $month = substr((string) $row->paid_date, 0, 7);
+            $byMonth[$month] = ($byMonth[$month] ?? 0.0) + (float) $row->income;
+        }
+
+        return $byMonth;
     }
 
     public function destroy(Cluster $cluster, AuditService $auditService)
