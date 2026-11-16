@@ -12,6 +12,8 @@ use App\Models\Unit;
 use App\Services\PaymentPrintService;
 use App\Services\PaymentSchemeService;
 use App\Services\PenaltyService;
+use App\Services\ContinuousFormReceiptPrinter;
+use App\Services\ThermalReceiptPrinter;
 use App\Support\UnitFilters;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -26,11 +28,12 @@ class DocumentController extends Controller
     private const LIST_PDF_MAX_ROWS = 500;
 
     /**
-     * Kuitansi pembayaran loket. ?format=a4 (default) atau ?format=thermal (struk 80mm).
+     * Kuitansi pembayaran loket. ?format=a4 (default) atau ?format=thermal (struk printer thermal 58/80 mm,
+     * lihat kwitansi() untuk parameter pengaturannya).
      */
     public function spt(Request $request, Receipt $receipt, PaymentPrintService $printService)
     {
-        return $this->kwitansiPdf($request, $printService->forReceipt($receipt), "SPT-{$receipt->number}.pdf");
+        return $this->kwitansi($request, $printService->forReceipt($receipt), "SPT-{$receipt->number}.pdf");
     }
 
     /**
@@ -44,23 +47,59 @@ class DocumentController extends Controller
         $receipt = Receipt::query()->where('payment_transaction_id', $transaction->id)->first();
         $data = $receipt ? $printService->forReceipt($receipt) : $printService->forTransaction($transaction);
 
-        return $this->kwitansiPdf($request, $data, 'Kuitansi-'.($receipt->number ?? $transaction->invoice_number).'.pdf');
+        return $this->kwitansi($request, $data, 'Kuitansi-'.($receipt->number ?? $transaction->invoice_number).'.pdf');
     }
 
-    private function kwitansiPdf(Request $request, array $data, string $filename)
-    {
-        $thermal = $request->query('format') === 'thermal';
-        $pdf = Pdf::loadHTML(view('pdf.kwitansi', ['data' => $data, 'thermal' => $thermal])->render());
+    /**
+     * Satu sumber data kuitansi ($data dari PaymentPrintService), template cetak per format:
+     * - a4 (default): pdf.kwitansi.
+     * - thermal: pdf.kwitansi-thermal, dengan pengaturan ?paper=58|80, ?width= (lebar cetak, mm), ?margin= (mm),
+     *   ?font_size= (pt). ?output=html mengembalikan HTML untuk preview dan cetak langsung dari browser;
+     *   tanpa itu PDF dengan panjang halaman mengikuti isi struk.
+     */
+    
+private function kwitansi(Request $request, array $data, string $filename)
+{
+    $format = $request->query('format', 'a4');
 
-        if ($thermal) {
-            // Struk 80mm: lebar tetap, tinggi mengikuti jumlah baris agar tidak terpotong ke halaman kedua.
-            $pdf->setPaper([0, 0, 226.77, 430 + count($data['rows']) * 78]);
-        } else {
-            $pdf->setPaper('a4');
+    // Thermal Printer
+    if ($format === 'thermal') {
+        $thermal = app(ThermalReceiptPrinter::class);
+        $settings = $thermal->settings($request);
+
+        if ($request->query('output') === 'html') {
+            return response($thermal->html($data, $settings), 200, [
+                'Content-Type' => 'text/html; charset=UTF-8',
+                'Cache-Control' => 'no-store',
+            ]);
         }
 
-        return $pdf->download($filename);
+        return $thermal->pdf($data, $settings)->download($filename);
     }
+
+    // Continuous Form / NCR Paper
+    if ($format === 'form') {
+        $form = app(ContinuousFormReceiptPrinter::class);
+        $settings = $form->settings($request);
+
+        if ($request->query('output') === 'html') {
+            return response($form->html($data, $settings), 200, [
+                'Content-Type' => 'text/html; charset=UTF-8',
+                'Cache-Control' => 'no-store',
+            ]);
+        }
+
+        return $form->pdf($data, $settings)->download($filename);
+    }
+
+    // Standard A4
+    return Pdf::loadHTML(
+        view('pdf.kwitansi', ['data' => $data])->render()
+    )
+        ->setPaper('a4')
+        ->download($filename);
+}
+
 
     public function spk(Billing $billing, PenaltyService $penaltyService)
     {

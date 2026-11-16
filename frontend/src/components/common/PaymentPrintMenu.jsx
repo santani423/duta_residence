@@ -28,7 +28,7 @@ export default function PaymentPrintMenu({ transaction, receiptNumber, label = '
   }
 
   function printReceipt(format) {
-    const suffix = format === 'thermal' ? '-struk' : '';
+    const suffix = format === 'form' ? '-continuous-form' : '';
     if (receiptNumber) {
       return run(() => api.documents.receiptPdf(receiptNumber, format), `kuitansi-${receiptNumber}${suffix}.pdf`, 'Gagal memuat kuitansi');
     }
@@ -42,7 +42,7 @@ export default function PaymentPrintMenu({ transaction, receiptNumber, label = '
       onClick: () => run(() => api.documents.paymentTransactionPdf(transaction.id), `transaksi-${transaction.invoice_number}.pdf`, 'Gagal memuat detail transaksi'),
     }] : []),
     { key: 'receipt-a4', label: 'Cetak Kuitansi (A4)', disabled: !canPrintReceipt, onClick: () => printReceipt('a4') },
-    { key: 'receipt-thermal', label: 'Cetak Struk (Thermal 80mm)', disabled: !canPrintReceipt, onClick: () => printReceipt('thermal') },
+    { key: 'receipt-form', label: 'Cetak Kuitansi (Kertas Form 9.5 × 5.5)', disabled: !canPrintReceipt, onClick: () => printReceipt('form') },
   ];
 
   return (

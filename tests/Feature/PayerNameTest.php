@@ -213,14 +213,14 @@ class PayerNameTest extends TestCase
         $this->assertSame('Andi Pratama', $dataWithPayer['payer_name']);
         $this->assertSame($owner, $dataWithPayer['resident_name']);
 
-        $htmlWithPayer = view('pdf.kwitansi', ['data' => $dataWithPayer, 'thermal' => false])->render();
+        $htmlWithPayer = view('pdf.kwitansi', ['data' => $dataWithPayer])->render();
         $this->assertStringContainsString('Andi Pratama', $htmlWithPayer);
         $this->assertStringContainsString('Atas nama pemilik unit', $htmlWithPayer);
 
         $dataWithoutPayer = $printer->forReceipt(Receipt::findOrFail($withoutPayer));
         $this->assertNull($dataWithoutPayer['payer_name']);
 
-        $htmlWithoutPayer = view('pdf.kwitansi', ['data' => $dataWithoutPayer, 'thermal' => false])->render();
+        $htmlWithoutPayer = view('pdf.kwitansi', ['data' => $dataWithoutPayer])->render();
         $this->assertStringNotContainsString('Atas nama pemilik unit', $htmlWithoutPayer);
         $this->assertStringContainsString($owner, $htmlWithoutPayer);
     }

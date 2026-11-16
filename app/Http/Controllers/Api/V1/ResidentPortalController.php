@@ -561,7 +561,7 @@ class ResidentPortalController extends Controller
         $unit = $this->unit($request);
         abort_if($receipt->unit_id !== $unit->id, 404);
 
-        return Pdf::loadHTML(view('pdf.kwitansi', ['data' => $printService->forReceipt($receipt), 'thermal' => false])->render())
+        return Pdf::loadHTML(view('pdf.kwitansi', ['data' => $printService->forReceipt($receipt)])->render())
             ->setPaper('a4')
             ->download("SPT-{$receipt->number}.pdf");
     }

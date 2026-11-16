@@ -159,7 +159,6 @@ class LoketPaymentVerificationAndPrintTest extends TestCase
 
         $html = view('pdf.kwitansi', [
             'data' => app(PaymentPrintService::class)->forReceipt($receipt),
-            'thermal' => false,
         ])->render();
 
         $this->assertStringContainsString($number, $html);
