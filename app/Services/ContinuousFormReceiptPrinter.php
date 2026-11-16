@@ -21,11 +21,11 @@ class ContinuousFormReceiptPrinter
         '9.5x5.5' => [
             'width' => 241.3,
             'height' => 139.7,
-            'margin_top' => 8,
-            'margin_bottom' => 8,
+            'margin_top' => 5,
+            'margin_bottom' => 5,
             'margin_left' => 10,
             'margin_right' => 10,
-            'font_size' => 10,
+            'font_size' => 9,
         ],
         '9.5x11' => [
             'width' => 241.3,
@@ -39,11 +39,11 @@ class ContinuousFormReceiptPrinter
         'custom' => [
             'width' => 241.3,
             'height' => 139.7,
-            'margin_top' => 8,
-            'margin_bottom' => 8,
+            'margin_top' => 5,
+            'margin_bottom' => 5,
             'margin_left' => 10,
             'margin_right' => 10,
-            'font_size' => 10,
+            'font_size' => 9,
         ],
     ];
 
