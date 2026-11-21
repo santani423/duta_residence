@@ -1,1 +1,0 @@
-import{j as e}from"./index-D-dw0Yvb.js";import{D as f}from"./index-DOkE5kZ5.js";function s({value:a,onChange:o,presets:t}){return e.jsx(f.RangePicker,{allowClear:!1,format:"YYYY-MM-DD",presets:t,value:a,onChange:r=>{r?.[0]&&r?.[1]&&o([r[0].startOf("day"),r[1].startOf("day")])}})}export{s as D};
