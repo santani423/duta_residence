@@ -217,7 +217,10 @@ class UnitController extends Controller
     public function assignResident(Request $request, Unit $unit, AuditService $auditService, UnitOwnershipSyncService $ownershipSync, UnitVaNumberService $vaNumbers)
     {
         $data = $request->validate([
-            'resident_id' => ['required', 'exists:residents,id'],
+            'resident_id' => [
+                'required',
+                Rule::exists('residents', 'id')->where(fn ($query) => $query->where('is_active', true)->whereNull('deleted_at')),
+            ],
             'va_suffix' => ['required', 'string'],
         ], [
             'resident_id.required' => 'Penghuni wajib dipilih.',

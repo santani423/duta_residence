@@ -35,7 +35,10 @@ export default function UnitsPage() {
 
   const units = useQuery({ queryKey: ['units', table.params], queryFn: () => api.units.list(table.params) });
   const clusters = useQuery({ queryKey: ['clusters'], queryFn: () => api.clusters.list() });
-  const residents = useQuery({ queryKey: ['residents-lookup'], queryFn: () => api.residents.list({ per_page: 1000 }) });
+  const residents = useQuery({
+    queryKey: ['residents-lookup-active'],
+    queryFn: () => api.residents.list({ is_active: true, per_page: 1000 }),
+  });
   const vaFormatQuery = useQuery({ queryKey: ['units-va-format'], queryFn: api.units.vaFormat });
   const vaFormat = vaFormatQuery.data?.data;
   const districts = useQuery({ queryKey: ['lookup-districts'], queryFn: () => api.lookup.districts() });
@@ -88,7 +91,7 @@ export default function UnitsPage() {
       setDrawer({ type: null, record: null });
       residentForm.resetFields();
       queryClient.invalidateQueries({ queryKey: ['units'] });
-      queryClient.invalidateQueries({ queryKey: ['residents-lookup'] });
+      queryClient.invalidateQueries({ queryKey: ['residents-lookup-active'] });
 
       const account = response?.data?.login_account;
       if (account) {
@@ -118,7 +121,7 @@ export default function UnitsPage() {
       setDrawer({ type: null, record: null });
       assignForm.resetFields();
       queryClient.invalidateQueries({ queryKey: ['units'] });
-      queryClient.invalidateQueries({ queryKey: ['residents-lookup'] });
+      queryClient.invalidateQueries({ queryKey: ['residents-lookup-active'] });
     },
     onError: (error) => {
       assignForm.setFields(mapValidationErrors(error));

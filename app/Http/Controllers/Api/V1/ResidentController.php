@@ -30,6 +30,10 @@ class ResidentController extends Controller
             ->unitStatus($request->query('unit_status'))
             ->withCount(['units', 'tenantUnits']);
 
+        if ($request->has('is_active')) {
+            $query->where('is_active', $request->boolean('is_active'));
+        }
+
         if ($request->user()->hasRole('collector')) {
             $query->whereIn('id', $assignmentService->residentIdsFor($request->user()));
         }

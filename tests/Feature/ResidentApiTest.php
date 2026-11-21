@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\PaymentGatewaySetting;
+use App\Models\Resident;
 use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -328,5 +329,61 @@ class ResidentApiTest extends TestCase
         $this->deleteJson("/api/v1/units/{$first}")->assertOk();
 
         $this->getJson("/api/v1/residents/{$residentId}")->assertJsonPath('data.unit_status', 'with_unit');
+    }
+
+    public function test_list_residents_can_filter_only_active_residents(): void
+    {
+        $this->seed();
+
+        Sanctum::actingAs(User::where('username', 'root')->first());
+
+        $activeResidentId = $this->postJson('/api/v1/residents', [
+            'name' => 'Aktif',
+            'phone' => '081234567896',
+            'email' => 'aktif@example.com',
+        ])->assertCreated()->json('data.resident.id');
+
+        $inactiveResidentId = $this->postJson('/api/v1/residents', [
+            'name' => 'Tidak Aktif',
+            'phone' => '081234567897',
+            'email' => 'tidak.aktif@example.com',
+            'is_active' => false,
+        ])->assertCreated()->json('data.resident.id');
+
+        $response = $this->getJson('/api/v1/residents?is_active=1');
+
+        $response->assertOk();
+        $ids = collect($response->json('data'))->pluck('id');
+        $this->assertTrue($ids->contains($activeResidentId));
+        $this->assertFalse($ids->contains($inactiveResidentId));
+    }
+
+    public function test_residents_lookup_can_filter_to_active_residents(): void
+    {
+        $this->seed();
+
+        Sanctum::actingAs(User::where('username', 'root')->first());
+
+        $activeId = $this->postJson('/api/v1/residents', [
+            'name' => 'Aktif Lookup',
+            'phone' => '081234567001',
+            'email' => 'aktif.lookup@example.com',
+        ])->assertCreated()->json('data.resident.id');
+
+        $inactiveId = $this->postJson('/api/v1/residents', [
+            'name' => 'Nonaktif Lookup',
+            'phone' => '081234567002',
+            'email' => 'nonaktif.lookup@example.com',
+        ])->assertCreated()->json('data.resident.id');
+
+        $this->patchJson("/api/v1/residents/{$inactiveId}/active", ['is_active' => false])->assertOk();
+
+        $ids = collect($this->getJson('/api/v1/residents?is_active=true&per_page=1000')
+            ->assertOk()
+            ->json('data'))
+            ->pluck('id');
+
+        $this->assertTrue($ids->contains($activeId));
+        $this->assertFalse($ids->contains($inactiveId));
     }
 }
