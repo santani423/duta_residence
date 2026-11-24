@@ -65,4 +65,31 @@ class BillingIndexSortingTest extends TestCase
 
         $this->assertSame([$newer->id, $older->id], $ids);
     }
+
+    public function test_paid_billing_overdue_months_is_frozen_at_paid_month(): void
+    {
+        $this->seed(EstateSeeder::class);
+        $this->travelTo(now()->setDate(2026, 11, 25));
+
+        $unit = Unit::factory()->create(['cluster_id' => 'AL']);
+        $paid = Billing::factory()->create([
+            'unit_id' => $unit->id, 'year' => 2026, 'month' => 5,
+            'status_id' => Billing::STATUS_PAID, 'paid_at' => now()->setDate(2026, 6, 10),
+        ]);
+        $unpaid = Billing::factory()->create([
+            'unit_id' => $unit->id, 'year' => 2026, 'month' => 6, 'status_id' => Billing::STATUS_UNPAID,
+        ]);
+
+        Permission::findOrCreate('billings.view');
+        $user = User::factory()->create(['is_active' => true]);
+        $user->givePermissionTo('billings.view');
+        Sanctum::actingAs($user);
+
+        $rows = collect($this->getJson("/api/v1/billings?unit_id={$unit->id}&per_page=10")->assertOk()->json('data'))->keyBy('id');
+        $this->assertSame(1, $rows[$paid->id]['penalty_detail']['overdue_months']);
+        $this->assertSame(5, $rows[$unpaid->id]['penalty_detail']['overdue_months']);
+
+        $filtered = collect($this->getJson("/api/v1/billings?unit_id={$unit->id}&max_overdue_months=1&per_page=10")->assertOk()->json('data'))->pluck('id')->all();
+        $this->assertSame([$paid->id], $filtered);
+    }
 }

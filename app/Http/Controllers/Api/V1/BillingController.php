@@ -245,8 +245,19 @@ class BillingController extends Controller
             });
     }
 
+    /**
+     * Sama dengan PenaltyService::calculateOverdueMonths(): tagihan lunas dihitung sampai bulan
+     * pelunasan (paid_at), sisanya sampai bulan berjalan.
+     */
     private function whereOverdueMonths(Builder $query, Carbon $now, string $operator, int $threshold): Builder
     {
-        return $query->whereRaw("((? - year) * 12 + (? - month)) {$operator} ?", [$now->year, $now->month, $threshold]);
+        $paidMonthIndex = $query->getConnection()->getDriverName() === 'sqlite'
+            ? "(CAST(strftime('%Y', paid_at) AS INTEGER) * 12 + CAST(strftime('%m', paid_at) AS INTEGER))"
+            : '(YEAR(paid_at) * 12 + MONTH(paid_at))';
+
+        return $query->whereRaw(
+            "((CASE WHEN status_id = ? AND paid_at IS NOT NULL THEN {$paidMonthIndex} ELSE ? END) - (year * 12 + month)) {$operator} ?",
+            [Billing::STATUS_PAID, $now->year * 12 + $now->month, $threshold]
+        );
     }
 }

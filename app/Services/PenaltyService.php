@@ -26,10 +26,16 @@ class PenaltyService
      * umur_tunggakan = ((tahun_sekarang - tahun_tagihan) * 12) + (bulan_sekarang - bulan_tagihan),
      * clamped to a minimum of 0. Deliberately month-based (not day-based) per business rule:
      * a July invoice viewed in December is "5 bulan" regardless of which day of December it is.
+     * Tagihan lunas dibekukan pada bulan pelunasan (paid_at) supaya umurnya tidak terus bertambah.
      */
     public function calculateOverdueMonths(Billing $billing, ?CarbonInterface $date = null): int
     {
         $date = $date ?? now();
+
+        if ($billing->isPaid() && $billing->paid_at !== null && $billing->paid_at->lessThan($date)) {
+            $date = $billing->paid_at;
+        }
+
         $months = (($date->year - (int) $billing->year) * 12) + ($date->month - (int) $billing->month);
 
         return max(0, $months);

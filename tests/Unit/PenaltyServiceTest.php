@@ -84,6 +84,17 @@ class PenaltyServiceTest extends TestCase
         $this->assertSame(0, $service->calculateOverdueMonths($billing, Carbon::create(2026, 6, 1)));
     }
 
+    public function test_paid_billing_overdue_months_frozen_at_paid_month(): void
+    {
+        $service = app(PenaltyService::class);
+        $billing = new Billing(['year' => 2026, 'month' => 5]);
+        $billing->status_id = Billing::STATUS_PAID;
+        $billing->paid_at = Carbon::create(2026, 6, 10);
+
+        $this->assertSame(1, $service->calculateOverdueMonths($billing, Carbon::create(2026, 11, 25)));
+        $this->assertSame(1, $service->calculateOverdueMonths($billing, Carbon::create(2027, 3, 1)));
+    }
+
     public function test_paid_billing_returns_frozen_penalty_not_dynamic(): void
     {
         $service = app(PenaltyService::class);
